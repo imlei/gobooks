@@ -23,8 +23,8 @@ type ReconcileCandidate struct {
 }
 
 // ListReconcileCandidates returns unreconciled lines for a given account
-// up to (and including) statementDate.
-func ListReconcileCandidates(db *gorm.DB, accountID uint, statementDate time.Time) ([]ReconcileCandidate, error) {
+// up to (and including) statementDate. companyID must match the account's company.
+func ListReconcileCandidates(db *gorm.DB, companyID, accountID uint, statementDate time.Time) ([]ReconcileCandidate, error) {
 	var out []ReconcileCandidate
 	err := db.Raw(
 		`
@@ -39,18 +39,20 @@ SELECT
 FROM journal_lines jl
 JOIN journal_entries je ON je.id = jl.journal_entry_id
 WHERE jl.account_id = ?
+  AND jl.company_id = ?
+  AND je.company_id = ?
   AND je.entry_date <= ?
   AND jl.reconciliation_id IS NULL
 ORDER BY je.entry_date ASC, jl.id ASC
 `,
-		accountID, statementDate,
+		accountID, companyID, companyID, statementDate,
 	).Scan(&out).Error
 	return out, err
 }
 
 // ClearedBalance returns the sum of (debit - credit) for lines
-// already reconciled for the account up to statementDate.
-func ClearedBalance(db *gorm.DB, accountID uint, statementDate time.Time) (decimal.Decimal, error) {
+// already reconciled for the account up to statementDate. companyID must match the account's company.
+func ClearedBalance(db *gorm.DB, companyID, accountID uint, statementDate time.Time) (decimal.Decimal, error) {
 	type row struct {
 		Amount decimal.Decimal
 	}
@@ -61,10 +63,12 @@ SELECT COALESCE(SUM(jl.debit - jl.credit), 0) AS amount
 FROM journal_lines jl
 JOIN journal_entries je ON je.id = jl.journal_entry_id
 WHERE jl.account_id = ?
+  AND jl.company_id = ?
+  AND je.company_id = ?
   AND je.entry_date <= ?
   AND jl.reconciliation_id IS NOT NULL
 `,
-		accountID, statementDate,
+		accountID, companyID, companyID, statementDate,
 	).Scan(&r).Error
 	return r.Amount, err
 }

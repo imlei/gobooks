@@ -1,10 +1,14 @@
 // 遵循产品需求 v1.0
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // AuditLog records important user/system actions.
-// For MVP we keep actor simple (string) and store details as JSON text.
+// Actor string remains for display; actor_user_id links to users when present.
 type AuditLog struct {
 	ID uint `gorm:"primaryKey"`
 
@@ -12,7 +16,10 @@ type AuditLog struct {
 	EntityType string `gorm:"not null;index"` // e.g. "journal_entry"
 	EntityID   uint   `gorm:"not null;default:0;index"`
 
-	Actor string `gorm:"not null;default:'system'"` // for now we only have single-user mode
+	Actor string `gorm:"not null;default:'system'"`
+
+	CompanyID   *uint      `gorm:"index"`
+	ActorUserID *uuid.UUID `gorm:"type:uuid;index"`
 
 	DetailsJSON string `gorm:"type:text;not null;default:'{}'"`
 

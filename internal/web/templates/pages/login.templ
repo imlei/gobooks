@@ -1,0 +1,47 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ Login(vm LoginViewModel) {
+	@layout.Layout(
+		"GoBooks - Sign in",
+		ui.SidebarVM{Active: "", HasCompany: false},
+		bodyLogin(vm),
+	)
+}
+
+templ bodyLogin(vm LoginViewModel) {
+	<div class="max-w-md">
+		<h1 class="text-title font-semibold">Sign in</h1>
+		<p class="mt-2 text-text-muted2">
+			Use your GoBooks account email and password.
+		</p>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="post" action="/login" class="mt-6 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6 space-y-6">
+				@loginTextField("Email *", "email", vm.Email, vm.EmailError, "you@example.com")
+				@loginPasswordField("Password *", "password", vm.PasswordError)
+			</div>
+
+			<div class="flex items-center justify-end">
+				@ui.ButtonPrimary("Sign in", "submit", false)
+			</div>
+		</form>
+	</div>
+}
+
+templ loginTextField(label string, name string, value string, err string, placeholder string) {
+	@ui.InputField(label, name, value, placeholder, "text", err)
+}
+
+templ loginPasswordField(label string, name string, err string) {
+	@ui.InputField(label, name, "", "", "password", err)
+}

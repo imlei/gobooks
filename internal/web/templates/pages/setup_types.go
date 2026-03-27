@@ -15,6 +15,7 @@ type SetupFormValues struct {
 	EntityType     string
 	BusinessType   string
 	AddressLine    string
+	City           string
 	Province       string
 	PostalCode     string
 	Country        string
@@ -22,6 +23,8 @@ type SetupFormValues struct {
 	Industry       string
 	IncorporatedDate string
 	FiscalYearEnd  string
+	// AccountCodeLength: "4".."12"; empty means default 4 at submit.
+	AccountCodeLength string
 }
 
 // SetupFormErrors holds simple validation messages for the form.
@@ -31,6 +34,7 @@ type SetupFormErrors struct {
 	EntityType     string
 	BusinessType   string
 	AddressLine    string
+	City           string
 	Province       string
 	PostalCode     string
 	Country        string
@@ -38,6 +42,7 @@ type SetupFormErrors struct {
 	Industry       string
 	IncorporatedDate string
 	FiscalYearEnd  string
+	AccountCodeLength string
 }
 
 func (e SetupFormErrors) HasAny() bool {
@@ -46,12 +51,14 @@ func (e SetupFormErrors) HasAny() bool {
 		e.EntityType != "" ||
 		e.BusinessType != "" ||
 		e.AddressLine != "" ||
+		e.City != "" ||
 		e.Province != "" ||
 		e.PostalCode != "" ||
 		e.Country != "" ||
 		e.BusinessNumber != "" ||
 		e.Industry != "" ||
 		e.IncorporatedDate != "" ||
-		e.FiscalYearEnd != ""
+		e.FiscalYearEnd != "" ||
+		e.AccountCodeLength != ""
 }
 

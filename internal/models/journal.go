@@ -10,6 +10,7 @@ import (
 // JournalEntry is the header for a double-entry transaction.
 type JournalEntry struct {
 	ID        uint      `gorm:"primaryKey"`
+	CompanyID uint      `gorm:"not null;index"`
 	EntryDate time.Time `gorm:"not null"`
 	// JournalNo is an optional user-facing reference (e.g. JE-001); stored as journal_no.
 	JournalNo string `gorm:"column:journal_no;not null;default:''"`
@@ -28,6 +29,7 @@ type JournalEntry struct {
 // - Total Debits must equal Total Credits.
 type JournalLine struct {
 	ID             uint `gorm:"primaryKey"`
+	CompanyID      uint `gorm:"not null;index"`
 	JournalEntryID uint `gorm:"not null;index"`
 
 	AccountID uint   `gorm:"not null;index"`

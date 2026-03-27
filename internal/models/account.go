@@ -3,160 +3,122 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
-// AccountCodeMinDigits / AccountCodeMaxDigits bound chart-of-accounts codes (digits only).
+// Account code length is configured per company (4–12). Default 4.
+// Template COA rows use 4-digit base codes; longer lengths pad right with zeros.
 const (
-	AccountCodeMinDigits = 3
-	AccountCodeMaxDigits = 12
+	AccountCodeLengthMin      = 4
+	AccountCodeLengthMax      = 12
+	TemplateAccountCodeDigits = 4
 )
 
-// ValidateAccountCode returns nil if code is empty or valid (AccountCodeMinDigits..AccountCodeMaxDigits decimal digits).
-// Callers should enforce "required" separately before or after this check.
-func ValidateAccountCode(code string) error {
+// ValidateAccountCodeStrict enforces company-configured length, numeric-only, no leading zero, > 0.
+// Empty code returns nil (caller enforces "required").
+func ValidateAccountCodeStrict(code string, companyLength int) error {
 	if code == "" {
 		return nil
 	}
-	if len(code) > AccountCodeMaxDigits {
-		return fmt.Errorf("Account code must be at most %d digits.", AccountCodeMaxDigits)
+	if companyLength < AccountCodeLengthMin || companyLength > AccountCodeLengthMax {
+		return fmt.Errorf("invalid account code length configuration.")
 	}
 	for _, r := range code {
 		if r < '0' || r > '9' {
-			return fmt.Errorf("Account code must contain only digits (no letters or symbols).")
+			return fmt.Errorf("%s", accountCodeFormatError(companyLength))
 		}
 	}
-	if len(code) < AccountCodeMinDigits {
-		return fmt.Errorf("Account code must be at least %d digits.", AccountCodeMinDigits)
+	if len(code) != companyLength {
+		return fmt.Errorf("Account code must be exactly %d digits.", companyLength)
+	}
+	if code[0] == '0' {
+		return fmt.Errorf("%s", accountCodeFormatError(companyLength))
 	}
 	return nil
 }
 
-// AccountType is a strict enum (NOT a free-form string).
-// This enforces the PROJECT_GUIDE requirement:
-// accountType must match enum values exactly.
-type AccountType string
-
-const (
-	// Legacy group-level types (kept for backward compatibility with existing DB rows).
-	AccountTypeAsset       AccountType = "asset"
-	AccountTypeLiability   AccountType = "liability"
-	AccountTypeEquity      AccountType = "equity"
-	AccountTypeRevenue     AccountType = "revenue"
-	AccountTypeExpense     AccountType = "expense"
-	AccountTypeCostOfSales AccountType = "cost_of_sales"
-
-	// Detailed Chart of Accounts types.
-	AccountTypeBank                   AccountType = "Bank"
-	AccountTypeAccountsReceivable    AccountType = "Accounts Receivable"
-	AccountTypeOtherCurrentAsset     AccountType = "Other Current Asset"
-	AccountTypeFixedAsset            AccountType = "Fixed Asset"
-	AccountTypeOtherAsset           AccountType = "Other Asset"
-	AccountTypeAccountsPayable       AccountType = "Accounts Payable"
-	AccountTypeCreditCard            AccountType = "Credit Card"
-	AccountTypeOtherCurrentLiability AccountType = "Other Current Liability"
-	AccountTypeLongTermLiability    AccountType = "Long Term Liability"
-	AccountTypeEquityDetail          AccountType = "Equity"
-	AccountTypeIncome                AccountType = "Income"
-	AccountTypeCostOfGoodsSold      AccountType = "Cost of Goods Sold"
-	AccountTypeExpenseDetail        AccountType = "Expense"
-	AccountTypeOtherIncome          AccountType = "Other Income"
-	AccountTypeOtherExpense         AccountType = "Other Expense"
-)
-
-func (t AccountType) Valid() bool {
-	switch t {
-	// Legacy
-	case AccountTypeAsset, AccountTypeLiability, AccountTypeEquity, AccountTypeRevenue, AccountTypeExpense, AccountTypeCostOfSales,
-		// Detailed
-		AccountTypeBank, AccountTypeAccountsReceivable, AccountTypeOtherCurrentAsset, AccountTypeFixedAsset, AccountTypeOtherAsset,
-		AccountTypeAccountsPayable, AccountTypeCreditCard, AccountTypeOtherCurrentLiability, AccountTypeLongTermLiability,
-		AccountTypeEquityDetail,
-		AccountTypeIncome, AccountTypeCostOfGoodsSold,
-		AccountTypeExpenseDetail, AccountTypeOtherIncome, AccountTypeOtherExpense:
-		return true
-	default:
-		return false
+// ValidateGifiCode checks optional CRA GIFI mapping (4 digits). Empty/whitespace is allowed.
+func ValidateGifiCode(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
 	}
+	if len(s) != 4 {
+		return fmt.Errorf("GIFI code must be exactly 4 digits or left empty.")
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return fmt.Errorf("GIFI code must contain digits only.")
+		}
+	}
+	return nil
 }
 
-func (t AccountType) String() string { return string(t) }
+func accountCodeFormatError(companyLength int) string {
+	return fmt.Sprintf(
+		"Account code must be a %d-digit positive integer and cannot start with 0.",
+		companyLength,
+	)
+}
 
-// ParseAccountType converts a user-facing string into a strict AccountType.
-// This keeps validation centralized and beginner-friendly.
-func ParseAccountType(s string) (AccountType, error) {
-	t := AccountType(s)
-	if !t.Valid() {
-		return "", fmt.Errorf("invalid account type: %q", s)
+// ExpandAccountCodeToLength pads a 4-digit template code (e.g. 1000) to the target length
+// by appending zeros on the right: 1000→10000 (5), 1000→100000 (6).
+func ExpandAccountCodeToLength(baseCode string, targetLen int) (string, error) {
+	if targetLen < AccountCodeLengthMin || targetLen > AccountCodeLengthMax {
+		return "", fmt.Errorf("invalid target length")
 	}
-	return t, nil
+	if len(baseCode) != TemplateAccountCodeDigits {
+		return "", fmt.Errorf("template account code must be %d digits", TemplateAccountCodeDigits)
+	}
+	for _, r := range baseCode {
+		if r < '0' || r > '9' {
+			return "", fmt.Errorf("template account code must be numeric")
+		}
+	}
+	if baseCode[0] == '0' {
+		return "", fmt.Errorf("template account code cannot start with 0")
+	}
+	if targetLen < len(baseCode) {
+		return "", fmt.Errorf("account code length cannot be shorter than %d", len(baseCode))
+	}
+	extra := targetLen - len(baseCode)
+	return baseCode + strings.Repeat("0", extra), nil
 }
 
 type AccountReportGroup string
 
 const (
 	AccountReportGroupAsset           AccountReportGroup = "Asset"
-	AccountReportGroupLiability      AccountReportGroup = "Liability"
-	AccountReportGroupEquity         AccountReportGroup = "Equity"
-	AccountReportGroupIncome         AccountReportGroup = "Income"
+	AccountReportGroupLiability       AccountReportGroup = "Liability"
+	AccountReportGroupEquity          AccountReportGroup = "Equity"
+	AccountReportGroupIncome          AccountReportGroup = "Income"
 	AccountReportGroupCostOfGoodsSold AccountReportGroup = "Cost of Goods Sold"
-	AccountReportGroupExpense        AccountReportGroup = "Expense"
+	AccountReportGroupExpense         AccountReportGroup = "Expense"
 )
 
-// ReportGroup is the "big attribute" used by reports.
-// It maps detailed COA types into report buckets.
-func (t AccountType) ReportGroup() AccountReportGroup {
-	switch t {
-	// Asset group
-	case AccountTypeBank,
-		AccountTypeAccountsReceivable,
-		AccountTypeOtherCurrentAsset,
-		AccountTypeFixedAsset,
-		AccountTypeOtherAsset,
-		AccountTypeAsset:
-		return AccountReportGroupAsset
-
-	// Liability group
-	case AccountTypeAccountsPayable,
-		AccountTypeCreditCard,
-		AccountTypeOtherCurrentLiability,
-		AccountTypeLongTermLiability,
-		AccountTypeLiability:
-		return AccountReportGroupLiability
-
-	// Equity group
-	case AccountTypeEquityDetail,
-		AccountTypeEquity:
-		return AccountReportGroupEquity
-
-	// Income group
-	case AccountTypeIncome,
-		AccountTypeOtherIncome,
-		AccountTypeRevenue:
-		return AccountReportGroupIncome
-
-	// COGS group
-	case AccountTypeCostOfGoodsSold,
-		AccountTypeCostOfSales:
-		return AccountReportGroupCostOfGoodsSold
-
-	// Expense group
-	case AccountTypeExpenseDetail,
-		AccountTypeOtherExpense,
-		AccountTypeExpense:
-		return AccountReportGroupExpense
-
-	default:
-		return ""
-	}
-}
-
-// Account is one row in the Chart of Accounts.
+// Account is one row in the Chart of Accounts (scoped to one company).
+// Uniqueness of Code is per-company (see migration uq_accounts_company_code).
 type Account struct {
-	ID        uint        `gorm:"primaryKey"`
-	Code      string      `gorm:"not null;uniqueIndex"`
-	Name      string      `gorm:"not null"`
-	Type      AccountType `gorm:"type:text;not null"`
-	CreatedAt time.Time
+	ID        uint   `gorm:"primaryKey"`
+	CompanyID uint   `gorm:"not null;index;uniqueIndex:uq_accounts_company_code"`
+	Code      string `gorm:"not null;uniqueIndex:uq_accounts_company_code"`
+	Name      string `gorm:"not null"`
+	// RootAccountType and DetailAccountType replace the legacy single-type column.
+	RootAccountType   RootAccountType   `gorm:"column:root_account_type;type:text;not null"`
+	DetailAccountType DetailAccountType `gorm:"column:detail_account_type;type:text;not null"`
+	// IsActive is false when the account is retired from the chart for new transactions;
+	// historical journal lines remain tied to this account.
+	IsActive bool `gorm:"not null;default:true"`
+	// GifiCode optional 4-digit CRA GIFI mapping; not used as identity.
+	GifiCode string `gorm:"size:4;default:''"`
+	// FieldRecommendationSourcesJSON is optional client-reported analytics (see account_recommendation_sources.go).
+	// Not used for validation. Null for legacy rows.
+	FieldRecommendationSourcesJSON *string `gorm:"column:field_recommendation_sources;type:text"`
+	CreatedAt                      time.Time
 }
 
+// ReportGroup returns the financial reporting bucket for this account.
+func (a *Account) ReportGroup() AccountReportGroup {
+	return a.RootAccountType.ReportGroup()
+}

@@ -1,0 +1,56 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ CompanyHub(vm CompanyHubVM) {
+	@layout.Layout(
+		"GoBooks - Company",
+		ui.SidebarVM{Active: "Company Hub", HasCompany: vm.HasCompany},
+		bodyCompanyHub(vm),
+	)
+}
+
+templ bodyCompanyHub(vm CompanyHubVM) {
+	<div class="max-w-[95%]">
+		@SettingsBreadcrumb(vm.Breadcrumb)
+		<h1 class="text-title font-semibold">Company</h1>
+		<p class="mt-2 max-w-3xl text-text-muted2">
+			Manage your company profile, templates, tax settings, and numbering.
+		</p>
+		<div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+			@companyHubCard(
+				"/settings/company/profile",
+				"Profile",
+				"Manage company name, address, business details, and fiscal year settings.",
+			)
+			@companyHubCard(
+				"/settings/company/templates",
+				"Templates",
+				"Configure invoice templates and future document layouts.",
+			)
+			@companyHubCard(
+				"/settings/company/sales-tax",
+				"Sales Tax",
+				"Manage GST, PST, tax codes, and tax behavior.",
+			)
+			@companyHubCard(
+				"/settings/company/numbering",
+				"Numbering",
+				"Configure visible document numbering rules.",
+			)
+		</div>
+	</div>
+}
+
+templ companyHubCard(href string, title string, description string) {
+	<a
+		href={ href }
+		class="group block rounded-lg border border-border bg-surface p-5 shadow-sm transition-colors hover:border-border-input hover:bg-background"
+	>
+		<div class="text-body font-semibold text-text group-hover:text-primary">{ title }</div>
+		<p class="mt-2 text-small text-text-muted2">{ description }</p>
+		<p class="mt-3 text-small font-medium text-primary">Open →</p>
+	</a>
+}

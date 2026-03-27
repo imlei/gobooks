@@ -107,9 +107,16 @@ type Company struct {
 	BusinessNumber string       `gorm:"not null"`
 
 	AddressLine string `gorm:"not null"`
-	Province    string `gorm:"not null"`
-	PostalCode  string `gorm:"not null"`
+	// City is required in app validation; DB default '' keeps AutoMigrate safe for existing rows.
+	City       string `gorm:"type:text;not null;default:''"`
+	Province   string `gorm:"not null"`
+	PostalCode string `gorm:"not null"`
 	Country     string `gorm:"not null"`
+
+	// AccountCodeLength is the exact digit width for all chart of accounts codes (4–12). Default 4.
+	AccountCodeLength int `gorm:"not null;default:4"`
+	// AccountCodeLengthLocked is set true after initial COA import; length cannot be changed afterward.
+	AccountCodeLengthLocked bool `gorm:"not null;default:false"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

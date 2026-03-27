@@ -9,13 +9,28 @@ import (
 
 // Migrate runs basic GORM auto-migrations.
 // This is intentionally simple for the initial project setup.
+// Company.City: added with not null + default '' so existing rows survive (see migrations/002_add_company_city.sql).
 func Migrate(db *gorm.DB) error {
 	if err := renameJournalEntriesDescriptionToJournalNo(db); err != nil {
 		return err
 	}
-	return db.AutoMigrate(
+	// Required before tables using models.CompanyRole (gorm:"type:company_role").
+	// Fresh DBs (e.g. after DROP SCHEMA public CASCADE) have no enum until this runs.
+	if err := ensureCompanyRoleEnum(db); err != nil {
+		return err
+	}
+	// Must run before AutoMigrate on &models.Account{}: existing rows with legacy `type` need
+	// nullable columns + backfill before GORM adds NOT NULL root/detail columns.
+	if err := migrateAccountsRootDetail(db); err != nil {
+		return err
+	}
+	if err := db.AutoMigrate(
 		&models.Company{},
+		&models.User{},
+		&models.CompanyMembership{},
+		&models.Session{},
 		&models.AIConnectionSettings{},
+		&models.NumberingSetting{},
 		&models.Account{},
 		&models.Customer{},
 		&models.Vendor{},
@@ -25,7 +40,22 @@ func Migrate(db *gorm.DB) error {
 		&models.JournalLine{},
 		&models.Reconciliation{},
 		&models.AuditLog{},
-	)
+		&models.CompanyInvitation{},
+	); err != nil {
+		return err
+	}
+	return ensureCompanyAccountCodeDefaults(db)
+}
+
+// ensureCompanyAccountCodeDefaults backfills account_code_length and locks length for companies that already have accounts.
+func ensureCompanyAccountCodeDefaults(db *gorm.DB) error {
+	return db.Exec(`
+UPDATE companies SET account_code_length = 4
+WHERE account_code_length IS NULL OR account_code_length < 4 OR account_code_length > 12;
+
+UPDATE companies c SET account_code_length_locked = true
+WHERE EXISTS (SELECT 1 FROM accounts a WHERE a.company_id = c.id);
+`).Error
 }
 
 // renameJournalEntriesDescriptionToJournalNo upgrades older databases that used
@@ -43,6 +73,24 @@ BEGIN
     ALTER TABLE journal_entries RENAME COLUMN description TO journal_no;
   END IF;
 END $$;
+`).Error
+}
+
+func ensureCompanyRoleEnum(db *gorm.DB) error {
+	return db.Exec(`
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'company_role') THEN
+    CREATE TYPE company_role AS ENUM (
+      'owner',
+      'admin',
+      'bookkeeper',
+      'accountant',
+      'ap',
+      'viewer'
+    );
+  END IF;
+END$$;
 `).Error
 }
 

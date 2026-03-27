@@ -12,28 +12,20 @@ import (
 
 // TrialBalanceRow is one line in a Trial Balance report.
 type TrialBalanceRow struct {
-	Code  string
-	Name  string
-	Type  models.AccountType
-	Debit decimal.Decimal
-	Credit decimal.Decimal
+	Code           string
+	Name           string
+	Classification string
+	Debit          decimal.Decimal
+	Credit         decimal.Decimal
 }
 
 // TrialBalance returns balances per account for a date range (inclusive).
-//
-// We calculate totals per account:
-// - debit_sum
-// - credit_sum
-//
-// Then we present a single balance as either a debit or credit based on sign:
-// - net = debit_sum - credit_sum
-// - if net >= 0 => Debit = net, Credit = 0
-// - if net <  0 => Debit = 0,  Credit = -net
 func TrialBalance(db *gorm.DB, fromDate, toDate time.Time) ([]TrialBalanceRow, decimal.Decimal, decimal.Decimal, error) {
 	type row struct {
 		Code   string
 		Name   string
-		Type   models.AccountType
+		Root   string
+		Detail string
 		Debit  decimal.Decimal
 		Credit decimal.Decimal
 	}
@@ -44,18 +36,19 @@ func TrialBalance(db *gorm.DB, fromDate, toDate time.Time) ([]TrialBalanceRow, d
 SELECT
   a.code AS code,
   a.name AS name,
-  a.type AS type,
+  a.root_account_type AS root,
+  a.detail_account_type AS detail,
   COALESCE(SUM(jl.debit), 0)  AS debit,
   COALESCE(SUM(jl.credit), 0) AS credit
 FROM accounts a
 LEFT JOIN journal_lines jl ON jl.account_id = a.id
 LEFT JOIN journal_entries je ON je.id = jl.journal_entry_id
   AND je.entry_date >= ? AND je.entry_date < ?
-GROUP BY a.code, a.name, a.type
+GROUP BY a.code, a.name, a.root_account_type, a.detail_account_type
 ORDER BY a.code ASC
 `,
 		fromDate,
-		toDate.AddDate(0, 0, 1), // < (toDate + 1 day) to make the range inclusive
+		toDate.AddDate(0, 0, 1),
 	).Scan(&sums).Error
 	if err != nil {
 		return nil, decimal.Zero, decimal.Zero, err
@@ -67,7 +60,10 @@ ORDER BY a.code ASC
 
 	for _, s := range sums {
 		net := s.Debit.Sub(s.Credit)
-		r := TrialBalanceRow{Code: s.Code, Name: s.Name, Type: s.Type, Debit: decimal.Zero, Credit: decimal.Zero}
+		root := models.RootAccountType(s.Root)
+		detail := models.DetailAccountType(s.Detail)
+		label := models.ClassificationDisplay(root, detail)
+		r := TrialBalanceRow{Code: s.Code, Name: s.Name, Classification: label, Debit: decimal.Zero, Credit: decimal.Zero}
 		if net.GreaterThanOrEqual(decimal.Zero) {
 			r.Debit = net
 			totalDebits = totalDebits.Add(net)
@@ -111,7 +107,7 @@ func IncomeStatementReport(db *gorm.DB, fromDate, toDate time.Time) (IncomeState
 	type row struct {
 		Code   string
 		Name   string
-		Type   models.AccountType
+		Root   string
 		Debit  decimal.Decimal
 		Credit decimal.Decimal
 	}
@@ -122,18 +118,15 @@ func IncomeStatementReport(db *gorm.DB, fromDate, toDate time.Time) (IncomeState
 SELECT
   a.code AS code,
   a.name AS name,
-  a.type AS type,
+  a.root_account_type AS root,
   COALESCE(SUM(jl.debit), 0)  AS debit,
   COALESCE(SUM(jl.credit), 0) AS credit
 FROM accounts a
 LEFT JOIN journal_lines jl ON jl.account_id = a.id
 LEFT JOIN journal_entries je ON je.id = jl.journal_entry_id
   AND je.entry_date >= ? AND je.entry_date < ?
-WHERE a.type IN (
-  'Income', 'Other Income', 'Expense', 'Other Expense', 'Cost of Goods Sold',
-  'revenue', 'expense', 'cost_of_sales'
-)
-GROUP BY a.code, a.name, a.type
+WHERE a.root_account_type IN ('revenue', 'cost_of_sales', 'expense')
+GROUP BY a.code, a.name, a.root_account_type
 ORDER BY a.code ASC
 `,
 		fromDate,
@@ -144,20 +137,21 @@ ORDER BY a.code ASC
 	}
 
 	for _, s := range sums {
-		switch s.Type {
-		case models.AccountTypeIncome, models.AccountTypeOtherIncome, models.AccountTypeRevenue:
+		root := models.RootAccountType(s.Root)
+		switch root {
+		case models.RootRevenue:
 			amt := s.Credit.Sub(s.Debit)
 			if !amt.IsZero() {
 				report.Revenue = append(report.Revenue, IncomeStatementLine{Code: s.Code, Name: s.Name, Amount: amt})
 			}
 			report.TotalRevenue = report.TotalRevenue.Add(amt)
-		case models.AccountTypeCostOfGoodsSold, models.AccountTypeCostOfSales:
+		case models.RootCostOfSales:
 			amt := s.Debit.Sub(s.Credit)
 			if !amt.IsZero() {
 				report.CostOfSales = append(report.CostOfSales, IncomeStatementLine{Code: s.Code, Name: s.Name, Amount: amt})
 			}
 			report.TotalCostOfSales = report.TotalCostOfSales.Add(amt)
-		case models.AccountTypeExpenseDetail, models.AccountTypeOtherExpense, models.AccountTypeExpense:
+		case models.RootExpense:
 			amt := s.Debit.Sub(s.Credit)
 			if !amt.IsZero() {
 				report.Expenses = append(report.Expenses, IncomeStatementLine{Code: s.Code, Name: s.Name, Amount: amt})
@@ -197,7 +191,7 @@ func BalanceSheetReport(db *gorm.DB, asOf time.Time) (BalanceSheet, error) {
 	type row struct {
 		Code   string
 		Name   string
-		Type   models.AccountType
+		Root   string
 		Debit  decimal.Decimal
 		Credit decimal.Decimal
 	}
@@ -208,55 +202,39 @@ func BalanceSheetReport(db *gorm.DB, asOf time.Time) (BalanceSheet, error) {
 SELECT
   a.code AS code,
   a.name AS name,
-  a.type AS type,
+  a.root_account_type AS root,
   COALESCE(SUM(jl.debit), 0)  AS debit,
   COALESCE(SUM(jl.credit), 0) AS credit
 FROM accounts a
 LEFT JOIN journal_lines jl ON jl.account_id = a.id
 LEFT JOIN journal_entries je ON je.id = jl.journal_entry_id
   AND je.entry_date < ?
-WHERE a.type IN (
-  'Bank', 'Accounts Receivable', 'Other Current Asset', 'Fixed Asset', 'Other Asset',
-  'Accounts Payable', 'Credit Card', 'Other Current Liability', 'Long Term Liability',
-  'Equity',
-  'asset', 'liability', 'equity'
-)
-GROUP BY a.code, a.name, a.type
+WHERE a.root_account_type IN ('asset', 'liability', 'equity')
+GROUP BY a.code, a.name, a.root_account_type
 ORDER BY a.code ASC
 `,
-		asOf.AddDate(0, 0, 1), // inclusive as-of
+		asOf.AddDate(0, 0, 1),
 	).Scan(&sums).Error
 	if err != nil {
 		return BalanceSheet{}, err
 	}
 
 	for _, s := range sums {
-		switch s.Type {
-		// Asset group: debit increases, credit decreases.
-		case models.AccountTypeBank,
-			models.AccountTypeAccountsReceivable,
-			models.AccountTypeOtherCurrentAsset,
-			models.AccountTypeFixedAsset,
-			models.AccountTypeOtherAsset,
-			models.AccountTypeAsset:
+		root := models.RootAccountType(s.Root)
+		switch root {
+		case models.RootAsset:
 			amt := s.Debit.Sub(s.Credit)
 			if !amt.IsZero() {
 				report.Assets = append(report.Assets, BalanceSheetLine{Code: s.Code, Name: s.Name, Amount: amt})
 			}
 			report.TotalAssets = report.TotalAssets.Add(amt)
-		// Liability group: credit increases, debit decreases.
-		case models.AccountTypeAccountsPayable,
-			models.AccountTypeCreditCard,
-			models.AccountTypeOtherCurrentLiability,
-			models.AccountTypeLongTermLiability,
-			models.AccountTypeLiability:
+		case models.RootLiability:
 			amt := s.Credit.Sub(s.Debit)
 			if !amt.IsZero() {
 				report.Liabilities = append(report.Liabilities, BalanceSheetLine{Code: s.Code, Name: s.Name, Amount: amt})
 			}
 			report.TotalLiabilities = report.TotalLiabilities.Add(amt)
-		// Equity group: treat like liability side for sign consistency.
-		case models.AccountTypeEquityDetail, models.AccountTypeEquity:
+		case models.RootEquity:
 			amt := s.Credit.Sub(s.Debit)
 			if !amt.IsZero() {
 				report.Equity = append(report.Equity, BalanceSheetLine{Code: s.Code, Name: s.Name, Amount: amt})
@@ -267,4 +245,3 @@ ORDER BY a.code ASC
 
 	return report, nil
 }
-

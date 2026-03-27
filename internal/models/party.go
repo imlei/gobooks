@@ -22,17 +22,19 @@ func (t PartyType) Valid() bool {
 	}
 }
 
-// Customer is a minimal name record (for Journal Entry "Name" selection).
+// Customer is a minimal name record (for Journal Entry "Name" selection), scoped to one company.
 type Customer struct {
-	ID        uint      `gorm:"primaryKey"`
-	Name      string    `gorm:"not null"`
+	ID        uint   `gorm:"primaryKey"`
+	CompanyID uint   `gorm:"not null;index"`
+	Name      string `gorm:"not null"`
 	CreatedAt time.Time
 }
 
-// Vendor is a minimal name record (for Journal Entry "Name" selection).
+// Vendor is a minimal name record (for Journal Entry "Name" selection), scoped to one company.
 type Vendor struct {
-	ID        uint      `gorm:"primaryKey"`
-	Name      string    `gorm:"not null"`
+	ID        uint   `gorm:"primaryKey"`
+	CompanyID uint   `gorm:"not null;index"`
+	Name      string `gorm:"not null"`
 	CreatedAt time.Time
 }
 

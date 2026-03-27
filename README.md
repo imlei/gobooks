@@ -1,6 +1,6 @@
 ## GoBooks (Go + Fiber + GORM + Templ)
 
-**Version:** 0.0.1
+**Version:** 0.0.2
 
 GoBooks is a simple accounting web app focused on core bookkeeping workflows:
 
@@ -13,6 +13,13 @@ GoBooks is a simple accounting web app focused on core bookkeeping workflows:
 - Audit Log and Reverse Entry
 
 The codebase follows the product guide and keeps implementation straightforward.
+
+### 0.0.2 (summary)
+
+- **Chart of accounts:** Root/detail classification, strict backend validation on create and edit (account code length, numeric rules, prefix vs root type, GIFI format, uniqueness). Optional safe normalization for account name and GIFI trim on save.
+- **Recommendations:** Rule-based and optional AI-assisted suggestions via unified API; suggestions are assistive only and never bypass validation.
+- **Analytics (lightweight):** Optional `field_recommendation_sources` JSON on accounts records client-reported manual vs rule vs AI apply for product analysis only (not audit-grade; spoofing acceptable for this phase).
+- **Docs / ops:** Clarified trust model in code comments; see `PROJECT_GUIDE.md` for product behavior.
 
 ## Tech Stack
 
@@ -106,7 +113,7 @@ go run ./cmd/gobooks
 ## Project Structure (High Level)
 
 - `cmd/gobooks/` - app entrypoint
-- `internal/version/` - release version string (`0.0.1`)
+- `internal/version/` - release version string (`0.0.2`)
 - `internal/config/` - environment config loading
 - `internal/db/` - database connection + migration
 - `internal/models/` - GORM models

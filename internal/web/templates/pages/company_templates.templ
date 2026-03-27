@@ -1,0 +1,35 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ CompanyTemplates(vm CompanySubpageVM) {
+	@layout.Layout(
+		"GoBooks - Templates",
+		ui.SidebarVM{Active: "Company Templates", HasCompany: vm.HasCompany},
+		bodyCompanyTemplates(vm),
+	)
+}
+
+templ bodyCompanyTemplates(vm CompanySubpageVM) {
+	<div class="max-w-[95%]">
+		@SettingsBreadcrumb(vm.Breadcrumb)
+		<h1 class="text-title font-semibold">Templates</h1>
+		<p class="mt-2 max-w-3xl text-text-muted2">
+			Manage invoice templates and future document layouts.
+		</p>
+
+		<div class="mt-8 rounded-lg border border-border bg-surface p-6">
+			<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Coming soon</div>
+			<p class="mt-2 text-body text-text-muted2">
+				This area will support invoice template selection, branding and logo placement, and layout customization.
+			</p>
+			<ul class="mt-4 list-disc space-y-2 pl-5 text-body text-text-muted2">
+				<li>Invoice template selection</li>
+				<li>Branding and logo</li>
+				<li>Layout customization</li>
+			</ul>
+		</div>
+	</div>
+}

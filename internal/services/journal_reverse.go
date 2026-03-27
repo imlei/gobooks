@@ -12,14 +12,14 @@ import (
 )
 
 // ReverseJournalEntry creates a new entry with debit/credit swapped for each line.
-// It returns the new reversed journal entry ID.
-func ReverseJournalEntry(tx *gorm.DB, originalID uint, reverseDate time.Time) (uint, error) {
+// It returns the new reversed journal entry ID. originalID must belong to companyID.
+func ReverseJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDate time.Time) (uint, error) {
 	if originalID == 0 {
 		return 0, fmt.Errorf("invalid journal entry id")
 	}
 
 	var original models.JournalEntry
-	if err := tx.Preload("Lines").First(&original, originalID).Error; err != nil {
+	if err := tx.Preload("Lines").Where("id = ? AND company_id = ?", originalID, companyID).First(&original).Error; err != nil {
 		return 0, err
 	}
 	if original.ReversedFromID != nil {
@@ -30,7 +30,7 @@ func ReverseJournalEntry(tx *gorm.DB, originalID uint, reverseDate time.Time) (u
 	}
 
 	var existing models.JournalEntry
-	if err := tx.Where("reversed_from_id = ?", originalID).First(&existing).Error; err == nil {
+	if err := tx.Where("reversed_from_id = ? AND company_id = ?", originalID, companyID).First(&existing).Error; err == nil {
 		return 0, fmt.Errorf("journal entry already reversed")
 	} else if err != nil && err != gorm.ErrRecordNotFound {
 		return 0, err
@@ -41,6 +41,7 @@ func ReverseJournalEntry(tx *gorm.DB, originalID uint, reverseDate time.Time) (u
 		revDesc = fmt.Sprintf("%s: %s", revDesc, s)
 	}
 	reversed := models.JournalEntry{
+		CompanyID:      companyID,
 		EntryDate:      reverseDate,
 		JournalNo:      revDesc,
 		ReversedFromID: &original.ID,
@@ -52,6 +53,7 @@ func ReverseJournalEntry(tx *gorm.DB, originalID uint, reverseDate time.Time) (u
 	lines := make([]models.JournalLine, 0, len(original.Lines))
 	for _, l := range original.Lines {
 		lines = append(lines, models.JournalLine{
+			CompanyID:      companyID,
 			JournalEntryID: reversed.ID,
 			AccountID:      l.AccountID,
 			Debit:          l.Credit,

@@ -10,27 +10,38 @@ import (
 	"gorm.io/gorm"
 )
 
-// Guard redirects users to /setup when no company exists yet.
-//
-// This implements the PROJECT_GUIDE requirement:
-// - Setup Wizard: 初次必须走
-// - 后续可以在 Settings 修改
+// Guard enforces first-run flows:
+// - Empty database (no users and no companies): only /setup/bootstrap is reachable (plus static assets).
+// - Company missing but users exist (legacy): redirect to /setup.
+// - Company exists: allow normal navigation.
 func Guard(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		path := c.Path()
 
-		// Allow static assets and the setup routes.
-		if strings.HasPrefix(path, "/static/") || path == "/setup" {
+		if strings.HasPrefix(path, "/static/") {
+			return c.Next()
+		}
+		if path == "/setup/bootstrap" {
 			return c.Next()
 		}
 
-		// If no company exists, force the user into setup.
-		var count int64
-		if err := db.Model(&models.Company{}).Count(&count).Error; err != nil {
-			// If DB check fails, return a safe error response.
+		var userCount int64
+		if err := db.Model(&models.User{}).Count(&userCount).Error; err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "database error")
 		}
-		if count == 0 {
+		var companyCount int64
+		if err := db.Model(&models.Company{}).Count(&companyCount).Error; err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "database error")
+		}
+
+		if userCount == 0 && companyCount == 0 {
+			return c.Redirect("/setup/bootstrap", fiber.StatusSeeOther)
+		}
+
+		if companyCount == 0 {
+			if path == "/setup" || path == "/login" || path == "/logout" || path == "/select-company" {
+				return c.Next()
+			}
 			return c.Redirect("/setup", fiber.StatusSeeOther)
 		}
 

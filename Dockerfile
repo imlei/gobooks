@@ -1,6 +1,6 @@
 # 遵循产品需求 v1.0
 
-FROM golang:1.22-alpine AS build
+FROM golang:1.23-alpine AS build
 
 WORKDIR /src
 

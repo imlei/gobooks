@@ -1,6 +1,7 @@
 // 遵循产品需求 v1.0
 package pages
 
+import "gobooks/internal/models"
 import "gobooks/internal/web/templates/layout"
 import "gobooks/internal/web/templates/ui"
 
@@ -12,14 +13,527 @@ templ Accounts(vm AccountsVM) {
 	)
 }
 
-templ bodyAccounts(vm AccountsVM) {
-	<div class="max-w-[95%]">
-		<div class="flex items-start justify-between">
+templ accountsCreateDrawerForm(vm AccountsVM) {
+	<form method="post" action="/accounts" class="flex min-h-0 flex-1 flex-col">
+		<div
+			class="min-h-0 flex-1 space-y-6 overflow-y-auto p-4"
+			data-mode="create"
+			data-company-id={ Uitoa(vm.ActiveCompanyID) }
+			data-prefix-map={ RootPrefixMapJSON() }
+			data-detail-by-root={ DetailOptionsByRootJSON() }
+			data-digit-len={ ui.IntString(AccountsEffectiveCodeLen(vm)) }
+			data-initial-root={ vm.Root }
+			data-initial-detail={ vm.Detail }
+			data-parent-account-id="0"
+			x-data="gobooksAccountDrawerSuggest()"
+			x-init="$nextTick(() => { validate($refs.codeInput?.value || ''); const ir = $el.dataset.initialRoot; const id = $el.dataset.initialDetail; if (ir && $refs.rootSelect) { $refs.rootSelect.value = ir; } if (id && $refs.detailSelect) { $nextTick(() => { $refs.detailSelect.value = id; }); } })"
+		>
 			<div>
+				<label class="block text-body font-medium text-text">Account Code *</label>
+				if vm.CodeError != "" {
+					<input
+						type="text"
+						name="code"
+						value={ vm.Code }
+						placeholder="e.g. 1000"
+						maxlength={ ui.IntString(AccountsEffectiveCodeLen(vm)) }
+						minlength={ ui.IntString(AccountsEffectiveCodeLen(vm)) }
+						inputmode="numeric"
+						pattern={ ui.AccountCodeHTMLPattern(AccountsEffectiveCodeLen(vm)) }
+						title={ ui.AccountCodeInputTitle(AccountsEffectiveCodeLen(vm)) }
+						autocomplete="off"
+						x-ref="codeInput"
+						@input="markRecoCodeManual(); validate($event.target.value); $event.target.value = $event.target.value.replace(/\\D/g,'').slice(0, codeLen)"
+						class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+					/>
+				} else {
+					<input
+						type="text"
+						name="code"
+						value={ vm.Code }
+						placeholder="e.g. 1000"
+						maxlength={ ui.IntString(AccountsEffectiveCodeLen(vm)) }
+						minlength={ ui.IntString(AccountsEffectiveCodeLen(vm)) }
+						inputmode="numeric"
+						pattern={ ui.AccountCodeHTMLPattern(AccountsEffectiveCodeLen(vm)) }
+						title={ ui.AccountCodeInputTitle(AccountsEffectiveCodeLen(vm)) }
+						autocomplete="off"
+						x-ref="codeInput"
+						@input="markRecoCodeManual(); validate($event.target.value); $event.target.value = $event.target.value.replace(/\\D/g,'').slice(0, codeLen)"
+						:class="(localErr || prefixErr) ? 'mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus' : 'mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus'"
+					/>
+				}
+				if vm.CodeError != "" {
+					<div class="mt-1 text-body text-danger">{ vm.CodeError }</div>
+				} else {
+					<p x-show="localErr" class="mt-1 text-body text-danger" x-text="localErr"></p>
+					<p x-show="prefixErr" class="mt-1 text-body text-danger" x-text="prefixErr"></p>
+				}
+			</div>
+			<div>
+				<label class="block text-body font-medium text-text">Account Name *</label>
+				if vm.NameError != "" {
+					<input
+						type="text"
+						name="name"
+						value={ vm.Name }
+						x-ref="nameInput"
+						@input="markRecoNameManual()"
+						placeholder="e.g. Cash"
+						autocomplete="off"
+						class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+					/>
+					<div class="mt-1 text-body text-danger">{ vm.NameError }</div>
+				} else {
+					<input
+						type="text"
+						name="name"
+						value={ vm.Name }
+						x-ref="nameInput"
+						@input="markRecoNameManual()"
+						placeholder="e.g. Cash"
+						autocomplete="off"
+						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				}
+			</div>
+
+			@accountsRootDetailSelectsCreate(vm)
+
+			<div class="rounded-md border border-border bg-background p-3 text-small text-text-muted2">
+				<div class="flex flex-wrap items-start justify-between gap-2">
+					<div class="min-w-0 flex-1">
+						<p class="font-medium text-text">Suggestions</p>
+						<p class="mt-1 text-text-muted3" x-text="helperHint()"></p>
+					</div>
+					<div class="flex flex-shrink-0 flex-wrap gap-2">
+						<button
+							type="button"
+							class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background"
+							@click="fetchSuggest()"
+							:disabled="anyLoading()"
+						>
+							<span x-show="!sugLoadingRule">Suggest</span>
+							<span x-show="sugLoadingRule" x-cloak>Working…</span>
+						</button>
+						<button
+							type="button"
+							class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background"
+							@click="fetchSuggestAI()"
+							:disabled="anyLoading()"
+						>
+							<span x-show="!sugLoadingAI">Suggest with AI</span>
+							<span x-show="sugLoadingAI" x-cloak>Working…</span>
+						</button>
+					</div>
+				</div>
+				<p x-show="sugError" class="mt-2 text-body text-danger" x-text="sugError" x-cloak></p>
+				<p x-show="aiHint" class="mt-2 text-small text-text-muted3" x-text="aiHint" x-cloak></p>
+				<template x-if="sug">
+					<div class="mt-3 space-y-3 border-t border-border pt-3">
+						<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-text-muted3">
+							<span x-show="confidenceLabel()"><span class="text-text-muted">Confidence:</span> <span x-text="confidenceLabel()"></span></span>
+							<span x-show="sourceLabel()"><span class="text-text-muted">Source:</span> <span x-text="sourceLabel()"></span></span>
+						</div>
+						<p class="text-small leading-relaxed text-text-muted3" x-show="sug.reason" x-text="sug.reason"></p>
+						<div class="space-y-2">
+							<div class="flex flex-wrap items-start justify-between gap-2" x-show="sug.suggested_account_name">
+								<div class="min-w-0">
+									<p class="text-small text-text-muted">Account name</p>
+									<p class="text-body text-text" x-text="sug.suggested_account_name"></p>
+								</div>
+								<button type="button" class="shrink-0 rounded border border-border-input px-2 py-1 text-body hover:bg-background" @click="applySugName()">Apply</button>
+							</div>
+							<div class="flex flex-wrap items-start justify-between gap-2" x-show="sug.suggested_account_code">
+								<div class="min-w-0">
+									<p class="text-small text-text-muted">Account code</p>
+									<p class="text-body text-text" x-text="sug.suggested_account_code"></p>
+								</div>
+								<button type="button" class="shrink-0 rounded border border-border-input px-2 py-1 text-body hover:bg-background" @click="applySugCode()">Apply</button>
+							</div>
+							<div class="flex flex-wrap items-start justify-between gap-2" x-show="sug.suggested_gifi_code">
+								<div class="min-w-0">
+									<p class="text-small text-text-muted">GIFI code</p>
+									<p class="text-body text-text" x-text="sug.suggested_gifi_code"></p>
+									<p class="mt-0.5 text-small text-text-muted3" x-text="sug.gifi_description || 'CRA schedule mapping (4 digits).'"></p>
+								</div>
+								<button type="button" class="shrink-0 rounded border border-border-input px-2 py-1 text-body hover:bg-background" @click="applySugGifi()">Apply</button>
+							</div>
+						</div>
+					</div>
+				</template>
+			</div>
+
+			@gifiOptionalFieldWithRef(vm.GifiCode, vm.GifiError)
+			<input type="hidden" name="reco_account_name_source" :value="recoNameSource"/>
+			<input type="hidden" name="reco_account_code_source" :value="recoCodeSource"/>
+			<input type="hidden" name="reco_gifi_code_source" :value="recoGifiSource"/>
+		</div>
+
+		<div class="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border p-4">
+			<a
+				href="/accounts"
+				class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
+			>
+				Cancel
+			</a>
+			@ui.ButtonPrimary("Create Account", "submit", false)
+		</div>
+	</form>
+}
+
+templ accountsRootDetailSelectsCreate(vm AccountsVM) {
+	<div>
+		<label class="block text-body font-medium text-text">Root type *</label>
+		if vm.RootError != "" {
+			<select
+				name="root_account_type"
+				x-ref="rootSelect"
+				@change="$refs.detailSelect.value=''; validate($refs.codeInput?.value || '')"
+				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			>
+				<option value="">-- Select --</option>
+				for _, r := range RootAccountSelectOptions() {
+					<option value={ string(r) } selected?={ string(r) == vm.Root }>{ models.DetailSnakeToLabel(string(r)) }</option>
+				}
+			</select>
+			<div class="mt-1 text-body text-danger">{ vm.RootError }</div>
+		} else {
+			<select
+				name="root_account_type"
+				x-ref="rootSelect"
+				@change="$refs.detailSelect.value=''; validate($refs.codeInput?.value || '')"
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			>
+				<option value="">-- Select --</option>
+				for _, r := range RootAccountSelectOptions() {
+					<option value={ string(r) } selected?={ string(r) == vm.Root }>{ models.DetailSnakeToLabel(string(r)) }</option>
+				}
+			</select>
+		}
+	</div>
+	<div>
+		<label class="block text-body font-medium text-text">Detail type *</label>
+		if vm.DetailError != "" {
+			<select
+				name="detail_account_type"
+				x-ref="detailSelect"
+				@change="validate($refs.codeInput?.value || '')"
+				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			>
+				<option value="">-- Select --</option>
+				<template x-for="d in detailList()" :key="d">
+					<option :value="d" x-text="d.replace(/_/g,' ').replace(/\\b\\w/g, c => c.toUpperCase())"></option>
+				</template>
+			</select>
+			<div class="mt-1 text-body text-danger">{ vm.DetailError }</div>
+		} else {
+			<select
+				name="detail_account_type"
+				x-ref="detailSelect"
+				@change="validate($refs.codeInput?.value || '')"
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			>
+				<option value="">-- Select --</option>
+				<template x-for="d in detailList()" :key="d">
+					<option :value="d" x-text="d.replace(/_/g,' ').replace(/\\b\\w/g, c => c.toUpperCase())"></option>
+				</template>
+			</select>
+		}
+	</div>
+}
+
+templ gifiOptionalFieldWithRef(value string, err string) {
+	<div>
+		<label class="block text-body font-medium text-text">GIFI code (optional)</label>
+		if err != "" {
+			<input
+				type="text"
+				name="gifi_code"
+				value={ value }
+				x-ref="gifiInput"
+				@input="markRecoGifiManual()"
+				maxlength="4"
+				inputmode="numeric"
+				placeholder="e.g. 1599"
+				autocomplete="off"
+				class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			/>
+			<div class="mt-1 text-body text-danger">{ err }</div>
+		} else {
+			<input
+				type="text"
+				name="gifi_code"
+				value={ value }
+				x-ref="gifiInput"
+				@input="markRecoGifiManual()"
+				maxlength="4"
+				inputmode="numeric"
+				placeholder="e.g. 1599"
+				autocomplete="off"
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			/>
+		}
+		<p class="mt-1 text-small text-text-muted2">CRA GIFI mapping (4 digits). Not used as the account identity.</p>
+	</div>
+}
+
+templ accountsRootDetailSelectsEdit(vm AccountsVM) {
+	<div>
+		<label class="block text-body font-medium text-text">Root type *</label>
+		if vm.RootError != "" {
+			<select
+				name="root_account_type"
+				x-ref="rootSelect"
+				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			>
+				<option value="">-- Select --</option>
+				for _, r := range RootAccountSelectOptions() {
+					<option value={ string(r) } selected?={ string(r) == vm.Root }>{ models.DetailSnakeToLabel(string(r)) }</option>
+				}
+			</select>
+			<div class="mt-1 text-body text-danger">{ vm.RootError }</div>
+		} else {
+			<select
+				name="root_account_type"
+				x-ref="rootSelect"
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			>
+				<option value="">-- Select --</option>
+				for _, r := range RootAccountSelectOptions() {
+					<option value={ string(r) } selected?={ string(r) == vm.Root }>{ models.DetailSnakeToLabel(string(r)) }</option>
+				}
+			</select>
+		}
+	</div>
+	<div>
+		<label class="block text-body font-medium text-text">Detail type *</label>
+		if vm.DetailError != "" {
+			<select
+				name="detail_account_type"
+				x-ref="detailSelect"
+				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			>
+				<option value="">-- Select --</option>
+				for _, r := range RootAccountSelectOptions() {
+					<optgroup label={ models.DetailSnakeToLabel(string(r)) }>
+						for _, d := range models.DetailsForRoot(r) {
+							<option value={ string(d) } selected?={ string(d) == vm.Detail }>{ models.DetailSnakeToLabel(string(d)) }</option>
+						}
+					</optgroup>
+				}
+			</select>
+			<div class="mt-1 text-body text-danger">{ vm.DetailError }</div>
+		} else {
+			<select
+				name="detail_account_type"
+				x-ref="detailSelect"
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			>
+				<option value="">-- Select --</option>
+				for _, r := range RootAccountSelectOptions() {
+					<optgroup label={ models.DetailSnakeToLabel(string(r)) }>
+						for _, d := range models.DetailsForRoot(r) {
+							<option value={ string(d) } selected?={ string(d) == vm.Detail }>{ models.DetailSnakeToLabel(string(d)) }</option>
+						}
+					</optgroup>
+				}
+			</select>
+		}
+	</div>
+}
+
+templ gifiOptionalFieldEdit(value string, err string) {
+	<div>
+		<label class="block text-body font-medium text-text">GIFI code (optional)</label>
+		if err != "" {
+			<input
+				type="text"
+				name="gifi_code"
+				value={ value }
+				x-ref="gifiInput"
+				@input="markRecoGifiManual()"
+				maxlength="4"
+				inputmode="numeric"
+				placeholder="e.g. 1599"
+				autocomplete="off"
+				class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			/>
+			<div class="mt-1 text-body text-danger">{ err }</div>
+		} else {
+			<input
+				type="text"
+				name="gifi_code"
+				value={ value }
+				x-ref="gifiInput"
+				@input="markRecoGifiManual()"
+				maxlength="4"
+				inputmode="numeric"
+				placeholder="e.g. 1599"
+				autocomplete="off"
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			/>
+		}
+		<p class="mt-1 text-small text-text-muted2">CRA GIFI mapping (4 digits). Not used as the account identity.</p>
+	</div>
+}
+
+templ accountsEditDrawerForm(vm AccountsVM) {
+	<form method="post" action="/accounts/update" class="flex min-h-0 flex-1 flex-col">
+		<input type="hidden" name="account_id" value={ Uitoa(vm.EditingAccountID) }/>
+		<div
+			class="min-h-0 flex-1 space-y-6 overflow-y-auto p-4"
+			data-mode="edit"
+			data-company-id={ Uitoa(vm.ActiveCompanyID) }
+			data-digit-len={ ui.IntString(AccountsEffectiveCodeLen(vm)) }
+			data-parent-account-id="0"
+			x-data="gobooksAccountDrawerSuggest()"
+		>
+			<div>
+				<label class="block text-body font-medium text-text">Account Code</label>
+				<input
+					type="text"
+					readonly
+					value={ vm.Code }
+					class="mt-2 block w-full cursor-not-allowed rounded-md border border-border-input bg-background px-3 py-2 text-body text-text-muted2 outline-none"
+					tabindex="-1"
+				/>
+				<p class="mt-1 text-small text-text-muted2">The code cannot be changed after the account is created.</p>
+			</div>
+			<div>
+				<label class="block text-body font-medium text-text">Account Name *</label>
+				if vm.NameError != "" {
+					<input
+						type="text"
+						name="name"
+						value={ vm.Name }
+						x-ref="nameInput"
+						@input="markRecoNameManual()"
+						placeholder="e.g. Cash"
+						autocomplete="off"
+						class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+					/>
+					<div class="mt-1 text-body text-danger">{ vm.NameError }</div>
+				} else {
+					<input
+						type="text"
+						name="name"
+						value={ vm.Name }
+						x-ref="nameInput"
+						@input="markRecoNameManual()"
+						placeholder="e.g. Cash"
+						autocomplete="off"
+						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				}
+			</div>
+
+			@accountsRootDetailSelectsEdit(vm)
+
+			<div class="rounded-md border border-border bg-background p-3 text-small text-text-muted2">
+				<div class="flex flex-wrap items-start justify-between gap-2">
+					<div class="min-w-0 flex-1">
+						<p class="font-medium text-text">Suggestions</p>
+						<p class="mt-1 text-text-muted3" x-text="helperHint()"></p>
+					</div>
+					<div class="flex flex-shrink-0 flex-wrap gap-2">
+						<button
+							type="button"
+							class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background"
+							@click="fetchSuggest()"
+							:disabled="anyLoading()"
+						>
+							<span x-show="!sugLoadingRule">Suggest</span>
+							<span x-show="sugLoadingRule" x-cloak>Working…</span>
+						</button>
+						<button
+							type="button"
+							class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background"
+							@click="fetchSuggestAI()"
+							:disabled="anyLoading()"
+						>
+							<span x-show="!sugLoadingAI">Suggest with AI</span>
+							<span x-show="sugLoadingAI" x-cloak>Working…</span>
+						</button>
+					</div>
+				</div>
+				<p x-show="sugError" class="mt-2 text-body text-danger" x-text="sugError" x-cloak></p>
+				<p x-show="aiHint" class="mt-2 text-small text-text-muted3" x-text="aiHint" x-cloak></p>
+				<template x-if="sug">
+					<div class="mt-3 space-y-3 border-t border-border pt-3">
+						<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-text-muted3">
+							<span x-show="confidenceLabel()"><span class="text-text-muted">Confidence:</span> <span x-text="confidenceLabel()"></span></span>
+							<span x-show="sourceLabel()"><span class="text-text-muted">Source:</span> <span x-text="sourceLabel()"></span></span>
+						</div>
+						<p class="text-small leading-relaxed text-text-muted3" x-show="sug.reason" x-text="sug.reason"></p>
+						<div class="space-y-2">
+							<div class="flex flex-wrap items-start justify-between gap-2" x-show="sug.suggested_account_name">
+								<div class="min-w-0">
+									<p class="text-small text-text-muted">Account name</p>
+									<p class="text-body text-text" x-text="sug.suggested_account_name"></p>
+								</div>
+								<button type="button" class="shrink-0 rounded border border-border-input px-2 py-1 text-body hover:bg-background" @click="applySugName()">Apply</button>
+							</div>
+							<div class="flex flex-wrap items-start justify-between gap-2" x-show="sug.suggested_account_code">
+								<div class="min-w-0">
+									<p class="text-small text-text-muted">Account code (reference)</p>
+									<p class="text-body text-text" x-text="sug.suggested_account_code"></p>
+									<p class="mt-0.5 text-small text-text-muted3">Code is fixed for this account.</p>
+								</div>
+							</div>
+							<div class="flex flex-wrap items-start justify-between gap-2" x-show="sug.suggested_gifi_code">
+								<div class="min-w-0">
+									<p class="text-small text-text-muted">GIFI code</p>
+									<p class="text-body text-text" x-text="sug.suggested_gifi_code"></p>
+									<p class="mt-0.5 text-small text-text-muted3" x-text="sug.gifi_description || 'CRA schedule mapping (4 digits).'"></p>
+								</div>
+								<button type="button" class="shrink-0 rounded border border-border-input px-2 py-1 text-body hover:bg-background" @click="applySugGifi()">Apply</button>
+							</div>
+						</div>
+					</div>
+				</template>
+			</div>
+
+			@gifiOptionalFieldEdit(vm.GifiCode, vm.GifiError)
+			<input type="hidden" name="reco_account_name_source" :value="recoNameSource"/>
+			<input type="hidden" name="reco_account_code_source" :value="recoCodeSource"/>
+			<input type="hidden" name="reco_gifi_code_source" :value="recoGifiSource"/>
+		</div>
+
+		<div class="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border p-4">
+			<a
+				href="/accounts"
+				class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
+			>
+				Cancel
+			</a>
+			@ui.ButtonPrimary("Save changes", "submit", false)
+		</div>
+	</form>
+}
+
+templ bodyAccounts(vm AccountsVM) {
+	<div
+		class="max-w-[95%]"
+		x-data="{ drawerOpen: false }"
+		x-init="drawerOpen = $el.dataset.open === 'true'; if (drawerOpen) { $nextTick(() => { const el = $refs.accountDrawer?.querySelector('input:not([readonly]),select'); if (el) el.focus(); }); }"
+		data-open={ ui.BoolStr(vm.AccountDrawerOpen) }
+		@keydown.escape.window="if (drawerOpen) drawerOpen = false"
+	>
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
 				<h1 class="text-title font-semibold">Chart of Accounts</h1>
 				<p class="mt-2 text-text-muted2">
 					Accounts are the categories you post journal entries to (Cash, Sales Revenue, Rent Expense, etc.).
 				</p>
+			</div>
+			<div class="shrink-0">
+				<a
+					href="/accounts?new=1"
+					class="inline-block rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+				>
+					New Account
+				</a>
 			</div>
 		</div>
 
@@ -29,51 +543,23 @@ templ bodyAccounts(vm AccountsVM) {
 			</div>
 		}
 
+		if vm.Updated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Account updated.
+			</div>
+		}
+
+		if vm.InactiveOK {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Account marked inactive. It remains in your history and still appears below; it is hidden when posting new transactions.
+			</div>
+		}
+
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
 				{ vm.FormError }
 			</div>
 		}
-
-		<form method="post" action="/accounts" class="mt-6 space-y-6">
-			<div class="rounded-lg border border-border bg-surface p-6">
-				<h2 class="text-section font-semibold text-text">Add New Account</h2>
-				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
-					@ui.InputFieldNumericCode("Account Code *", "code", vm.Code, "e.g. 1000", vm.CodeError)
-					@textField("Account Name *", "name", vm.Name, vm.NameError, "e.g. Cash")
-
-					@selectField(
-						"Account Type *",
-						"type",
-						vm.Type,
-						vm.TypeError,
-						[]string{
-							"Bank",
-							"Accounts Receivable",
-							"Other Current Asset",
-							"Fixed Asset",
-							"Other Asset",
-							"Accounts Payable",
-							"Credit Card",
-							"Other Current Liability",
-							"Long Term Liability",
-							"Equity",
-							"Income",
-							"Cost of Goods Sold",
-							"Expense",
-							"Other Income",
-							"Other Expense",
-						},
-					)
-				</div>
-
-				<div class="mt-6 flex items-center justify-end">
-					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
-						Create Account
-					</button>
-				</div>
-			</div>
-		</form>
 
 		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
 			<h2 class="text-section font-semibold text-text">All Accounts</h2>
@@ -83,21 +569,61 @@ templ bodyAccounts(vm AccountsVM) {
 						<tr class="border-b border-border">
 							<th class="py-3 pr-4">Code</th>
 							<th class="py-3 pr-4">Name</th>
-							<th class="py-3 pr-4">Type</th>
+							<th class="py-3 pr-4">Classification</th>
+							<th class="py-3 pr-0 text-right">Actions</th>
 						</tr>
 					</thead>
 					<tbody class="text-text">
 						for _, a := range vm.Accounts {
-							<tr class="border-b border-border-subtle">
+							<tr class={ AccountRowClass(a) }>
 								<td class="py-3 pr-4 font-medium">{ a.Code }</td>
-								<td class="py-3 pr-4">{ a.Name }</td>
-								<td class="py-3 pr-4">{ a.Type }</td>
+								<td class="py-3 pr-4">
+									{ a.Name }
+									if !a.IsActive {
+										<span class="ml-2 text-small text-text-muted">(Inactive)</span>
+									}
+								</td>
+								<td class="py-3 pr-4">{ AccountClassificationLabel(a) }</td>
+								<td class="py-3 pr-0 text-right whitespace-nowrap">
+									if a.IsActive {
+										<a
+											href={ "/accounts?edit=" + Uitoa(a.ID) }
+											class="text-small font-medium text-primary hover:text-primary-hover"
+										>
+											Edit
+										</a>
+										<span class="inline-block px-2 text-text-muted3" aria-hidden="true">|</span>
+										<form
+											method="post"
+											action="/accounts/inactive"
+											class="inline"
+											onsubmit="return confirm('Mark this account inactive? It will no longer appear when posting new transactions, but history is kept.');"
+										>
+											<input type="hidden" name="account_id" value={ Uitoa(a.ID) }/>
+											<button
+												type="submit"
+												class="text-small font-medium text-text-muted3 hover:text-text"
+											>
+												Make inactive
+											</button>
+										</form>
+									} else {
+										<span class="text-small text-text-muted">—</span>
+									}
+								</td>
 							</tr>
 						}
 					</tbody>
 				</table>
 			</div>
 		</div>
+
+		@ui.RightDrawerBackdrop()
+		if vm.DrawerMode == "edit" {
+			@ui.RightDrawerPanel("accountDrawer", "accounts-drawer-title", "Edit Account", "Update name, classification, and optional GIFI. The account code cannot be changed.", accountsEditDrawerForm(vm))
+		} else {
+			@ui.RightDrawerPanel("accountDrawer", "accounts-drawer-title", "New Account", "Create a new chart of accounts entry.", accountsCreateDrawerForm(vm))
+		}
+		<script src="/static/accounts_drawer.js?v=5"></script>
 	</div>
 }
-

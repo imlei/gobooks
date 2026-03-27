@@ -1,3 +1,8 @@
+// Package numbering: display rule defaults, merge/parse, and optional file helpers.
+//
+// Production persistence for numbering rules is DB-backed (numbering_settings.rules_json),
+// scoped by company_id via gobooks/internal/services.LoadMergedDisplayRules and SaveMergedDisplayRules.
+// LoadMerged/Save on DefaultStorePath are retained for migration tooling or local experiments only.
 package numbering
 
 import (
@@ -23,10 +28,6 @@ func DefaultStorePath() string {
 // LoadMerged reads rules from disk when present and merges them onto defaults by module_key.
 func LoadMerged(path string) ([]DisplayRule, error) {
 	defaults := DefaultDisplayRules()
-	byKey := map[string]DisplayRule{}
-	for _, r := range defaults {
-		byKey[r.ModuleKey] = r
-	}
 
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -40,23 +41,7 @@ func LoadMerged(path string) ([]DisplayRule, error) {
 	if err := json.Unmarshal(b, &pf); err != nil {
 		return nil, err
 	}
-	for _, r := range pf.Rules {
-		r = NormalizeRule(r)
-		if _, ok := byKey[r.ModuleKey]; !ok {
-			continue
-		}
-		base := byKey[r.ModuleKey]
-		if r.ModuleName == "" {
-			r.ModuleName = base.ModuleName
-		}
-		byKey[r.ModuleKey] = r
-	}
-
-	out := make([]DisplayRule, 0, len(defaults))
-	for _, d := range defaults {
-		out = append(out, byKey[d.ModuleKey])
-	}
-	return out, nil
+	return MergeSavedOntoDefaults(defaults, pf.Rules), nil
 }
 
 // Save writes all rules for known modules to disk.

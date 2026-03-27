@@ -14,7 +14,8 @@ import (
 type Reconciliation struct {
 	ID uint `gorm:"primaryKey"`
 
-	AccountID uint   `gorm:"not null;index"`
+	CompanyID uint `gorm:"not null;index"`
+	AccountID uint `gorm:"not null;index"`
 	Account   Account `gorm:"foreignKey:AccountID"`
 
 	StatementDate  time.Time       `gorm:"not null"`

@@ -1,0 +1,62 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ SelectCompany(vm SelectCompanyVM) {
+	@layout.Layout(
+		"GoBooks - Select company",
+		ui.SidebarVM{Active: "", HasCompany: false},
+		bodySelectCompany(vm),
+	)
+}
+
+templ bodySelectCompany(vm SelectCompanyVM) {
+	<div class="max-w-lg">
+		<div class="flex justify-end">
+			<form method="post" action="/logout">
+				<button type="submit" class="rounded-md border border-border-input bg-surface px-3 py-2 text-body font-semibold text-text-muted3">
+					Sign out
+				</button>
+			</form>
+		</div>
+
+		<h1 class="mt-6 text-title font-semibold">Select company</h1>
+		<p class="mt-2 text-text-muted2">
+			Choose which company you want to work in. You can change this later when switching is available.
+		</p>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="post" action="/select-company" class="mt-6 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6 space-y-4">
+				<fieldset>
+					<legend class="sr-only">Active companies</legend>
+					for _, row := range vm.Rows {
+						<label class="flex cursor-pointer items-start gap-3 rounded-md border border-border-input bg-background p-4 hover:border-primary-focus">
+							<input
+								type="radio"
+								name="company_id"
+								value={ row.CompanyIDStr }
+								class="mt-1 h-4 w-4 border-border-input text-primary focus:ring-primary-focus"
+							/>
+							<span class="flex-1">
+								<span class="block text-body font-medium text-text">{ row.Name }</span>
+								<span class="mt-1 block text-small text-text-muted2">Role: { row.RoleLabel }</span>
+							</span>
+						</label>
+					}
+				</fieldset>
+			</div>
+
+			<div class="flex items-center justify-end">
+				@ui.ButtonPrimary("Continue", "submit", false)
+			</div>
+		</form>
+	</div>
+}

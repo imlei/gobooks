@@ -78,3 +78,58 @@ templ InputFieldNumericCode(
 	</div>
 }
 
+// InputFieldNumericCodeStrict enforces exact digit width and no leading zero (company-configured length).
+templ InputFieldNumericCodeStrict(
+	label string,
+	name string,
+	value string,
+	placeholder string,
+	err string,
+	digitLen int,
+) {
+	<div
+		class="space-y-1"
+		data-account-code-len={ IntString(digitLen) }
+		x-data="{ localErr: '', codeLen: 0, init() { this.codeLen = parseInt(this.$el.dataset.accountCodeLen, 10) || 4 }, validate(v) { const n = this.codeLen; if (!v) { this.localErr = ''; return } if (!/^\\d+$/.test(v)) { this.localErr = 'Digits only.'; return } if (v.length !== n) { this.localErr = 'Use exactly ' + n + ' digits.'; return } if (v[0] === '0') { this.localErr = 'Cannot start with 0.'; return } this.localErr = '' } }"
+	>
+		<div>
+			<label class="block text-body font-medium text-text">{ label }</label>
+			if err != "" {
+				<input
+					type="text"
+					name={ name }
+					value={ value }
+					placeholder={ placeholder }
+					maxlength={ IntString(digitLen) }
+					minlength={ IntString(digitLen) }
+					inputmode="numeric"
+					pattern={ AccountCodeHTMLPattern(digitLen) }
+					title={ AccountCodeInputTitle(digitLen) }
+					autocomplete="off"
+					@input="validate($event.target.value); $event.target.value = $event.target.value.replace(/\\D/g,'').slice(0, codeLen)"
+					class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+				/>
+			} else {
+				<input
+					type="text"
+					name={ name }
+					value={ value }
+					placeholder={ placeholder }
+					maxlength={ IntString(digitLen) }
+					minlength={ IntString(digitLen) }
+					inputmode="numeric"
+					pattern={ AccountCodeHTMLPattern(digitLen) }
+					title={ AccountCodeInputTitle(digitLen) }
+					autocomplete="off"
+					@input="validate($event.target.value); $event.target.value = $event.target.value.replace(/\\D/g,'').slice(0, codeLen)"
+					class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+				/>
+			}
+			if err != "" {
+				<div class="mt-1 text-body text-danger">{ err }</div>
+			}
+			<p x-show="localErr" class="mt-1 text-body text-danger" x-text="localErr"></p>
+		</div>
+	</div>
+}
+

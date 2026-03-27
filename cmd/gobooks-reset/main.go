@@ -1,25 +1,30 @@
 // 遵循产品需求 v1.0
 //
-// gobooks-reset wipes all GoBooks data in the configured PostgreSQL database
-// and resets ID sequences. After running, start gobooks and complete /setup again.
+// gobooks-reset drops all GoBooks application tables (and the company_role enum) in the configured
+// PostgreSQL database/schema so the next app start can run AutoMigrate on a clean slate.
+//
+// Usage (from repo root, with .env present):
+//
+//	go run ./cmd/gobooks-reset -print-target
+//	go run ./cmd/gobooks-reset -yes -confirm-db=YOUR_DATABASE_NAME
 package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"gobooks/internal/config"
 	"gobooks/internal/db"
 )
 
 func main() {
-	yes := flag.Bool("yes", false, "required: confirm you want to delete ALL company and accounting data")
+	printTarget := flag.Bool("print-target", false, "connect using .env, print database/schema/user, and exit (no changes)")
+	yes := flag.Bool("yes", false, "required to perform destructive drop (deletes ALL GoBooks tables in the target schema)")
+	confirmDB := flag.String("confirm-db", "", "must match current_database() exactly (safety check against wrong .env)")
 	flag.Parse()
-	if !*yes {
-		log.Println("Refusing to run without -yes (this deletes all GoBooks data in the configured database).")
-		os.Exit(1)
-	}
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -31,9 +36,52 @@ func main() {
 		log.Fatalf("db connect failed: %v", err)
 	}
 
-	if err := db.ResetAllApplicationData(gormDB); err != nil {
-		log.Fatalf("reset failed: %v", err)
+	target, err := db.QueryResetTarget(gormDB)
+	if err != nil {
+		log.Fatalf("could not read target: %v", err)
 	}
 
-	log.Println("All application data cleared. Restart gobooks and open /setup to configure the company again.")
+	printBanner(target, cfg)
+
+	if *printTarget {
+		fmt.Println("No changes made (-print-target).")
+		os.Exit(0)
+	}
+
+	if !*yes {
+		log.Println("Refusing to drop: pass -yes to confirm (see WARNING above).")
+		os.Exit(1)
+	}
+	if strings.TrimSpace(*confirmDB) == "" {
+		log.Fatal("Refusing to drop: set -confirm-db to the exact database name shown above (prevents wrong .env).")
+	}
+	if *confirmDB != target.DatabaseName {
+		log.Fatalf("Refusing to drop: -confirm-db=%q does not match current_database()=%q", *confirmDB, target.DatabaseName)
+	}
+
+	if err := db.DropAllApplicationObjects(gormDB); err != nil {
+		log.Fatalf("drop failed: %v", err)
+	}
+
+	log.Println("OK: all GoBooks application tables removed. Start gobooks; AutoMigrate will recreate schema.")
+}
+
+func printBanner(target db.ResetTarget, cfg config.Config) {
+	w := strings.Repeat("=", 72)
+	fmt.Println(w)
+	fmt.Println("WARNING: DESTRUCTIVE DATABASE RESET (development use)")
+	fmt.Println(w)
+	fmt.Printf("  Database (current_database): %s\n", target.DatabaseName)
+	fmt.Printf("  Schema (current_schema):     %s\n", target.SchemaName)
+	fmt.Printf("  Session user:                %s\n", target.SessionUser)
+	fmt.Printf("  Config host:port (from .env): %s:%s\n", cfg.DBHost, cfg.DBPort)
+	fmt.Printf("  Config DB name (DB_NAME):    %s\n", cfg.DBName)
+	fmt.Println()
+	fmt.Println("  The following SQL will be executed (same schema as search_path):")
+	fmt.Println()
+	fmt.Println(strings.TrimSpace(db.ApplicationTablesSQL))
+	fmt.Println()
+	fmt.Println("  DROP TYPE IF EXISTS company_role CASCADE;")
+	fmt.Println()
+	fmt.Println(w)
 }

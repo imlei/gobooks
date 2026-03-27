@@ -4,14 +4,21 @@ package services
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
+
 	"gobooks/internal/models"
 
 	"gorm.io/gorm"
 )
 
-// WriteAuditLog saves one audit row.
+// WriteAuditLog saves one audit row (no company / actor user FK).
 // details can be any small map/struct that can be marshaled to JSON.
 func WriteAuditLog(tx *gorm.DB, action, entityType string, entityID uint, actor string, details any) error {
+	return WriteAuditLogWithContext(tx, action, entityType, entityID, actor, details, nil, nil)
+}
+
+// WriteAuditLogWithContext saves one audit row with optional company and actor user (multi-tenant).
+func WriteAuditLogWithContext(tx *gorm.DB, action, entityType string, entityID uint, actor string, details any, companyID *uint, actorUserID *uuid.UUID) error {
 	if actor == "" {
 		actor = "system"
 	}
@@ -28,8 +35,42 @@ func WriteAuditLog(tx *gorm.DB, action, entityType string, entityID uint, actor 
 		EntityType:  entityType,
 		EntityID:    entityID,
 		Actor:       actor,
+		CompanyID:   companyID,
+		ActorUserID: actorUserID,
 		DetailsJSON: raw,
 	}
 	return tx.Create(&row).Error
+}
+
+// mergeDetailsWithBeforeAfter merges optional before/after snapshots into details JSON.
+// If details is a map[string]any, keys are copied; otherwise details is stored under "data".
+func mergeDetailsWithBeforeAfter(details any, before, after any) any {
+	if before == nil && after == nil {
+		return details
+	}
+	m := map[string]any{}
+	if details != nil {
+		switch d := details.(type) {
+		case map[string]any:
+			for k, v := range d {
+				m[k] = v
+			}
+		default:
+			m["data"] = details
+		}
+	}
+	if before != nil {
+		m["before"] = before
+	}
+	if after != nil {
+		m["after"] = after
+	}
+	return m
+}
+
+// WriteAuditLogWithContextDetails is like WriteAuditLogWithContext but embeds optional before/after payloads in details JSON.
+func WriteAuditLogWithContextDetails(tx *gorm.DB, action, entityType string, entityID uint, actor string, details any, companyID *uint, actorUserID *uuid.UUID, before, after any) error {
+	merged := mergeDetailsWithBeforeAfter(details, before, after)
+	return WriteAuditLogWithContext(tx, action, entityType, entityID, actor, merged, companyID, actorUserID)
 }
 

@@ -8,13 +8,14 @@ import "gobooks/internal/web/templates/ui"
 templ NumberingSettings(vm NumberingSettingsVM) {
 	@layout.Layout(
 		"GoBooks - Numbering",
-		ui.SidebarVM{Active: "Numbering Settings", HasCompany: vm.HasCompany},
+		ui.SidebarVM{Active: "Company Numbering", HasCompany: vm.HasCompany},
 		bodyNumberingSettings(vm),
 	)
 }
 
 templ bodyNumberingSettings(vm NumberingSettingsVM) {
 	<div class="max-w-[95%]">
+		@SettingsBreadcrumb(vm.Breadcrumb)
 		<h1 class="text-title font-semibold">Numbering</h1>
 		<p class="mt-2 text-text-muted2 max-w-3xl">
 			Configure how <span class="font-medium text-text">business display numbers</span> are suggested
@@ -36,11 +37,11 @@ templ bodyNumberingSettings(vm NumberingSettingsVM) {
 			</div>
 		}
 
-		<form method="post" action="/settings/numbering" class="mt-6 space-y-6" id="numbering-form">
+		<form method="post" action="/settings/company/numbering" class="mt-6 space-y-6" id="numbering-form">
 			<div class="rounded-lg border border-border bg-surface overflow-hidden">
 				<div class="border-b border-border bg-background px-4 py-3">
 					<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Display numbering rules</div>
-					<p class="mt-1 text-small text-text-muted2">Preview updates as you type. Saving writes to local app data for future enforcement.</p>
+					<p class="mt-1 text-small text-text-muted2">Preview updates as you type. Saving stores rules for the active company in the database for future enforcement.</p>
 				</div>
 				<div class="overflow-x-auto">
 					<table class="w-full min-w-[880px] text-left text-body">

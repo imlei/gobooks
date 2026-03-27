@@ -50,6 +50,30 @@ func FormatPreview(prefix string, next int, padding int) string {
 	return prefix + fmt.Sprintf("%0*d", padding, next)
 }
 
+// MergeSavedOntoDefaults applies saved rules onto defaults by module_key (same semantics as file-based numbering).
+func MergeSavedOntoDefaults(defaults []DisplayRule, saved []DisplayRule) []DisplayRule {
+	byKey := map[string]DisplayRule{}
+	for _, r := range defaults {
+		byKey[r.ModuleKey] = r
+	}
+	for _, r := range saved {
+		r = NormalizeRule(r)
+		if _, ok := byKey[r.ModuleKey]; !ok {
+			continue
+		}
+		base := byKey[r.ModuleKey]
+		if r.ModuleName == "" {
+			r.ModuleName = base.ModuleName
+		}
+		byKey[r.ModuleKey] = r
+	}
+	out := make([]DisplayRule, 0, len(defaults))
+	for _, d := range defaults {
+		out = append(out, byKey[d.ModuleKey])
+	}
+	return out
+}
+
 // NormalizeRule clamps values to safe ranges for storage and UI.
 func NormalizeRule(r DisplayRule) DisplayRule {
 	if r.NextNumber < 0 {

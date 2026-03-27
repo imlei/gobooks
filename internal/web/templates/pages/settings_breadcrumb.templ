@@ -1,0 +1,17 @@
+// 遵循产品需求 v1.0
+package pages
+
+templ SettingsBreadcrumb(parts []SettingsBreadcrumbPart) {
+	<nav aria-label="Breadcrumb" class="mb-3 text-small text-text-muted2">
+		for i, p := range parts {
+			if i > 0 {
+				<span class="text-text-muted3"> / </span>
+			}
+			if p.Href != "" {
+				<a href={ p.Href } class="text-primary hover:underline">{ p.Label }</a>
+			} else {
+				<span class="font-medium text-text">{ p.Label }</span>
+			}
+		}
+	</nav>
+}

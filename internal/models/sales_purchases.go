@@ -8,9 +8,11 @@ import (
 )
 
 // Invoice is a simple sales invoice header for MVP.
-// Duplicate invoice numbers are allowed only when user confirms conflict.
+// Duplicate invoice numbers are allowed only when user confirms conflict (per company).
 type Invoice struct {
 	ID uint `gorm:"primaryKey"`
+
+	CompanyID uint `gorm:"not null;index"`
 
 	InvoiceNumber string `gorm:"not null;index"`
 	CustomerID    uint   `gorm:"not null;index"`
@@ -24,9 +26,11 @@ type Invoice struct {
 }
 
 // Bill is a simple purchase bill header for MVP.
-// Duplicate detection rule: (vendor_id + bill_number, case-insensitive) conflict.
+// Duplicate detection: same company, same vendor_id, same bill_number (case-insensitive).
 type Bill struct {
 	ID uint `gorm:"primaryKey"`
+
+	CompanyID uint `gorm:"not null;index"`
 
 	BillNumber string `gorm:"not null;index"`
 	VendorID   uint   `gorm:"not null;index"`

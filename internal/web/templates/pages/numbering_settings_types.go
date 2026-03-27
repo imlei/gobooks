@@ -3,9 +3,10 @@ package pages
 
 import "gobooks/internal/numbering"
 
-// NumberingSettingsVM is the Settings > Numbering page (display numbering only).
+// NumberingSettingsVM is Settings > Company > Numbering (display numbering only).
 type NumberingSettingsVM struct {
 	HasCompany bool
+	Breadcrumb []SettingsBreadcrumbPart
 	Rules      []numbering.DisplayRule
 	FormError  string
 	Saved      bool

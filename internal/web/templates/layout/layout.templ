@@ -10,7 +10,7 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title }</title>
-			<link rel="stylesheet" href="/static/app.css"/>
+			<link rel="stylesheet" href="/static/app.css?v=2"/>
 			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 		</head>
@@ -35,14 +35,14 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 							</div>
 						</div>
 
-						<form class="hidden md:block" method="get" action="/search">
+						<div class="hidden md:block" title="Search is not available yet">
 							<input
-								type="text"
-								name="q"
-								placeholder="Search..."
-								class="w-[360px] max-w-[40vw] rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+								type="search"
+								disabled
+								placeholder="Search…"
+								class="w-[360px] max-w-[40vw] cursor-not-allowed rounded-md border border-border-input bg-background px-3 py-2 text-body text-text-muted3 outline-none opacity-70"
 							/>
-						</form>
+						</div>
 
 						<div class="flex items-center gap-3">
 							<!-- Simple user menu placeholder -->

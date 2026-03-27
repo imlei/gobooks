@@ -4,6 +4,9 @@ package pages
 // AIConnectVM is the view-model for Settings → AI Connect.
 type AIConnectVM struct {
 	HasCompany bool
+	Breadcrumb []SettingsBreadcrumbPart
+	// ReadOnly is true for members who may view but not edit (non-owner/admin).
+	ReadOnly bool
 
 	FormError string
 	Saved     bool

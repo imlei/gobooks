@@ -1,0 +1,44 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ CompanySalesTax(vm CompanySubpageVM) {
+	@layout.Layout(
+		"GoBooks - Sales Tax",
+		ui.SidebarVM{Active: "Company Sales Tax", HasCompany: vm.HasCompany},
+		bodyCompanySalesTax(vm),
+	)
+}
+
+templ bodyCompanySalesTax(vm CompanySubpageVM) {
+	<div class="max-w-[95%]">
+		@SettingsBreadcrumb(vm.Breadcrumb)
+		<h1 class="text-title font-semibold">Sales Tax</h1>
+		<p class="mt-2 max-w-3xl text-text-muted2">
+			Manage GST, PST, tax codes, and tax calculation preferences.
+		</p>
+
+		<div class="mt-8 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Tax registrations</div>
+				<p class="mt-2 text-body text-text-muted2">
+					GST, PST, and other registration numbers will be configured here.
+				</p>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Tax codes</div>
+				<p class="mt-2 text-body text-text-muted2">
+					Define rates and labels for sales and purchase taxes.
+				</p>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Calculation behavior</div>
+				<p class="mt-2 text-body text-text-muted2">
+					Defaults for tax-inclusive vs exclusive pricing and rounding will live here.
+				</p>
+			</div>
+		</div>
+	</div>
+}

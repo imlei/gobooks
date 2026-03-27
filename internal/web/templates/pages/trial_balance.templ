@@ -52,7 +52,7 @@ templ bodyTrialBalance(vm TrialBalanceVM) {
 						<tr class="border-b border-border">
 							<th class="py-3 pr-4">Code</th>
 							<th class="py-3 pr-4">Name</th>
-							<th class="py-3 pr-4">Type</th>
+							<th class="py-3 pr-4">Classification</th>
 							<th class="py-3 pr-4 text-right">Debit</th>
 							<th class="py-3 pr-0 text-right">Credit</th>
 						</tr>
@@ -62,7 +62,7 @@ templ bodyTrialBalance(vm TrialBalanceVM) {
 							<tr class="border-b border-border-subtle">
 								<td class="py-3 pr-4 font-medium">{ r.Code }</td>
 								<td class="py-3 pr-4">{ r.Name }</td>
-								<td class="py-3 pr-4">{ r.Type }</td>
+								<td class="py-3 pr-4">{ r.Classification }</td>
 								<td class="py-3 pr-4 text-right">{ Money(r.Debit) }</td>
 								<td class="py-3 pr-0 text-right">{ Money(r.Credit) }</td>
 							</tr>

@@ -4,17 +4,18 @@ package pages
 import "gobooks/internal/web/templates/layout"
 import "gobooks/internal/web/templates/ui"
 
-templ CompanySettings(vm CompanySettingsVM) {
+templ CompanyProfile(vm CompanySettingsVM) {
 	@layout.Layout(
-		"GoBooks - Company Settings",
-		ui.SidebarVM{Active: "Company Settings", HasCompany: vm.HasCompany},
-		bodyCompanySettings(vm),
+		"GoBooks - Profile",
+		ui.SidebarVM{Active: "Company Profile", HasCompany: vm.HasCompany},
+		bodyCompanyProfile(vm),
 	)
 }
 
-templ bodyCompanySettings(vm CompanySettingsVM) {
+templ bodyCompanyProfile(vm CompanySettingsVM) {
 	<div class="max-w-[95%]">
-		<h1 class="text-title font-semibold">Company Settings</h1>
+		@SettingsBreadcrumb(vm.Breadcrumb)
+		<h1 class="text-title font-semibold">Profile</h1>
 		<p class="mt-2 text-text-muted2">
 			Update your company profile. This affects reports and default settings.
 		</p>
@@ -31,7 +32,7 @@ templ bodyCompanySettings(vm CompanySettingsVM) {
 			</div>
 		}
 
-		<form method="post" action="/settings/company" class="mt-6 space-y-6">
+		<form method="post" action="/settings/company/profile" class="mt-6 space-y-6">
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 					@textField("Company Name *", "company_name", vm.Values.CompanyName, vm.Errors.CompanyName, "e.g. ACME Corp.")
@@ -63,7 +64,10 @@ templ bodyCompanySettings(vm CompanySettingsVM) {
 					@dateField("Fiscal Year End *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd)
 					@textField("Business Number *", "business_number", vm.Values.BusinessNumber, vm.Errors.BusinessNumber, "")
 
-					@textField("Address Line *", "address_line", vm.Values.AddressLine, vm.Errors.AddressLine, "Street and number")
+					<div class="md:col-span-2">
+						@textField("Address Line *", "address_line", vm.Values.AddressLine, vm.Errors.AddressLine, "Street and number")
+					</div>
+					@textField("City *", "city", vm.Values.City, vm.Errors.City, "")
 					@textField("Province *", "province", vm.Values.Province, vm.Errors.Province, "")
 					@textField("Postal Code *", "postal_code", vm.Values.PostalCode, vm.Errors.PostalCode, "")
 					@textField("Country *", "country", vm.Values.Country, vm.Errors.Country, "e.g. Canada")
@@ -76,4 +80,3 @@ templ bodyCompanySettings(vm CompanySettingsVM) {
 		</form>
 	</div>
 }
-

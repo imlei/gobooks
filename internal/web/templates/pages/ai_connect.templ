@@ -15,11 +15,15 @@ templ AIConnect(vm AIConnectVM) {
 
 templ bodyAIConnect(vm AIConnectVM) {
 	<div class="max-w-[95%]">
+		@SettingsBreadcrumb(vm.Breadcrumb)
 		<h1 class="text-title font-semibold">AI Connect</h1>
 		<p class="mt-2 text-text-muted2 max-w-3xl">
-			Configure how GoBooks connects to external AI services. This is the foundation for future features such as
-			receipt scanning, invoice extraction, and document understanding. No document processing runs from this page yet—only
+			Connect AI services for future automation features. This page stores connection settings for planned capabilities such as
+			OCR, document extraction, and smart bookkeeping assistance. No document processing runs from this page yet—only
 			connection settings are stored here.
+		</p>
+		<p class="mt-3 text-small text-text-muted max-w-3xl">
+			AI-powered document recognition and automation features will be supported here in the future.
 		</p>
 
 		if vm.Saved {
@@ -37,8 +41,14 @@ templ bodyAIConnect(vm AIConnectVM) {
 				{ vm.FormError }
 			</div>
 		}
+		if vm.ReadOnly {
+			<p class="mt-4 text-small text-text-muted max-w-3xl">
+				View only. Only company owners and admins can change AI connection settings.
+			</p>
+		}
 
 		<form method="post" action="/settings/ai-connect" class="mt-6 space-y-6">
+			<fieldset disabled?={ vm.ReadOnly } class="min-w-0 space-y-6 border-0 p-0 m-0">
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<div class="border-b border-border bg-background -mx-6 -mt-6 px-6 py-3 mb-6">
 					<div class="text-small font-semibold uppercase tracking-wider text-text-muted">AI service connection</div>
@@ -102,13 +112,16 @@ templ bodyAIConnect(vm AIConnectVM) {
 				<p class="text-small text-text-muted max-w-xl">
 					Test Connection uses the last saved configuration—save first if you changed fields above.
 				</p>
-				@ui.ButtonPrimary("Save", "submit", false)
+				@ui.ButtonPrimary("Save", "submit", vm.ReadOnly)
 			</div>
+			</fieldset>
 		</form>
 
 		<form method="post" action="/settings/ai-connect/test" class="mt-4 flex flex-wrap items-center gap-4">
-			@ui.ButtonSecondary("Test Connection", "submit", false)
+			<fieldset disabled?={ vm.ReadOnly } class="flex min-w-0 flex-wrap items-center gap-4 border-0 p-0 m-0">
+			@ui.ButtonSecondary("Test Connection", "submit", vm.ReadOnly)
 			<span class="text-small text-text-muted">Runs a server-side reachability check (no keys sent to the browser).</span>
+			</fieldset>
 		</form>
 
 		if vm.HasLastTest {
