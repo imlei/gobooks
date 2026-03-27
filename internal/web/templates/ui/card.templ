@@ -1,0 +1,10 @@
+// 遵循产品需求 v1.0
+package ui
+
+// Card is a reusable surface container (padding + border + background).
+templ Card(content templ.Component) {
+	<div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
+		@content
+	</div>
+}
+

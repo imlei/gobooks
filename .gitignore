@@ -1,0 +1,33 @@
+# 遵循产品需求 v1.0
+
+# Binaries
+bin/
+dist/
+
+# Env files
+.env
+
+# Local SQLite artifacts (app uses PostgreSQL)
+data/*.db
+
+# Node
+node_modules/
+
+# Tailwind output (we generate this)
+internal/web/static/app.css
+
+# Templ generated files
+*_templ.go
+
+# OS / editor
+.DS_Store
+.vscode/
+
+# Legacy Python / PyInstaller (not part of GoBooks web app)
+app/
+build/
+AccountingApp.spec
+*.exe
+**/__pycache__/
+*.pyc
+

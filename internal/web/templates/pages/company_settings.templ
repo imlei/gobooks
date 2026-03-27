@@ -1,0 +1,79 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ CompanySettings(vm CompanySettingsVM) {
+	@layout.Layout(
+		"GoBooks - Company Settings",
+		ui.SidebarVM{Active: "Company Settings", HasCompany: vm.HasCompany},
+		bodyCompanySettings(vm),
+	)
+}
+
+templ bodyCompanySettings(vm CompanySettingsVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Company Settings</h1>
+		<p class="mt-2 text-text-muted2">
+			Update your company profile. This affects reports and default settings.
+		</p>
+
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Saved.
+			</div>
+		}
+
+		if vm.Errors.Form != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.Errors.Form }
+			</div>
+		}
+
+		<form method="post" action="/settings/company" class="mt-6 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					@textField("Company Name *", "company_name", vm.Values.CompanyName, vm.Errors.CompanyName, "e.g. ACME Corp.")
+
+					@selectField(
+						"Entity Type *",
+						"entity_type",
+						vm.Values.EntityType,
+						vm.Errors.EntityType,
+						[]string{"Personal", "Incorporated", "LLP"},
+					)
+
+					@selectField(
+						"Business Type *",
+						"business_type",
+						vm.Values.BusinessType,
+						vm.Errors.BusinessType,
+						[]string{"Retail", "Professional Corp"},
+					)
+
+					@selectField(
+						"Industry *",
+						"industry",
+						vm.Values.Industry,
+						vm.Errors.Industry,
+						[]string{"Retail", "Consulting", "Services", "Manufacturing", "Construction", "Other"},
+					)
+					@dateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate)
+					@dateField("Fiscal Year End *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd)
+					@textField("Business Number *", "business_number", vm.Values.BusinessNumber, vm.Errors.BusinessNumber, "")
+
+					@textField("Address Line *", "address_line", vm.Values.AddressLine, vm.Errors.AddressLine, "Street and number")
+					@textField("Province *", "province", vm.Values.Province, vm.Errors.Province, "")
+					@textField("Postal Code *", "postal_code", vm.Values.PostalCode, vm.Errors.PostalCode, "")
+					@textField("Country *", "country", vm.Values.Country, vm.Errors.Country, "e.g. Canada")
+				</div>
+			</div>
+
+			<div class="flex items-center justify-end">
+				@ui.ButtonPrimary("Save", "submit", false)
+			</div>
+		</form>
+	</div>
+}
+

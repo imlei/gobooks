@@ -1,0 +1,23 @@
+// 遵循产品需求 v1.0
+package pages
+
+templ ReportsNav(active string) {
+	<div class="mt-4 flex flex-wrap gap-2">
+		@reportTab("/reports/trial-balance", "Trial Balance", active == "trial")
+		@reportTab("/reports/income-statement", "Income Statement", active == "income")
+		@reportTab("/reports/balance-sheet", "Balance Sheet", active == "balance")
+	</div>
+}
+
+templ reportTab(href string, label string, isActive bool) {
+	if isActive {
+		<a href={ href } class="rounded-md bg-primary-soft px-3 py-2 text-body font-semibold text-primary">
+			{ label }
+		</a>
+	} else {
+		<a href={ href } class="rounded-md px-3 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text">
+			{ label }
+		</a>
+	}
+}
+

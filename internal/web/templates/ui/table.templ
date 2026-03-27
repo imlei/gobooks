@@ -1,0 +1,34 @@
+// 遵循产品需求 v1.0
+package ui
+
+templ Table(vm TableVM) {
+	<div class="overflow-x-auto">
+		<table class="w-full text-left text-body">
+			<thead class="text-small uppercase tracking-wider text-text-muted">
+				<tr class="border-b border-border">
+					for _, h := range vm.Headers {
+						<th class="py-3 pr-4">{ h }</th>
+					}
+				</tr>
+			</thead>
+			<tbody class="text-text">
+				for _, r := range vm.Rows {
+					<tr class="border-b border-border-subtle hover:bg-background">
+						@cells(r.Cells)
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+}
+
+templ cells(cells []TableCellVM) {
+	for _, c := range cells {
+		if c.AlignRight {
+			<td class="py-3 pr-4 text-right font-medium">{ c.Value }</td>
+		} else {
+			<td class="py-3 pr-4">{ c.Value }</td>
+		}
+	}
+}
+

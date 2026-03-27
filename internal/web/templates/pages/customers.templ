@@ -1,0 +1,66 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ Customers(vm CustomersVM) {
+	@layout.Layout(
+		"GoBooks - Customers",
+		ui.SidebarVM{Active: "Customers", HasCompany: vm.HasCompany},
+		bodyCustomers(vm),
+	)
+}
+
+templ bodyCustomers(vm CustomersVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Customers</h1>
+		<p class="mt-2 text-text-muted2">Manage customer names used in Journal Entry “Name” selection.</p>
+
+		if vm.Created {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Customer created.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="post" action="/customers" class="mt-6 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Add Customer</h2>
+				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+					@textField("Name *", "name", vm.Name, vm.NameError, "e.g. ACME Corp.")
+				</div>
+				<div class="mt-6 flex items-center justify-end">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+						Create
+					</button>
+				</div>
+			</div>
+		</form>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">All Customers</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Name</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						for _, c := range vm.Customers {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4 font-medium">{ c.Name }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+

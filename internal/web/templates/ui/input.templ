@@ -1,0 +1,80 @@
+// 遵循产品需求 v1.0
+package ui
+
+// InputField is a reusable labeled input with an error state.
+templ InputField(
+	label string,
+	name string,
+	value string,
+	placeholder string,
+	inputType string,
+	err string,
+) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		if err != "" {
+			<input
+				type={ inputType }
+				name={ name }
+				value={ value }
+				placeholder={ placeholder }
+				class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			/>
+		} else {
+			<input
+				type={ inputType }
+				name={ name }
+				value={ value }
+				placeholder={ placeholder }
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			/>
+		}
+		if err != "" {
+			<div class="mt-1 text-body text-danger">{ err }</div>
+		}
+	</div>
+}
+
+// InputFieldNumericCode is for chart-of-accounts style codes: digits only, max length AccountCodeMaxDigits (see models).
+templ InputFieldNumericCode(
+	label string,
+	name string,
+	value string,
+	placeholder string,
+	err string,
+) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		if err != "" {
+			<input
+				type="text"
+				name={ name }
+				value={ value }
+				placeholder={ placeholder }
+				maxlength="12"
+				inputmode="numeric"
+				pattern="[0-9]{3,12}"
+				title="Enter 3–12 digits only"
+				autocomplete="off"
+				class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+			/>
+		} else {
+			<input
+				type="text"
+				name={ name }
+				value={ value }
+				placeholder={ placeholder }
+				maxlength="12"
+				inputmode="numeric"
+				pattern="[0-9]{3,12}"
+				title="Enter 3–12 digits only"
+				autocomplete="off"
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+			/>
+		}
+		if err != "" {
+			<div class="mt-1 text-body text-danger">{ err }</div>
+		}
+	</div>
+}
+

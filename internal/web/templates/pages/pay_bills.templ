@@ -1,0 +1,107 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ PayBills(vm PayBillsVM) {
+	@layout.Layout(
+		"GoBooks - Pay Bills",
+		ui.SidebarVM{Active: "Pay Bills", HasCompany: vm.HasCompany},
+		bodyPayBills(vm),
+	)
+}
+
+templ bodyPayBills(vm PayBillsVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Pay Bills</h1>
+		<p class="mt-2 text-text-muted2">
+			Record a vendor payment. This will debit Accounts Payable and credit your bank account.
+		</p>
+
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Payment recorded.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="post" action="/banking/pay-bills" class="mt-6 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					<div>
+						<label class="block text-body font-medium text-text">Vendor *</label>
+						<select name="vendor_id" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+							<option value="">-- Select --</option>
+							for _, v := range vm.Vendors {
+								<option value={ Uitoa(v.ID) } selected?={ Uitoa(v.ID) == vm.VendorID }>{ v.Name }</option>
+							}
+						</select>
+						if vm.VendorError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.VendorError }</div>
+						}
+					</div>
+
+					<div>
+						<label class="block text-body font-medium text-text">Date *</label>
+						<input type="date" name="entry_date" value={ vm.EntryDate } class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+						if vm.DateError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.DateError }</div>
+						}
+					</div>
+
+					<div>
+						<label class="block text-body font-medium text-text">Pay from (Bank) *</label>
+						<select name="bank_account_id" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+							<option value="">-- Select --</option>
+							for _, a := range vm.Accounts {
+								<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.BankAccountID }>{ a.Code } - { a.Name }</option>
+							}
+						</select>
+						if vm.BankError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.BankError }</div>
+						}
+					</div>
+
+					<div>
+						<label class="block text-body font-medium text-text">Accounts Payable *</label>
+						<select name="ap_account_id" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+							<option value="">-- Select --</option>
+							for _, a := range vm.Accounts {
+								<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.APAccountID }>{ a.Code } - { a.Name }</option>
+							}
+						</select>
+						if vm.APError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.APError }</div>
+						}
+					</div>
+
+					<div>
+						<label class="block text-body font-medium text-text">Amount *</label>
+						<input type="text" inputmode="decimal" name="amount" value={ vm.Amount } placeholder="0.00" class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+						if vm.AmountError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.AmountError }</div>
+						}
+					</div>
+
+					<div>
+						<label class="block text-body font-medium text-text">Memo</label>
+						<input type="text" name="memo" value={ vm.Memo }
+							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+				</div>
+
+				<div class="mt-6 flex items-center justify-end">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+						Record Payment
+					</button>
+				</div>
+			</div>
+		</form>
+	</div>
+}
+

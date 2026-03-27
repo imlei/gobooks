@@ -1,0 +1,91 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ Setup(vm SetupViewModel) {
+	@layout.Layout(
+		"GoBooks - Setup",
+		ui.SidebarVM{Active: "Setup", HasCompany: false},
+		bodySetup(vm),
+	)
+}
+
+templ bodySetup(vm SetupViewModel) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">First-time Setup</h1>
+		<p class="mt-2 text-text-muted2">
+			Please enter your company details. This is required before using the system.
+		</p>
+
+		if vm.Errors.Form != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.Errors.Form }
+			</div>
+		}
+
+		<form method="post" action="/setup" class="mt-6 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					@textField("Company Name *", "company_name", vm.Values.CompanyName, vm.Errors.CompanyName, "e.g. ACME Corp.")
+
+					@selectField(
+						"Entity Type *",
+						"entity_type",
+						vm.Values.EntityType,
+						vm.Errors.EntityType,
+						[]string{"Personal", "Incorporated", "LLP"},
+					)
+
+					@selectField(
+						"Industry *",
+						"industry",
+						vm.Values.Industry,
+						vm.Errors.Industry,
+						[]string{"Retail", "Consulting", "Services", "Manufacturing", "Construction", "Other"},
+					)
+					@dateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate)
+					@dateField("Fiscal Year End *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd)
+					@textField("Business Number *", "business_number", vm.Values.BusinessNumber, vm.Errors.BusinessNumber, "")
+
+					@textField("Address Line *", "address_line", vm.Values.AddressLine, vm.Errors.AddressLine, "Street and number")
+					@textField("Province *", "province", vm.Values.Province, vm.Errors.Province, "")
+					@textField("Postal Code *", "postal_code", vm.Values.PostalCode, vm.Errors.PostalCode, "")
+					@textField("Country *", "country", vm.Values.Country, vm.Errors.Country, "e.g. Canada")
+				</div>
+			</div>
+
+			<div class="flex items-center justify-end">
+				@ui.ButtonPrimary("Finish Setup", "submit", false)
+			</div>
+		</form>
+	</div>
+}
+
+templ textField(label string, name string, value string, err string, placeholder string) {
+	@ui.InputField(label, name, value, placeholder, "text", err)
+}
+
+templ dateField(label string, name string, value string, err string) {
+	@ui.InputField(label, name, value, "", "date", err)
+}
+
+templ selectField(label string, name string, value string, err string, options []string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<select
+			name={ name }
+			class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+		>
+			<option value="">-- Select --</option>
+			for _, opt := range options {
+				<option value={ opt } selected?={ opt == value }>{ opt }</option>
+			}
+		</select>
+		if err != "" {
+			<div class="mt-1 text-body text-danger">{ err }</div>
+		}
+	</div>
+}
+

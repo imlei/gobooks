@@ -1,0 +1,207 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ BankReconcile(vm BankReconcileVM) {
+	@layout.Layout(
+		"GoBooks - Bank Reconciliation",
+		ui.SidebarVM{Active: "Bank Reconcile", HasCompany: vm.HasCompany},
+		bodyBankReconcile(vm),
+	)
+}
+
+templ bodyBankReconcile(vm BankReconcileVM) {
+	<div class="max-w-[95%]" x-data="reconcileDraft()" x-init="init()">
+		<h1 class="text-title font-semibold">Bank Reconciliation</h1>
+		<p class="mt-2 text-text-muted2">
+			Match your bank statement to your cleared transactions. Difference must be 0.00 before you can finish.
+		</p>
+
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Reconciliation saved.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="get" action="/banking/reconcile" class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-4">
+				<div class="md:col-span-2">
+					<label class="block text-body font-medium text-text">Bank Account (GL) *</label>
+					<select name="account_id" x-model="header.account_id"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+						<option value="">-- Select --</option>
+						for _, a := range vm.Accounts {
+							<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.AccountID }>{ a.Code } - { a.Name }</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Statement Date *</label>
+					<input type="date" name="statement_date" x-model="header.statement_date"
+						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Ending Balance *</label>
+					<input type="text" inputmode="decimal" name="ending_balance" x-model="header.ending_balance" placeholder="0.00"
+						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+				</div>
+				<div class="md:col-span-4 flex justify-end">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+						Load
+					</button>
+				</div>
+			</div>
+		</form>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6" x-show="header.account_id !== ''">
+			<div class="flex items-center justify-between">
+				<h2 class="text-section font-semibold text-text">Unreconciled transactions</h2>
+				<div class="text-body text-text-muted2">
+					Previously cleared: <span class="font-semibold">{ vm.PreviouslyCleared }</span>
+				</div>
+			</div>
+
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4 w-[6%]">✓</th>
+							<th class="py-3 pr-4 w-[16%]">Date</th>
+							<th class="py-3 pr-4 w-[40%]">Journal No.</th>
+							<th class="py-3 pr-4 w-[18%] text-right">Amount</th>
+							<th class="py-3 pr-0 w-[20%]">Memo</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						for _, c := range vm.Candidates {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4">
+									<input type="checkbox"
+										name="line_id"
+										value={ Uitoa(c.LineID) }
+										x-model="selected"
+										class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"/>
+									<input type="hidden" name={ "line_amount_" + Uitoa(c.LineID) } value={ Money(c.Amount) }/>
+								</td>
+								<td class="py-3 pr-4">{ c.EntryDate.Format("2006-01-02") }</td>
+								<td class="py-3 pr-4">{ c.JournalNo }</td>
+								<td class="py-3 pr-4 text-right">{ Money(c.Amount) }</td>
+								<td class="py-3 pr-0">{ c.Memo }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+
+			<form method="post" action="/banking/reconcile" class="mt-6" @submit="beforeSubmit($event)">
+				<input type="hidden" name="account_id" :value="header.account_id"/>
+				<input type="hidden" name="statement_date" :value="header.statement_date"/>
+				<input type="hidden" name="ending_balance" :value="header.ending_balance"/>
+
+				<template x-for="id in selected" :key="id">
+					<input type="hidden" name="line_ids" :value="id"/>
+				</template>
+
+				<div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+					<div class="text-body text-text-muted2" x-text="primary"></div>
+					<div class="flex items-center gap-6 text-body">
+						<div><span class="text-text-muted2">Selected:</span> <span class="font-semibold" x-text="formatMoney(selectedTotal)"></span></div>
+						<div><span class="text-text-muted2">Cleared (incl. prev):</span> <span class="font-semibold" x-text="formatMoney(clearedTotal)"></span></div>
+						<div><span class="text-text-muted2">Difference:</span> <span class="font-semibold" :class="diffOk ? 'text-text' : 'text-danger'" x-text="formatMoney(difference)"></span></div>
+					</div>
+				</div>
+
+				<div class="mt-4 flex items-center justify-end">
+					<button type="submit"
+						:disabled="!diffOk"
+						:class="diffOk ? 'bg-primary hover:bg-primary-hover text-onPrimary' : 'bg-disabled-bg text-disabled-text cursor-not-allowed'"
+						class="rounded-md px-4 py-2 text-body font-semibold">
+						Finish
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<script>
+		function reconcileDraft() {
+			return {
+				header: { account_id: "", statement_date: "", ending_balance: "" },
+				selected: [],
+				selectedTotal: 0,
+				clearedTotal: 0,
+				difference: 0,
+				diffOk: false,
+				primary: "",
+				init() {
+					// Initialize from query (server-rendered values).
+					const url = new URL(window.location.href);
+					this.header.account_id = url.searchParams.get("account_id") || "";
+					this.header.statement_date = url.searchParams.get("statement_date") || "";
+					this.header.ending_balance = url.searchParams.get("ending_balance") || "";
+
+					// If reconciliation saved, clear selection.
+					if (url.searchParams.get("saved") === "1") {
+						this.selected = [];
+					}
+
+					this.$watch("selected", () => this.recalc(), { deep: true });
+					this.$watch("header", () => this.recalc(), { deep: true });
+					this.recalc();
+				},
+				parseMoney(s) {
+					if (!s) return 0;
+					const n = Number(String(s).replace(/,/g, ""));
+					if (Number.isNaN(n)) return null;
+					return n;
+				},
+				formatMoney(n) {
+					return (Math.round(n * 100) / 100).toFixed(2);
+				},
+				recalc() {
+					const ending = this.parseMoney(this.header.ending_balance);
+					if (ending === null) {
+						this.primary = "Ending Balance must be a number.";
+						this.diffOk = false;
+						return;
+					}
+
+					let sel = 0;
+					for (const id of this.selected) {
+						const el = document.querySelector(`input[name="line_amount_${id}"]`);
+						if (!el) continue;
+						const amt = this.parseMoney(el.value);
+						if (amt === null) continue;
+						sel += amt;
+					}
+					this.selectedTotal = sel;
+
+					const prev = this.parseMoney("{ vm.PreviouslyCleared }");
+					const prevVal = prev === null ? 0 : prev;
+					this.clearedTotal = prevVal + sel;
+
+					this.difference = ending - this.clearedTotal;
+					this.diffOk = Math.abs(this.difference) < 0.0001;
+
+					if (!this.diffOk) {
+						this.primary = "Select cleared items until Difference is 0.00.";
+					} else {
+						this.primary = "";
+					}
+				},
+				beforeSubmit(e) {
+					this.recalc();
+					if (!this.diffOk) e.preventDefault();
+				},
+			};
+		}
+	</script>
+}
+

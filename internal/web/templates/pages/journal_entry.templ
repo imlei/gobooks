@@ -1,0 +1,345 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ JournalEntry(vm JournalEntryVM) {
+	@layout.Layout(
+		"GoBooks - Journal Entry",
+		ui.SidebarVM{Active: "Journal Entry", HasCompany: vm.HasCompany},
+		bodyJournalEntry(vm),
+	)
+}
+
+templ bodyJournalEntry(vm JournalEntryVM) {
+	<div class="max-w-[95%]" x-data="journalEntryDraft()" x-init="init()">
+		<div>
+			<div class="flex items-center justify-between">
+				<h1 class="text-title font-semibold">Journal Entry</h1>
+				<a href="/journal-entry/list" class="rounded-md border border-border-input px-3 py-2 text-body font-medium text-text-muted3 hover:bg-background">View Entries</a>
+			</div>
+			<p class="mt-2 text-text-muted2">A journal entry records a transaction using double-entry accounting: total debits must equal total credits.</p>
+		</div>
+
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Journal entry posted.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="post" action="/journal-entry" class="mt-6 space-y-6" @submit="beforeSubmit($event)">
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					<div>
+						<label class="block text-body font-medium text-text">Date *</label>
+						<input type="date" name="entry_date" x-model="header.entry_date"
+							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-body font-medium text-text">Journal No.</label>
+						<input type="text" name="journal_no" x-model="header.journal_no" placeholder="Optional, e.g. JE-001"
+							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+				</div>
+			</div>
+
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="flex items-center justify-between">
+					<h2 class="text-section font-semibold text-text">Lines</h2>
+					<button
+						type="button"
+						class="inline-flex items-center gap-2 rounded-md border border-border-input px-3 py-2 text-body font-semibold text-primary hover:bg-background hover:text-primary-hover"
+						@click="addLine()"
+					>
+						<span>+</span>
+						<span>Add</span>
+					</button>
+				</div>
+
+				<div class="mt-4 overflow-x-auto w-[95%]">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border">
+								<th class="py-3 pr-4 w-[28%]">Account</th>
+								<th class="py-3 pr-4 w-[12%]">Debit</th>
+								<th class="py-3 pr-4 w-[12%]">Credit</th>
+								<th class="py-3 pr-4 w-[20%]">Name</th>
+								<th class="py-3 pr-0 w-[28%]">Memo</th>
+							</tr>
+						</thead>
+						<tbody>
+							<template x-for="(line, idx) in lines" :key="line.key">
+								<tr class="border-b border-border-subtle align-top">
+									<td class="py-3 pr-4">
+										<select :name="`lines[${idx}][account_id]`" x-model="line.account_id"
+											@change="recalc(); persist()"
+											class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+											<option value="">-- Select --</option>
+											for _, a := range vm.Accounts {
+												<option value={ Uitoa(a.ID) }>{ a.Code } - { a.Name }</option>
+											}
+										</select>
+										<div class="mt-1 text-small text-danger" x-show="line.errors.account" x-text="line.errors.account"></div>
+									</td>
+									<td class="py-3 pr-4">
+										<input type="text" inputmode="decimal" :name="`lines[${idx}][debit]`" x-model="line.debit"
+											@input="onDebitInput(line)"
+											placeholder="0.00"
+											class="block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+										<div class="mt-1 text-small text-danger" x-show="line.errors.amount" x-text="line.errors.amount"></div>
+									</td>
+									<td class="py-3 pr-4">
+										<input type="text" inputmode="decimal" :name="`lines[${idx}][credit]`" x-model="line.credit"
+											@input="onCreditInput(line)"
+											placeholder="0.00"
+											class="block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+									</td>
+									<td class="py-3 pr-4">
+										<select :name="`lines[${idx}][party]`" x-model="line.party"
+											class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+											<option value="">-- None --</option>
+											<optgroup label="Customers">
+												for _, c := range vm.Customers {
+													<option value={ "customer:" + Uitoa(c.ID) }>{ c.Name }</option>
+												}
+											</optgroup>
+											<optgroup label="Vendors">
+												for _, v := range vm.Vendors {
+													<option value={ "vendor:" + Uitoa(v.ID) }>{ v.Name }</option>
+												}
+											</optgroup>
+										</select>
+									</td>
+									<td class="py-3 pr-0">
+										<div class="flex items-center gap-3">
+											<input
+												type="text"
+												:name="`lines[${idx}][memo]`"
+												x-model="line.memo"
+												placeholder=""
+												class="flex-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+											/>
+											<button
+												type="button"
+												class="rounded-md border border-border-input px-3 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text disabled:cursor-not-allowed disabled:opacity-50"
+												@click="removeLine(idx)"
+												:disabled="lines.length <= 2"
+											>
+												-
+											</button>
+										</div>
+									</td>
+								</tr>
+							</template>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="mt-4 flex flex-col gap-2">
+					<div class="flex items-center justify-between text-body">
+						<div class="text-danger-hover" x-show="primaryError" x-text="primaryError"></div>
+						<div class="flex items-center gap-6">
+							<div><span class="text-text-muted2">Total Debits:</span> <span class="font-semibold" x-text="formatMoney(totals.debits)"></span></div>
+							<div><span class="text-text-muted2">Total Credits:</span> <span class="font-semibold" x-text="formatMoney(totals.credits)"></span></div>
+						</div>
+					</div>
+					<div class="text-body" x-show="lines.length >= 2">
+						<span class="text-text-muted2">Difference:</span>
+						<span :class="diffOk ? 'text-text' : 'text-danger-hover'" class="font-semibold" x-text="formatMoney(difference)"></span>
+					</div>
+				</div>
+
+				<div class="mt-6 flex items-center justify-end gap-3">
+					<button type="submit"
+						:disabled="!canSave"
+						:class="canSave ? 'bg-primary hover:bg-primary-hover text-onPrimary' : 'bg-disabled-bg text-disabled-text cursor-not-allowed'"
+						class="rounded-md px-4 py-2 text-body font-semibold">
+						Save
+					</button>
+				</div>
+			</div>
+		</form>
+	</div>
+
+	<script>
+		function journalEntryDraft() {
+			return {
+				header: { entry_date: "", journal_no: "" },
+				lines: [],
+				totals: { debits: 0, credits: 0 },
+				difference: 0,
+				diffOk: false,
+				canSave: false,
+				primaryError: "",
+					recalcRunning: false,
+
+				init() {
+					const MAX_LINES = 50;
+					const today = new Date().toISOString().slice(0, 10);
+					this.header.entry_date = today;
+
+					// If the server says we saved successfully, clear the draft.
+					if (new URLSearchParams(window.location.search).get("saved") === "1") {
+						localStorage.removeItem("gobooks:journalDraft:v1");
+					}
+
+					// Load draft from localStorage so refresh doesn't lose data.
+					const raw = localStorage.getItem("gobooks:journalDraft:v1");
+					if (raw) {
+						try {
+							const d = JSON.parse(raw);
+							if (d && d.header && Array.isArray(d.lines)) {
+								this.header = { ...this.header, ...d.header };
+								this.lines = d.lines.map(l => this.normalizeLine(l));
+								if (this.lines.length > MAX_LINES) {
+									// Safety: prevent corrupted/old drafts from freezing the UI.
+									this.lines = this.lines.slice(0, MAX_LINES);
+								}
+							}
+						} catch (e) {}
+					}
+
+					// Ensure at least two lines exist.
+					if (this.lines.length < 2) {
+						this.lines = [this.newLine(), this.newLine()];
+					}
+
+					this.recalc();
+					this.persist();
+					this.$watch("header", () => this.persist(), { deep: true });
+				},
+
+				persist() {
+					localStorage.setItem("gobooks:journalDraft:v1", JSON.stringify({ header: this.header, lines: this.lines }));
+				},
+
+				newLine() {
+					return this.normalizeLine({ key: crypto.randomUUID(), account_id: "", debit: "", credit: "", memo: "", party: "", errors: {} });
+				},
+
+				normalizeLine(l) {
+					return {
+						key: l.key || crypto.randomUUID(),
+						account_id: l.account_id || "",
+						debit: l.debit || "",
+						credit: l.credit || "",
+						memo: l.memo || "",
+						party: l.party || "",
+						errors: l.errors || {},
+					};
+				},
+
+				addLine() {
+					this.lines.push(this.newLine());
+					this.recalc();
+					this.persist();
+				},
+
+				removeLine(idx) {
+					if (this.lines.length <= 2) return;
+					this.lines.splice(idx, 1);
+					this.recalc();
+					this.persist();
+				},
+
+				onDebitInput(line) {
+					// Line-level rule: debit and credit cannot both have values.
+					if (line.debit && line.debit.trim() !== "") {
+						line.credit = "";
+					}
+					this.recalc();
+					this.persist();
+				},
+
+				onCreditInput(line) {
+					if (line.credit && line.credit.trim() !== "") {
+						line.debit = "";
+					}
+					this.recalc();
+					this.persist();
+				},
+
+				parseMoney(s) {
+					if (!s) return 0;
+					const n = Number(String(s).replace(/,/g, ""));
+					if (Number.isNaN(n) || n < 0) return null;
+					return n;
+				},
+
+				formatMoney(n) {
+					return (Math.round(n * 100) / 100).toFixed(2);
+				},
+
+				recalc() {
+					if (this.recalcRunning) return;
+					this.recalcRunning = true;
+					try {
+					let deb = 0, cred = 0;
+					let validLines = 0;
+					this.primaryError = "";
+					this.difference = 0;
+					this.diffOk = false;
+
+					for (const line of this.lines) {
+						line.errors = {};
+
+						const d = this.parseMoney(line.debit);
+						const c = this.parseMoney(line.credit);
+						const hasAmount = (d && d > 0) || (c && c > 0);
+
+						if (line.account_id === "" && hasAmount) {
+							line.errors.account = "Select an account.";
+						}
+
+						if (d === null || c === null) {
+							line.errors.amount = "Amounts must be non-negative numbers.";
+							continue;
+						}
+
+						if (d > 0 && c > 0) {
+							line.errors.amount = "Debit and credit cannot both be set.";
+							continue;
+						}
+
+						if (d > 0) deb += d;
+						if (c > 0) cred += c;
+
+						// A "valid" line means: has account + has a debit OR credit.
+						if (line.account_id !== "" && ((d && d > 0) || (c && c > 0))) {
+							validLines++;
+						}
+					}
+
+					this.totals.debits = deb;
+					this.totals.credits = cred;
+
+					this.difference = deb - cred;
+					// Diff ok only checks balance; canSave also requires at least 2 valid lines.
+					this.diffOk = Math.abs(this.difference) < 0.0001;
+					this.canSave = this.diffOk && validLines >= 2 && deb > 0;
+
+					if (!this.canSave) {
+						if (validLines < 2) this.primaryError = "At least 2 valid lines are required.";
+						else if (!this.diffOk) this.primaryError = "Total debits must equal total credits.";
+					}
+					} finally {
+						this.recalcRunning = false;
+					}
+				},
+
+				beforeSubmit(e) {
+					this.recalc();
+					if (!this.canSave) {
+						e.preventDefault();
+					}
+				},
+			};
+		}
+	</script>
+}

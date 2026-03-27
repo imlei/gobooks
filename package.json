@@ -1,0 +1,16 @@
+{
+  "//": "遵循产品需求 v1.0",
+  "name": "gobooks",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev:css": "tailwindcss -i ./internal/web/assets/input.css -o ./internal/web/static/app.css --watch",
+    "build:css": "tailwindcss -i ./internal/web/assets/input.css -o ./internal/web/static/app.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.13",
+    "postcss": "^8.4.39",
+    "autoprefixer": "^10.4.20"
+  }
+}
+

@@ -1,0 +1,103 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ Accounts(vm AccountsVM) {
+	@layout.Layout(
+		"GoBooks - Chart of Accounts",
+		ui.SidebarVM{Active: "Accounts", HasCompany: vm.HasCompany},
+		bodyAccounts(vm),
+	)
+}
+
+templ bodyAccounts(vm AccountsVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-start justify-between">
+			<div>
+				<h1 class="text-title font-semibold">Chart of Accounts</h1>
+				<p class="mt-2 text-text-muted2">
+					Accounts are the categories you post journal entries to (Cash, Sales Revenue, Rent Expense, etc.).
+				</p>
+			</div>
+		</div>
+
+		if vm.Created {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Account created.
+			</div>
+		}
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="post" action="/accounts" class="mt-6 space-y-6">
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Add New Account</h2>
+				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
+					@ui.InputFieldNumericCode("Account Code *", "code", vm.Code, "e.g. 1000", vm.CodeError)
+					@textField("Account Name *", "name", vm.Name, vm.NameError, "e.g. Cash")
+
+					@selectField(
+						"Account Type *",
+						"type",
+						vm.Type,
+						vm.TypeError,
+						[]string{
+							"Bank",
+							"Accounts Receivable",
+							"Other Current Asset",
+							"Fixed Asset",
+							"Other Asset",
+							"Accounts Payable",
+							"Credit Card",
+							"Other Current Liability",
+							"Long Term Liability",
+							"Equity",
+							"Income",
+							"Cost of Goods Sold",
+							"Expense",
+							"Other Income",
+							"Other Expense",
+						},
+					)
+				</div>
+
+				<div class="mt-6 flex items-center justify-end">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+						Create Account
+					</button>
+				</div>
+			</div>
+		</form>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">All Accounts</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Code</th>
+							<th class="py-3 pr-4">Name</th>
+							<th class="py-3 pr-4">Type</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						for _, a := range vm.Accounts {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4 font-medium">{ a.Code }</td>
+								<td class="py-3 pr-4">{ a.Name }</td>
+								<td class="py-3 pr-4">{ a.Type }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+

@@ -1,0 +1,128 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ AuditLog(vm AuditLogVM) {
+	@layout.Layout(
+		"GoBooks - Audit Log",
+		ui.SidebarVM{Active: "Audit Log", HasCompany: true},
+		bodyAuditLog(vm),
+	)
+}
+
+templ bodyAuditLog(vm AuditLogVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Audit Log</h1>
+		<p class="mt-2 text-text-muted2">Track who did what and when.</p>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<form method="get" action="/settings/audit-log" class="grid grid-cols-1 gap-4 md:grid-cols-6">
+				<div>
+					<label class="mb-1 block text-small font-medium uppercase tracking-wider text-text-muted">Keyword</label>
+					<input
+						type="text"
+						name="q"
+						value={ vm.FilterQ }
+						placeholder="action/entity/details"
+						class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+					/>
+				</div>
+				<div>
+					<label class="mb-1 block text-small font-medium uppercase tracking-wider text-text-muted">Action</label>
+					<select name="action" class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none">
+						<option value="">All actions</option>
+						for _, action := range vm.Actions {
+							<option value={ action } selected?={ action == vm.FilterAction }>{ action }</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label class="mb-1 block text-small font-medium uppercase tracking-wider text-text-muted">Entity</label>
+					<select name="entity" class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none">
+						<option value="">All entities</option>
+						for _, entity := range vm.Entities {
+							<option value={ entity } selected?={ entity == vm.FilterEntity }>{ entity }</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label class="mb-1 block text-small font-medium uppercase tracking-wider text-text-muted">From</label>
+					<input
+						type="date"
+						name="from"
+						value={ vm.FilterFrom }
+						class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+					/>
+				</div>
+				<div>
+					<label class="mb-1 block text-small font-medium uppercase tracking-wider text-text-muted">To</label>
+					<input
+						type="date"
+						name="to"
+						value={ vm.FilterTo }
+						class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+					/>
+				</div>
+				<div class="flex items-end gap-2">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover">Apply</button>
+					<a href="/settings/audit-log" class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text-muted3 hover:bg-background">Reset</a>
+				</div>
+			</form>
+		</div>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<div class="mb-4 text-body text-text-muted2">
+				Showing page { Uitoa(uint(vm.Page)) } (total { Uitoa(uint(vm.TotalCount)) } records)
+			</div>
+			<div class="overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Time</th>
+							<th class="py-3 pr-4">Action</th>
+							<th class="py-3 pr-4">Entity</th>
+							<th class="py-3 pr-4">Entity ID</th>
+							<th class="py-3 pr-4">Actor</th>
+							<th class="py-3 pr-0">Details</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						for _, a := range vm.Items {
+							<tr class="border-b border-border-subtle align-top">
+								<td class="py-3 pr-4 whitespace-nowrap">{ a.CreatedAt.Format("2006-01-02 15:04:05") }</td>
+								<td class="py-3 pr-4 font-medium">{ a.Action }</td>
+								<td class="py-3 pr-4">{ a.EntityType }</td>
+								<td class="py-3 pr-4">{ Uitoa(a.EntityID) }</td>
+								<td class="py-3 pr-4">{ a.Actor }</td>
+								<td class="py-3 pr-0 text-small text-text-muted3 break-all">{ a.DetailsJSON }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<div class="mt-4 flex items-center justify-between">
+				<form method="get" action="/settings/audit-log">
+					<input type="hidden" name="q" value={ vm.FilterQ }/>
+					<input type="hidden" name="action" value={ vm.FilterAction }/>
+					<input type="hidden" name="entity" value={ vm.FilterEntity }/>
+					<input type="hidden" name="from" value={ vm.FilterFrom }/>
+					<input type="hidden" name="to" value={ vm.FilterTo }/>
+					<input type="hidden" name="page" value={ Uitoa(uint(vm.PrevPage)) }/>
+					<button type="submit" class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text-muted3 hover:bg-background" disabled?={ !vm.HasPrev }>Previous</button>
+				</form>
+				<form method="get" action="/settings/audit-log">
+					<input type="hidden" name="q" value={ vm.FilterQ }/>
+					<input type="hidden" name="action" value={ vm.FilterAction }/>
+					<input type="hidden" name="entity" value={ vm.FilterEntity }/>
+					<input type="hidden" name="from" value={ vm.FilterFrom }/>
+					<input type="hidden" name="to" value={ vm.FilterTo }/>
+					<input type="hidden" name="page" value={ Uitoa(uint(vm.NextPage)) }/>
+					<button type="submit" class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text-muted3 hover:bg-background" disabled?={ !vm.HasNext }>Next</button>
+				</form>
+			</div>
+		</div>
+	</div>
+}
+

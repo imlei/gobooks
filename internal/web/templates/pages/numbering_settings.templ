@@ -1,0 +1,162 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/numbering"
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ NumberingSettings(vm NumberingSettingsVM) {
+	@layout.Layout(
+		"GoBooks - Numbering",
+		ui.SidebarVM{Active: "Numbering Settings", HasCompany: vm.HasCompany},
+		bodyNumberingSettings(vm),
+	)
+}
+
+templ bodyNumberingSettings(vm NumberingSettingsVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Numbering</h1>
+		<p class="mt-2 text-text-muted2 max-w-3xl">
+			Configure how <span class="font-medium text-text">business display numbers</span> are suggested
+			(prefix, sequence, and padding). Internal system identifiers and immutable entity numbers
+			(such as EN… references) are assigned by the backend and are not edited here.
+		</p>
+		<p class="mt-3 text-small text-text-muted max-w-3xl">
+			Bill numbers are vendor-scoped and usually entered manually—automatic sequence defaults for bills are not included yet.
+		</p>
+
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Display numbering settings saved.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="post" action="/settings/numbering" class="mt-6 space-y-6" id="numbering-form">
+			<div class="rounded-lg border border-border bg-surface overflow-hidden">
+				<div class="border-b border-border bg-background px-4 py-3">
+					<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Display numbering rules</div>
+					<p class="mt-1 text-small text-text-muted2">Preview updates as you type. Saving writes to local app data for future enforcement.</p>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="w-full min-w-[880px] text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted border-b border-border">
+							<tr>
+								<th class="py-3 pl-4 pr-4 w-[18%]">Module name</th>
+								<th class="py-3 pr-4 w-[14%]">Prefix</th>
+								<th class="py-3 pr-4 w-[11%]">Next number</th>
+								<th class="py-3 pr-4 w-[11%]">Padding length</th>
+								<th class="py-3 pr-4 w-[18%]">Preview</th>
+								<th class="py-3 pr-4 w-[14%]">Enabled</th>
+							</tr>
+						</thead>
+						<tbody class="text-text">
+							for _, r := range vm.Rules {
+								<tr
+									class="border-b border-border-subtle align-top numbering-row"
+									data-module-key={ r.ModuleKey }
+								>
+									<td class="py-4 pl-4 pr-4">
+										<div class="font-medium text-text">{ r.ModuleName }</div>
+										<div class="mt-1 text-small text-text-muted">{ r.ModuleKey }</div>
+									</td>
+									<td class="py-4 pr-4">
+										<input
+											type="text"
+											name={ "rules[" + r.ModuleKey + "][prefix]" }
+											value={ r.Prefix }
+											autocomplete="off"
+											class="w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+											oninput="window.gobooksNumberingPreviewRow(this.closest('tr'))"
+										/>
+									</td>
+									<td class="py-4 pr-4">
+										<input
+											type="number"
+											name={ "rules[" + r.ModuleKey + "][next_number]" }
+											value={ Itoa(r.NextNumber) }
+											min="0"
+											step="1"
+											class="w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+											oninput="window.gobooksNumberingPreviewRow(this.closest('tr'))"
+										/>
+									</td>
+									<td class="py-4 pr-4">
+										<input
+											type="number"
+											name={ "rules[" + r.ModuleKey + "][padding_length]" }
+											value={ Itoa(r.PaddingLength) }
+											min="0"
+											max="20"
+											step="1"
+											class="w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+											oninput="window.gobooksNumberingPreviewRow(this.closest('tr'))"
+										/>
+									</td>
+									<td class="py-4 pr-4">
+										<div class="rounded-md border border-border-input bg-background px-3 py-2 font-mono text-body text-text js-numbering-preview">
+											{ numbering.FormatPreview(r.Prefix, r.NextNumber, r.PaddingLength) }
+										</div>
+									</td>
+									<td class="py-4 pr-4">
+										<label class="inline-flex items-center gap-2 cursor-pointer select-none">
+											<input
+												type="checkbox"
+												name={ "rules[" + r.ModuleKey + "][enabled]" }
+												value="true"
+												checked?={ r.Enabled }
+												class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+											/>
+											<span class="text-small text-text-muted2">Use for suggestions</span>
+										</label>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<div class="rounded-lg border border-border bg-surface p-4 text-small text-text-muted2">
+				<p>
+					<span class="font-medium text-text">Internal identity</span> (technical IDs and global immutable entity numbers)
+					are never configured on this page. They remain system-generated and stable for audit and tracing.
+				</p>
+			</div>
+
+			<div class="flex items-center justify-end gap-3">
+				@ui.ButtonPrimary("Save numbering rules", "submit", false)
+			</div>
+		</form>
+
+		<script>
+			function gobooksPadNumber(n, pad) {
+				const i = parseInt(n, 10);
+				if (Number.isNaN(i) || i < 0) return "0";
+				const p = Math.max(0, Math.min(20, parseInt(pad, 10) || 0));
+				if (p <= 0) return String(i);
+				return String(i).padStart(p, "0");
+			}
+			window.gobooksNumberingPreviewRow = function (tr) {
+				if (!tr) return;
+				const key = tr.getAttribute("data-module-key");
+				if (!key) return;
+				const p = tr.querySelector('input[name="rules[' + key + '][prefix]"]');
+				const n = tr.querySelector('input[name="rules[' + key + '][next_number]"]');
+				const pad = tr.querySelector('input[name="rules[' + key + '][padding_length]"]');
+				const out = tr.querySelector(".js-numbering-preview");
+				if (!p || !n || !pad || !out) return;
+				const prefix = (p.value || "");
+				const num = gobooksPadNumber(n.value, pad.value);
+				out.textContent = prefix + num;
+			};
+			document.querySelectorAll("tr.numbering-row").forEach(function (tr) {
+				window.gobooksNumberingPreviewRow(tr);
+			});
+		</script>
+	</div>
+}

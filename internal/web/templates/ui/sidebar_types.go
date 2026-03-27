@@ -1,0 +1,10 @@
+// 遵循产品需求 v1.0
+package ui
+
+// SidebarVM is a small view-model for consistent sidebar rendering.
+// Keeping it explicit helps keep UI behavior predictable.
+type SidebarVM struct {
+	Active     string
+	HasCompany bool
+}
+

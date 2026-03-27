@@ -1,0 +1,33 @@
+# 遵循产品需求 v1.0
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gobooks
+      POSTGRES_PASSWORD: gobooks
+      POSTGRES_DB: gobooks
+    ports:
+      - "5432:5432"
+    volumes:
+      - gobooks_pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      APP_ENV: dev
+      APP_ADDR: :6768
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: gobooks
+      DB_PASSWORD: gobooks
+      DB_NAME: gobooks
+      DB_SSLMODE: disable
+    ports:
+      - "6768:6768"
+
+volumes:
+  gobooks_pgdata:
+
