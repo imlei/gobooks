@@ -13,7 +13,8 @@ templ JournalEntry(vm JournalEntryVM) {
 }
 
 templ bodyJournalEntry(vm JournalEntryVM) {
-	<div class="max-w-[95%]" x-data="journalEntryDraft()" x-init="init()">
+	<div class="max-w-[95%]" x-data="gobooksJournalEntryDraft()" x-init="init()">
+		@JournalAccountsJSONScript(vm.AccountsDataJSON)
 		<div>
 			<div class="flex items-center justify-between">
 				<h1 class="text-title font-semibold">Journal Entry</h1>
@@ -77,14 +78,57 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 							<template x-for="(line, idx) in lines" :key="line.key">
 								<tr class="border-b border-border-subtle align-top">
 									<td class="py-3 pr-4">
-										<select :name="`lines[${idx}][account_id]`" x-model="line.account_id"
-											@change="recalc(); persist()"
-											class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
-											<option value="">-- Select --</option>
-											for _, a := range vm.Accounts {
-												<option value={ Uitoa(a.ID) }>{ a.Code } - { a.Name }</option>
-											}
-										</select>
+										<div class="relative">
+											<input type="hidden" :name="`lines[${idx}][account_id]`" :value="line.account_id"/>
+											<input
+												type="text"
+												autocomplete="off"
+												placeholder="Search by code or name…"
+												x-model="line.acctQuery"
+												@focus="openAcctPicker(line)"
+												@blur="onAcctBlur(line)"
+												@input="onAcctQueryInput(line)"
+												@keydown="onAcctKeydown(line, $event)"
+												class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+												:class="line.errors.account ? 'border-danger' : 'border-border-input'"
+											/>
+											<ul
+												x-show="line.acctOpen"
+												x-cloak
+												class="absolute left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-md border border-border-input bg-surface py-1 shadow-md"
+												role="listbox"
+											>
+												<template x-if="line.acctOpen && filteredAccounts(line).length === 0">
+													<li class="px-3 py-2 text-body text-text-muted2">
+														<span x-show="accounts.length === 0">No accounts available.</span>
+														<span x-show="accounts.length > 0">No matching accounts</span>
+													</li>
+												</template>
+												<template x-for="(acc, li) in filteredAccounts(line)" :key="acc.id">
+													<li
+														role="option"
+														@mousedown.prevent="selectAccount(line, acc)"
+														class="cursor-pointer px-3 py-2 text-body hover:bg-background"
+														:class="line.acctHi === li ? 'bg-primary/10' : ''"
+													>
+														<div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+															<span class="font-mono text-small">
+																<template x-for="(seg, si) in highlightSegments(acc.code, line.acctQuery)" :key="'c' + si">
+																	<span :class="seg.em ? 'font-semibold text-primary' : ''" x-text="seg.text"></span>
+																</template>
+															</span>
+															<span class="text-text-muted3">·</span>
+															<span class="min-w-0 flex-1">
+																<template x-for="(seg, si) in highlightSegments(acc.name, line.acctQuery)" :key="'n' + si">
+																	<span :class="seg.em ? 'font-semibold text-primary' : ''" x-text="seg.text"></span>
+																</template>
+															</span>
+														</div>
+														<p class="mt-0.5 truncate text-small text-text-muted3" x-text="acc.class" x-show="acc.class"></p>
+													</li>
+												</template>
+											</ul>
+										</div>
 										<div class="mt-1 text-small text-danger" x-show="line.errors.account" x-text="line.errors.account"></div>
 									</td>
 									<td class="py-3 pr-4">
@@ -167,179 +211,5 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 		</form>
 	</div>
 
-	<script>
-		function journalEntryDraft() {
-			return {
-				header: { entry_date: "", journal_no: "" },
-				lines: [],
-				totals: { debits: 0, credits: 0 },
-				difference: 0,
-				diffOk: false,
-				canSave: false,
-				primaryError: "",
-					recalcRunning: false,
-
-				init() {
-					const MAX_LINES = 50;
-					const today = new Date().toISOString().slice(0, 10);
-					this.header.entry_date = today;
-
-					// If the server says we saved successfully, clear the draft.
-					if (new URLSearchParams(window.location.search).get("saved") === "1") {
-						localStorage.removeItem("gobooks:journalDraft:v1");
-					}
-
-					// Load draft from localStorage so refresh doesn't lose data.
-					const raw = localStorage.getItem("gobooks:journalDraft:v1");
-					if (raw) {
-						try {
-							const d = JSON.parse(raw);
-							if (d && d.header && Array.isArray(d.lines)) {
-								this.header = { ...this.header, ...d.header };
-								this.lines = d.lines.map(l => this.normalizeLine(l));
-								if (this.lines.length > MAX_LINES) {
-									// Safety: prevent corrupted/old drafts from freezing the UI.
-									this.lines = this.lines.slice(0, MAX_LINES);
-								}
-							}
-						} catch (e) {}
-					}
-
-					// Ensure at least two lines exist.
-					if (this.lines.length < 2) {
-						this.lines = [this.newLine(), this.newLine()];
-					}
-
-					this.recalc();
-					this.persist();
-					this.$watch("header", () => this.persist(), { deep: true });
-				},
-
-				persist() {
-					localStorage.setItem("gobooks:journalDraft:v1", JSON.stringify({ header: this.header, lines: this.lines }));
-				},
-
-				newLine() {
-					return this.normalizeLine({ key: crypto.randomUUID(), account_id: "", debit: "", credit: "", memo: "", party: "", errors: {} });
-				},
-
-				normalizeLine(l) {
-					return {
-						key: l.key || crypto.randomUUID(),
-						account_id: l.account_id || "",
-						debit: l.debit || "",
-						credit: l.credit || "",
-						memo: l.memo || "",
-						party: l.party || "",
-						errors: l.errors || {},
-					};
-				},
-
-				addLine() {
-					this.lines.push(this.newLine());
-					this.recalc();
-					this.persist();
-				},
-
-				removeLine(idx) {
-					if (this.lines.length <= 2) return;
-					this.lines.splice(idx, 1);
-					this.recalc();
-					this.persist();
-				},
-
-				onDebitInput(line) {
-					// Line-level rule: debit and credit cannot both have values.
-					if (line.debit && line.debit.trim() !== "") {
-						line.credit = "";
-					}
-					this.recalc();
-					this.persist();
-				},
-
-				onCreditInput(line) {
-					if (line.credit && line.credit.trim() !== "") {
-						line.debit = "";
-					}
-					this.recalc();
-					this.persist();
-				},
-
-				parseMoney(s) {
-					if (!s) return 0;
-					const n = Number(String(s).replace(/,/g, ""));
-					if (Number.isNaN(n) || n < 0) return null;
-					return n;
-				},
-
-				formatMoney(n) {
-					return (Math.round(n * 100) / 100).toFixed(2);
-				},
-
-				recalc() {
-					if (this.recalcRunning) return;
-					this.recalcRunning = true;
-					try {
-					let deb = 0, cred = 0;
-					let validLines = 0;
-					this.primaryError = "";
-					this.difference = 0;
-					this.diffOk = false;
-
-					for (const line of this.lines) {
-						line.errors = {};
-
-						const d = this.parseMoney(line.debit);
-						const c = this.parseMoney(line.credit);
-						const hasAmount = (d && d > 0) || (c && c > 0);
-
-						if (line.account_id === "" && hasAmount) {
-							line.errors.account = "Select an account.";
-						}
-
-						if (d === null || c === null) {
-							line.errors.amount = "Amounts must be non-negative numbers.";
-							continue;
-						}
-
-						if (d > 0 && c > 0) {
-							line.errors.amount = "Debit and credit cannot both be set.";
-							continue;
-						}
-
-						if (d > 0) deb += d;
-						if (c > 0) cred += c;
-
-						// A "valid" line means: has account + has a debit OR credit.
-						if (line.account_id !== "" && ((d && d > 0) || (c && c > 0))) {
-							validLines++;
-						}
-					}
-
-					this.totals.debits = deb;
-					this.totals.credits = cred;
-
-					this.difference = deb - cred;
-					// Diff ok only checks balance; canSave also requires at least 2 valid lines.
-					this.diffOk = Math.abs(this.difference) < 0.0001;
-					this.canSave = this.diffOk && validLines >= 2 && deb > 0;
-
-					if (!this.canSave) {
-						if (validLines < 2) this.primaryError = "At least 2 valid lines are required.";
-						else if (!this.diffOk) this.primaryError = "Total debits must equal total credits.";
-					}
-					} finally {
-						this.recalcRunning = false;
-					}
-				},
-
-				beforeSubmit(e) {
-					this.recalc();
-					if (!this.canSave) {
-						e.preventDefault();
-					}
-				},
-			};
-		}
-	</script>
+	<script src="/static/journal_entry.js?v=1"></script>
 }

@@ -6,6 +6,8 @@ function gobooksAccountDrawerSuggest() {
     codeLen: 4,
     companyId: 0,
     parentAccountId: 0,
+    selectedRoot: "",
+    selectedDetail: "",
     localErr: "",
     prefixErr: "",
     prefixMap: {},
@@ -38,10 +40,21 @@ function gobooksAccountDrawerSuggest() {
       } catch (e) {
         this.detailByRoot = {};
       }
+      this.selectedRoot = el.dataset.initialRoot || "";
+      this.selectedDetail = el.dataset.initialDetail || "";
     },
     detailList() {
-      const r = this.$refs.rootSelect?.value || "";
-      return this.detailByRoot[r] || [];
+      return this.detailByRoot[this.selectedRoot] || [];
+    },
+    onRootChange(val) {
+      this.selectedRoot = val;
+      this.selectedDetail = "";
+      if (this.$refs.detailSelect) this.$refs.detailSelect.value = "";
+      this.validate(this.$refs.codeInput?.value || "");
+    },
+    onDetailChange(val) {
+      this.selectedDetail = val;
+      this.validate(this.$refs.codeInput?.value || "");
     },
     validate(v) {
       if (this.mode !== "create") return;
@@ -97,8 +110,14 @@ function gobooksAccountDrawerSuggest() {
     async fetchSuggest() {
       const root = this.$refs.rootSelect?.value;
       const detail = this.$refs.detailSelect?.value;
-      if (!root || !detail) {
-        this.sugError = "Select root and detail type first.";
+      if (!root) {
+        this.sugError = "Select root type first.";
+        this.sug = null;
+        this.aiHint = "";
+        return;
+      }
+      if (!detail) {
+        this.sugError = "Select detail type first.";
         this.sug = null;
         this.aiHint = "";
         return;
@@ -135,8 +154,13 @@ function gobooksAccountDrawerSuggest() {
     async fetchSuggestAI() {
       const root = this.$refs.rootSelect?.value;
       const detail = this.$refs.detailSelect?.value;
-      if (!root || !detail) {
-        this.sugError = "Select root and detail type first.";
+      if (!root) {
+        this.sugError = "Select root type first.";
+        this.aiHint = "";
+        return;
+      }
+      if (!detail) {
+        this.sugError = "Select detail type first.";
         this.aiHint = "";
         return;
       }
@@ -224,10 +248,11 @@ function gobooksAccountDrawerSuggest() {
       return c.charAt(0).toUpperCase() + c.slice(1);
     },
     helperHint() {
-      const root = this.$refs.rootSelect?.value;
-      const detail = this.$refs.detailSelect?.value;
-      if (!root || !detail) {
-        return "Select root and detail, then use Suggest or Suggest with AI. Nothing is applied until you choose Apply.";
+      if (!this.selectedRoot) {
+        return "Select root and detail type, then use Suggest or Suggest with AI. Nothing is applied until you choose Apply.";
+      }
+      if (!this.selectedDetail) {
+        return "Select detail type, then use Suggest or Suggest with AI. Nothing is applied until you choose Apply.";
       }
       return "Rule-based suggestions, or optional AI enhancement (requires AI Connect). Nothing is applied until you choose Apply.";
     },

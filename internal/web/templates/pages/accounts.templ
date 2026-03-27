@@ -189,7 +189,7 @@ templ accountsRootDetailSelectsCreate(vm AccountsVM) {
 			<select
 				name="root_account_type"
 				x-ref="rootSelect"
-				@change="$refs.detailSelect.value=''; validate($refs.codeInput?.value || '')"
+				@change="onRootChange($event.target.value)"
 				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
 			>
 				<option value="">-- Select --</option>
@@ -202,7 +202,7 @@ templ accountsRootDetailSelectsCreate(vm AccountsVM) {
 			<select
 				name="root_account_type"
 				x-ref="rootSelect"
-				@change="$refs.detailSelect.value=''; validate($refs.codeInput?.value || '')"
+				@change="onRootChange($event.target.value)"
 				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 			>
 				<option value="">-- Select --</option>
@@ -218,7 +218,7 @@ templ accountsRootDetailSelectsCreate(vm AccountsVM) {
 			<select
 				name="detail_account_type"
 				x-ref="detailSelect"
-				@change="validate($refs.codeInput?.value || '')"
+				@change="onDetailChange($event.target.value)"
 				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
 			>
 				<option value="">-- Select --</option>
@@ -231,7 +231,7 @@ templ accountsRootDetailSelectsCreate(vm AccountsVM) {
 			<select
 				name="detail_account_type"
 				x-ref="detailSelect"
-				@change="validate($refs.codeInput?.value || '')"
+				@change="onDetailChange($event.target.value)"
 				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 			>
 				<option value="">-- Select --</option>
@@ -387,6 +387,8 @@ templ accountsEditDrawerForm(vm AccountsVM) {
 			data-company-id={ Uitoa(vm.ActiveCompanyID) }
 			data-digit-len={ ui.IntString(AccountsEffectiveCodeLen(vm)) }
 			data-parent-account-id="0"
+			data-initial-root={ vm.Root }
+			data-initial-detail={ vm.Detail }
 			x-data="gobooksAccountDrawerSuggest()"
 		>
 			<div>
@@ -624,6 +626,6 @@ templ bodyAccounts(vm AccountsVM) {
 		} else {
 			@ui.RightDrawerPanel("accountDrawer", "accounts-drawer-title", "New Account", "Create a new chart of accounts entry.", accountsCreateDrawerForm(vm))
 		}
-		<script src="/static/accounts_drawer.js?v=5"></script>
+		<script src="/static/accounts_drawer.js?v=7"></script>
 	</div>
 }

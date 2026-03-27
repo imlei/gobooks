@@ -8,12 +8,12 @@ type JournalEntryVM struct {
 	HasCompany bool
 
 	// Dropdown data
-	Accounts   []models.Account
-	Customers  []models.Customer
-	Vendors    []models.Vendor
+	Accounts         []models.Account
+	AccountsDataJSON string // script-safe JSON for account combobox (id, code, name, class)
+	Customers        []models.Customer
+	Vendors          []models.Vendor
 
 	// UI messages
 	FormError string
 	Saved     bool
 }
-
