@@ -13,7 +13,8 @@ func SectionKeyForActivePage(active string) string {
 		return "contacts"
 	case "Bank Reconcile", "Receive Payment", "Pay Bills":
 		return "banking"
-	case "AI Connect Settings", "Members Settings", "Audit Log":
+	case "AI Connect Settings", "Members Settings", "Audit Log", "Products & Services":
+		// "Products & Services" 已移至 Settings > Company，访问时保持 Settings 区块展开
 		return "settings"
 	default:
 		// Any /settings/company/* page uses Active values like "Company Hub", "Company Profile", …

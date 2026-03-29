@@ -13,7 +13,7 @@ templ JournalEntry(vm JournalEntryVM) {
 }
 
 templ bodyJournalEntry(vm JournalEntryVM) {
-	<div class="max-w-[95%]" x-data="gobooksJournalEntryDraft()" x-init="init()">
+	<div class="max-w-[95%]" x-data="gobooksJournalEntryDraft()" x-init="init()" data-company-id={ Uitoa(vm.ActiveCompanyID) }>
 		@JournalAccountsJSONScript(vm.AccountsDataJSON)
 		<div>
 			<div class="flex items-center justify-between">
@@ -63,8 +63,8 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 					</button>
 				</div>
 
-				<div class="mt-4 overflow-x-auto w-[95%]">
-					<table class="w-full text-left text-body">
+				<div class="mt-4 w-[95%] overflow-x-auto overflow-y-visible">
+					<table class="w-full table-fixed text-left text-body">
 						<thead class="text-small uppercase tracking-wider text-text-muted">
 							<tr class="border-b border-border">
 								<th class="py-3 pr-4 w-[28%]">Account</th>
@@ -77,8 +77,9 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 						<tbody>
 							<template x-for="(line, idx) in lines" :key="line.key">
 								<tr class="border-b border-border-subtle align-top">
-									<td class="py-3 pr-4">
-										<div class="relative">
+									<td class="w-[28%] min-w-0 max-w-[28%] overflow-visible py-3 pr-4 align-top">
+										<!-- Anchor: only this block is position:relative; dropdown is absolutely positioned inside it (not td/table). -->
+										<div class="relative isolate z-0 block w-full min-w-0 max-w-full">
 											<input type="hidden" :name="`lines[${idx}][account_id]`" :value="line.account_id"/>
 											<input
 												type="text"
@@ -89,17 +90,17 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 												@blur="onAcctBlur(line)"
 												@input="onAcctQueryInput(line)"
 												@keydown="onAcctKeydown(line, $event)"
-												class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+												class="block w-full min-w-0 max-w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 												:class="line.errors.account ? 'border-danger' : 'border-border-input'"
 											/>
 											<ul
 												x-show="line.acctOpen"
 												x-cloak
-												class="absolute left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-md border border-border-input bg-surface py-1 shadow-md"
+												class="absolute inset-x-0 top-full z-40 mt-0.5 max-h-48 min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-md border border-border-input bg-surface py-0.5 shadow-md"
 												role="listbox"
 											>
 												<template x-if="line.acctOpen && filteredAccounts(line).length === 0">
-													<li class="px-3 py-2 text-body text-text-muted2">
+													<li class="px-2 py-1.5 text-small text-text-muted2">
 														<span x-show="accounts.length === 0">No accounts available.</span>
 														<span x-show="accounts.length > 0">No matching accounts</span>
 													</li>
@@ -108,23 +109,27 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 													<li
 														role="option"
 														@mousedown.prevent="selectAccount(line, acc)"
-														class="cursor-pointer px-3 py-2 text-body hover:bg-background"
+														class="flex cursor-pointer items-center justify-between gap-2 px-2 py-1 text-small leading-snug hover:bg-background"
 														:class="line.acctHi === li ? 'bg-primary/10' : ''"
 													>
-														<div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-															<span class="font-mono text-small">
+														<div class="min-w-0 flex-1 truncate">
+															<span class="font-mono font-medium tabular-nums text-text">
 																<template x-for="(seg, si) in highlightSegments(acc.code, line.acctQuery)" :key="'c' + si">
 																	<span :class="seg.em ? 'font-semibold text-primary' : ''" x-text="seg.text"></span>
 																</template>
 															</span>
-															<span class="text-text-muted3">·</span>
-															<span class="min-w-0 flex-1">
+															<span class="text-text-muted3"> - </span>
+															<span class="text-text">
 																<template x-for="(seg, si) in highlightSegments(acc.name, line.acctQuery)" :key="'n' + si">
 																	<span :class="seg.em ? 'font-semibold text-primary' : ''" x-text="seg.text"></span>
 																</template>
 															</span>
 														</div>
-														<p class="mt-0.5 truncate text-small text-text-muted3" x-text="acc.class" x-show="acc.class"></p>
+														<span
+															class="max-w-[42%] shrink-0 truncate pl-1 text-right text-small text-text-muted3"
+															x-text="acc.class"
+															x-show="acc.class"
+														></span>
 													</li>
 												</template>
 											</ul>
@@ -211,5 +216,5 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 		</form>
 	</div>
 
-	<script src="/static/journal_entry.js?v=2"></script>
+	<script src="/static/journal_entry.js?v=7"></script>
 }

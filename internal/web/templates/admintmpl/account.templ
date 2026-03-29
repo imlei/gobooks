@@ -1,0 +1,74 @@
+// 遵循产品需求 v1.0
+package admintmpl
+
+// AdminAccountVM 是 SysAdmin 自助账户页的视图模型。
+type AdminAccountVM struct {
+	AdminEmail           string
+	Flash                string
+	CurrentPasswordError string
+	NewPasswordError     string
+	ConfirmError         string
+	FormError            string
+}
+
+templ AdminAccount(vm AdminAccountVM) {
+	@adminLayout("Account", vm.AdminEmail, bodyAdminAccount(vm))
+}
+
+templ bodyAdminAccount(vm AdminAccountVM) {
+	@adminPageHeader("My Account", "Manage your own SysAdmin credentials.")
+	@adminFlashBanner(vm.Flash)
+
+	<!-- 自助密码修改 -->
+	<div class="rounded-lg border border-border bg-surface p-6 max-w-lg">
+		<h2 class="text-section font-semibold text-text mb-4">Change Password</h2>
+		<p class="mb-4 text-small text-text-muted2">
+			You are logged in as <span class="font-mono font-medium text-text">{ vm.AdminEmail }</span>.
+			A successful password change revokes all previous SysAdmin sessions and refreshes this browser session.
+		</p>
+		if vm.FormError != "" {
+			<div class="mb-4 rounded-md border border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+		<form method="post" action="/admin/account/change-password" class="space-y-4">
+			<div>
+				<label class="mb-1 block text-small font-medium text-text-muted uppercase tracking-wider">Current Password</label>
+				<input
+					type="password"
+					name="current_password"
+					class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+				/>
+				if vm.CurrentPasswordError != "" {
+					<p class="mt-1 text-small text-danger-hover">{ vm.CurrentPasswordError }</p>
+				}
+			</div>
+			<div>
+				<label class="mb-1 block text-small font-medium text-text-muted uppercase tracking-wider">New Password</label>
+				<input
+					type="password"
+					name="new_password"
+					placeholder="Min 8 characters"
+					class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+				/>
+				if vm.NewPasswordError != "" {
+					<p class="mt-1 text-small text-danger-hover">{ vm.NewPasswordError }</p>
+				}
+			</div>
+			<div>
+				<label class="mb-1 block text-small font-medium text-text-muted uppercase tracking-wider">Confirm New Password</label>
+				<input
+					type="password"
+					name="confirm_password"
+					class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+				/>
+				if vm.ConfirmError != "" {
+					<p class="mt-1 text-small text-danger-hover">{ vm.ConfirmError }</p>
+				}
+			</div>
+			<div>
+				<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-white hover:bg-primary-hover">
+					Update Password
+				</button>
+			</div>
+		</form>
+	</div>
+}

@@ -27,6 +27,12 @@ func QueryResetTarget(db *gorm.DB) (ResetTarget, error) {
 // ApplicationTablesSQL is the exact DROP TABLE statement used by DropAllApplicationObjects.
 const ApplicationTablesSQL = `
 DROP TABLE IF EXISTS
+	bill_lines,
+	invoice_lines,
+	product_services,
+	tax_codes,
+	tax_components,
+	tax_agencies,
 	journal_lines,
 	journal_entries,
 	reconciliations,
@@ -42,7 +48,12 @@ DROP TABLE IF EXISTS
 	company_memberships,
 	sessions,
 	users,
-	companies
+	companies,
+	sysadmin_sessions,
+	sysadmin_users,
+	system_logs,
+	system_settings,
+	user_company_permissions
 CASCADE;
 `
 

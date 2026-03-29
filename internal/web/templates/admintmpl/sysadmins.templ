@@ -1,0 +1,162 @@
+// 遵循产品需求 v1.0
+package admintmpl
+
+import "gobooks/internal/models"
+
+// AdminSysadminRow 是系统管理员列表中的单行数据。
+type AdminSysadminRow struct {
+	User   models.SysadminUser
+	IsSelf bool // 当前登录用户自身（禁止停用自己）
+}
+
+// AdminSysadminsVM 是系统管理员管理页的视图模型。
+type AdminSysadminsVM struct {
+	AdminEmail    string
+	Items         []AdminSysadminRow
+	Flash         string
+	// 创建表单验证错误（POST 后重新渲染时使用）
+	FormEmail     string
+	EmailError    string
+	PasswordError string
+	ConfirmError  string
+	FormError     string
+}
+
+templ AdminSysadmins(vm AdminSysadminsVM) {
+	@adminLayout("SysAdmins", vm.AdminEmail, bodyAdminSysadmins(vm))
+}
+
+templ bodyAdminSysadmins(vm AdminSysadminsVM) {
+	@adminPageHeader("SysAdmin Accounts", "Manage system administrator accounts. Changes affect admin portal access only.")
+	@adminFlashBanner(vm.Flash)
+
+	<!-- 现有账户列表 -->
+	<div class="rounded-lg border border-border bg-surface overflow-hidden mb-8">
+		<div class="overflow-x-auto">
+			<table class="w-full text-left text-body">
+				<thead class="text-small uppercase tracking-wider text-text-muted border-b border-border bg-background">
+					<tr>
+						<th class="py-3 pl-4 pr-4">Email</th>
+						<th class="py-3 pr-4">Created</th>
+						<th class="py-3 pr-4">Status</th>
+						<th class="py-3 pr-4">Actions</th>
+					</tr>
+				</thead>
+				<tbody class="text-text">
+					if len(vm.Items) == 0 {
+						<tr>
+							<td colspan="4" class="py-6 pl-4 text-text-muted2">No sysadmin accounts found.</td>
+						</tr>
+					}
+					for _, row := range vm.Items {
+						<tr class={ sysadminRowClass(row) }>
+							<td class="py-3 pl-4 pr-4 font-mono text-small">
+								{ row.User.Email }
+								if row.IsSelf {
+									<span class="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-white">you</span>
+								}
+							</td>
+							<td class="py-3 pr-4 text-small text-text-muted2">{ row.User.CreatedAt.Format("2006-01-02") }</td>
+							<td class="py-3 pr-4">
+								if row.User.IsActive {
+									<span class="rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success">Active</span>
+								} else {
+									<span class="rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger-hover">Inactive</span>
+								}
+							</td>
+							<td class="py-3 pr-4 whitespace-nowrap">
+								<div class="flex items-center gap-3">
+									if !row.IsSelf {
+										if row.User.IsActive {
+											<form method="post" action={ "/admin/sysadmins/" + adminUint(row.User.ID) + "/deactivate" } onsubmit="return confirm('Deactivate this sysadmin? All their sessions will be revoked.');">
+												<button type="submit" class="text-small font-medium text-warning hover:text-warning-hover">Deactivate</button>
+											</form>
+										} else {
+											<form method="post" action={ "/admin/sysadmins/" + adminUint(row.User.ID) + "/reactivate" }>
+												<button type="submit" class="text-small font-medium text-success hover:text-success-hover">Reactivate</button>
+											</form>
+										}
+										<!-- 密码重置（内联展开，仅对其他账户显示） -->
+										<details class="inline">
+											<summary class="text-small font-medium text-primary hover:text-primary-hover cursor-pointer list-none">Reset password</summary>
+											<form method="post" action={ "/admin/sysadmins/" + adminUint(row.User.ID) + "/reset-password" } class="mt-2 flex items-center gap-2">
+												<input
+													type="password"
+													name="new_password"
+													placeholder="New password (min 8)"
+													class="rounded-md border border-border-input px-2 py-1 text-small outline-none focus:ring-2 focus:ring-primary-focus"
+												/>
+												<button type="submit" class="rounded-md bg-primary px-3 py-1 text-small font-medium text-white hover:bg-primary-hover">Set</button>
+											</form>
+										</details>
+									} else {
+										<a href="/admin/account" class="text-small font-medium text-primary hover:text-primary-hover">Change your password</a>
+									}
+								</div>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<!-- 创建新系统管理员 -->
+	<div class="rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text mb-4">Create New SysAdmin Account</h2>
+		if vm.FormError != "" {
+			<div class="mb-4 rounded-md border border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+		<form method="post" action="/admin/sysadmins/new" class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div>
+				<label class="mb-1 block text-small font-medium text-text-muted uppercase tracking-wider">Email</label>
+				<input
+					type="email"
+					name="email"
+					value={ vm.FormEmail }
+					placeholder="admin@example.com"
+					class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+				/>
+				if vm.EmailError != "" {
+					<p class="mt-1 text-small text-danger-hover">{ vm.EmailError }</p>
+				}
+			</div>
+			<div>
+				<label class="mb-1 block text-small font-medium text-text-muted uppercase tracking-wider">Password</label>
+				<input
+					type="password"
+					name="password"
+					placeholder="Min 8 characters"
+					class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+				/>
+				if vm.PasswordError != "" {
+					<p class="mt-1 text-small text-danger-hover">{ vm.PasswordError }</p>
+				}
+			</div>
+			<div>
+				<label class="mb-1 block text-small font-medium text-text-muted uppercase tracking-wider">Confirm Password</label>
+				<input
+					type="password"
+					name="confirm_password"
+					placeholder="Repeat password"
+					class="w-full rounded-md border border-border-input px-3 py-2 text-body text-text focus:border-primary focus:outline-none"
+				/>
+				if vm.ConfirmError != "" {
+					<p class="mt-1 text-small text-danger-hover">{ vm.ConfirmError }</p>
+				}
+			</div>
+			<div class="md:col-span-3">
+				<button type="submit" class="rounded-md bg-danger px-4 py-2 text-body font-semibold text-white hover:bg-danger-hover">
+					Create SysAdmin Account
+				</button>
+			</div>
+		</form>
+	</div>
+}
+
+func sysadminRowClass(row AdminSysadminRow) string {
+	if !row.User.IsActive {
+		return "border-b border-border-subtle bg-background opacity-70"
+	}
+	return "border-b border-border-subtle"
+}

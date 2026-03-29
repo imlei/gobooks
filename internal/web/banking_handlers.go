@@ -2,6 +2,7 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -228,7 +229,7 @@ WHERE jl.id IN ?
 	}
 	cid := companyID
 	uid := user.ID
-	_ = services.WriteAuditLogWithContext(s.DB, "banking.reconciliation.completed", "reconciliation", savedRecID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "banking.reconciliation.completed", "reconciliation", savedRecID, actor, map[string]any{
 		"account_id":      accountID,
 		"statement_date":  statementDateStr,
 		"line_count":      len(ids),
@@ -252,11 +253,12 @@ func (s *Server) handleReceivePaymentForm(c *fiber.Ctx) error {
 	accounts, _ := s.activeAccountsForCompany(companyID)
 
 	vm := pages.ReceivePaymentVM{
-		HasCompany: true,
-		Customers:  customers,
-		Accounts:   accounts,
-		Saved:      c.Query("saved") == "1",
-		EntryDate:  time.Now().Format("2006-01-02"),
+		HasCompany:       true,
+		Customers:        customers,
+		Accounts:         accounts,
+		Saved:            c.Query("saved") == "1",
+		EntryDate:        time.Now().Format("2006-01-02"),
+		OpenInvoicesJSON: buildOpenInvoicesJSON(s, companyID),
 	}
 
 	return pages.ReceivePayment(vm).Render(c.Context(), c)
@@ -280,19 +282,22 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 	entryDateRaw := strings.TrimSpace(c.FormValue("entry_date"))
 	bankIDRaw := strings.TrimSpace(c.FormValue("bank_account_id"))
 	arIDRaw := strings.TrimSpace(c.FormValue("ar_account_id"))
+	invoiceIDRaw := strings.TrimSpace(c.FormValue("invoice_id"))
 	amountRaw := strings.TrimSpace(c.FormValue("amount"))
 	memo := strings.TrimSpace(c.FormValue("memo"))
 
 	vm := pages.ReceivePaymentVM{
-		HasCompany:    true,
-		Customers:     customers,
-		Accounts:      accounts,
-		CustomerID:    customerIDRaw,
-		EntryDate:     entryDateRaw,
-		BankAccountID: bankIDRaw,
-		ARAccountID:   arIDRaw,
-		Amount:        amountRaw,
-		Memo:          memo,
+		HasCompany:       true,
+		Customers:        customers,
+		Accounts:         accounts,
+		OpenInvoicesJSON: buildOpenInvoicesJSON(s, companyID),
+		CustomerID:       customerIDRaw,
+		EntryDate:        entryDateRaw,
+		BankAccountID:    bankIDRaw,
+		ARAccountID:      arIDRaw,
+		InvoiceID:        invoiceIDRaw,
+		Amount:           amountRaw,
+		Memo:             memo,
 	}
 
 	custU64, err := services.ParseUint(customerIDRaw)
@@ -324,6 +329,14 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 		return pages.ReceivePayment(vm).Render(c.Context(), c)
 	}
 
+	var invoiceIDPtr *uint
+	if invoiceIDRaw != "" && invoiceIDRaw != "0" {
+		if invU64, err := services.ParseUint(invoiceIDRaw); err == nil && invU64 > 0 {
+			id := uint(invU64)
+			invoiceIDPtr = &id
+		}
+	}
+
 	var jeID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var err error
@@ -333,12 +346,13 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 			EntryDate:     entryDate,
 			BankAccountID: uint(bankU64),
 			ARAccountID:   uint(arU64),
+			InvoiceID:     invoiceIDPtr,
 			Amount:        amount,
 			Memo:          memo,
 		})
 		return err
 	}); err != nil {
-		vm.FormError = "Could not record payment. Please try again."
+		vm.FormError = "Could not record payment: " + err.Error()
 		return pages.ReceivePayment(vm).Render(c.Context(), c)
 	}
 
@@ -348,7 +362,7 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 	}
 	cid := companyID
 	uid := user.ID
-	_ = services.WriteAuditLogWithContext(s.DB, "payment.received", "journal_entry", jeID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "payment.received", "journal_entry", jeID, actor, map[string]any{
 		"customer_id": customerIDRaw,
 		"amount":      amount.StringFixed(2),
 		"entry_date":  entryDateRaw,
@@ -356,6 +370,39 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 	}, &cid, &uid)
 
 	return c.Redirect("/banking/receive-payment?saved=1", fiber.StatusSeeOther)
+}
+
+// buildOpenInvoicesJSON returns a JSON array of sent (open) invoices for the company,
+// used by the Receive Payment Alpine component to filter by customer.
+func buildOpenInvoicesJSON(s *Server, companyID uint) string {
+	type invJSON struct {
+		ID            uint   `json:"id"`
+		CustomerID    uint   `json:"customer_id"`
+		InvoiceNumber string `json:"invoice_number"`
+		Amount        string `json:"amount"`
+		DueDate       string `json:"due_date"`
+	}
+	var invoices []models.Invoice
+	_ = s.DB.Where("company_id = ? AND status = ?", companyID, models.InvoiceStatusSent).
+		Order("invoice_date asc").
+		Find(&invoices).Error
+
+	items := make([]invJSON, 0, len(invoices))
+	for _, inv := range invoices {
+		dueDate := ""
+		if inv.DueDate != nil {
+			dueDate = inv.DueDate.Format("2006-01-02")
+		}
+		items = append(items, invJSON{
+			ID:            inv.ID,
+			CustomerID:    inv.CustomerID,
+			InvoiceNumber: inv.InvoiceNumber,
+			Amount:        inv.Amount.StringFixed(2),
+			DueDate:       dueDate,
+		})
+	}
+	b, _ := json.Marshal(items)
+	return string(b)
 }
 
 func (s *Server) handlePayBillsForm(c *fiber.Ctx) error {
@@ -466,7 +513,7 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 	}
 	cid := companyID
 	uid := user.ID
-	_ = services.WriteAuditLogWithContext(s.DB, "bills.paid", "journal_entry", jeID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "bills.paid", "journal_entry", jeID, actor, map[string]any{
 		"vendor_id":  vendorIDRaw,
 		"amount":     amount.StringFixed(2),
 		"entry_date": entryDateRaw,

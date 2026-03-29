@@ -73,7 +73,7 @@ func (s *Server) handleNumberingSettingsPost(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContextDetails(s.DB, "settings.numbering.saved", "settings", companyID, actor, map[string]any{
+	services.TryWriteAuditLogWithContextDetails(s.DB, "settings.numbering.saved", "settings", companyID, actor, map[string]any{
 		"modules":    len(rules),
 		"company_id": companyID,
 	}, &cid, &uid, beforeRules, rules)

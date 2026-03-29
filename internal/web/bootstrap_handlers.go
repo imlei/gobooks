@@ -260,7 +260,7 @@ func (s *Server) handleBootstrapSubmit(c *fiber.Ctx) error {
 	cid := createdCompanyID
 	uid := createdUserID
 	actor := emailNorm
-	_ = services.WriteAuditLogWithContext(s.DB, "bootstrap.completed", "company", createdCompanyID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "bootstrap.completed", "company", createdCompanyID, actor, map[string]any{
 		"company_name": name,
 		"entity_type":  entityTypeRaw,
 		"company_id":   createdCompanyID,

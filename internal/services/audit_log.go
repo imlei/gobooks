@@ -4,6 +4,7 @@ package services
 import (
 	"encoding/json"
 
+	"gobooks/internal/logging"
 	"github.com/google/uuid"
 
 	"gobooks/internal/models"
@@ -15,6 +16,13 @@ import (
 // details can be any small map/struct that can be marshaled to JSON.
 func WriteAuditLog(tx *gorm.DB, action, entityType string, entityID uint, actor string, details any) error {
 	return WriteAuditLogWithContext(tx, action, entityType, entityID, actor, details, nil, nil)
+}
+
+// TryWriteAuditLog writes one audit row and emits an error log if persistence fails.
+func TryWriteAuditLog(tx *gorm.DB, action, entityType string, entityID uint, actor string, details any) {
+	if err := WriteAuditLog(tx, action, entityType, entityID, actor, details); err != nil {
+		logAuditWriteFailure(action, entityType, entityID, actor, err)
+	}
 }
 
 // WriteAuditLogWithContext saves one audit row with optional company and actor user (multi-tenant).
@@ -40,6 +48,13 @@ func WriteAuditLogWithContext(tx *gorm.DB, action, entityType string, entityID u
 		DetailsJSON: raw,
 	}
 	return tx.Create(&row).Error
+}
+
+// TryWriteAuditLogWithContext writes one audit row and emits an error log if persistence fails.
+func TryWriteAuditLogWithContext(tx *gorm.DB, action, entityType string, entityID uint, actor string, details any, companyID *uint, actorUserID *uuid.UUID) {
+	if err := WriteAuditLogWithContext(tx, action, entityType, entityID, actor, details, companyID, actorUserID); err != nil {
+		logAuditWriteFailure(action, entityType, entityID, actor, err)
+	}
 }
 
 // mergeDetailsWithBeforeAfter merges optional before/after snapshots into details JSON.
@@ -74,3 +89,19 @@ func WriteAuditLogWithContextDetails(tx *gorm.DB, action, entityType string, ent
 	return WriteAuditLogWithContext(tx, action, entityType, entityID, actor, merged, companyID, actorUserID)
 }
 
+// TryWriteAuditLogWithContextDetails writes one audit row and emits an error log if persistence fails.
+func TryWriteAuditLogWithContextDetails(tx *gorm.DB, action, entityType string, entityID uint, actor string, details any, companyID *uint, actorUserID *uuid.UUID, before, after any) {
+	if err := WriteAuditLogWithContextDetails(tx, action, entityType, entityID, actor, details, companyID, actorUserID, before, after); err != nil {
+		logAuditWriteFailure(action, entityType, entityID, actor, err)
+	}
+}
+
+func logAuditWriteFailure(action, entityType string, entityID uint, actor string, err error) {
+	logging.L().Error("audit log write failed",
+		"action", action,
+		"entity_type", entityType,
+		"entity_id", entityID,
+		"actor", actor,
+		"err", err,
+	)
+}

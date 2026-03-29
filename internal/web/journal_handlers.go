@@ -15,9 +15,10 @@ import (
 	"gobooks/internal/web/templates/pages"
 )
 
-func journalEntryPageVM(accounts []models.Account, customers []models.Customer, vendors []models.Vendor, formError string, saved bool) pages.JournalEntryVM {
+func journalEntryPageVM(companyID uint, accounts []models.Account, customers []models.Customer, vendors []models.Vendor, formError string, saved bool) pages.JournalEntryVM {
 	return pages.JournalEntryVM{
 		HasCompany:       true,
+		ActiveCompanyID:  companyID,
 		Accounts:         accounts,
 		AccountsDataJSON: pages.JournalAccountsDataJSON(accounts),
 		Customers:        customers,
@@ -37,6 +38,7 @@ func (s *Server) handleJournalEntryForm(c *fiber.Ctx) error {
 	if err != nil {
 		return pages.JournalEntry(pages.JournalEntryVM{
 			HasCompany:       true,
+			ActiveCompanyID:  companyID,
 			FormError:        "Could not load accounts.",
 			AccountsDataJSON: "[]",
 		}).Render(c.Context(), c)
@@ -47,7 +49,7 @@ func (s *Server) handleJournalEntryForm(c *fiber.Ctx) error {
 	var vendors []models.Vendor
 	_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vendors).Error
 
-	return pages.JournalEntry(journalEntryPageVM(accounts, customers, vendors, "", c.Query("saved") == "1")).Render(c.Context(), c)
+	return pages.JournalEntry(journalEntryPageVM(companyID, accounts, customers, vendors, "", c.Query("saved") == "1")).Render(c.Context(), c)
 }
 
 type postedLine struct {
@@ -78,12 +80,12 @@ func (s *Server) handleJournalEntryPost(c *fiber.Ctx) error {
 	journalNo := strings.TrimSpace(c.FormValue("journal_no"))
 
 	if entryDateRaw == "" {
-		return pages.JournalEntry(journalEntryPageVM(accounts, customers, vendors, "Date is required.", false)).Render(c.Context(), c)
+		return pages.JournalEntry(journalEntryPageVM(companyID, accounts, customers, vendors, "Date is required.", false)).Render(c.Context(), c)
 	}
 
 	entryDate, err := time.Parse("2006-01-02", entryDateRaw)
 	if err != nil {
-		return pages.JournalEntry(journalEntryPageVM(accounts, customers, vendors, "Date must be a valid date.", false)).Render(c.Context(), c)
+		return pages.JournalEntry(journalEntryPageVM(companyID, accounts, customers, vendors, "Date must be a valid date.", false)).Render(c.Context(), c)
 	}
 
 	re := regexp.MustCompile(`^lines\[(\d+)\]\[(account_id|debit|credit|memo|party)\]$`)
@@ -133,7 +135,7 @@ func (s *Server) handleJournalEntryPost(c *fiber.Ctx) error {
 
 	validLines, err := services.ValidateJournalLines(drafts)
 	if err != nil {
-		return pages.JournalEntry(journalEntryPageVM(accounts, customers, vendors, err.Error(), false)).Render(c.Context(), c)
+		return pages.JournalEntry(journalEntryPageVM(companyID, accounts, customers, vendors, err.Error(), false)).Render(c.Context(), c)
 	}
 
 	decimalZero := decimal.NewFromInt(0)
@@ -174,10 +176,10 @@ func (s *Server) handleJournalEntryPost(c *fiber.Ctx) error {
 
 		return tx.Create(&validLines).Error
 	}); err != nil {
-		return pages.JournalEntry(journalEntryPageVM(accounts, customers, vendors, "Could not save journal entry. Please try again.", false)).Render(c.Context(), c)
+		return pages.JournalEntry(journalEntryPageVM(companyID, accounts, customers, vendors, "Could not save journal entry. Please try again.", false)).Render(c.Context(), c)
 	}
 
-	_ = services.WriteAuditLogWithContext(s.DB, "journal.posted", "journal_entry", postedJEID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "journal.posted", "journal_entry", postedJEID, actor, map[string]any{
 		"journal_no": journalNo,
 		"line_count": len(validLines),
 		"entry_date": entryDateRaw,
@@ -293,7 +295,7 @@ func (s *Server) handleJournalEntryReverse(c *fiber.Ctx) error {
 	}
 	cid := companyID
 	uid := user.ID
-	_ = services.WriteAuditLogWithContext(s.DB, "journal.reversed", "journal_entry", reversedID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "journal.reversed", "journal_entry", reversedID, actor, map[string]any{
 		"original_id":  idU64,
 		"reverse_date": reverseDate.Format("2006-01-02"),
 		"company_id":   companyID,

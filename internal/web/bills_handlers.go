@@ -190,7 +190,7 @@ func (s *Server) handleBillCreate(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContext(s.DB, "bill.created", "bill", bill.ID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "bill.created", "bill", bill.ID, actor, map[string]any{
 		"bill_number": bill.BillNumber,
 		"vendor_id":   bill.VendorID,
 		"amount":      bill.Amount.StringFixed(2),

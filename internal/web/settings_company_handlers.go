@@ -167,7 +167,7 @@ func (s *Server) handleCompanyProfileSubmit(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContextDetails(s.DB, "settings.company.saved", "company", companyID, actor, map[string]any{
+	services.TryWriteAuditLogWithContextDetails(s.DB, "settings.company.saved", "company", companyID, actor, map[string]any{
 		"company_id": companyID,
 	}, &cid, &uid, before, after)
 
@@ -186,14 +186,3 @@ func (s *Server) handleCompanyTemplatesGet(c *fiber.Ctx) error {
 	}).Render(c.Context(), c)
 }
 
-func (s *Server) handleCompanySalesTaxGet(c *fiber.Ctx) error {
-	companyID, ok := ActiveCompanyIDFromCtx(c)
-	if !ok {
-		return c.Redirect("/select-company", fiber.StatusSeeOther)
-	}
-	_ = companyID
-	return pages.CompanySalesTax(pages.CompanySubpageVM{
-		HasCompany: true,
-		Breadcrumb: breadcrumbSettingsCompanySalesTax(),
-	}).Render(c.Context(), c)
-}

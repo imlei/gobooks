@@ -1,0 +1,154 @@
+// 遵循产品需求 v1.0
+// Package admintmpl 包含 SysAdmin 界面的 templ 模板。
+// 该包使用完全独立的 HTML 布局，与业务端 layout.templ 不共享任何组件。
+package admintmpl
+
+// adminLayout 是 SysAdmin 的 HTML 外壳。
+// 使用红色顶栏作为视觉警示，明确与业务界面区分。
+templ adminLayout(title string, adminEmail string, content templ.Component) {
+	<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } — GoBooks SysAdmin</title>
+			<link rel="stylesheet" href="/static/app.css?v=2"/>
+			<script>
+				(function () {
+					function readCookie(name) {
+						const prefix = name + "=";
+						const parts = document.cookie ? document.cookie.split("; ") : [];
+						for (const part of parts) {
+							if (part.indexOf(prefix) === 0) return decodeURIComponent(part.substring(prefix.length));
+						}
+						return "";
+					}
+
+					function csrfToken() {
+						return readCookie("gobooks_csrf");
+					}
+
+					document.addEventListener("submit", function (event) {
+						const form = event.target;
+						if (!(form instanceof HTMLFormElement)) return;
+						if ((form.method || "get").toLowerCase() === "get") return;
+
+						const token = csrfToken();
+						if (!token) return;
+
+						let input = form.querySelector('input[name="_csrf"]');
+						if (!input) {
+							input = document.createElement("input");
+							input.type = "hidden";
+							input.name = "_csrf";
+							form.appendChild(input);
+						}
+						input.value = token;
+					});
+				})();
+			</script>
+		</head>
+		<body class="bg-background text-text">
+			<!-- 管理员顶栏：使用危险红色背景，视觉上与业务界面明确区分 -->
+			<header class="bg-danger text-white">
+				<div class="flex items-center justify-between px-6 py-3">
+					<div class="flex items-center gap-6">
+						<span class="font-semibold tracking-wide text-body">⚙ GoBooks SysAdmin</span>
+						<nav class="hidden md:flex items-center gap-4 text-small">
+							<a href="/admin/dashboard" class="hover:underline opacity-90">Dashboard</a>
+							<a href="/admin/companies" class="hover:underline opacity-90">Companies</a>
+							<a href="/admin/users" class="hover:underline opacity-90">Users</a>
+							<a href="/admin/audit-logs" class="hover:underline opacity-90">Audit Logs</a>
+							<a href="/admin/runtime-logs" class="hover:underline opacity-90">Runtime Logs</a>
+							<a href="/admin/sysadmins" class="hover:underline opacity-90">SysAdmins</a>
+							<a href="/admin/system" class="hover:underline opacity-90">System</a>
+						</nav>
+					</div>
+					<div class="flex items-center gap-4 text-small">
+						<a href="/admin/account" class="opacity-75 hover:opacity-100 hover:underline">{ adminEmail }</a>
+						<form method="post" action="/admin/logout" class="inline">
+							<button type="submit" class="rounded border border-white/40 px-3 py-1 text-small hover:bg-danger-hover transition-colors">
+								Sign out
+							</button>
+						</form>
+					</div>
+				</div>
+			</header>
+			<!-- 主内容区 -->
+			<main class="p-6 max-w-7xl mx-auto">
+				@content
+			</main>
+		</body>
+	</html>
+}
+
+// adminFlashBanner 渲染 flash 消息条（成功 / 警告 / 错误）。
+templ adminFlashBanner(flash string) {
+	if flash == "deactivated" {
+		<div class="mb-4 rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-body text-warning">
+			Company has been deactivated. Existing sessions will be rejected on next request.
+		</div>
+	} else if flash == "reactivated" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Company has been reactivated successfully.
+		</div>
+	} else if flash == "password_reset" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Password has been reset. All existing sessions for this user have been revoked.
+		</div>
+	} else if flash == "password_too_short" {
+		<div class="mb-4 rounded-md border border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">
+			Password must be at least 8 characters.
+		</div>
+	} else if flash == "maintenance_on" {
+		<div class="mb-4 rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-body text-warning">
+			Maintenance mode is now ON. Business users will see the maintenance page.
+		</div>
+	} else if flash == "maintenance_off" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Maintenance mode is now OFF. Business users can access the application.
+		</div>
+	} else if flash == "restart_requested" {
+		<div class="mb-4 rounded-md border border-border bg-surface px-4 py-3 text-body text-text-muted2">
+			Restart signal acknowledged. In production, use your process manager (systemd / Docker) to restart the service.
+		</div>
+	} else if flash == "created" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Account created successfully.
+		</div>
+	} else if flash == "user_deactivated" {
+		<div class="mb-4 rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-body text-warning">
+			User has been deactivated. All sessions revoked.
+		</div>
+	} else if flash == "user_reactivated" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			User has been reactivated.
+		</div>
+	} else if flash == "cannot_self_deactivate" {
+		<div class="mb-4 rounded-md border border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">
+			You cannot deactivate your own account.
+		</div>
+	} else if flash == "last_admin" {
+		<div class="mb-4 rounded-md border border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">
+			Cannot deactivate the last active SysAdmin account.
+		</div>
+	} else if flash == "use_account_page" {
+		<div class="mb-4 rounded-md border border-border bg-surface px-4 py-3 text-body text-text-muted2">
+			To change your own password, use the Account page.
+		</div>
+	} else if flash == "password_changed" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Password changed successfully. All previous SysAdmin sessions have been revoked.
+		</div>
+	}
+}
+
+// adminPageHeader is a standard h1 + subtitle block for admin pages.
+templ adminPageHeader(title string, subtitle string) {
+	<div class="mb-6">
+		<h1 class="text-title font-semibold text-text">{ title }</h1>
+		if subtitle != "" {
+			<p class="mt-1 text-small text-text-muted2">{ subtitle }</p>
+		}
+	</div>
+}

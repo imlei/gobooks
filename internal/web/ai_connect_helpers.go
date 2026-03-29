@@ -1,27 +1,17 @@
 // 遵循产品需求 v1.0
 package web
 
-import (
-	"github.com/gofiber/fiber/v2"
+import "github.com/gofiber/fiber/v2"
 
-	"gobooks/internal/models"
-)
-
-// AIConnectEditableFromCtx is true when the active membership may change AI Connect settings (owner or admin).
+// AIConnectEditableFromCtx 返回当前成员是否有权修改 AI Connect 设置。
+// 依赖 ActionSettingsUpdate → PermManageSettings（owner / admin）。
 func AIConnectEditableFromCtx(c *fiber.Ctx) bool {
-	m := MembershipFromCtx(c)
-	if m == nil {
-		return false
-	}
-	switch m.Role {
-	case models.CompanyRoleOwner, models.CompanyRoleAdmin:
-		return true
-	default:
-		return false
-	}
+	return CanFromCtx(c, ActionSettingsUpdate)
 }
 
-// OwnerOrAdminFromCtx is true when the active membership is owner or admin (elevated company settings access).
+// OwnerOrAdminFromCtx 返回当前成员是否有成员管理权限（邀请 / 角色调整）。
+// 依赖 ActionMemberManage → PermManageMembers（owner / admin）。
+// 仅用于 UI 可见性判断；路由层的强制检查由 RequirePermission(ActionMemberManage) 负责。
 func OwnerOrAdminFromCtx(c *fiber.Ctx) bool {
-	return AIConnectEditableFromCtx(c)
+	return CanFromCtx(c, ActionMemberManage)
 }

@@ -17,7 +17,7 @@ const SessionCookieMaxAgeSec = 30 * 24 * 3600
 
 // setSessionCookie stores the opaque session token in a browser cookie.
 func setSessionCookie(c *fiber.Ctx, cfg config.Config, rawToken string, maxAgeSeconds int) {
-	sec := strings.EqualFold(cfg.Env, "production")
+	sec := strings.EqualFold(cfg.Env, "production") || strings.EqualFold(cfg.Env, "prod")
 	c.Cookie(&fiber.Cookie{
 		Name:     SessionCookieName,
 		Value:    rawToken,
@@ -31,7 +31,7 @@ func setSessionCookie(c *fiber.Ctx, cfg config.Config, rawToken string, maxAgeSe
 
 // clearSessionCookie removes the session cookie from the browser.
 func clearSessionCookie(c *fiber.Ctx, cfg config.Config) {
-	sec := strings.EqualFold(cfg.Env, "production")
+	sec := strings.EqualFold(cfg.Env, "production") || strings.EqualFold(cfg.Env, "prod")
 	c.Cookie(&fiber.Cookie{
 		Name:     SessionCookieName,
 		Value:    "",

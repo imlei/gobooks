@@ -144,7 +144,7 @@ func (s *Server) handleMembersInvitePost(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContext(s.DB, "invitation.created", "company_invitation", 0, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "invitation.created", "company_invitation", 0, actor, map[string]any{
 		"invitation_id": inv.ID.String(),
 		"email":         inv.Email,
 		"role":          string(inv.Role),

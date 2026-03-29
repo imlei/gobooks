@@ -32,6 +32,21 @@ import (
 	"gobooks/internal/repository"
 )
 
+// RequirePermission 允许请求继续，当且仅当当前成员角色能执行指定操作（依据 permissions.go 定义）。
+// 必须在 RequireMembership 之后使用。
+func (s *Server) RequirePermission(action string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		m := MembershipFromCtx(c)
+		if m == nil {
+			return c.Redirect("/select-company", fiber.StatusSeeOther)
+		}
+		if !CanPerformAction(string(m.Role), action) {
+			return fiber.NewError(fiber.StatusForbidden, "Forbidden")
+		}
+		return c.Next()
+	}
+}
+
 // Locals keys for Fiber c.Locals (auth pipeline).
 const (
 	LocalsSession           = "gobooks_auth_session"
@@ -173,6 +188,15 @@ func (s *Server) ResolveActiveCompany() fiber.Handler {
 			return c.Redirect("/select-company", fiber.StatusSeeOther)
 		}
 
+		// 检查公司是否仍处于活跃状态（SysAdmin 可将公司设为非活跃）
+		var company models.Company
+		if err := s.DB.Select("id, is_active").First(&company, chosen.CompanyID).Error; err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "database error")
+		}
+		if !company.IsActive {
+			return c.Status(fiber.StatusForbidden).SendString("This company has been suspended. Please contact support.")
+		}
+
 		c.Locals(LocalsActiveCompanyID, chosen.CompanyID)
 		c.Locals(LocalsCompanyMembership, chosen)
 		return c.Next()
@@ -180,10 +204,16 @@ func (s *Server) ResolveActiveCompany() fiber.Handler {
 }
 
 // RequireMembership ensures ResolveActiveCompany ran successfully (membership in context).
+// 额外规则：viewer 角色为只读，任何非 GET 请求一律返回 403。
+// 这是一道安全兜底：即使某个变更路由遗漏了 RequirePermission，viewer 也无法写入。
 func (s *Server) RequireMembership() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		if MembershipFromCtx(c) == nil {
+		m := MembershipFromCtx(c)
+		if m == nil {
 			return c.Redirect("/select-company", fiber.StatusSeeOther)
+		}
+		if m.Role == models.CompanyRoleViewer && c.Method() != fiber.MethodGet {
+			return fiber.NewError(fiber.StatusForbidden, "Forbidden")
 		}
 		return c.Next()
 	}

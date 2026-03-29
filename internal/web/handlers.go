@@ -16,6 +16,11 @@ import (
 )
 
 func (s *Server) handleDashboard(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
 	// Dashboard MVP: calculate a lightweight P&L + expenses breakdown and
 	// show recent revenue trend. We keep everything simple and non-dense.
 	now := time.Now()
@@ -31,12 +36,12 @@ func (s *Server) handleDashboard(c *fiber.Ctx) error {
 
 	vm := pages.DashboardVM{
 		HasCompany:   true,
-		RangeLabel:  "Last 30 days",
+		RangeLabel:   "Last 30 days",
 		RevenueTrend: []pages.RevenueTrendPointVM{},
 	}
 
 	// Profit & Loss summary (and expenses list are derived from the same report).
-	if report, err := services.IncomeStatementReport(s.DB, fromDate, toDate); err == nil {
+	if report, err := services.IncomeStatementReport(s.DB, companyID, fromDate, toDate); err == nil {
 		vm.PnL.Revenue = toMoneyVM(report.TotalRevenue)
 		// Expenses are typically outflows; show as negative so we can color red.
 		vm.PnL.Expenses = toMoneyVM(report.TotalExpenses.Neg())
@@ -64,7 +69,7 @@ func (s *Server) handleDashboard(c *fiber.Ctx) error {
 	for i := 2; i >= 0; i-- {
 		ms := monthStart.AddDate(0, -i, 0)
 		me := ms.AddDate(0, 1, -1)
-		rep, err := services.IncomeStatementReport(s.DB, ms, me)
+		rep, err := services.IncomeStatementReport(s.DB, companyID, ms, me)
 		if err != nil {
 			continue
 		}
@@ -79,7 +84,7 @@ func (s *Server) handleDashboard(c *fiber.Ctx) error {
 
 	// Right column: bank accounts list (best-effort MVP heuristic).
 	var assetAccounts []models.Account
-	if err := s.DB.Where("root_account_type = ?", models.RootAsset).Order("code asc").Limit(50).Find(&assetAccounts).Error; err == nil {
+	if err := s.DB.Where("company_id = ? AND root_account_type = ?", companyID, models.RootAsset).Order("code asc").Limit(50).Find(&assetAccounts).Error; err == nil {
 		bankAccounts := make([]models.Account, 0, len(assetAccounts))
 		for _, a := range assetAccounts {
 			if a.DetailAccountType == models.DetailBank || strings.Contains(strings.ToLower(a.Name), "bank") {
@@ -115,46 +120,56 @@ func (s *Server) handleSetupForm(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleTrialBalance(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
 	fromDate, toDate, fromStr, toStr, errMsg := parseReportRange(c.Query("from"), c.Query("to"))
 	if errMsg != "" {
 		return pages.TrialBalance(pages.TrialBalanceVM{
-			HasCompany: true,
-			From:       fromStr,
-			To:         toStr,
-			ActiveTab:  "trial",
-			Rows:       []services.TrialBalanceRow{},
+			HasCompany:   true,
+			From:         fromStr,
+			To:           toStr,
+			ActiveTab:    "trial",
+			Rows:         []services.TrialBalanceRow{},
 			TotalDebits:  "0.00",
 			TotalCredits: "0.00",
-			FormError:  errMsg,
+			FormError:    errMsg,
 		}).Render(c.Context(), c)
 	}
 
-	rows, totalDebits, totalCredits, err := services.TrialBalance(s.DB, fromDate, toDate)
+	rows, totalDebits, totalCredits, err := services.TrialBalance(s.DB, companyID, fromDate, toDate)
 	if err != nil {
 		return pages.TrialBalance(pages.TrialBalanceVM{
-			HasCompany: true,
-			From:       fromStr,
-			To:         toStr,
-			ActiveTab:  "trial",
-			Rows:       []services.TrialBalanceRow{},
+			HasCompany:   true,
+			From:         fromStr,
+			To:           toStr,
+			ActiveTab:    "trial",
+			Rows:         []services.TrialBalanceRow{},
 			TotalDebits:  "0.00",
 			TotalCredits: "0.00",
-			FormError:  "Could not run report.",
+			FormError:    "Could not run report.",
 		}).Render(c.Context(), c)
 	}
 
 	return pages.TrialBalance(pages.TrialBalanceVM{
-		HasCompany: true,
-		From:       fromStr,
-		To:         toStr,
-		ActiveTab:  "trial",
-		Rows:       rows,
+		HasCompany:   true,
+		From:         fromStr,
+		To:           toStr,
+		ActiveTab:    "trial",
+		Rows:         rows,
 		TotalDebits:  pages.Money(totalDebits),
 		TotalCredits: pages.Money(totalCredits),
 	}).Render(c.Context(), c)
 }
 
 func (s *Server) handleIncomeStatement(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
 	fromDate, toDate, fromStr, toStr, errMsg := parseReportRange(c.Query("from"), c.Query("to"))
 	if errMsg != "" {
 		return pages.IncomeStatement(pages.IncomeStatementVM{
@@ -167,7 +182,7 @@ func (s *Server) handleIncomeStatement(c *fiber.Ctx) error {
 		}).Render(c.Context(), c)
 	}
 
-	report, err := services.IncomeStatementReport(s.DB, fromDate, toDate)
+	report, err := services.IncomeStatementReport(s.DB, companyID, fromDate, toDate)
 	if err != nil {
 		return pages.IncomeStatement(pages.IncomeStatementVM{
 			HasCompany: true,
@@ -189,6 +204,11 @@ func (s *Server) handleIncomeStatement(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleBalanceSheet(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
 	asOfStr := strings.TrimSpace(c.Query("as_of"))
 	if asOfStr == "" {
 		asOfStr = time.Now().Format("2006-01-02")
@@ -206,7 +226,7 @@ func (s *Server) handleBalanceSheet(c *fiber.Ctx) error {
 		}).Render(c.Context(), c)
 	}
 
-	report, err := services.BalanceSheetReport(s.DB, asOf)
+	report, err := services.BalanceSheetReport(s.DB, companyID, asOf)
 	if err != nil {
 		return pages.BalanceSheet(pages.BalanceSheetVM{
 			HasCompany: true,
@@ -289,17 +309,17 @@ func (s *Server) handleSetupSubmit(c *fiber.Ctx) error {
 	accountCodeLengthRaw := strings.TrimSpace(c.FormValue("account_code_length"))
 
 	values := pages.SetupFormValues{
-		CompanyName:      name,
-		EntityType:       entityTypeRaw,
-		AddressLine:      addressLine,
-		City:             city,
-		Province:         province,
-		PostalCode:       postalCode,
-		Country:          country,
-		BusinessNumber:   businessNumber,
-		Industry:         industry,
-		IncorporatedDate: incorporatedDate,
-		FiscalYearEnd:    fiscalYearEnd,
+		CompanyName:       name,
+		EntityType:        entityTypeRaw,
+		AddressLine:       addressLine,
+		City:              city,
+		Province:          province,
+		PostalCode:        postalCode,
+		Country:           country,
+		BusinessNumber:    businessNumber,
+		Industry:          industry,
+		IncorporatedDate:  incorporatedDate,
+		FiscalYearEnd:     fiscalYearEnd,
 		AccountCodeLength: accountCodeLengthRaw,
 	}
 
@@ -366,10 +386,10 @@ func (s *Server) handleSetupSubmit(c *fiber.Ctx) error {
 		}).Render(c.Context(), c)
 	}
 	details := map[string]any{
-		"company_name":    name,
-		"entity_type":     entityTypeRaw,
-		"business_type":   string(businessType),
-		"company_id":      setupCompanyID,
+		"company_name":  name,
+		"entity_type":   entityTypeRaw,
+		"business_type": string(businessType),
+		"company_id":    setupCompanyID,
 	}
 	if user := UserFromCtx(c); user != nil {
 		cid := setupCompanyID
@@ -378,9 +398,9 @@ func (s *Server) handleSetupSubmit(c *fiber.Ctx) error {
 		if actor == "" {
 			actor = "user"
 		}
-		_ = services.WriteAuditLogWithContext(s.DB, "setup.completed", "company", setupCompanyID, actor, details, &cid, &uid)
+		services.TryWriteAuditLogWithContext(s.DB, "setup.completed", "company", setupCompanyID, actor, details, &cid, &uid)
 	} else {
-		_ = services.WriteAuditLog(s.DB, "setup.completed", "company", setupCompanyID, "system", details)
+		services.TryWriteAuditLog(s.DB, "setup.completed", "company", setupCompanyID, "system", details)
 	}
 
 	// Setup done. Redirect to dashboard (guard middleware will allow now).
@@ -393,6 +413,11 @@ func (s *Server) handleSetupSubmit(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleAuditLog(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
 	filterQ := strings.TrimSpace(c.Query("q"))
 	filterAction := strings.TrimSpace(c.Query("action"))
 	filterEntity := strings.TrimSpace(c.Query("entity"))
@@ -409,7 +434,7 @@ func (s *Server) handleAuditLog(c *fiber.Ctx) error {
 	const pageSize = 50
 	offset := (page - 1) * pageSize
 
-	base := s.DB.Model(&models.AuditLog{})
+	base := s.DB.Model(&models.AuditLog{}).Where("company_id = ?", companyID)
 	if filterQ != "" {
 		like := "%" + filterQ + "%"
 		base = base.Where(
@@ -441,9 +466,9 @@ func (s *Server) handleAuditLog(c *fiber.Ctx) error {
 	_ = base.Order("created_at desc, id desc").Offset(offset).Limit(pageSize).Find(&rows).Error
 
 	var actions []string
-	_ = s.DB.Model(&models.AuditLog{}).Distinct().Order("action asc").Pluck("action", &actions).Error
+	_ = s.DB.Model(&models.AuditLog{}).Where("company_id = ?", companyID).Distinct().Order("action asc").Pluck("action", &actions).Error
 	var entities []string
-	_ = s.DB.Model(&models.AuditLog{}).Distinct().Order("entity_type asc").Pluck("entity_type", &entities).Error
+	_ = s.DB.Model(&models.AuditLog{}).Where("company_id = ?", companyID).Distinct().Order("entity_type asc").Pluck("entity_type", &entities).Error
 
 	vm := pages.AuditLogVM{
 		HasCompany: true,
@@ -558,7 +583,7 @@ func (s *Server) handleAIConnectPost(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContextDetails(s.DB, "settings.ai_connect.saved", "settings", company.ID, actor, map[string]any{
+	services.TryWriteAuditLogWithContextDetails(s.DB, "settings.ai_connect.saved", "settings", company.ID, actor, map[string]any{
 		"company_id": company.ID,
 	}, &cid, &uid, beforeSnap, afterSnap)
 
@@ -610,7 +635,7 @@ func (s *Server) handleAIConnectTestPost(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContextDetails(s.DB, "settings.ai_connect.tested", "settings", company.ID, actor, map[string]any{
+	services.TryWriteAuditLogWithContextDetails(s.DB, "settings.ai_connect.tested", "settings", company.ID, actor, map[string]any{
 		"ok":         ok,
 		"message":    msg,
 		"company_id": company.ID,

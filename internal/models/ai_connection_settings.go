@@ -17,7 +17,7 @@ type AIConnectionSettings struct {
 
 	Provider  string `gorm:"type:text;not null;default:openai_compatible"`
 	APIBaseURL string `gorm:"type:text"`
-	APIKey     string `gorm:"type:text"` // at-rest encryption can be added later
+	APIKey     string `gorm:"type:text"`
 	ModelName  string `gorm:"type:text"`
 
 	Enabled       bool `gorm:"not null;default:false"`

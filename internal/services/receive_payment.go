@@ -13,12 +13,17 @@ import (
 
 // ReceivePaymentInput is the minimal data needed to record a customer payment.
 type ReceivePaymentInput struct {
-	CompanyID uint
+	CompanyID  uint
 	CustomerID uint
 	EntryDate  time.Time
 
 	BankAccountID uint
 	ARAccountID   uint
+
+	// InvoiceID optionally links this payment to a specific posted invoice.
+	// When set, the invoice's Amount must match the payment Amount,
+	// and the invoice will be marked as paid within the same transaction.
+	InvoiceID *uint
 
 	Amount decimal.Decimal
 	Memo   string
@@ -105,6 +110,30 @@ func RecordReceivePayment(tx *gorm.DB, in ReceivePaymentInput) (uint, error) {
 	if err := tx.Create(&lines).Error; err != nil {
 		return 0, err
 	}
+
+	// If linked to an invoice, validate amount and mark it paid.
+	if in.InvoiceID != nil && *in.InvoiceID != 0 {
+		var inv models.Invoice
+		if err := tx.Where("id = ? AND company_id = ?", *in.InvoiceID, in.CompanyID).First(&inv).Error; err != nil {
+			return 0, fmt.Errorf("linked invoice not found")
+		}
+		if inv.CustomerID != in.CustomerID {
+			return 0, fmt.Errorf("invoice does not belong to the selected customer")
+		}
+		if inv.Status != models.InvoiceStatusSent {
+			return 0, fmt.Errorf("invoice is not open for payment (status: %s)", inv.Status)
+		}
+		if !inv.Amount.Equal(in.Amount) {
+			return 0, fmt.Errorf("payment amount (%s) must equal invoice total (%s)",
+				in.Amount.StringFixed(2), inv.Amount.StringFixed(2))
+		}
+		if err := tx.Model(&inv).Updates(map[string]any{
+			"status": models.InvoiceStatusPaid,
+		}).Error; err != nil {
+			return 0, err
+		}
+	}
+
 	return je.ID, nil
 }
 

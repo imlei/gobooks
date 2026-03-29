@@ -5,7 +5,8 @@ import "gobooks/internal/models"
 
 // JournalEntryVM provides data for the Journal Entry page.
 type JournalEntryVM struct {
-	HasCompany bool
+	HasCompany      bool
+	ActiveCompanyID uint // scopes client-side recent-account localStorage
 
 	// Dropdown data
 	Accounts         []models.Account

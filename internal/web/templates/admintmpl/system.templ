@@ -1,0 +1,99 @@
+// 遵循产品需求 v1.0
+package admintmpl
+
+// AdminSystemVM 是系统控制页的视图模型。
+type AdminSystemVM struct {
+	AdminEmail      string
+	MaintenanceMode bool
+	Flash           string
+}
+
+templ AdminSystem(vm AdminSystemVM) {
+	@adminLayout("System", vm.AdminEmail, bodyAdminSystem(vm))
+}
+
+templ bodyAdminSystem(vm AdminSystemVM) {
+	@adminPageHeader("System Controls", "Manage system-wide settings and operations.")
+	@adminFlashBanner(vm.Flash)
+
+	<div class="space-y-6">
+		<!-- 维护模式控制 -->
+		<div class="rounded-lg border border-border bg-surface p-6">
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<h2 class="text-section font-semibold text-text">Maintenance Mode</h2>
+					<p class="mt-1 text-small text-text-muted2 max-w-lg">
+						When enabled, all business users will receive a maintenance notice and cannot access the application.
+						SysAdmin routes remain accessible at all times.
+					</p>
+					<div class="mt-3">
+						if vm.MaintenanceMode {
+							<span class="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1 text-small font-medium text-warning">
+								● Currently ON
+							</span>
+						} else {
+							<span class="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-small font-medium text-success">
+								● Currently OFF
+							</span>
+						}
+					</div>
+				</div>
+				<div class="shrink-0">
+					if vm.MaintenanceMode {
+						<form method="post" action="/admin/system/maintenance/disable">
+							<button
+								type="submit"
+								class="rounded-md bg-success px-4 py-2 text-body font-semibold text-white hover:bg-success-hover"
+							>
+								Disable maintenance mode
+							</button>
+						</form>
+					} else {
+						<form method="post" action="/admin/system/maintenance/enable" onsubmit="return confirm('Enable maintenance mode? All business users will be locked out immediately.');">
+							<button
+								type="submit"
+								class="rounded-md bg-warning px-4 py-2 text-body font-semibold text-white hover:bg-warning-hover"
+							>
+								Enable maintenance mode
+							</button>
+						</form>
+					}
+				</div>
+			</div>
+		</div>
+
+		<!-- 重启（安全 stub） -->
+		<div class="rounded-lg border border-border bg-surface p-6">
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<h2 class="text-section font-semibold text-text">Application Restart</h2>
+					<p class="mt-1 text-small text-text-muted2 max-w-lg">
+						Send a restart signal. In production environments, the actual restart must be performed
+						by your process manager (systemd, Docker, etc.). This button only logs the intent.
+					</p>
+				</div>
+				<div class="shrink-0">
+					<form method="post" action="/admin/system/restart" onsubmit="return confirm('Log a restart request?');">
+						<button
+							type="submit"
+							class="rounded-md border border-border-input bg-background px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-surface"
+						>
+							Request restart
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+
+		<!-- 运行时信息 -->
+		<div class="rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text mb-3">Runtime Information</h2>
+			<dl class="grid grid-cols-1 gap-y-2 md:grid-cols-2 text-body">
+				<dt class="text-text-muted2">Admin session duration</dt>
+				<dd class="font-medium">8 hours</dd>
+				<dt class="text-text-muted2">Maintenance mode state</dt>
+				<dd class="font-medium">In-memory (resets on restart)</dd>
+			</dl>
+		</div>
+	</div>
+}

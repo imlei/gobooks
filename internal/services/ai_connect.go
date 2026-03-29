@@ -40,6 +40,21 @@ func ParseAIProvider(s string) (string, error) {
 
 // LoadAIConnectionSettings returns the row for the company or a zero row with defaults (not persisted).
 func LoadAIConnectionSettings(db *gorm.DB, companyID uint) (models.AIConnectionSettings, error) {
+	row, err := loadAIConnectionSettingsRow(db, companyID)
+	if err != nil {
+		return models.AIConnectionSettings{}, err
+	}
+	if row.ID == 0 {
+		return row, nil
+	}
+	row.APIKey, err = decryptAISecret(row.APIKey)
+	if err != nil {
+		return models.AIConnectionSettings{}, err
+	}
+	return row, nil
+}
+
+func loadAIConnectionSettingsRow(db *gorm.DB, companyID uint) (models.AIConnectionSettings, error) {
 	var row models.AIConnectionSettings
 	err := db.Where("company_id = ?", companyID).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -56,7 +71,7 @@ func LoadAIConnectionSettings(db *gorm.DB, companyID uint) (models.AIConnectionS
 
 // UpsertAIConnectionSettings saves non-secret fields and updates API key only when newKey is non-empty.
 func UpsertAIConnectionSettings(db *gorm.DB, companyID uint, provider, apiBaseURL, newKey, modelName string, enabled, vision bool) error {
-	row, err := LoadAIConnectionSettings(db, companyID)
+	row, err := loadAIConnectionSettingsRow(db, companyID)
 	if err != nil {
 		return err
 	}
@@ -67,7 +82,11 @@ func UpsertAIConnectionSettings(db *gorm.DB, companyID uint, provider, apiBaseUR
 	row.Enabled = enabled
 	row.VisionEnabled = vision
 	if strings.TrimSpace(newKey) != "" {
-		row.APIKey = strings.TrimSpace(newKey)
+		encrypted, err := encryptAISecret(newKey)
+		if err != nil {
+			return err
+		}
+		row.APIKey = encrypted
 	}
 	if row.ID == 0 {
 		return db.Create(&row).Error
@@ -118,10 +137,13 @@ func RunAIConnectionTest(db *gorm.DB, companyID uint) (ok bool, message string, 
 		}
 	}
 
-	row.LastTestAt = &now
-	row.LastTestOK = success
-	row.LastTestMessage = msg
-	if err := db.Save(&row).Error; err != nil {
+	if err := db.Model(&models.AIConnectionSettings{}).
+		Where("id = ?", row.ID).
+		Updates(map[string]any{
+			"last_test_at":      &now,
+			"last_test_ok":      success,
+			"last_test_message": msg,
+		}).Error; err != nil {
 		return false, "", false, err
 	}
 	return success, msg, false, nil

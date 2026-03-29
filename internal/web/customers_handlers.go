@@ -92,7 +92,7 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContext(s.DB, "customer.created", "customer", customer.ID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "customer.created", "customer", customer.ID, actor, map[string]any{
 		"name":       name,
 		"company_id": companyID,
 	}, &cid, &uid)

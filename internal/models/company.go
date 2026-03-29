@@ -118,6 +118,10 @@ type Company struct {
 	// AccountCodeLengthLocked is set true after initial COA import; length cannot be changed afterward.
 	AccountCodeLengthLocked bool `gorm:"not null;default:false"`
 
+	// IsActive is set to false by SysAdmin to suspend a company without destroying data.
+	// Existing members receive a 403 on login until reactivated.
+	IsActive bool `gorm:"not null;default:true"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

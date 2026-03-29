@@ -41,6 +41,24 @@ func Migrate(db *gorm.DB) error {
 		&models.Reconciliation{},
 		&models.AuditLog{},
 		&models.CompanyInvitation{},
+		// Phase 2: tax infrastructure
+		&models.TaxAgency{},
+		&models.TaxComponent{},
+		&models.TaxCode{},
+		// Phase 2: product/service catalogue
+		&models.ProductService{},
+		// Phase 3: invoice + bill line items
+		&models.InvoiceLine{},
+		&models.BillLine{},
+		// SysAdmin: 独立系统管理员账户与会话，与业务用户完全隔离
+		&models.SysadminUser{},
+		&models.SysadminSession{},
+		// Phase C: 运行时结构化日志（错误/警告持久化，与业务审计日志分离）
+		&models.SystemLog{},
+		// Phase E: 系统级配置键值存储（维护模式持久化等）
+		&models.SystemSetting{},
+		// Phase E: 用户粒度权限扩展点（schema-ready，尚未接入权限检查）
+		&models.UserCompanyPermission{},
 	); err != nil {
 		return err
 	}

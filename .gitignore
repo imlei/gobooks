@@ -23,6 +23,12 @@ internal/web/static/app.css
 .DS_Store
 .vscode/
 
+# Claude Code session data
+.claude/
+
+# Go build cache
+.gocache/
+
 # Legacy Python / PyInstaller (not part of GoBooks web app)
 app/
 build/

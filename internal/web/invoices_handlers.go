@@ -2,6 +2,8 @@
 package web
 
 import (
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,6 +75,8 @@ func (s *Server) handleInvoices(c *fiber.Ctx) error {
 		InvoiceDate:      time.Now().Format("2006-01-02"),
 		InvoiceNumber:    nextNo,
 		Created:          c.Query("created") == "1",
+		Saved:            c.Query("saved") == "1",
+		Posted:           c.Query("posted") == "1",
 		FilterQ:          filterQ,
 		FilterCustomerID: filterCustomerID,
 		FilterFrom:       filterFrom,
@@ -212,6 +216,76 @@ func (s *Server) handleInvoiceCreate(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNoContent)
 	}
 	return c.Redirect("/invoices?created=1", fiber.StatusSeeOther)
+}
+
+func (s *Server) handleInvoicePost(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
+	idRaw := strings.TrimSpace(c.Params("id"))
+	id64, idErr := strconv.ParseUint(idRaw, 10, 64)
+	if idErr != nil || id64 == 0 {
+		return c.Redirect("/invoices", fiber.StatusSeeOther)
+	}
+
+	uid := user.ID
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+
+	if err := services.PostInvoice(s.DB, companyID, uint(id64), actor, &uid); err != nil {
+
+		// Re-render list with the error inline.
+		customers, _ := s.customersForCompany(companyID)
+		invoices, _ := s.invoicesForCompany(companyID)
+		nextNo, _ := services.SuggestNextInvoiceNumber(s.DB, companyID)
+		return pages.Invoices(pages.InvoicesVM{
+			HasCompany:    true,
+			Customers:     customers,
+			Invoices:      invoices,
+			InvoiceNumber: nextNo,
+			InvoiceDate:   time.Now().Format("2006-01-02"),
+			FormError:     "Could not post invoice: " + err.Error(),
+		}).Render(c.Context(), c)
+	}
+
+	return c.Redirect("/invoices?posted=1", fiber.StatusSeeOther)
+}
+
+func (s *Server) handleInvoiceVoid(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
+	idRaw := strings.TrimSpace(c.Params("id"))
+	id64, idErr := strconv.ParseUint(idRaw, 10, 64)
+	if idErr != nil || id64 == 0 {
+		return c.Redirect("/invoices", fiber.StatusSeeOther)
+	}
+
+	uid := user.ID
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+
+	if err := services.VoidInvoice(s.DB, companyID, uint(id64), actor, &uid); err != nil {
+		return c.Redirect("/invoices/"+idRaw+"?voiderror="+url.QueryEscape(err.Error()), fiber.StatusSeeOther)
+	}
+
+	return c.Redirect("/invoices/"+idRaw+"?voided=1", fiber.StatusSeeOther)
 }
 
 func (s *Server) invoicesForCompany(companyID uint) ([]models.Invoice, error) {

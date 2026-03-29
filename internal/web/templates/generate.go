@@ -3,8 +3,10 @@ package templates
 
 // This file enables `go generate ./...` to build templ components.
 //
-// Prerequisite for developers:
-//   go install github.com/a-h/templ/cmd/templ@latest
+// Release build prerequisite:
+//   1. Run `go generate ./...` from the repo root before `go build` or `go test`.
+//   2. Commit the generated `*_templ.go` files so clean CI / release builds do not
+//      depend on a preinstalled local templ binary.
 //
-//go:generate templ generate
+//go:generate go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
 

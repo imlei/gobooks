@@ -213,7 +213,7 @@ func (s *Server) handleAccountCreate(c *fiber.Ctx) error {
 	if acc.FieldRecommendationSourcesJSON != nil {
 		createdMeta["field_recommendation_sources"] = *acc.FieldRecommendationSourcesJSON
 	}
-	_ = services.WriteAuditLogWithContext(s.DB, "account.created", "account", acc.ID, actor, createdMeta, &cid, &uid)
+	services.TryWriteAuditLogWithContext(s.DB, "account.created", "account", acc.ID, actor, createdMeta, &cid, &uid)
 
 	if c.Get("HX-Request") == "true" {
 		c.Set("HX-Redirect", "/accounts?created=1")
@@ -335,7 +335,7 @@ func (s *Server) handleAccountUpdate(c *fiber.Ctx) error {
 	if existing.FieldRecommendationSourcesJSON != nil {
 		updatedMeta["field_recommendation_sources"] = *existing.FieldRecommendationSourcesJSON
 	}
-	_ = services.WriteAuditLogWithContext(s.DB, "account.updated", "account", existing.ID, actor, updatedMeta, &cid, &uid)
+	services.TryWriteAuditLogWithContext(s.DB, "account.updated", "account", existing.ID, actor, updatedMeta, &cid, &uid)
 
 	return c.Redirect("/accounts?updated=1", fiber.StatusSeeOther)
 }
@@ -375,7 +375,7 @@ func (s *Server) handleAccountInactive(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = "user"
 	}
-	_ = services.WriteAuditLogWithContext(s.DB, "account.deactivated", "account", acc.ID, actor, map[string]any{
+	services.TryWriteAuditLogWithContext(s.DB, "account.deactivated", "account", acc.ID, actor, map[string]any{
 		"code":       acc.Code,
 		"name":       acc.Name,
 		"company_id": companyID,

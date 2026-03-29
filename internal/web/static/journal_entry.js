@@ -6,7 +6,11 @@
 //   acctOpen     — dropdown open/closed.
 //   acctHi       — keyboard highlight index within filteredAccounts(line), or -1.
 // Global: accounts[] from #gobooks-journal-accounts-data (active accounts only; server-built JSON).
-// Filtered list is computed on demand (not stored) via filteredAccounts(line).
+// Filtered list via filteredAccounts(line) — two modes only:
+//   • Empty query: MRU recent ids (localStorage, per company) resolved against current accounts first, then
+//     the rest in server order; missing/inactive ids skipped; duplicates deduped (seen set).
+//   • Non-empty query: relevance first (primaryTier 1–5), then MRU index as tie-break only (first occurrence
+//     if an id appears more than once in storage), then name/code. Non-matching accounts omitted.
 //
 function gobooksJournalEntryDraft() {
   let accounts = [];
@@ -19,29 +23,90 @@ function gobooksJournalEntryDraft() {
     accounts = [];
   }
 
-  function rankScore(acc, qRaw) {
-    const qq = (qRaw || "").trim().toLowerCase();
-    if (!qq) {
-      return { score: 0, pass: true };
+  const RECENT_MAX = 8;
+  const RECENT_LS_PREFIX = "gobooks:journalRecentAccountIds:v1:";
+
+  function recentStorageKey(companyId) {
+    const c = companyId && String(companyId).trim() !== "" ? String(companyId) : "0";
+    return RECENT_LS_PREFIX + c;
+  }
+
+  const RECENT_RANK_MISSING = 999;
+
+  /** @returns {1|2|3|4|5|null} — lower is better; null = no match */
+  function primaryTier(acc, qRaw) {
+    const q = (qRaw || "").trim().toLowerCase();
+    if (!q) {
+      return null;
     }
     const code = (acc.code || "").toLowerCase();
     const name = (acc.name || "").toLowerCase();
-    if (code === qq) {
-      return { score: 0, pass: true };
+    if (code === q) {
+      return 1;
     }
-    if (code.startsWith(qq)) {
-      return { score: 1, pass: true };
+    if (code.startsWith(q)) {
+      return 2;
     }
-    if (name.startsWith(qq)) {
-      return { score: 2, pass: true };
+    if (code.includes(q)) {
+      return 3;
     }
-    if (code.includes(qq)) {
-      return { score: 3, pass: true };
+    if (name.startsWith(q)) {
+      return 4;
     }
-    if (name.includes(qq)) {
-      return { score: 4, pass: true };
+    if (name.includes(q)) {
+      return 5;
     }
-    return { score: 99, pass: false };
+    return null;
+  }
+
+  /**
+   * Deterministic search ordering: tier → recent MRU index (smaller = more recent; first list slot wins if
+   * duplicate ids in storage) → name/code tie-break. Recent never outranks a better tier.
+   * @param {Array<{id:number}>} accounts
+   * @param {string} qRaw
+   * @param {string[]} recentIds
+   */
+  function rankSearchResults(accounts, qRaw, recentIds) {
+    const q = (qRaw || "").trim();
+    if (!q) {
+      return accounts.slice();
+    }
+    const recentIndex = new Map();
+    recentIds.forEach((id, i) => {
+      const k = String(id);
+      if (!recentIndex.has(k)) {
+        recentIndex.set(k, i);
+      }
+    });
+
+    const rows = [];
+    for (const a of accounts) {
+      const tier = primaryTier(a, q);
+      if (tier == null) {
+        continue;
+      }
+      const rr = recentIndex.has(String(a.id)) ? recentIndex.get(String(a.id)) : RECENT_RANK_MISSING;
+      rows.push({ a, tier, rr });
+    }
+    const qLower = q.toLowerCase();
+    const numericOnly = /^[0-9]+$/.test(qLower);
+    rows.sort((x, y) => {
+      if (x.tier !== y.tier) {
+        return x.tier - y.tier;
+      }
+      if (x.rr !== y.rr) {
+        return x.rr - y.rr;
+      }
+      if (numericOnly) {
+        return String(x.a.code).localeCompare(String(y.a.code));
+      }
+      const n = String(x.a.name || "").localeCompare(String(y.a.name || ""));
+      if (n !== 0) {
+        return n;
+      }
+      return String(x.a.code).localeCompare(String(y.a.code));
+    });
+    return rows.map((r) => r.a);
   }
 
   function highlightSegments(text, qRaw) {
@@ -69,6 +134,7 @@ function gobooksJournalEntryDraft() {
 
   return {
     accounts,
+    companyId: "0",
     header: { entry_date: "", journal_no: "" },
     lines: [],
     totals: { debits: 0, credits: 0 },
@@ -82,7 +148,7 @@ function gobooksJournalEntryDraft() {
       if (!a) {
         return "";
       }
-      return `${a.code} — ${a.name}`;
+      return `${a.code} - ${a.name}`;
     },
 
     accountLabelForId(id) {
@@ -93,20 +159,68 @@ function gobooksJournalEntryDraft() {
       return a ? this.formatAccountLabel(a) : "";
     },
 
+    loadRecentIds() {
+      try {
+        const raw = localStorage.getItem(recentStorageKey(this.companyId));
+        if (!raw) {
+          return [];
+        }
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+        return parsed.map((id) => String(id));
+      } catch (e) {
+        return [];
+      }
+    },
+
+    saveRecentIds(ids) {
+      try {
+        localStorage.setItem(recentStorageKey(this.companyId), JSON.stringify(ids.slice(0, RECENT_MAX)));
+      } catch (e) {}
+    },
+
+    /** Empty query: recent MRU first (resolved against current accounts), then remaining in server order. */
+    accountsEmptyQueryOrder() {
+      const recent = this.loadRecentIds();
+      if (!recent.length) {
+        return this.accounts.slice();
+      }
+      const byId = new Map(this.accounts.map((a) => [String(a.id), a]));
+      const seen = new Set();
+      const out = [];
+      for (const rid of recent) {
+        const a = byId.get(String(rid));
+        if (a && !seen.has(String(a.id))) {
+          out.push(a);
+          seen.add(String(a.id));
+        }
+      }
+      for (const a of this.accounts) {
+        if (!seen.has(String(a.id))) {
+          out.push(a);
+        }
+      }
+      return out;
+    },
+
+    recordRecentAccountId(accountId) {
+      const id = String(accountId);
+      if (!id) {
+        return;
+      }
+      const cur = this.loadRecentIds().filter((x) => String(x) !== id);
+      cur.unshift(id);
+      this.saveRecentIds(cur);
+    },
+
     filteredAccounts(line) {
       const q = line.acctQuery || "";
       if (!q.trim()) {
-        return this.accounts.slice();
+        return this.accountsEmptyQueryOrder();
       }
-      const ranked = [];
-      for (const a of this.accounts) {
-        const { score, pass } = rankScore(a, q);
-        if (pass) {
-          ranked.push({ a, score });
-        }
-      }
-      ranked.sort((x, y) => x.score - y.score || x.a.code.localeCompare(y.a.code));
-      return ranked.map((x) => x.a);
+      return rankSearchResults(this.accounts, q, this.loadRecentIds());
     },
 
     highlightSegments,
@@ -153,6 +267,7 @@ function gobooksJournalEntryDraft() {
       line.acctQuery = this.formatAccountLabel(acc);
       line.acctOpen = false;
       line.acctHi = -1;
+      this.recordRecentAccountId(acc.id);
       this.recalc();
       this.persist();
     },
@@ -199,6 +314,12 @@ function gobooksJournalEntryDraft() {
     },
 
     init() {
+      const el = this.$el;
+      this.companyId =
+        el && el.dataset && el.dataset.companyId != null && String(el.dataset.companyId).trim() !== ""
+          ? String(el.dataset.companyId).trim()
+          : "0";
+
       const MAX_LINES = 50;
       const today = new Date().toISOString().slice(0, 10);
       this.header.entry_date = today;

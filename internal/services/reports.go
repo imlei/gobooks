@@ -20,7 +20,7 @@ type TrialBalanceRow struct {
 }
 
 // TrialBalance returns balances per account for a date range (inclusive).
-func TrialBalance(db *gorm.DB, fromDate, toDate time.Time) ([]TrialBalanceRow, decimal.Decimal, decimal.Decimal, error) {
+func TrialBalance(db *gorm.DB, companyID uint, fromDate, toDate time.Time) ([]TrialBalanceRow, decimal.Decimal, decimal.Decimal, error) {
 	type row struct {
 		Code   string
 		Name   string
@@ -44,11 +44,13 @@ FROM accounts a
 LEFT JOIN journal_lines jl ON jl.account_id = a.id
 LEFT JOIN journal_entries je ON je.id = jl.journal_entry_id
   AND je.entry_date >= ? AND je.entry_date < ?
+WHERE a.company_id = ?
 GROUP BY a.code, a.name, a.root_account_type, a.detail_account_type
 ORDER BY a.code ASC
 `,
 		fromDate,
 		toDate.AddDate(0, 0, 1),
+		companyID,
 	).Scan(&sums).Error
 	if err != nil {
 		return nil, decimal.Zero, decimal.Zero, err
@@ -88,9 +90,9 @@ type IncomeStatement struct {
 	FromDate time.Time
 	ToDate   time.Time
 
-	Revenue      []IncomeStatementLine
-	CostOfSales  []IncomeStatementLine
-	Expenses     []IncomeStatementLine
+	Revenue     []IncomeStatementLine
+	CostOfSales []IncomeStatementLine
+	Expenses    []IncomeStatementLine
 
 	TotalRevenue     decimal.Decimal
 	TotalCostOfSales decimal.Decimal
@@ -101,7 +103,7 @@ type IncomeStatement struct {
 }
 
 // IncomeStatement builds a simple income statement for a date range.
-func IncomeStatementReport(db *gorm.DB, fromDate, toDate time.Time) (IncomeStatement, error) {
+func IncomeStatementReport(db *gorm.DB, companyID uint, fromDate, toDate time.Time) (IncomeStatement, error) {
 	report := IncomeStatement{FromDate: fromDate, ToDate: toDate}
 
 	type row struct {
@@ -125,12 +127,13 @@ FROM accounts a
 LEFT JOIN journal_lines jl ON jl.account_id = a.id
 LEFT JOIN journal_entries je ON je.id = jl.journal_entry_id
   AND je.entry_date >= ? AND je.entry_date < ?
-WHERE a.root_account_type IN ('revenue', 'cost_of_sales', 'expense')
+WHERE a.company_id = ? AND a.root_account_type IN ('revenue', 'cost_of_sales', 'expense')
 GROUP BY a.code, a.name, a.root_account_type
 ORDER BY a.code ASC
 `,
 		fromDate,
 		toDate.AddDate(0, 0, 1),
+		companyID,
 	).Scan(&sums).Error
 	if err != nil {
 		return IncomeStatement{}, err
@@ -175,9 +178,9 @@ type BalanceSheetLine struct {
 type BalanceSheet struct {
 	AsOf time.Time
 
-	Assets     []BalanceSheetLine
+	Assets      []BalanceSheetLine
 	Liabilities []BalanceSheetLine
-	Equity     []BalanceSheetLine
+	Equity      []BalanceSheetLine
 
 	TotalAssets      decimal.Decimal
 	TotalLiabilities decimal.Decimal
@@ -185,7 +188,7 @@ type BalanceSheet struct {
 }
 
 // BalanceSheet builds a simple balance sheet as-of a date (inclusive).
-func BalanceSheetReport(db *gorm.DB, asOf time.Time) (BalanceSheet, error) {
+func BalanceSheetReport(db *gorm.DB, companyID uint, asOf time.Time) (BalanceSheet, error) {
 	report := BalanceSheet{AsOf: asOf}
 
 	type row struct {
@@ -209,11 +212,12 @@ FROM accounts a
 LEFT JOIN journal_lines jl ON jl.account_id = a.id
 LEFT JOIN journal_entries je ON je.id = jl.journal_entry_id
   AND je.entry_date < ?
-WHERE a.root_account_type IN ('asset', 'liability', 'equity')
+WHERE a.company_id = ? AND a.root_account_type IN ('asset', 'liability', 'equity')
 GROUP BY a.code, a.name, a.root_account_type
 ORDER BY a.code ASC
 `,
 		asOf.AddDate(0, 0, 1),
+		companyID,
 	).Scan(&sums).Error
 	if err != nil {
 		return BalanceSheet{}, err

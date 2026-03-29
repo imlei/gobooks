@@ -24,6 +24,12 @@ func Guard(db *gorm.DB) fiber.Handler {
 		if path == "/setup/bootstrap" {
 			return c.Next()
 		}
+		// /admin/* 路由完全绕过 setup guard：
+		// - 管理员不依赖业务 bootstrap 流程
+		// - 空数据库时也需要能访问 /admin/login 创建首个系统管理员
+		if strings.HasPrefix(path, "/admin") {
+			return c.Next()
+		}
 
 		var userCount int64
 		if err := db.Model(&models.User{}).Count(&userCount).Error; err != nil {

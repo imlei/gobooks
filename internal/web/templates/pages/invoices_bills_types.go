@@ -9,6 +9,7 @@ type InvoicesVM struct {
 	Customers []models.Customer
 	Invoices  []models.Invoice
 
+	// Legacy inline-create fields (kept for backward compat; no longer rendered).
 	InvoiceNumber string
 	CustomerID    string
 	InvoiceDate   string
@@ -25,11 +26,15 @@ type InvoicesVM struct {
 	DuplicateMessage string
 
 	Created bool
+	// Saved is set after a save-draft redirect (?saved=1).
+	Saved bool
+	// Posted is set after a successful post (?posted=1).
+	Posted bool
 
-	FilterQ         string
+	FilterQ          string
 	FilterCustomerID string
-	FilterFrom      string
-	FilterTo        string
+	FilterFrom       string
+	FilterTo         string
 }
 
 type BillsVM struct {

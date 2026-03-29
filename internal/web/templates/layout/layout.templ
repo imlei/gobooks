@@ -13,6 +13,47 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 			<link rel="stylesheet" href="/static/app.css?v=2"/>
 			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+			<script>
+				(function () {
+					function readCookie(name) {
+						const prefix = name + "=";
+						const parts = document.cookie ? document.cookie.split("; ") : [];
+						for (const part of parts) {
+							if (part.indexOf(prefix) === 0) return decodeURIComponent(part.substring(prefix.length));
+						}
+						return "";
+					}
+
+					function csrfToken() {
+						return readCookie("gobooks_csrf");
+					}
+
+					document.addEventListener("submit", function (event) {
+						const form = event.target;
+						if (!(form instanceof HTMLFormElement)) return;
+						if ((form.method || "get").toLowerCase() === "get") return;
+
+						const token = csrfToken();
+						if (!token) return;
+
+						let input = form.querySelector('input[name="_csrf"]');
+						if (!input) {
+							input = document.createElement("input");
+							input.type = "hidden";
+							input.name = "_csrf";
+							form.appendChild(input);
+						}
+						input.value = token;
+					});
+
+					document.body.addEventListener("htmx:configRequest", function (event) {
+						const token = csrfToken();
+						if (token) {
+							event.detail.headers["X-CSRF-Token"] = token;
+						}
+					});
+				})();
+			</script>
 		</head>
 		<body class="bg-background text-text">
 			<div class="min-h-screen bg-surface" x-data="{ sidebarOpen: false }">
@@ -89,4 +130,3 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 		</body>
 	</html>
 }
-

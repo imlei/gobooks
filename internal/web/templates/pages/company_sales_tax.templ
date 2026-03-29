@@ -1,10 +1,15 @@
 // 遵循产品需求 v1.0
 package pages
 
-import "gobooks/internal/web/templates/layout"
-import "gobooks/internal/web/templates/ui"
+import (
+	"fmt"
+	"github.com/shopspring/decimal"
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
 
-templ CompanySalesTax(vm CompanySubpageVM) {
+templ CompanySalesTax(vm SalesTaxVM) {
 	@layout.Layout(
 		"GoBooks - Sales Tax",
 		ui.SidebarVM{Active: "Company Sales Tax", HasCompany: vm.HasCompany},
@@ -12,33 +17,392 @@ templ CompanySalesTax(vm CompanySubpageVM) {
 	)
 }
 
-templ bodyCompanySalesTax(vm CompanySubpageVM) {
-	<div class="max-w-[95%]">
+templ bodyCompanySalesTax(vm SalesTaxVM) {
+	<div
+		class="max-w-[95%]"
+		x-data={ stInitialDrawer(vm) }
+		x-init="if (drawerOpen) { $nextTick(() => { const el = $refs.stDrawer?.querySelector('input:not([readonly]),select,textarea'); if (el) el.focus(); }); }"
+		@keydown.escape.window="if (drawerOpen) drawerOpen = false"
+	>
 		@SettingsBreadcrumb(vm.Breadcrumb)
-		<h1 class="text-title font-semibold">Sales Tax</h1>
-		<p class="mt-2 max-w-3xl text-text-muted2">
-			Manage GST, PST, tax codes, and tax calculation preferences.
-		</p>
 
-		<div class="mt-8 space-y-6">
-			<div class="rounded-lg border border-border bg-surface p-6">
-				<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Tax registrations</div>
-				<p class="mt-2 text-body text-text-muted2">
-					GST, PST, and other registration numbers will be configured here.
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<h1 class="text-title font-semibold">Sales Tax</h1>
+				<p class="mt-2 text-text-muted2">
+					Define tax codes used on invoice and bill lines.
+					Each code carries a rate, posting accounts, and recoverability rules.
 				</p>
 			</div>
-			<div class="rounded-lg border border-border bg-surface p-6">
-				<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Tax codes</div>
-				<p class="mt-2 text-body text-text-muted2">
-					Define rates and labels for sales and purchase taxes.
-				</p>
-			</div>
-			<div class="rounded-lg border border-border bg-surface p-6">
-				<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Calculation behavior</div>
-				<p class="mt-2 text-body text-text-muted2">
-					Defaults for tax-inclusive vs exclusive pricing and rounding will live here.
-				</p>
+			<div class="shrink-0">
+				<a
+					href="/settings/company/sales-tax?new=1"
+					class="inline-block rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+				>
+					New Tax Code
+				</a>
 			</div>
 		</div>
+
+		if vm.Created {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Tax code created.
+			</div>
+		}
+		if vm.Updated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Tax code updated.
+			</div>
+		}
+		if vm.InactiveOK {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Tax code deactivated. Existing lines using it are unaffected; it will no longer appear in new line dropdowns.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Tax Codes</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Name</th>
+							<th class="py-3 pr-4">Rate</th>
+							<th class="py-3 pr-4">Scope</th>
+							<th class="py-3 pr-4">Recovery</th>
+							<th class="py-3 pr-4">Status</th>
+							<th class="py-3 pr-0 text-right">Actions</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						if len(vm.Items) == 0 {
+							<tr>
+								<td colspan="6" class="py-6 text-text-muted2">
+									No tax codes yet. Create one to start applying taxes to invoice and bill lines.
+								</td>
+							</tr>
+						}
+						for _, tc := range vm.Items {
+							<tr class={ stRowClass(tc) }>
+								<td class="py-3 pr-4 font-medium">
+									{ tc.Name }
+									if !tc.IsActive {
+										<span class="ml-2 text-small text-text-muted">(Inactive)</span>
+									}
+								</td>
+								<td class="py-3 pr-4 tabular-nums">{ stRateDisplay(tc.Rate) + "%" }</td>
+								<td class="py-3 pr-4">{ stScopeLabel(tc.Scope) }</td>
+								<td class="py-3 pr-4">{ stRecoveryLabel(tc) }</td>
+								<td class="py-3 pr-4">
+									if tc.IsActive {
+										<span class="inline-flex items-center rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success">Active</span>
+									} else {
+										<span class="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted2">Inactive</span>
+									}
+								</td>
+								<td class="py-3 pr-0 text-right whitespace-nowrap">
+									if tc.IsActive {
+										<a
+											href={ "/settings/company/sales-tax?edit=" + Uitoa(tc.ID) }
+											class="text-small font-medium text-primary hover:text-primary-hover"
+										>
+											Edit
+										</a>
+										<span class="inline-block px-2 text-text-muted3" aria-hidden="true">|</span>
+										<form
+											method="post"
+											action="/settings/company/sales-tax/deactivate"
+											class="inline"
+											onsubmit="return confirm('Deactivate this tax code? It will no longer appear in new invoice or bill lines, but existing lines are unaffected.');"
+										>
+											<input type="hidden" name="tax_code_id" value={ Uitoa(tc.ID) }/>
+											<button type="submit" class="text-small font-medium text-text-muted3 hover:text-text">
+												Deactivate
+											</button>
+										</form>
+									} else {
+										<span class="text-small text-text-muted">—</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		@ui.RightDrawerBackdrop()
+		if vm.DrawerMode == "edit" {
+			@ui.RightDrawerPanel("stDrawer", "st-drawer-title", "Edit Tax Code", "Update rate, scope, and posting accounts.", stEditDrawerForm(vm))
+		} else {
+			@ui.RightDrawerPanel("stDrawer", "st-drawer-title", "New Tax Code", "Define a rate, scope, and the accounts to post tax to.", stCreateDrawerForm(vm))
+		}
 	</div>
+}
+
+// stInitialDrawer builds the Alpine x-data expression for drawer + recovery_mode reactivity.
+func stInitialDrawer(vm SalesTaxVM) string {
+	open := "false"
+	if vm.DrawerOpen {
+		open = "true"
+	}
+	rm := vm.RecoveryMode
+	if rm == "" {
+		rm = "none"
+	}
+	return fmt.Sprintf(`{ drawerOpen: %s, recoveryMode: %q }`, open, rm)
+}
+
+// stRowClass styles inactive rows.
+func stRowClass(tc models.TaxCode) string {
+	if !tc.IsActive {
+		return "border-b border-border-subtle bg-background text-text-muted2"
+	}
+	return "border-b border-border-subtle"
+}
+
+// stRateDisplay converts the stored fraction (0.050000) to a human-readable percentage string.
+// e.g. 0.050000 → "5.00"
+func stRateDisplay(rate decimal.Decimal) string {
+	pct := rate.Mul(decimal.NewFromInt(100))
+	// Use up to 4 decimal places but strip trailing zeros.
+	s := pct.StringFixed(4)
+	// Trim redundant trailing zeros after decimal point.
+	for len(s) > 0 && s[len(s)-1] == '0' {
+		s = s[:len(s)-1]
+	}
+	if len(s) > 0 && s[len(s)-1] == '.' {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
+// stScopeLabel returns a human-readable scope string.
+func stScopeLabel(scope models.TaxScope) string {
+	switch scope {
+	case models.TaxScopeSales:
+		return "Sales"
+	case models.TaxScopePurchase:
+		return "Purchase"
+	default:
+		return "Sales & Purchase"
+	}
+}
+
+// stRecoveryLabel returns a short recovery description for the table.
+func stRecoveryLabel(tc models.TaxCode) string {
+	switch tc.RecoveryMode {
+	case models.TaxRecoveryFull:
+		return "Full ITC"
+	case models.TaxRecoveryPartial:
+		return "Partial (" + tc.RecoveryRate.StringFixed(0) + "%)"
+	default:
+		return "None"
+	}
+}
+
+templ stCreateDrawerForm(vm SalesTaxVM) {
+	<form method="post" action="/settings/company/sales-tax" class="flex min-h-0 flex-1 flex-col">
+		@stFormFields(vm)
+		<div class="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border p-4">
+			<a
+				href="/settings/company/sales-tax"
+				class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
+			>
+				Cancel
+			</a>
+			@ui.ButtonPrimary("Create Tax Code", "submit", false)
+		</div>
+	</form>
+}
+
+templ stEditDrawerForm(vm SalesTaxVM) {
+	<form method="post" action="/settings/company/sales-tax/update" class="flex min-h-0 flex-1 flex-col">
+		<input type="hidden" name="tax_code_id" value={ Uitoa(vm.EditingID) }/>
+		@stFormFields(vm)
+		<div class="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border p-4">
+			<a
+				href="/settings/company/sales-tax"
+				class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
+			>
+				Cancel
+			</a>
+			@ui.ButtonPrimary("Save changes", "submit", false)
+		</div>
+	</form>
+}
+
+templ stFormFields(vm SalesTaxVM) {
+	<div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+		<!-- Name -->
+		<div>
+			<label class="block text-body font-medium text-text">Name *</label>
+			<input
+				type="text"
+				name="name"
+				value={ vm.Name }
+				placeholder="e.g. GST 5%, ON HST 13%, Exempt"
+				autocomplete="off"
+				class={ stInputClass(vm.NameError != "") }
+			/>
+			if vm.NameError != "" {
+				<p class="mt-1 text-body text-danger">{ vm.NameError }</p>
+			}
+		</div>
+
+		<!-- Rate -->
+		<div>
+			<label class="block text-body font-medium text-text">Rate (%) *</label>
+			<div class="relative mt-2">
+				<input
+					type="text"
+					name="rate"
+					value={ vm.Rate }
+					placeholder="5.00"
+					inputmode="decimal"
+					autocomplete="off"
+					class={ stInputClassRaw(vm.RateError != "") + " pr-8" }
+				/>
+				<span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-body text-text-muted2">%</span>
+			</div>
+			if vm.RateError != "" {
+				<p class="mt-1 text-body text-danger">{ vm.RateError }</p>
+			} else {
+				<p class="mt-1 text-small text-text-muted2">Enter as a percentage, e.g. 5 for 5%.</p>
+			}
+		</div>
+
+		<!-- Scope -->
+		<div>
+			<label class="block text-body font-medium text-text">Scope *</label>
+			<select
+				name="scope"
+				class={ stSelectClass(vm.ScopeError != "") }
+			>
+				<option value="">-- Select --</option>
+				<option value="both" selected?={ vm.Scope == "both" }>Sales &amp; Purchase</option>
+				<option value="sales" selected?={ vm.Scope == "sales" }>Sales only</option>
+				<option value="purchase" selected?={ vm.Scope == "purchase" }>Purchase only</option>
+			</select>
+			if vm.ScopeError != "" {
+				<p class="mt-1 text-body text-danger">{ vm.ScopeError }</p>
+			} else {
+				<p class="mt-1 text-small text-text-muted2">
+					Sales codes post to Sales Tax Payable on invoices.
+					Purchase codes apply ITC recoverability on bills.
+				</p>
+			}
+		</div>
+
+		<!-- Recovery Mode -->
+		<div>
+			<label class="block text-body font-medium text-text">Recovery mode</label>
+			<select
+				name="recovery_mode"
+				x-model="recoveryMode"
+				class={ stSelectClass(vm.RecoveryModeError != "") }
+			>
+				<option value="none" selected?={ vm.RecoveryMode == "none" || vm.RecoveryMode == "" }>None — not recoverable</option>
+				<option value="full" selected?={ vm.RecoveryMode == "full" }>Full — 100% ITC recoverable</option>
+				<option value="partial" selected?={ vm.RecoveryMode == "partial" }>Partial — specify recovery %</option>
+			</select>
+			if vm.RecoveryModeError != "" {
+				<p class="mt-1 text-body text-danger">{ vm.RecoveryModeError }</p>
+			} else {
+				<p class="mt-1 text-small text-text-muted2">
+					How much of the purchase tax can be reclaimed as an Input Tax Credit (ITC).
+					Has no effect on sales-only codes.
+				</p>
+			}
+		</div>
+
+		<!-- Recovery Rate (partial only) -->
+		<div x-show="recoveryMode === 'partial'" x-cloak>
+			<label class="block text-body font-medium text-text">Recovery rate (%) *</label>
+			<div class="relative mt-2">
+				<input
+					type="text"
+					name="recovery_rate"
+					value={ vm.RecoveryRate }
+					placeholder="50"
+					inputmode="decimal"
+					autocomplete="off"
+					class={ stInputClassRaw(vm.RecoveryRateError != "") + " pr-8" }
+				/>
+				<span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-body text-text-muted2">%</span>
+			</div>
+			if vm.RecoveryRateError != "" {
+				<p class="mt-1 text-body text-danger">{ vm.RecoveryRateError }</p>
+			} else {
+				<p class="mt-1 text-small text-text-muted2">Percentage of tax recoverable as ITC (0–100).</p>
+			}
+		</div>
+
+		<!-- Sales Tax Account -->
+		<div>
+			<label class="block text-body font-medium text-text">Sales tax account *</label>
+			<select
+				name="sales_tax_account_id"
+				class={ stSelectClass(vm.SalesTaxAccountIDError != "") }
+			>
+				<option value="">-- Select --</option>
+				for _, a := range vm.LiabilityAccounts {
+					<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.SalesTaxAccountID }>{ a.Code + " · " + a.Name }</option>
+				}
+			</select>
+			if vm.SalesTaxAccountIDError != "" {
+				<p class="mt-1 text-body text-danger">{ vm.SalesTaxAccountIDError }</p>
+			} else {
+				<p class="mt-1 text-small text-text-muted2">Liability account credited when tax is collected on a sale (e.g. GST/HST Payable).</p>
+			}
+		</div>
+
+		<!-- Purchase Recoverable Account (hidden when recovery = none) -->
+		<div x-show="recoveryMode !== 'none'" x-cloak>
+			<label class="block text-body font-medium text-text">Purchase recoverable account</label>
+			<select
+				name="purchase_recoverable_account_id"
+				class={ stSelectClass(vm.PurchaseRecoverableAccountIDError != "") }
+			>
+				<option value="">-- None --</option>
+				for _, a := range vm.AssetAccounts {
+					<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.PurchaseRecoverableAccountID }>{ a.Code + " · " + a.Name }</option>
+				}
+			</select>
+			if vm.PurchaseRecoverableAccountIDError != "" {
+				<p class="mt-1 text-body text-danger">{ vm.PurchaseRecoverableAccountIDError }</p>
+			} else {
+				<p class="mt-1 text-small text-text-muted2">
+					Asset account debited for recoverable ITC on purchases (e.g. Input Tax Credits Receivable).
+				</p>
+			}
+		</div>
+	</div>
+}
+
+// ── CSS class helpers ─────────────────────────────────────────────────────────
+
+func stInputClass(hasErr bool) string {
+	return "mt-2 " + stInputClassRaw(hasErr)
+}
+
+func stInputClassRaw(hasErr bool) string {
+	base := "block w-full rounded-md border px-3 py-2 text-body outline-none focus:ring-2 "
+	if hasErr {
+		return base + "border-danger focus:ring-danger-focus"
+	}
+	return base + "border-border-input focus:ring-primary-focus"
+}
+
+func stSelectClass(hasErr bool) string {
+	base := "mt-2 block w-full rounded-md border bg-surface px-3 py-2 text-body outline-none focus:ring-2 "
+	if hasErr {
+		return base + "border-danger focus:ring-danger-focus"
+	}
+	return base + "border-border-input focus:ring-primary-focus"
 }

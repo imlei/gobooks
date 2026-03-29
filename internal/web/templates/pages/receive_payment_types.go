@@ -9,21 +9,27 @@ type ReceivePaymentVM struct {
 	Customers []models.Customer
 	Accounts  []models.Account
 
+	// OpenInvoicesJSON is a JSON array of open (sent) invoices for Alpine.js filtering.
+	// Each element: {id, customer_id, invoice_number, amount, due_date}
+	OpenInvoicesJSON string
+
 	// Form values (for re-render)
-	CustomerID string
-	EntryDate  string
+	CustomerID    string
+	EntryDate     string
 	BankAccountID string
-	ARAccountID string
-	Amount string
-	Memo   string
+	ARAccountID   string
+	InvoiceID     string // optional — links payment to a specific invoice
+	Amount        string
+	Memo          string
 
 	// Errors
-	FormError string
+	FormError     string
 	CustomerError string
-	DateError string
-	BankError string
-	ARError string
-	AmountError string
+	DateError     string
+	BankError     string
+	ARError       string
+	InvoiceError  string
+	AmountError   string
 
 	Saved bool
 }

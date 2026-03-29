@@ -19,6 +19,7 @@ templ bodyCompanyHub(vm CompanyHubVM) {
 		<p class="mt-2 max-w-3xl text-text-muted2">
 			Manage your company profile, templates, tax settings, and numbering.
 		</p>
+		// 功能卡片网格：桌面端两列布局，移动端单列
 		<div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
 			@companyHubCard(
 				"/settings/company/profile",
@@ -39,6 +40,12 @@ templ bodyCompanyHub(vm CompanyHubVM) {
 				"/settings/company/numbering",
 				"Numbering",
 				"Configure visible document numbering rules.",
+			)
+			// 产品与服务目录入口：路由仍为 /products-services，此处作为公司设置的快捷入口
+			@companyHubCard(
+				"/products-services",
+				"Products & Services",
+				"Manage your product and service catalog used in invoices and bills.",
 			)
 		</div>
 	</div>
