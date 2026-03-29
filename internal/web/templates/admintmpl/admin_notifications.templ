@@ -1,0 +1,212 @@
+// 遵循产品需求 v1.0
+package admintmpl
+
+import "gobooks/internal/web/templates/pages"
+
+templ AdminNotifications(vm pages.SystemNotificationSettingsVM) {
+	@adminLayout("Notifications", vm.AdminEmail, "settings-notifications", vm.MaintenanceMode, bodyAdminNotifications(vm))
+}
+
+templ bodyAdminNotifications(vm pages.SystemNotificationSettingsVM) {
+	@adminPageHeader("Notifications", "System-wide email and SMS defaults. Companies may use their own credentials if override is enabled.")
+	@adminFlashBanner(vm.Flash)
+
+	if vm.FormError != "" {
+		<div class="mb-5 rounded-md border border-border border-l-4 border-l-danger bg-surface px-4 py-3 text-body text-danger-hover">
+			{ vm.FormError }
+		</div>
+	}
+
+	<form method="post" action="/admin/settings/notifications" class="space-y-5">
+
+		<!-- ── Email / SMTP ───────────────────────────────────────────────── -->
+		<div class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+			<h2 class="text-section font-semibold text-text">System default email / SMTP</h2>
+			<p class="mt-1 text-small text-text-muted2">
+				Used when a company has no custom SMTP configured or fallback is enabled.
+				Credentials are stored encrypted. Leave password blank to keep the current value.
+			</p>
+
+			<div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+				<div class="md:col-span-2">
+					<label class="inline-flex cursor-pointer select-none items-center gap-2">
+						<input
+							type="checkbox"
+							name="email_enabled"
+							value="true"
+							checked?={ vm.EmailEnabled }
+							class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+						/>
+						<span class="text-body text-text">Enable system email notifications</span>
+					</label>
+				</div>
+
+				@adminNotifField("SMTP Host", "smtp_host", vm.SMTPHost, "mail.example.com")
+				@adminNotifField("SMTP Port", "smtp_port", vm.SMTPPort, "587")
+				@adminNotifField("SMTP Username", "smtp_username", vm.SMTPUsername, "user@example.com")
+
+				<div>
+					<label class="block text-body font-medium text-text">SMTP Password</label>
+					<input
+						type="password"
+						name="smtp_password"
+						value=""
+						placeholder="Enter new password to replace"
+						autocomplete="new-password"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+					if vm.SMTPPasswordMaskedHint != "" {
+						<p class="mt-1 text-small text-text-muted">
+							Saved: <span class="font-mono text-text">{ vm.SMTPPasswordMaskedHint }</span>
+						</p>
+					} else {
+						<p class="mt-1 text-small text-text-muted">No password saved yet.</p>
+					}
+				</div>
+
+				@adminNotifField("From Email", "smtp_from_email", vm.SMTPFromEmail, "no-reply@example.com")
+				@adminNotifField("From Name", "smtp_from_name", vm.SMTPFromName, "GoBooks")
+
+				<div>
+					<label class="block text-body font-medium text-text">Encryption</label>
+					<select
+						name="smtp_encryption"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					>
+						<option value="starttls" selected?={ vm.SMTPEncryption == "starttls" || vm.SMTPEncryption == "" }>STARTTLS (recommended)</option>
+						<option value="ssl_tls" selected?={ vm.SMTPEncryption == "ssl_tls" }>SSL / TLS</option>
+						<option value="none" selected?={ vm.SMTPEncryption == "none" }>None</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<!-- ── SMS ────────────────────────────────────────────────────────── -->
+		<div class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+			<h2 class="text-section font-semibold text-text">System default SMS</h2>
+			<p class="mt-1 text-small text-text-muted2">
+				Used when a company has no custom SMS configured or fallback is enabled.
+				API credentials are stored encrypted. Leave key/secret blank to keep existing values.
+			</p>
+
+			<div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+				<div class="md:col-span-2">
+					<label class="inline-flex cursor-pointer select-none items-center gap-2">
+						<input
+							type="checkbox"
+							name="sms_enabled"
+							value="true"
+							checked?={ vm.SMSEnabled }
+							class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+						/>
+						<span class="text-body text-text">Enable system SMS notifications</span>
+					</label>
+				</div>
+
+				@adminNotifField("SMS Provider", "sms_provider", vm.SMSProvider, "e.g. twilio, vonage")
+
+				<div>
+					<label class="block text-body font-medium text-text">API Key</label>
+					<input
+						type="password"
+						name="sms_api_key"
+						value=""
+						placeholder="Enter new key to replace"
+						autocomplete="new-password"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+					if vm.SMSAPIKeyMaskedHint != "" {
+						<p class="mt-1 text-small text-text-muted">
+							Saved: <span class="font-mono text-text">{ vm.SMSAPIKeyMaskedHint }</span>
+						</p>
+					} else {
+						<p class="mt-1 text-small text-text-muted">No API key saved yet.</p>
+					}
+				</div>
+
+				<div>
+					<label class="block text-body font-medium text-text">API Secret</label>
+					<input
+						type="password"
+						name="sms_api_secret"
+						value=""
+						placeholder="Enter new secret to replace"
+						autocomplete="new-password"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+					if vm.SMSAPISecretMaskedHint != "" {
+						<p class="mt-1 text-small text-text-muted">
+							Saved: <span class="font-mono text-text">{ vm.SMSAPISecretMaskedHint }</span>
+						</p>
+					} else {
+						<p class="mt-1 text-small text-text-muted">No API secret saved yet.</p>
+					}
+				</div>
+
+				@adminNotifField("Sender ID / From Number", "sms_sender_id", vm.SMSSenderID, "e.g. +1 555-000-0000 or GoBooks")
+			</div>
+		</div>
+
+		<!-- ── Override rules ─────────────────────────────────────────────── -->
+		<div class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+			<h2 class="text-section font-semibold text-text">Override rules</h2>
+			<p class="mt-1 text-small text-text-muted2">
+				Controls whether companies may supply their own notification credentials.
+				When disabled, all companies use these system defaults.
+			</p>
+			<div class="mt-4">
+				<label class="inline-flex cursor-pointer select-none items-center gap-2">
+					<input
+						type="checkbox"
+						name="allow_company_override"
+						value="true"
+						checked?={ vm.AllowCompanyOverride }
+						class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+					/>
+					<span class="text-body text-text">Allow companies to configure their own email and SMS credentials</span>
+				</label>
+			</div>
+		</div>
+
+		<div class="flex flex-wrap items-center gap-4 pt-1">
+			<button type="submit" class={ adminClassPrimaryButton() }>Save settings</button>
+		</div>
+	</form>
+
+	<!-- ── Test actions ───────────────────────────────────────────────────── -->
+	<div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+		<div class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+			<h2 class="text-section font-semibold text-text">Test email</h2>
+			<p class="mt-2 text-small text-text-muted2">
+				Validates the system SMTP configuration and attempts a stub delivery.
+				Save settings first.
+			</p>
+			<form method="post" action="/admin/settings/notifications/test-email" class="mt-4">
+				<button type="submit" class={ adminClassSecondaryButton() }>Send test email</button>
+			</form>
+		</div>
+		<div class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+			<h2 class="text-section font-semibold text-text">Test SMS</h2>
+			<p class="mt-2 text-small text-text-muted2">
+				Validates the system SMS configuration and attempts a stub delivery.
+				Save settings first.
+			</p>
+			<form method="post" action="/admin/settings/notifications/test-sms" class="mt-4">
+				<button type="submit" class={ adminClassSecondaryButton() }>Send test SMS</button>
+			</form>
+		</div>
+	</div>
+}
+
+templ adminNotifField(label string, name string, value string, placeholder string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<input
+			type="text"
+			name={ name }
+			value={ value }
+			placeholder={ placeholder }
+			class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+		/>
+	</div>
+}

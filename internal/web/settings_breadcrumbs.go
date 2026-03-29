@@ -48,3 +48,19 @@ func breadcrumbSettingsAIConnect() []pages.SettingsBreadcrumbPart {
 		{Label: "AI Connect", Href: ""},
 	}
 }
+
+func breadcrumbSettingsCompanyNotifications() []pages.SettingsBreadcrumbPart {
+	return []pages.SettingsBreadcrumbPart{
+		{Label: "Settings", Href: "/settings/company"},
+		{Label: "Company", Href: "/settings/company"},
+		{Label: "Notifications", Href: ""},
+	}
+}
+
+func breadcrumbSettingsCompanySecurity() []pages.SettingsBreadcrumbPart {
+	return []pages.SettingsBreadcrumbPart{
+		{Label: "Settings", Href: "/settings/company"},
+		{Label: "Company", Href: "/settings/company"},
+		{Label: "Security", Href: ""},
+	}
+}

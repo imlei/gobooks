@@ -19,6 +19,7 @@ type PayBillsInput struct {
 
 	BankAccountID uint
 	APAccountID   uint
+	BillID        *uint
 
 	Amount decimal.Decimal
 	Memo   string
@@ -30,6 +31,10 @@ type PayBillsInput struct {
 //
 // This keeps the accounting logic simple:
 // paying reduces A/P and reduces bank.
+//
+// If BillID is provided, the selected posted bill must belong to the same vendor
+// and company, the payment amount must equal the bill total, and the bill will be
+// marked paid in the same transaction.
 // Returns the new journal entry id.
 func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 	if in.CompanyID == 0 {
@@ -104,6 +109,27 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 	if err := tx.Create(&lines).Error; err != nil {
 		return 0, err
 	}
+
+	if in.BillID != nil && *in.BillID != 0 {
+		var bill models.Bill
+		if err := tx.Where("id = ? AND company_id = ?", *in.BillID, in.CompanyID).First(&bill).Error; err != nil {
+			return 0, fmt.Errorf("linked bill not found")
+		}
+		if bill.VendorID != in.VendorID {
+			return 0, fmt.Errorf("bill does not belong to the selected vendor")
+		}
+		if bill.Status != models.BillStatusPosted {
+			return 0, fmt.Errorf("bill is not open for payment (status: %s)", bill.Status)
+		}
+		if !bill.Amount.Equal(in.Amount) {
+			return 0, fmt.Errorf("payment amount (%s) must equal bill total (%s)",
+				in.Amount.StringFixed(2), bill.Amount.StringFixed(2))
+		}
+		if err := tx.Model(&bill).Updates(map[string]any{
+			"status": models.BillStatusPaid,
+		}).Error; err != nil {
+			return 0, err
+		}
+	}
 	return je.ID, nil
 }
-

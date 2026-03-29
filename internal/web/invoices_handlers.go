@@ -118,14 +118,14 @@ func (s *Server) handleInvoiceCreate(c *fiber.Ctx) error {
 	forceDuplicate := strings.TrimSpace(c.FormValue("force_duplicate")) == "1"
 
 	vm := pages.InvoicesVM{
-		HasCompany:     true,
-		Customers:      customers,
-		Invoices:       invoices,
-		InvoiceNumber:  invoiceNo,
-		CustomerID:     customerRaw,
-		InvoiceDate:    dateRaw,
-		Amount:         amountRaw,
-		Memo:           memo,
+		HasCompany:    true,
+		Customers:     customers,
+		Invoices:      invoices,
+		InvoiceNumber: invoiceNo,
+		CustomerID:    customerRaw,
+		InvoiceDate:   dateRaw,
+		Amount:        amountRaw,
+		Memo:          memo,
 	}
 
 	if invoiceNo == "" {
@@ -207,7 +207,7 @@ func (s *Server) handleInvoiceCreate(c *fiber.Ctx) error {
 		})
 	})
 	if err != nil {
-		vm.FormError = "Could not create invoice. Please try again."
+		vm.FormError = invoiceSaveErrorMessage(err)
 		return pages.Invoices(vm).Render(c.Context(), c)
 	}
 

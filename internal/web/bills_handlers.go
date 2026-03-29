@@ -180,7 +180,7 @@ func (s *Server) handleBillCreate(c *fiber.Ctx) error {
 		Memo:       memo,
 	}
 	if err := s.DB.Create(&bill).Error; err != nil {
-		vm.FormError = "Could not create bill. Please try again."
+		vm.FormError = billSaveErrorMessage(err)
 		return pages.Bills(vm).Render(c.Context(), c)
 	}
 

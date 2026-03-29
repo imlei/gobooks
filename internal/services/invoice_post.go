@@ -54,11 +54,20 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		if l.ProductServiceID == nil {
 			return fmt.Errorf("line %d (%q) has no product/service — assign one before posting", i+1, l.Description)
 		}
+		if l.ProductService == nil || l.ProductService.CompanyID != companyID {
+			return fmt.Errorf("line %d (%q): product/service is not valid for this company", i+1, l.Description)
+		}
 		if l.ProductService.RevenueAccountID == 0 {
 			return fmt.Errorf("line %d (%q): product/service has no revenue account configured", i+1, l.Description)
 		}
 		if !l.ProductService.IsActive {
 			return fmt.Errorf("line %d (%q): product/service is inactive", i+1, l.Description)
+		}
+		if l.ProductService.RevenueAccount.CompanyID != companyID {
+			return fmt.Errorf("line %d (%q): revenue account does not belong to this company", i+1, l.Description)
+		}
+		if l.TaxCodeID != nil && (l.TaxCode == nil || l.TaxCode.CompanyID != companyID) {
+			return fmt.Errorf("line %d (%q): tax code is not valid for this company", i+1, l.Description)
 		}
 	}
 
@@ -107,6 +116,13 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 	jeLines, err := AggregateJournalLines(frags)
 	if err != nil {
 		return fmt.Errorf("aggregate journal lines: %w", err)
+	}
+	companyCheckLines := make([]models.JournalLine, 0, len(jeLines))
+	for _, jl := range jeLines {
+		companyCheckLines = append(companyCheckLines, models.JournalLine{AccountID: jl.AccountID})
+	}
+	if err := EnsureJournalLineAccountsBelongToCompany(db, companyID, companyCheckLines); err != nil {
+		return fmt.Errorf("journal line account validation: %w", err)
 	}
 
 	creditSum := sumPostingCredits(jeLines)

@@ -60,4 +60,12 @@ func (s *Server) RegisterRoutes(app *fiber.App) {
 	app.Post("/admin/system/maintenance/enable", auth(s.handleAdminMaintenanceEnable)...)
 	app.Post("/admin/system/maintenance/disable", auth(s.handleAdminMaintenanceDisable)...)
 	app.Post("/admin/system/restart", auth(s.handleAdminRestartStub)...)
+
+	// 系统设置：通知与安全
+	app.Get("/admin/settings/notifications", auth(s.handleAdminNotificationsGet)...)
+	app.Post("/admin/settings/notifications", auth(s.handleAdminNotificationsPost)...)
+	app.Post("/admin/settings/notifications/test-email", auth(s.handleAdminNotificationsTestEmail)...)
+	app.Post("/admin/settings/notifications/test-sms", auth(s.handleAdminNotificationsTestSMS)...)
+	app.Get("/admin/settings/security", auth(s.handleAdminSecurityGet)...)
+	app.Post("/admin/settings/security", auth(s.handleAdminSecurityPost)...)
 }

@@ -1,0 +1,271 @@
+// 遵循产品需求 v1.0
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ CompanyNotificationSettings(vm CompanyNotificationSettingsVM) {
+	@layout.Layout(
+		"GoBooks - Notifications",
+		ui.SidebarVM{Active: "Company Hub", HasCompany: vm.HasCompany},
+		bodyCompanyNotificationSettings(vm),
+	)
+}
+
+templ bodyCompanyNotificationSettings(vm CompanyNotificationSettingsVM) {
+	<div class="max-w-[95%]">
+		@SettingsBreadcrumb(vm.Breadcrumb)
+		<h1 class="text-title font-semibold">Notifications</h1>
+		<p class="mt-2 max-w-3xl text-text-muted2">
+			Configure email (SMTP) and SMS delivery for this company. These settings power
+			future features such as verification codes, invoice delivery, reminders, and
+			security alerts.
+		</p>
+
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Settings saved.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+		if vm.TestEmailResult == "ok" {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				{ vm.TestEmailMsg }
+			</div>
+		} else if vm.TestEmailResult == "err" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.TestEmailMsg }
+			</div>
+		}
+		if vm.TestSMSResult == "ok" {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				{ vm.TestSMSMsg }
+			</div>
+		} else if vm.TestSMSResult == "err" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.TestSMSMsg }
+			</div>
+		}
+		if vm.ReadOnly {
+			<p class="mt-4 max-w-3xl text-small text-text-muted">
+				View only. Only company owners and admins can change notification settings.
+			</p>
+		}
+		if !vm.SystemAllowsOverride {
+			<div class="mt-4 rounded-md border border-border bg-background p-4 text-small text-text-muted2">
+				The system administrator has not enabled company-level overrides. These settings are
+				read-only. Contact your system administrator to enable custom notification credentials.
+			</div>
+		}
+
+		<form method="post" action="/settings/company/notifications" class="mt-6 space-y-6">
+			<fieldset disabled?={ vm.ReadOnly || !vm.SystemAllowsOverride } class="min-w-0 space-y-6 border-0 p-0 m-0">
+
+			<!-- ── Email / SMTP ─────────────────────────────────────────────── -->
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="-mx-6 -mt-6 mb-6 border-b border-border bg-background px-6 py-3">
+					<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Email / SMTP</div>
+					<p class="mt-1 text-small text-text-muted2">
+						Credentials are stored encrypted on the server. After saving, only a masked hint is shown.
+						Leave the password blank to keep the existing value.
+					</p>
+				</div>
+
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					<div class="md:col-span-2">
+						<label class="inline-flex cursor-pointer select-none items-center gap-2">
+							<input
+								type="checkbox"
+								name="email_enabled"
+								value="true"
+								checked?={ vm.EmailEnabled }
+								class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+							/>
+							<span class="text-body text-text">Enable email notifications</span>
+						</label>
+					</div>
+
+					@notifTextField("SMTP Host", "smtp_host", vm.SMTPHost, "mail.example.com")
+					@notifTextField("SMTP Port", "smtp_port", vm.SMTPPort, "587")
+					@notifTextField("SMTP Username", "smtp_username", vm.SMTPUsername, "user@example.com")
+
+					<div>
+						<label class="block text-body font-medium text-text">SMTP Password</label>
+						<input
+							type="password"
+							name="smtp_password"
+							value=""
+							placeholder="Enter new password to replace"
+							autocomplete="new-password"
+							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+						if vm.SMTPPasswordMaskedHint != "" {
+							<p class="mt-2 text-small text-text-muted">
+								Saved: <span class="font-mono text-text">{ vm.SMTPPasswordMaskedHint }</span>
+							</p>
+						} else {
+							<p class="mt-2 text-small text-text-muted">No password saved yet.</p>
+						}
+					</div>
+
+					@notifTextField("From Email", "smtp_from_email", vm.SMTPFromEmail, "no-reply@example.com")
+					@notifTextField("From Name", "smtp_from_name", vm.SMTPFromName, "GoBooks")
+
+					<div>
+						<label class="block text-body font-medium text-text">Encryption</label>
+						<select
+							name="smtp_encryption"
+							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						>
+							<option value="starttls" selected?={ vm.SMTPEncryption == "starttls" || vm.SMTPEncryption == "" }>STARTTLS (recommended)</option>
+							<option value="ssl_tls" selected?={ vm.SMTPEncryption == "ssl_tls" }>SSL / TLS</option>
+							<option value="none" selected?={ vm.SMTPEncryption == "none" }>None</option>
+						</select>
+					</div>
+
+					<div class="md:col-span-2">
+						<label class="inline-flex cursor-pointer select-none items-center gap-2">
+							<input
+								type="checkbox"
+								name="allow_system_fallback"
+								value="true"
+								checked?={ vm.AllowSystemFallback }
+								class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+							/>
+							<span class="text-body text-text">Fall back to system default when company config is incomplete</span>
+						</label>
+					</div>
+				</div>
+			</div>
+
+			<!-- ── SMS ──────────────────────────────────────────────────────── -->
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="-mx-6 -mt-6 mb-6 border-b border-border bg-background px-6 py-3">
+					<div class="text-small font-semibold uppercase tracking-wider text-text-muted">SMS</div>
+					<p class="mt-1 text-small text-text-muted2">
+						API credentials are stored encrypted. Leave key/secret fields blank to keep the existing values.
+					</p>
+				</div>
+
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					<div class="md:col-span-2">
+						<label class="inline-flex cursor-pointer select-none items-center gap-2">
+							<input
+								type="checkbox"
+								name="sms_enabled"
+								value="true"
+								checked?={ vm.SMSEnabled }
+								class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+							/>
+							<span class="text-body text-text">Enable SMS notifications</span>
+						</label>
+					</div>
+
+					@notifTextField("SMS Provider", "sms_provider", vm.SMSProvider, "e.g. twilio, vonage")
+
+					<div>
+						<label class="block text-body font-medium text-text">API Key</label>
+						<input
+							type="password"
+							name="sms_api_key"
+							value=""
+							placeholder="Enter new key to replace"
+							autocomplete="new-password"
+							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+						if vm.SMSAPIKeyMaskedHint != "" {
+							<p class="mt-2 text-small text-text-muted">
+								Saved: <span class="font-mono text-text">{ vm.SMSAPIKeyMaskedHint }</span>
+							</p>
+						} else {
+							<p class="mt-2 text-small text-text-muted">No API key saved yet.</p>
+						}
+					</div>
+
+					<div>
+						<label class="block text-body font-medium text-text">API Secret</label>
+						<input
+							type="password"
+							name="sms_api_secret"
+							value=""
+							placeholder="Enter new secret to replace"
+							autocomplete="new-password"
+							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+						if vm.SMSAPISecretMaskedHint != "" {
+							<p class="mt-2 text-small text-text-muted">
+								Saved: <span class="font-mono text-text">{ vm.SMSAPISecretMaskedHint }</span>
+							</p>
+						} else {
+							<p class="mt-2 text-small text-text-muted">No API secret saved yet.</p>
+						}
+					</div>
+
+					@notifTextField("Sender ID / From Number", "sms_sender_id", vm.SMSSenderID, "e.g. +1 555-000-0000 or GoBooks")
+				</div>
+			</div>
+
+			<div class="flex flex-wrap items-center gap-4">
+				@ui.ButtonPrimary("Save", "submit", vm.ReadOnly || !vm.SystemAllowsOverride)
+			</div>
+			</fieldset>
+		</form>
+
+		<!-- ── Test actions ─────────────────────────────────────────────────── -->
+		<div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+			<div class="rounded-lg border border-border bg-surface p-5">
+				<h2 class="text-section font-semibold text-text">Test email</h2>
+				<p class="mt-2 text-small text-text-muted2">
+					Validates the SMTP configuration and attempts a test delivery.
+					Save your settings first.
+				</p>
+				<form method="post" action="/settings/company/notifications/test-email" class="mt-4">
+					<fieldset disabled?={ vm.ReadOnly || !vm.SystemAllowsOverride } class="border-0 p-0 m-0">
+						@ui.ButtonSecondary("Send Test Email", "submit", vm.ReadOnly || !vm.SystemAllowsOverride)
+					</fieldset>
+				</form>
+			</div>
+
+			<div class="rounded-lg border border-border bg-surface p-5">
+				<h2 class="text-section font-semibold text-text">Test SMS</h2>
+				<p class="mt-2 text-small text-text-muted2">
+					Validates the SMS provider configuration and attempts a test message.
+					Save your settings first.
+				</p>
+				<form method="post" action="/settings/company/notifications/test-sms" class="mt-4">
+					<fieldset disabled?={ vm.ReadOnly || !vm.SystemAllowsOverride } class="border-0 p-0 m-0">
+						@ui.ButtonSecondary("Send Test SMS", "submit", vm.ReadOnly || !vm.SystemAllowsOverride)
+					</fieldset>
+				</form>
+			</div>
+		</div>
+
+		<!-- ── Future usage note ────────────────────────────────────────────── -->
+		<div class="mt-6 rounded-lg border border-border bg-background p-4 text-small text-text-muted max-w-3xl">
+			<p class="font-medium text-text">What this configuration is used for</p>
+			<ul class="mt-2 list-disc space-y-1 pl-5">
+				<li>Verification codes sent during login or sensitive actions</li>
+				<li>Invoice delivery and reminders to customers</li>
+				<li>Security alerts for login activity</li>
+				<li>Future automated notifications as features are released</li>
+			</ul>
+		</div>
+	</div>
+}
+
+templ notifTextField(label string, name string, value string, placeholder string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<input
+			type="text"
+			name={ name }
+			value={ value }
+			placeholder={ placeholder }
+			class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+		/>
+	</div>
+}

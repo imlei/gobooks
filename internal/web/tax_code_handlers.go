@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 
 	"gobooks/internal/logging"
 	"gobooks/internal/models"
@@ -94,7 +95,7 @@ func (s *Server) handleTaxCodeCreate(c *fiber.Ctx) error {
 	}
 	_ = s.loadSalesTaxDropdowns(companyID, &vm)
 
-	rate, salesAcctID, purchaseAcctID, valid := validateTaxCodeForm(&vm, name, rateRaw, recoveryModeRaw, recoveryRateRaw, salesAcctRaw, purchaseAcctRaw)
+	rate, salesAcctID, purchaseAcctID, valid := validateTaxCodeForm(s.DB, companyID, &vm, name, rateRaw, recoveryModeRaw, recoveryRateRaw, salesAcctRaw, purchaseAcctRaw)
 	if !valid {
 		s.loadTaxCodeItems(companyID, &vm)
 		return pages.CompanySalesTax(vm).Render(c.Context(), c)
@@ -191,7 +192,7 @@ func (s *Server) handleTaxCodeUpdate(c *fiber.Ctx) error {
 	}
 	_ = s.loadSalesTaxDropdowns(companyID, &vm)
 
-	rate, salesAcctID, purchaseAcctID, valid := validateTaxCodeForm(&vm, name, rateRaw, recoveryModeRaw, recoveryRateRaw, salesAcctRaw, purchaseAcctRaw)
+	rate, salesAcctID, purchaseAcctID, valid := validateTaxCodeForm(s.DB, companyID, &vm, name, rateRaw, recoveryModeRaw, recoveryRateRaw, salesAcctRaw, purchaseAcctRaw)
 	if !valid {
 		s.loadTaxCodeItems(companyID, &vm)
 		return pages.CompanySalesTax(vm).Render(c.Context(), c)
@@ -314,6 +315,8 @@ func parseTaxCodeForm(c *fiber.Ctx) (name, rate, recoveryMode, recoveryRate, sal
 // validateTaxCodeForm validates fields and returns parsed values.
 // Sets field errors on vm and returns valid=false if anything fails.
 func validateTaxCodeForm(
+	db *gorm.DB,
+	companyID uint,
 	vm *pages.SalesTaxVM,
 	name, rateRaw, recoveryModeRaw, recoveryRateRaw, salesAcctRaw, purchaseAcctRaw string,
 ) (rate decimal.Decimal, salesAcctID uint, purchaseAcctID *uint, valid bool) {
@@ -383,10 +386,43 @@ func validateTaxCodeForm(
 		if err == nil && id64 > 0 {
 			id := uint(id64)
 			purchaseAcctID = &id
+		} else {
+			vm.PurchaseRecoverableAccountIDError = "Purchase recoverable account must be a valid account."
+			valid = false
 		}
 	}
 
+	if valid {
+		validateTaxCodeAccounts(db, companyID, vm, salesAcctID, purchaseAcctID, &valid)
+	}
+
 	return rate, salesAcctID, purchaseAcctID, valid
+}
+
+func validateTaxCodeAccounts(db *gorm.DB, companyID uint, vm *pages.SalesTaxVM, salesAcctID uint, purchaseAcctID *uint, valid *bool) {
+	var salesAcct models.Account
+	if err := db.Where("id = ? AND company_id = ? AND is_active = true", salesAcctID, companyID).First(&salesAcct).Error; err != nil {
+		vm.SalesTaxAccountIDError = "Sales tax account must be an active liability account in this company."
+		*valid = false
+	} else if salesAcct.RootAccountType != models.RootLiability {
+		vm.SalesTaxAccountIDError = "Sales tax account must be a liability account."
+		*valid = false
+	}
+
+	if purchaseAcctID == nil {
+		return
+	}
+
+	var purchaseAcct models.Account
+	if err := db.Where("id = ? AND company_id = ? AND is_active = true", *purchaseAcctID, companyID).First(&purchaseAcct).Error; err != nil {
+		vm.PurchaseRecoverableAccountIDError = "Purchase recoverable account must be an active asset account in this company."
+		*valid = false
+		return
+	}
+	if purchaseAcct.RootAccountType != models.RootAsset {
+		vm.PurchaseRecoverableAccountIDError = "Purchase recoverable account must be an asset account."
+		*valid = false
+	}
 }
 
 func parseRecoveryRateDecimal(recoveryModeRaw, recoveryRateRaw string) decimal.Decimal {

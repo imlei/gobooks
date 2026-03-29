@@ -17,6 +17,14 @@ import (
 	"gobooks/internal/web/templates/pages"
 )
 
+type parsedInvoiceLine struct {
+	ProductServiceID *uint
+	Description      string
+	Qty              decimal.Decimal
+	UnitPrice        decimal.Decimal
+	TaxCodeID        *uint
+}
+
 // handleInvoiceDetail renders the read-only invoice detail page.
 func (s *Server) handleInvoiceDetail(c *fiber.Ctx) error {
 	companyID, ok := ActiveCompanyIDFromCtx(c)
@@ -223,14 +231,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 	if lineCount < 1 {
 		lineCount = 0
 	}
-	type parsedLine struct {
-		ProductServiceID *uint
-		Description      string
-		Qty              decimal.Decimal
-		UnitPrice        decimal.Decimal
-		TaxCodeID        *uint
-	}
-	var parsedLines []parsedLine
+	var parsedLines []parsedInvoiceLine
 	var lineFormRows []pages.InvoiceLineFormRow
 
 	for i := 0; i < lineCount; i++ {
@@ -262,7 +263,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		}
 		lineFormRows = append(lineFormRows, row)
 
-		pl := parsedLine{Description: desc, Qty: qty, UnitPrice: price}
+		pl := parsedInvoiceLine{Description: desc, Qty: qty, UnitPrice: price}
 		if id64, err := strconv.ParseUint(psIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
 			pl.ProductServiceID = &id
@@ -294,6 +295,11 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		return pages.InvoiceEditor(vm).Render(c.Context(), c)
 	}
 
+	if err := s.validateInvoiceDraftReferences(companyID, uint(custID), parsedLines); err != nil {
+		vm.FormError = err.Error()
+		return pages.InvoiceEditor(vm).Render(c.Context(), c)
+	}
+
 	// ── Compute line amounts ──────────────────────────────────────────────────
 	// Load only the tax codes referenced by lines (with components for tax calc).
 	taxCodeCache := map[uint]*models.TaxCode{}
@@ -314,10 +320,10 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 	}
 
 	type computedLine struct {
-		parsedLine
-		LineNet   decimal.Decimal
-		LineTax   decimal.Decimal
-		LineTotal decimal.Decimal
+		parsedInvoiceLine
+		LineNet    decimal.Decimal
+		LineTax    decimal.Decimal
+		LineTotal  decimal.Decimal
 		TaxResults []services.TaxLineResult
 	}
 	var computed []computedLine
@@ -338,11 +344,11 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		subtotal = subtotal.Add(lineNet)
 		taxTotal = taxTotal.Add(lineTax)
 		computed = append(computed, computedLine{
-			parsedLine: pl,
-			LineNet:    lineNet,
-			LineTax:    lineTax,
-			LineTotal:  lineTotal,
-			TaxResults: taxResults,
+			parsedInvoiceLine: pl,
+			LineNet:           lineNet,
+			LineTax:           lineTax,
+			LineTotal:         lineTotal,
+			TaxResults:        taxResults,
 		})
 	}
 	grandTotal := subtotal.Add(taxTotal)
@@ -358,18 +364,19 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 	}
 
 	// ── Duplicate number check (new invoices only) ────────────────────────────
-	if !isEdit {
-		var dupCount int64
-		if err := s.DB.Model(&models.Invoice{}).
-			Where("company_id = ? AND LOWER(invoice_number) = LOWER(?)", companyID, invoiceNo).
-			Count(&dupCount).Error; err != nil {
-			vm.FormError = "Could not validate invoice number."
-			return pages.InvoiceEditor(vm).Render(c.Context(), c)
-		}
-		if dupCount > 0 {
-			vm.InvoiceNumberError = "Invoice number already exists for this company (case-insensitive)."
-			return pages.InvoiceEditor(vm).Render(c.Context(), c)
-		}
+	var dupCount int64
+	dupQuery := s.DB.Model(&models.Invoice{}).
+		Where("company_id = ? AND LOWER(invoice_number) = LOWER(?)", companyID, invoiceNo)
+	if isEdit {
+		dupQuery = dupQuery.Where("id <> ?", editingID)
+	}
+	if err := dupQuery.Count(&dupCount).Error; err != nil {
+		vm.FormError = "Could not validate invoice number."
+		return pages.InvoiceEditor(vm).Render(c.Context(), c)
+	}
+	if dupCount > 0 {
+		vm.InvoiceNumberError = "Invoice number already exists for this company (case-insensitive)."
+		return pages.InvoiceEditor(vm).Render(c.Context(), c)
 	}
 
 	// ── DB transaction ────────────────────────────────────────────────────────
@@ -464,7 +471,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		)
 	})
 	if err != nil {
-		vm.FormError = "Could not save invoice: " + err.Error()
+		vm.FormError = invoiceSaveErrorMessage(err)
 		return pages.InvoiceEditor(vm).Render(c.Context(), c)
 	}
 
@@ -472,6 +479,45 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+func (s *Server) validateInvoiceDraftReferences(companyID, customerID uint, lines []parsedInvoiceLine) error {
+	var customerCount int64
+	if err := s.DB.Model(&models.Customer{}).
+		Where("id = ? AND company_id = ?", customerID, companyID).
+		Count(&customerCount).Error; err != nil {
+		return fmt.Errorf("could not validate customer")
+	}
+	if customerCount == 0 {
+		return fmt.Errorf("customer is not valid for this company")
+	}
+
+	for i, line := range lines {
+		if line.ProductServiceID != nil {
+			var productCount int64
+			if err := s.DB.Model(&models.ProductService{}).
+				Where("id = ? AND company_id = ? AND is_active = true", *line.ProductServiceID, companyID).
+				Count(&productCount).Error; err != nil {
+				return fmt.Errorf("could not validate line %d product/service", i+1)
+			}
+			if productCount == 0 {
+				return fmt.Errorf("line %d has an invalid product/service for this company", i+1)
+			}
+		}
+		if line.TaxCodeID != nil {
+			var taxCodeCount int64
+			if err := s.DB.Model(&models.TaxCode{}).
+				Where("id = ? AND company_id = ? AND is_active = true", *line.TaxCodeID, companyID).
+				Count(&taxCodeCount).Error; err != nil {
+				return fmt.Errorf("could not validate line %d tax code", i+1)
+			}
+			if taxCodeCount == 0 {
+				return fmt.Errorf("line %d has an invalid tax code for this company", i+1)
+			}
+		}
+	}
+
+	return nil
+}
 
 // optUintStr converts *uint to string; empty string if nil.
 func optUintStr(p *uint) string {
@@ -501,10 +547,10 @@ func (s *Server) loadEditorDropdowns(companyID uint, vm *pages.InvoiceEditorVM) 
 }
 
 type productJSONItem struct {
-	ID               uint    `json:"id"`
-	Name             string  `json:"name"`
-	DefaultPrice     string  `json:"default_price"`
-	DefaultTaxCodeID *uint   `json:"default_tax_code_id"`
+	ID               uint   `json:"id"`
+	Name             string `json:"name"`
+	DefaultPrice     string `json:"default_price"`
+	DefaultTaxCodeID *uint  `json:"default_tax_code_id"`
 }
 
 type taxCodeJSONItem struct {

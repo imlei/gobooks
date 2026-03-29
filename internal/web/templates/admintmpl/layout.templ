@@ -168,6 +168,13 @@ templ adminSidebarBody(activeNav string) {
 					@adminNavItemWithIcon("/admin/sysadmins", "SysAdmin accounts", "sysadmins", activeNav, adminIconNavShield())
 				</div>
 			</div>
+			<div>
+				<p class="px-3 text-small font-semibold uppercase tracking-wider text-text-muted">Settings</p>
+				<div class="mt-3 space-y-1">
+					@adminNavItemWithIcon("/admin/settings/notifications", "Notifications", "settings-notifications", activeNav, adminIconNavBell())
+					@adminNavItemWithIcon("/admin/settings/security", "Security", "settings-security", activeNav, adminIconNavLock())
+				</div>
+			</div>
 			<div class="border-t border-border pt-4">
 				<p class="px-3 text-small font-semibold uppercase tracking-wider text-text-muted">Account</p>
 				<div class="mt-3 space-y-1">
@@ -235,6 +242,26 @@ templ adminFlashBanner(flash string) {
 	} else if flash == "password_changed" {
 		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
 			Password changed successfully. All previous SysAdmin sessions have been revoked.
+		</div>
+	} else if flash == "settings_saved" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Settings saved.
+		</div>
+	} else if flash == "test_email_ok" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Test email submitted. (Stub — no actual email sent yet.)
+		</div>
+	} else if flash == "test_email_err" {
+		<div class="mb-4 rounded-md border border-border border-l-4 border-l-danger bg-surface px-4 py-3 text-body text-danger-hover">
+			Test email failed. Check the SMTP configuration.
+		</div>
+	} else if flash == "test_sms_ok" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Test SMS submitted. (Stub — no actual SMS sent yet.)
+		</div>
+	} else if flash == "test_sms_err" {
+		<div class="mb-4 rounded-md border border-border border-l-4 border-l-danger bg-surface px-4 py-3 text-body text-danger-hover">
+			Test SMS failed. Check the SMS configuration.
 		</div>
 	} else if flash == "invalid_id" {
 		<div class="mb-4 rounded-md border border-border border-l-4 border-l-danger bg-surface px-4 py-3 text-body text-danger-hover">

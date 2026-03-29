@@ -128,12 +128,12 @@ func (s *Server) handleBankReconcileSubmit(c *fiber.Ctx) error {
 
 	statementDate, err := time.Parse("2006-01-02", statementDateStr)
 	if err != nil {
-		return c.Redirect("/banking/reconcile?account_id=" + accountIDStr, fiber.StatusSeeOther)
+		return c.Redirect("/banking/reconcile?account_id="+accountIDStr, fiber.StatusSeeOther)
 	}
 
 	endingBalance, err := services.ParseDecimalMoney(endingBalanceStr)
 	if err != nil {
-		return c.Redirect("/banking/reconcile?account_id=" + accountIDStr + "&statement_date=" + statementDateStr, fiber.StatusSeeOther)
+		return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&statement_date="+statementDateStr, fiber.StatusSeeOther)
 	}
 
 	lineIDBytes := c.Context().PostArgs().PeekMulti("line_ids")
@@ -142,7 +142,7 @@ func (s *Server) handleBankReconcileSubmit(c *fiber.Ctx) error {
 		lineIDs = append(lineIDs, string(b))
 	}
 	if len(lineIDs) == 0 {
-		return c.Redirect("/banking/reconcile?account_id=" + accountIDStr + "&statement_date=" + statementDateStr + "&ending_balance=" + endingBalanceStr, fiber.StatusSeeOther)
+		return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&statement_date="+statementDateStr+"&ending_balance="+endingBalanceStr, fiber.StatusSeeOther)
 	}
 
 	var ids []uint
@@ -154,7 +154,7 @@ func (s *Server) handleBankReconcileSubmit(c *fiber.Ctx) error {
 		ids = append(ids, uint(u))
 	}
 	if len(ids) == 0 {
-		return c.Redirect("/banking/reconcile?account_id=" + accountIDStr + "&statement_date=" + statementDateStr + "&ending_balance=" + endingBalanceStr, fiber.StatusSeeOther)
+		return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&statement_date="+statementDateStr+"&ending_balance="+endingBalanceStr, fiber.StatusSeeOther)
 	}
 
 	decimalZero := decimal.NewFromInt(0)
@@ -238,7 +238,7 @@ WHERE jl.id IN ?
 		"company_id":      companyID,
 	}, &cid, &uid)
 
-	return c.Redirect("/banking/reconcile?account_id=" + accountIDStr + "&statement_date=" + statementDateStr + "&ending_balance=" + endingBalanceStr + "&saved=1", fiber.StatusSeeOther)
+	return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&statement_date="+statementDateStr+"&ending_balance="+endingBalanceStr+"&saved=1", fiber.StatusSeeOther)
 }
 
 func (s *Server) handleReceivePaymentForm(c *fiber.Ctx) error {
@@ -415,11 +415,13 @@ func (s *Server) handlePayBillsForm(c *fiber.Ctx) error {
 	_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vendors).Error
 
 	accounts, _ := s.activeAccountsForCompany(companyID)
+	openBills, _ := s.openPostedBillsForCompany(companyID)
 
 	vm := pages.PayBillsVM{
 		HasCompany: true,
 		Vendors:    vendors,
 		Accounts:   accounts,
+		OpenBills:  openBills,
 		Saved:      c.Query("saved") == "1",
 		EntryDate:  time.Now().Format("2006-01-02"),
 	}
@@ -440,8 +442,10 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 	var vendors []models.Vendor
 	_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vendors).Error
 	accounts, _ := s.activeAccountsForCompany(companyID)
+	openBills, _ := s.openPostedBillsForCompany(companyID)
 
 	vendorIDRaw := strings.TrimSpace(c.FormValue("vendor_id"))
+	billIDRaw := strings.TrimSpace(c.FormValue("bill_id"))
 	entryDateRaw := strings.TrimSpace(c.FormValue("entry_date"))
 	bankIDRaw := strings.TrimSpace(c.FormValue("bank_account_id"))
 	apIDRaw := strings.TrimSpace(c.FormValue("ap_account_id"))
@@ -452,7 +456,9 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 		HasCompany:    true,
 		Vendors:       vendors,
 		Accounts:      accounts,
+		OpenBills:     openBills,
 		VendorID:      vendorIDRaw,
+		BillID:        billIDRaw,
 		EntryDate:     entryDateRaw,
 		BankAccountID: bankIDRaw,
 		APAccountID:   apIDRaw,
@@ -489,6 +495,17 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 		return pages.PayBills(vm).Render(c.Context(), c)
 	}
 
+	var billIDPtr *uint
+	if billIDRaw != "" && billIDRaw != "0" {
+		if billU64, err := services.ParseUint(billIDRaw); err == nil && billU64 > 0 {
+			id := uint(billU64)
+			billIDPtr = &id
+		} else {
+			vm.BillError = "Selected bill is invalid."
+			return pages.PayBills(vm).Render(c.Context(), c)
+		}
+	}
+
 	var jeID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var err error
@@ -498,6 +515,7 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 			EntryDate:     entryDate,
 			BankAccountID: uint(bankU64),
 			APAccountID:   uint(apU64),
+			BillID:        billIDPtr,
 			Amount:        amount,
 			Memo:          memo,
 		})
@@ -521,4 +539,13 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 	}, &cid, &uid)
 
 	return c.Redirect("/banking/pay-bills?saved=1", fiber.StatusSeeOther)
+}
+
+func (s *Server) openPostedBillsForCompany(companyID uint) ([]models.Bill, error) {
+	var bills []models.Bill
+	err := s.DB.Preload("Vendor").
+		Where("company_id = ? AND status = ?", companyID, models.BillStatusPosted).
+		Order("bill_date asc, id asc").
+		Find(&bills).Error
+	return bills, err
 }

@@ -1,0 +1,97 @@
+// 遵循产品需求 v1.0
+package admintmpl
+
+import "gobooks/internal/web/templates/pages"
+
+templ AdminSecurity(vm pages.SystemSecuritySettingsVM) {
+	@adminLayout("Security", vm.AdminEmail, "settings-security", vm.MaintenanceMode, bodyAdminSecurity(vm))
+}
+
+templ bodyAdminSecurity(vm pages.SystemSecuritySettingsVM) {
+	@adminPageHeader("Security", "System-wide security defaults and override policy for all companies.")
+	@adminFlashBanner(vm.Flash)
+
+	if vm.FormError != "" {
+		<div class="mb-5 rounded-md border border-border border-l-4 border-l-danger bg-surface px-4 py-3 text-body text-danger-hover">
+			{ vm.FormError }
+		</div>
+	}
+
+	<form method="post" action="/admin/settings/security" class="space-y-5">
+
+		<!-- ── Global login security defaults ──────────────────────────── -->
+		<div class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+			<h2 class="text-section font-semibold text-text">Global login security defaults</h2>
+			<p class="mt-1 text-small text-text-muted2">
+				These defaults apply to all companies unless a company has configured its own security settings
+				and override is permitted.
+			</p>
+
+			<div class="mt-5 space-y-5">
+				<div>
+					<label class="inline-flex cursor-pointer select-none items-center gap-2">
+						<input
+							type="checkbox"
+							name="unusual_ip_login_alert_default_enabled"
+							value="true"
+							checked?={ vm.UnusualIPLoginAlertDefaultEnabled }
+							class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+						/>
+						<span class="text-body font-medium text-text">Enable unusual IP login alert by default</span>
+					</label>
+					<p class="mt-1 ml-6 text-small text-text-muted2">
+						Sends an alert when a user logs in from an IP address not previously seen for that account.
+					</p>
+				</div>
+
+				<div>
+					<label class="inline-flex cursor-pointer select-none items-center gap-2">
+						<input
+							type="checkbox"
+							name="unusual_ip_login_company_override_allowed"
+							value="true"
+							checked?={ vm.UnusualIPLoginCompanyOverrideAllowed }
+							class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+						/>
+						<span class="text-body font-medium text-text">Allow companies to override this default</span>
+					</label>
+					<p class="mt-1 ml-6 text-small text-text-muted2">
+						When enabled, company admins may adjust security alert settings for their own company.
+						When disabled, system defaults are enforced for all companies.
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- ── Reserved policy area ─────────────────────────────────────── -->
+		<div class="rounded-xl border border-border bg-surface p-5 shadow-sm">
+			<h2 class="text-section font-semibold text-text">Reserved policy area</h2>
+			<p class="mt-1 text-small text-text-muted2">
+				These policies will be configurable in a future release.
+			</p>
+
+			<div class="mt-4 space-y-3">
+				@adminSecurityComingSoon("New device login policy", "Alert and optionally block logins from devices not previously seen for a user.")
+				@adminSecurityComingSoon("Failed login threshold", "Configure the number of consecutive failures before an account is locked or an alert fires.")
+				@adminSecurityComingSoon("Password reset notification policy", "Control whether account holders are notified when a password reset is initiated.")
+			</div>
+		</div>
+
+		<div class="flex flex-wrap items-center gap-4 pt-1">
+			<button type="submit" class={ adminClassPrimaryButton() }>Save settings</button>
+		</div>
+	</form>
+}
+
+templ adminSecurityComingSoon(title string, description string) {
+	<div class="flex items-start gap-3 rounded-lg border border-dashed border-border-input bg-background/60 p-4">
+		<div class="mt-0.5 h-4 w-4 shrink-0 rounded border border-border-input bg-surface"></div>
+		<div class="min-w-0">
+			<div class="flex flex-wrap items-center gap-2">
+				<span class="text-body font-medium text-text-muted2">{ title }</span>
+				<span class="rounded-md border border-border bg-surface px-2 py-0.5 text-xs font-medium text-text-muted3">Coming soon</span>
+			</div>
+			<p class="mt-1 text-small text-text-muted">{ description }</p>
+		</div>
+	</div>
+}

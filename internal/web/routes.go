@@ -41,6 +41,16 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/settings/company", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyHub)
 	app.Post("/settings/company", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyProfileSubmit)
 
+	// ── 设置：通知（SMTP / SMS）────────────────────────────────────────────────
+	app.Get("/settings/company/notifications", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyNotificationsGet)
+	app.Post("/settings/company/notifications", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyNotificationsPost)
+	app.Post("/settings/company/notifications/test-email", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyNotificationsTestEmail)
+	app.Post("/settings/company/notifications/test-sms", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyNotificationsTestSMS)
+
+	// ── 设置：安全 ──────────────────────────────────────────────────────────────
+	app.Get("/settings/company/security", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanySecurityGet)
+	app.Post("/settings/company/security", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanySecurityPost)
+
 	// 向后兼容：旧编号 URL（POST 转发；GET 重定向到新路径）
 	app.Post("/settings/numbering", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleNumberingSettingsPost)
 	app.Get("/settings/numbering", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), func(c *fiber.Ctx) error {

@@ -9,7 +9,7 @@ import (
 
 // Migrate runs basic GORM auto-migrations.
 // This is intentionally simple for the initial project setup.
-// Company.City: added with not null + default '' so existing rows survive (see migrations/002_add_company_city.sql).
+// Company.City: added with not null + default ” so existing rows survive (see migrations/002_add_company_city.sql).
 func Migrate(db *gorm.DB) error {
 	if err := renameJournalEntriesDescriptionToJournalNo(db); err != nil {
 		return err
@@ -59,10 +59,19 @@ func Migrate(db *gorm.DB) error {
 		&models.SystemSetting{},
 		// Phase E: 用户粒度权限扩展点（schema-ready，尚未接入权限检查）
 		&models.UserCompanyPermission{},
+		// Notifications & Security: per-company and system-level settings + event log
+		&models.CompanyNotificationSettings{},
+		&models.SystemNotificationSettings{},
+		&models.CompanySecuritySettings{},
+		&models.SystemSecuritySettings{},
+		&models.SecurityEvent{},
 	); err != nil {
 		return err
 	}
-	return ensureCompanyAccountCodeDefaults(db)
+	if err := ensureCompanyAccountCodeDefaults(db); err != nil {
+		return err
+	}
+	return ensureDocumentNumberIndexes(db)
 }
 
 // ensureCompanyAccountCodeDefaults backfills account_code_length and locks length for companies that already have accounts.
@@ -112,3 +121,16 @@ END$$;
 `).Error
 }
 
+func ensureDocumentNumberIndexes(db *gorm.DB) error {
+	if err := db.Exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS uq_invoices_company_invoice_number_ci
+ON invoices (company_id, lower(invoice_number));
+`).Error; err != nil {
+		return err
+	}
+
+	return db.Exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bills_company_vendor_bill_number_ci
+ON bills (company_id, vendor_id, lower(bill_number));
+`).Error
+}

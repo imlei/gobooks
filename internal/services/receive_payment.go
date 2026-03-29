@@ -124,8 +124,10 @@ func RecordReceivePayment(tx *gorm.DB, in ReceivePaymentInput) (uint, error) {
 			return 0, fmt.Errorf("invoice is not open for payment (status: %s)", inv.Status)
 		}
 		if !inv.Amount.Equal(in.Amount) {
-			return 0, fmt.Errorf("payment amount (%s) must equal invoice total (%s)",
-				in.Amount.StringFixed(2), inv.Amount.StringFixed(2))
+			return 0, fmt.Errorf(
+				"linked invoice payments currently support full settlement only: payment amount (%s) must equal invoice total (%s); leave the invoice blank to record a partial or unapplied receipt",
+				in.Amount.StringFixed(2), inv.Amount.StringFixed(2),
+			)
 		}
 		if err := tx.Model(&inv).Updates(map[string]any{
 			"status": models.InvoiceStatusPaid,
@@ -136,4 +138,3 @@ func RecordReceivePayment(tx *gorm.DB, in ReceivePaymentInput) (uint, error) {
 
 	return je.ID, nil
 }
-

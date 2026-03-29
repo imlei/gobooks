@@ -37,3 +37,8 @@ AccountingApp.spec
 **/__pycache__/
 *.pyc
 
+# Editor / merge backup artifacts (e.g. foo.go.8270674866629597342)
+**/*.go.[0-9]*
+*~
+schema_out.txt
+

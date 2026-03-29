@@ -17,7 +17,7 @@ templ bodyCompanyHub(vm CompanyHubVM) {
 		@SettingsBreadcrumb(vm.Breadcrumb)
 		<h1 class="text-title font-semibold">Company</h1>
 		<p class="mt-2 max-w-3xl text-text-muted2">
-			Manage your company profile, templates, tax settings, and numbering.
+			Manage your company profile, templates, tax settings, numbering, notifications, and security.
 		</p>
 		// 功能卡片网格：桌面端两列布局，移动端单列
 		<div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -46,6 +46,16 @@ templ bodyCompanyHub(vm CompanyHubVM) {
 				"/products-services",
 				"Products & Services",
 				"Manage your product and service catalog used in invoices and bills.",
+			)
+			@companyHubCard(
+				"/settings/company/notifications",
+				"Notifications",
+				"Configure email (SMTP) and SMS delivery for verification codes, reminders, and alerts.",
+			)
+			@companyHubCard(
+				"/settings/company/security",
+				"Security",
+				"Set login alert preferences and future security rule defaults.",
 			)
 		</div>
 	</div>

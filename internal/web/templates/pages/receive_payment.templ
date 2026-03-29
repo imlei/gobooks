@@ -77,6 +77,7 @@ templ bodyReceivePayment(vm ReceivePaymentVM) {
 						<div class="md:col-span-2" x-show="filteredInvoices.length > 0">
 							<label class="block text-body font-medium text-text">Apply to Invoice</label>
 							<p class="mt-0.5 text-small text-text-muted2">Select an open invoice to apply this payment to. Amount will be filled automatically.</p>
+							<p class="mt-0.5 text-small text-text-muted2">Linked invoices currently support full settlement only. For a partial or unapplied receipt, leave this blank and enter the amount manually.</p>
 							<select
 								name="invoice_id"
 								x-model="invoiceId"
