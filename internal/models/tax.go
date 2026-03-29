@@ -87,6 +87,10 @@ type TaxCode struct {
 	ID                           uint            `gorm:"primaryKey"`
 	CompanyID                    uint            `gorm:"not null;index:idx_tax_codes_company_active,priority:1"`
 	Name                         string          `gorm:"not null"`
+	// Code and TaxType are legacy columns from early migrations (005). Flat-rate tax uses Name + Rate only.
+	// We set Code = Name and TaxType = "taxable" on write so older databases with NOT NULL code/tax_type still accept inserts.
+	Code    string `gorm:"column:code;size:255;default:''"`
+	TaxType string `gorm:"column:tax_type;size:32;default:'taxable'"`
 	Rate                         decimal.Decimal `gorm:"type:numeric(8,6);not null"`
 	Scope                        TaxScope        `gorm:"type:text;not null;default:'both'"`
 	RecoveryMode                 TaxRecoveryMode `gorm:"type:text;not null;default:'none'"`

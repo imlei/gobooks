@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/shopspring/decimal"
 
+	"gobooks/internal/logging"
 	"gobooks/internal/models"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
@@ -114,10 +115,12 @@ func (s *Server) handleTaxCodeCreate(c *fiber.Ctx) error {
 		return pages.CompanySalesTax(vm).Render(c.Context(), c)
 	}
 
-	recoveryRate, _ := decimal.NewFromString(recoveryRateRaw)
+	recoveryRate := parseRecoveryRateDecimal(recoveryModeRaw, recoveryRateRaw)
 	tc := models.TaxCode{
 		CompanyID:                    companyID,
 		Name:                         name,
+		Code:                         name,
+		TaxType:                      "taxable",
 		Rate:                         rate,
 		Scope:                        models.TaxScopeBoth,
 		RecoveryMode:                 models.TaxRecoveryMode(recoveryModeRaw),
@@ -127,7 +130,8 @@ func (s *Server) handleTaxCodeCreate(c *fiber.Ctx) error {
 		IsActive:                     true,
 	}
 	if err := s.DB.Create(&tc).Error; err != nil {
-		vm.FormError = "Could not create tax code. Please try again."
+		logging.L().Warn("tax_code create failed", "err", err.Error(), "company_id", companyID, "name", name)
+		vm.FormError = taxCodeSaveErrorMessage(err, false)
 		s.loadTaxCodeItems(companyID, &vm)
 		return pages.CompanySalesTax(vm).Render(c.Context(), c)
 	}
@@ -193,9 +197,11 @@ func (s *Server) handleTaxCodeUpdate(c *fiber.Ctx) error {
 		return pages.CompanySalesTax(vm).Render(c.Context(), c)
 	}
 
-	recoveryRate, _ := decimal.NewFromString(recoveryRateRaw)
+	recoveryRate := parseRecoveryRateDecimal(recoveryModeRaw, recoveryRateRaw)
 
 	existing.Name = name
+	existing.Code = name
+	existing.TaxType = "taxable"
 	existing.Rate = rate
 	existing.RecoveryMode = models.TaxRecoveryMode(recoveryModeRaw)
 	existing.RecoveryRate = recoveryRate
@@ -203,7 +209,8 @@ func (s *Server) handleTaxCodeUpdate(c *fiber.Ctx) error {
 	existing.PurchaseRecoverableAccountID = purchaseAcctID
 
 	if err := s.DB.Save(&existing).Error; err != nil {
-		vm.FormError = "Could not update tax code. Please try again."
+		logging.L().Warn("tax_code update failed", "err", err.Error(), "company_id", companyID, "tax_code_id", taxCodeID)
+		vm.FormError = taxCodeSaveErrorMessage(err, true)
 		s.loadTaxCodeItems(companyID, &vm)
 		return pages.CompanySalesTax(vm).Render(c.Context(), c)
 	}
@@ -380,6 +387,39 @@ func validateTaxCodeForm(
 	}
 
 	return rate, salesAcctID, purchaseAcctID, valid
+}
+
+func parseRecoveryRateDecimal(recoveryModeRaw, recoveryRateRaw string) decimal.Decimal {
+	if recoveryModeRaw != "partial" {
+		return decimal.Zero
+	}
+	rr, err := decimal.NewFromString(strings.TrimSpace(recoveryRateRaw))
+	if err != nil {
+		return decimal.Zero
+	}
+	return rr
+}
+
+// taxCodeSaveErrorMessage maps common DB errors to a short UI hint; full error is always logged.
+func taxCodeSaveErrorMessage(err error, update bool) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	base := "Could not create tax code. "
+	if update {
+		base = "Could not update tax code. "
+	}
+	switch {
+	case strings.Contains(msg, "tax_codes") && strings.Contains(msg, "foreign key"):
+		return base + "The selected GL account was rejected by the database. Pick another sales tax (or ITC) account from the dropdowns."
+	case strings.Contains(msg, "duplicate key") || strings.Contains(msg, "unique constraint"):
+		return base + "A conflicting tax code already exists (name or code may need to be unique)."
+	case strings.Contains(msg, "violates not-null constraint"):
+		return base + "The database schema may be out of date. Apply migration 008_tax_code_redesign.sql or redeploy so tax_codes matches the current app model."
+	default:
+		return base + "Please try again. (Details were written to the server log.)"
+	}
 }
 
 // trimTrailingZeros removes trailing zeros after a decimal point (e.g. "5.0000" → "5").

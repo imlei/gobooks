@@ -73,66 +73,58 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		return ErrNoAPAccount
 	}
 
-	// ── Build JE lines ────────────────────────────────────────────────────────
-	type jeLine struct {
-		AccountID uint
-		Debit     decimal.Decimal
-		Credit    decimal.Decimal
-		Memo      string
-	}
-	var jeLines []jeLine
+	// ── Build posting fragments (line-level tax) then aggregate ───────────────
+	var frags []PostingFragment
 	apCreditTotal := decimal.Zero
 
 	for _, l := range bill.Lines {
 		lineNet := l.LineNet
 
-		// Compute tax amounts for this line.
-		var taxResult TaxResult
+		var lt LineTaxAmounts
 		if l.TaxCode != nil && l.TaxCode.Scope != models.TaxScopeSales {
-			taxResult = ComputeTax(lineNet, *l.TaxCode)
+			lt = ComputeLineTax(lineNet, *l.TaxCode)
 		}
 
-		// Expense debit = net cost + non-recoverable tax (non-rec tax is a real cost).
-		expenseDebit := lineNet.Add(taxResult.NonRecoverableAmount)
-		jeLines = append(jeLines, jeLine{
+		// Expense / asset debit = net + non-recoverable tax (embedded in cost when not recoverable).
+		expenseDebit := lineNet.Add(lt.NonRecoverableTaxAmount)
+		frags = append(frags, PostingFragment{
 			AccountID: *l.ExpenseAccountID,
 			Debit:     expenseDebit,
 			Credit:    decimal.Zero,
 			Memo:      l.Description,
 		})
 
-		// Recoverable tax debit — posted to ITC receivable account (separate asset).
-		if taxResult.RecoverableAmount.IsPositive() && l.TaxCode != nil &&
+		if lt.RecoverableTaxAmount.IsPositive() && l.TaxCode != nil &&
 			l.TaxCode.PurchaseRecoverableAccountID != nil {
-			jeLines = append(jeLines, jeLine{
+			frags = append(frags, PostingFragment{
 				AccountID: *l.TaxCode.PurchaseRecoverableAccountID,
-				Debit:     taxResult.RecoverableAmount,
+				Debit:     lt.RecoverableTaxAmount,
 				Credit:    decimal.Zero,
 				Memo:      "ITC: " + l.Description,
 			})
 		}
 
-		// AP credit = full gross line amount (net + total tax).
-		lineTotal := lineNet.Add(taxResult.TaxAmount)
+		lineTotal := lineNet.Add(lt.TaxAmount)
 		apCreditTotal = apCreditTotal.Add(lineTotal)
 	}
 
-	// Accounts Payable credit — single line for the full gross bill total.
-	jeLines = append(jeLines, jeLine{
+	frags = append(frags, PostingFragment{
 		AccountID: apAccount.ID,
 		Debit:     decimal.Zero,
 		Credit:    apCreditTotal,
 		Memo:      "Bill " + bill.BillNumber,
 	})
 
-	// Sanity check: total debits must equal AP credit.
-	debitSum := decimal.Zero
-	for _, jl := range jeLines {
-		debitSum = debitSum.Add(jl.Debit)
+	jeLines, err := AggregateJournalLines(frags)
+	if err != nil {
+		return fmt.Errorf("aggregate journal lines: %w", err)
 	}
-	if !debitSum.Equal(apCreditTotal) {
-		return fmt.Errorf("journal entry imbalance: debit sum %s ≠ AP credit %s — check line totals",
-			debitSum.StringFixed(2), apCreditTotal.StringFixed(2))
+
+	debitSum := sumPostingDebits(jeLines)
+	creditSum := sumPostingCredits(jeLines)
+	if !debitSum.Equal(creditSum) || !creditSum.Equal(apCreditTotal) {
+		return fmt.Errorf("journal entry imbalance: debit sum %s, credit sum %s, AP total %s — check line totals",
+			debitSum.StringFixed(2), creditSum.StringFixed(2), apCreditTotal.StringFixed(2))
 	}
 
 	// ── Transaction ───────────────────────────────────────────────────────────

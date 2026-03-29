@@ -120,3 +120,42 @@ func TestBalanceSheetReport_filtersByCompany(t *testing.T) {
 		t.Fatalf("unexpected total liabilities: %s", report.TotalLiabilities)
 	}
 }
+
+func TestJournalEntryReport_filtersByDateAndCompany(t *testing.T) {
+	db := testReportsDB(t)
+	seedAccountWithBalance(t, db, 1, "1000", "Cash A", models.RootAsset, models.DetailBank, "100.00", "0.00")
+	seedAccountWithBalance(t, db, 2, "1000", "Cash B", models.RootAsset, models.DetailBank, "50.00", "0.00")
+
+	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC)
+
+	rep1, err := JournalEntryReport(db, 1, from, to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep1) != 1 {
+		t.Fatalf("company 1: want 1 entry, got %d", len(rep1))
+	}
+	if rep1[0].JournalNo != "JE-001" || len(rep1[0].Lines) != 1 {
+		t.Fatalf("unexpected entry: %+v", rep1[0])
+	}
+	if rep1[0].Lines[0].AccountCode != "1000" || rep1[0].Lines[0].AccountName != "Cash A" {
+		t.Fatalf("unexpected line: %+v", rep1[0].Lines[0])
+	}
+
+	rep1empty, err := JournalEntryReport(db, 1, time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep1empty) != 0 {
+		t.Fatalf("expected no entries in April for company 1, got %d", len(rep1empty))
+	}
+
+	rep2, err := JournalEntryReport(db, 2, from, to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep2) != 1 || rep2[0].Lines[0].AccountName != "Cash B" {
+		t.Fatalf("company 2 report mismatch: %+v", rep2)
+	}
+}

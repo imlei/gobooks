@@ -104,6 +104,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/reports/trial-balance", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleTrialBalance)
 	app.Get("/reports/income-statement", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleIncomeStatement)
 	app.Get("/reports/balance-sheet", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleBalanceSheet)
+	app.Get("/reports/journal-entries", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleJournalEntryReport)
 
 	// ── 产品与服务目录 ────────────────────────────────────────────────────────────
 	// 属于公司主数据，变更需要 manage_settings（owner / admin）

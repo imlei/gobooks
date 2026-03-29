@@ -15,8 +15,10 @@ import (
 const aiSecretPrefix = "enc:v1:"
 
 var (
-	errAISecretKeyNotConfigured = errors.New("AI secret encryption key is not configured")
-	aiSecretKeyMu               sync.RWMutex
+	// ErrAISecretKeyNotConfigured is returned when encrypting or decrypting AI secrets
+	// but ConfigureAISecretKey was never given a valid 32-byte base64 key.
+	ErrAISecretKeyNotConfigured = errors.New("AI secret encryption key is not configured")
+	aiSecretKeyMu                 sync.RWMutex
 	aiSecretKey                 []byte
 )
 
@@ -118,7 +120,7 @@ func currentAISecretKey() ([]byte, error) {
 	defer aiSecretKeyMu.RUnlock()
 
 	if len(aiSecretKey) == 0 {
-		return nil, errAISecretKeyNotConfigured
+		return nil, ErrAISecretKeyNotConfigured
 	}
 	return append([]byte(nil), aiSecretKey...), nil
 }

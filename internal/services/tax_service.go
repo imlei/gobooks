@@ -20,6 +20,36 @@ type TaxResult struct {
 	NonRecoverableAmount decimal.Decimal
 }
 
+// LineTaxAmounts is the line-level tax breakdown for posting (net + tax splits).
+// Recoverability affects purchase/expense treatment; on sales, full tax_amount posts to payable.
+type LineTaxAmounts struct {
+	NetAmount               decimal.Decimal
+	TaxAmount               decimal.Decimal
+	RecoverableTaxAmount    decimal.Decimal
+	NonRecoverableTaxAmount decimal.Decimal
+}
+
+// ComputeLineTax returns net and tax components for one line using the tax code rate and recovery rules.
+// It does not change stored line data — compute-only.
+func ComputeLineTax(netAmount decimal.Decimal, code models.TaxCode) LineTaxAmounts {
+	r := ComputeTax(netAmount, code)
+	return LineTaxAmounts{
+		NetAmount:               netAmount,
+		TaxAmount:               r.TaxAmount,
+		RecoverableTaxAmount:    r.RecoverableAmount,
+		NonRecoverableTaxAmount: r.NonRecoverableAmount,
+	}
+}
+
+// AsTaxResult maps LineTaxAmounts to the legacy TaxResult shape for helpers like SalesTaxPostingLine.
+func (l LineTaxAmounts) AsTaxResult() TaxResult {
+	return TaxResult{
+		TaxAmount:            l.TaxAmount,
+		RecoverableAmount:    l.RecoverableTaxAmount,
+		NonRecoverableAmount: l.NonRecoverableTaxAmount,
+	}
+}
+
 // TaxPostingLine is a single GL debit or credit line derived from a tax computation.
 // AccountID is 0 when the line should not be posted (e.g. non-recoverable with no
 // expense account override — the caller adds the amount to the line's expense account).

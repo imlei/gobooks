@@ -77,6 +77,22 @@ func TestComputeTax_ZeroRate(t *testing.T) {
 	assertDecimal(t, "TaxAmount", "0", got.TaxAmount)
 }
 
+func TestComputeLineTax_matches_ComputeTax(t *testing.T) {
+	tc := taxCode("0.13", models.TaxScopeBoth, models.TaxRecoveryPartial, "50", 10, 20)
+	net := d("1000.00")
+	tr := ComputeTax(net, tc)
+	lt := ComputeLineTax(net, tc)
+	if !lt.NetAmount.Equal(net) {
+		t.Fatalf("NetAmount")
+	}
+	if !lt.TaxAmount.Equal(tr.TaxAmount) || !lt.RecoverableTaxAmount.Equal(tr.RecoverableAmount) || !lt.NonRecoverableTaxAmount.Equal(tr.NonRecoverableAmount) {
+		t.Fatalf("line tax %+v vs tax result %+v", lt, tr)
+	}
+	if !lt.AsTaxResult().TaxAmount.Equal(tr.TaxAmount) {
+		t.Fatal("AsTaxResult")
+	}
+}
+
 func TestComputeTax_PartialRecovery_Rounding(t *testing.T) {
 	// 5% on $33.33 = $1.6665 → rounded to $1.67; 60% of $1.67 = $1.002 → $1.00; non-rec = $0.67
 	tc := taxCode("0.05", models.TaxScopeBoth, models.TaxRecoveryPartial, "60", 10, 20)

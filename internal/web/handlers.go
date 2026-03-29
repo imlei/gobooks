@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
+	"gobooks/internal/logging"
 	"gobooks/internal/models"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
@@ -244,6 +245,45 @@ func (s *Server) handleBalanceSheet(c *fiber.Ctx) error {
 		ActiveTab:  "balance",
 		Report:     report,
 		AsOfTime:   asOf,
+	}).Render(c.Context(), c)
+}
+
+func (s *Server) handleJournalEntryReport(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
+	fromDate, toDate, fromStr, toStr, errMsg := parseReportRange(c.Query("from"), c.Query("to"))
+	if errMsg != "" {
+		return pages.JournalEntryReport(pages.JournalEntryReportVM{
+			HasCompany: true,
+			From:       fromStr,
+			To:         toStr,
+			ActiveTab:  "journal",
+			Entries:    nil,
+			FormError:  errMsg,
+		}).Render(c.Context(), c)
+	}
+
+	entries, err := services.JournalEntryReport(s.DB, companyID, fromDate, toDate)
+	if err != nil {
+		return pages.JournalEntryReport(pages.JournalEntryReportVM{
+			HasCompany: true,
+			From:       fromStr,
+			To:         toStr,
+			ActiveTab:  "journal",
+			Entries:    nil,
+			FormError:  "Could not run report.",
+		}).Render(c.Context(), c)
+	}
+
+	return pages.JournalEntryReport(pages.JournalEntryReportVM{
+		HasCompany: true,
+		From:       fromStr,
+		To:         toStr,
+		ActiveTab:  "journal",
+		Entries:    entries,
 	}).Render(c.Context(), c)
 }
 
@@ -561,10 +601,11 @@ func (s *Server) handleAIConnectPost(c *fiber.Ctx) error {
 	beforeSnap := services.AIConnectionAuditSnapshot(rowBefore)
 
 	if err := services.UpsertAIConnectionSettings(s.DB, company.ID, provider, baseURL, apiKey, model, enabled, vision); err != nil {
+		logging.L().Warn("ai_connect save failed", "err", err.Error(), "company_id", company.ID)
 		row, _ := services.LoadAIConnectionSettings(s.DB, company.ID)
 		vm := aiConnectVMFromRow(row, false)
 		vm.HasCompany = true
-		vm.FormError = "Could not save AI connection settings."
+		vm.FormError = aiConnectSaveErrorMessage(err)
 		vm.Provider = provider
 		vm.APIBaseURL = baseURL
 		vm.ModelName = model

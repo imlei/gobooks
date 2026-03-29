@@ -21,11 +21,11 @@ var ErrNoARAccount = errors.New("no active Accounts Receivable account found —
 // PostInvoice transitions a draft invoice to "sent" and generates a double-entry
 // journal entry in a single transaction.
 //
-// Accounting entries produced:
+// Accounting entries produced (after line-level tax + aggregation):
 //
 //	Dr  Accounts Receivable    invoice.Amount    (full gross total)
-//	Cr  Revenue account        line.LineNet      (one credit per line)
-//	Cr  Sales Tax Payable      tax amount        (one credit per taxed line, via SalesTaxPostingLine)
+//	Cr  Revenue account        line.LineNet      (credits; merged per revenue account)
+//	Cr  Sales Tax Payable      tax amount        (merged per sales tax GL account)
 //
 // All lines must have a ProductService (for the revenue account).
 // The AR account is the first active account with detail_type = accounts_receivable.
@@ -71,19 +71,10 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		return ErrNoARAccount
 	}
 
-	// ── Build JE lines ────────────────────────────────────────────────────────
-	// Verify totals balance before writing anything.
-	creditSum := decimal.Zero
-	type jeLine struct {
-		AccountID uint
-		Debit     decimal.Decimal
-		Credit    decimal.Decimal
-		Memo      string
-	}
-	var jeLines []jeLine
+	// ── Build posting fragments (line-level tax) then aggregate ───────────────
+	var frags []PostingFragment
 
-	// Debit: Accounts Receivable = full gross total.
-	jeLines = append(jeLines, jeLine{
+	frags = append(frags, PostingFragment{
 		AccountID: arAccount.ID,
 		Debit:     inv.Amount,
 		Credit:    decimal.Zero,
@@ -91,35 +82,38 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 	})
 
 	for _, l := range inv.Lines {
-		// Credit revenue account with the pre-tax line amount.
-		jeLines = append(jeLines, jeLine{
+		frags = append(frags, PostingFragment{
 			AccountID: l.ProductService.RevenueAccountID,
 			Debit:     decimal.Zero,
 			Credit:    l.LineNet,
 			Memo:      l.Description,
 		})
-		creditSum = creditSum.Add(l.LineNet)
 
-		// Credit Sales Tax Payable — use SalesTaxPostingLine for the flat-rate tax code.
 		if l.TaxCodeID != nil && l.TaxCode != nil && l.TaxCode.Scope != models.TaxScopePurchase {
-			taxResult := ComputeTax(l.LineNet, *l.TaxCode)
-			if taxResult.TaxAmount.IsPositive() {
-				posting := SalesTaxPostingLine(taxResult, *l.TaxCode)
-				jeLines = append(jeLines, jeLine{
+			lt := ComputeLineTax(l.LineNet, *l.TaxCode)
+			if lt.TaxAmount.IsPositive() {
+				posting := SalesTaxPostingLine(lt.AsTaxResult(), *l.TaxCode)
+				frags = append(frags, PostingFragment{
 					AccountID: posting.AccountID,
 					Debit:     decimal.Zero,
 					Credit:    posting.Amount,
 					Memo:      "Tax on " + l.Description,
 				})
-				creditSum = creditSum.Add(posting.Amount)
 			}
 		}
 	}
 
-	// Sanity check: credits must equal the AR debit (= inv.Amount).
-	if !creditSum.Equal(inv.Amount) {
-		return fmt.Errorf("journal entry imbalance: AR debit %s ≠ credit sum %s — check line totals",
-			inv.Amount.StringFixed(2), creditSum.StringFixed(2))
+	// Recoverability does not change sales posting; full tax_amount credits SalesTaxAccountID.
+	jeLines, err := AggregateJournalLines(frags)
+	if err != nil {
+		return fmt.Errorf("aggregate journal lines: %w", err)
+	}
+
+	creditSum := sumPostingCredits(jeLines)
+	debitSum := sumPostingDebits(jeLines)
+	if !creditSum.Equal(inv.Amount) || !debitSum.Equal(inv.Amount) {
+		return fmt.Errorf("journal entry imbalance: AR debit %s, credit sum %s, debit sum %s — check line totals",
+			inv.Amount.StringFixed(2), creditSum.StringFixed(2), debitSum.StringFixed(2))
 	}
 
 	// ── Transaction ───────────────────────────────────────────────────────────
