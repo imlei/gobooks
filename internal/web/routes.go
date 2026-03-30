@@ -31,6 +31,9 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	// GET 页面对所有成员开放；POST 变更需要 manage_settings（owner / admin）
 	app.Get("/settings/company/profile", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyProfileForm)
 	app.Post("/settings/company/profile", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyProfileSubmit)
+	// Logo upload (settings permission) and protected serve (any member, prevents hotlinking).
+	app.Post("/settings/company/profile/logo", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyLogoUpload)
+	app.Get("/company/logo", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyLogoServe)
 	app.Get("/settings/company/templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyTemplatesGet)
 	app.Get("/settings/company/sales-tax", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanySalesTaxGet)
 	app.Post("/settings/company/sales-tax", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleTaxCodeCreate)

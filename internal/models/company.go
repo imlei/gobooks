@@ -118,6 +118,11 @@ type Company struct {
 	// AccountCodeLengthLocked is set true after initial COA import; length cannot be changed afterward.
 	AccountCodeLengthLocked bool `gorm:"not null;default:false"`
 
+	// LogoPath is the relative path to the uploaded company logo file.
+	// Format: data/{companyID}/profile/logo.{ext}.
+	// Empty string means no logo has been uploaded.
+	LogoPath string `gorm:"type:text;not null;default:''"`
+
 	// IsActive is set to false by SysAdmin to suspend a company without destroying data.
 	// Existing members receive a 403 on login until reactivated.
 	IsActive bool `gorm:"not null;default:true"`

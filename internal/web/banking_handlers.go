@@ -716,24 +716,28 @@ func (s *Server) handleAcceptSuggestion(c *fiber.Ctx) error {
 	}
 	suggID := uint(suggIDU64)
 
-	// Load the suggestion (verify ownership via company_id).
-	var sugg models.ReconciliationMatchSuggestion
-	if err := s.DB.Preload("Lines").
+	// Atomic CAS: update only if still pending. RowsAffected == 0 means
+	// another request already accepted or rejected this suggestion — silently redirect.
+	now := time.Now()
+	userID := user.ID
+	result := s.DB.Model(&models.ReconciliationMatchSuggestion{}).
 		Where("id = ? AND company_id = ? AND status = ?", suggID, companyID, models.SuggStatusPending).
-		First(&sugg).Error; err != nil {
+		Updates(map[string]any{
+			"status":              models.SuggStatusAccepted,
+			"accepted_by_user_id": userID,
+			"accepted_at":         &now,
+			"reviewed_at":         &now,
+			"reviewed_by_user_id": userID,
+		})
+	if result.Error != nil || result.RowsAffected == 0 {
 		return redirect()
 	}
 
-	// Mark accepted — set both the dedicated accept fields and the legacy reviewed fields.
-	now := time.Now()
-	userID := user.ID
-	if err := s.DB.Model(&sugg).Updates(map[string]any{
-		"status":               models.SuggStatusAccepted,
-		"accepted_by_user_id":  userID,
-		"accepted_at":          &now,
-		"reviewed_at":          &now,
-		"reviewed_by_user_id":  userID,
-	}).Error; err != nil {
+	// Load the now-accepted suggestion (with lines) for memory update + audit.
+	var sugg models.ReconciliationMatchSuggestion
+	if err := s.DB.Preload("Lines").
+		Where("id = ? AND company_id = ?", suggID, companyID).
+		First(&sugg).Error; err != nil {
 		return redirect()
 	}
 
@@ -793,22 +797,26 @@ func (s *Server) handleRejectSuggestion(c *fiber.Ctx) error {
 	}
 	suggID := uint(suggIDU64)
 
-	var sugg models.ReconciliationMatchSuggestion
-	if err := s.DB.
+	// Atomic CAS: update only if still pending. RowsAffected == 0 means
+	// another request already accepted or rejected this suggestion — silently redirect.
+	now := time.Now()
+	userID := user.ID
+	result := s.DB.Model(&models.ReconciliationMatchSuggestion{}).
 		Where("id = ? AND company_id = ? AND status = ?", suggID, companyID, models.SuggStatusPending).
-		First(&sugg).Error; err != nil {
+		Updates(map[string]any{
+			"status":              models.SuggStatusRejected,
+			"rejected_by_user_id": userID,
+			"rejected_at":         &now,
+			"reviewed_at":         &now,
+			"reviewed_by_user_id": userID,
+		})
+	if result.Error != nil || result.RowsAffected == 0 {
 		return redirect()
 	}
 
-	now := time.Now()
-	userID := user.ID
-	_ = s.DB.Model(&sugg).Updates(map[string]any{
-		"status":               models.SuggStatusRejected,
-		"rejected_by_user_id":  userID,
-		"rejected_at":          &now,
-		"reviewed_at":          &now,
-		"reviewed_by_user_id":  userID,
-	}).Error
+	// Load account_id for audit log (best-effort; skip if row missing).
+	var sugg models.ReconciliationMatchSuggestion
+	_ = s.DB.Select("account_id").Where("id = ? AND company_id = ?", suggID, companyID).First(&sugg).Error
 
 	actor := user.Email
 	if actor == "" {

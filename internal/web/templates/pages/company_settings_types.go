@@ -8,5 +8,11 @@ type CompanySettingsVM struct {
 	Values     SetupFormValues
 	Errors     SetupFormErrors
 	Saved      bool
+
+	// LogoPath is non-empty when a logo has been uploaded for this company.
+	// Used to render a preview image on the profile page.
+	LogoPath string
+	// LogoError is a human-readable upload validation error (type, size, etc.).
+	LogoError string
 }
 

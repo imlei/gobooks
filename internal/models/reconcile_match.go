@@ -158,15 +158,17 @@ type ReconciliationMatchSuggestionLine struct {
 //
 // Unique constraint: (company_id, account_id, normalized_book_memo, source_type).
 // One memory cell per memo+source pattern per account.
+// The uniqueIndex tags declare the constraint to GORM (for AutoMigrate and
+// clause.OnConflict) — the SQL migration adds the same constraint by name.
 type ReconciliationMemory struct {
 	ID        uint `gorm:"primaryKey"`
-	CompanyID uint `gorm:"not null;index"`
-	AccountID uint `gorm:"not null;index"`
+	CompanyID uint `gorm:"not null;uniqueIndex:uq_mem_pattern"`
+	AccountID uint `gorm:"not null;uniqueIndex:uq_mem_pattern"`
 
 	// NormalizedBookMemo is the cleaned, lowercase memo after noise removal.
-	NormalizedBookMemo string `gorm:"type:text;not null;default:''"`
+	NormalizedBookMemo string `gorm:"type:text;not null;default:'';uniqueIndex:uq_mem_pattern"`
 	// SourceType mirrors journal_entries.source_type for the matched line.
-	SourceType string `gorm:"type:text;not null;default:''"`
+	SourceType string `gorm:"type:text;not null;default:'';uniqueIndex:uq_mem_pattern"`
 
 	// Optional party references — enable richer payee-based matching in future.
 	VendorID   *uint

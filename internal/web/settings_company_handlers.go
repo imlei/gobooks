@@ -58,8 +58,10 @@ func (s *Server) handleCompanyProfileForm(c *fiber.Ctx) error {
 			IncorporatedDate: company.IncorporatedDate,
 			FiscalYearEnd:    company.FiscalYearEnd,
 		},
-		Errors: pages.SetupFormErrors{},
-		Saved:  c.Query("saved") == "1",
+		Errors:    pages.SetupFormErrors{},
+		Saved:     c.Query("saved") == "1",
+		LogoPath:  company.LogoPath,
+		LogoError: logoErrorMessage(c.Query("logo_error")),
 	}).Render(c.Context(), c)
 }
 
@@ -108,12 +110,16 @@ func (s *Server) handleCompanyProfileSubmit(c *fiber.Ctx) error {
 	}
 
 	if errs.HasAny() {
+		// Load logo path so the preview is still shown on validation error.
+		var cur models.Company
+		_ = s.DB.Select("logo_path").Where("id = ?", companyID).First(&cur).Error
 		return pages.CompanyProfile(pages.CompanySettingsVM{
 			HasCompany: true,
 			Breadcrumb: breadcrumbSettingsCompanyProfile(),
 			Values:     values,
 			Errors:     errs,
 			Saved:      false,
+			LogoPath:   cur.LogoPath,
 		}).Render(c.Context(), c)
 	}
 
@@ -156,7 +162,8 @@ func (s *Server) handleCompanyProfileSubmit(c *fiber.Ctx) error {
 			Errors: pages.SetupFormErrors{
 				Form: "Could not save. Please try again.",
 			},
-			Saved: false,
+			Saved:    false,
+			LogoPath: company.LogoPath,
 		}).Render(c.Context(), c)
 	}
 

@@ -28,6 +28,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"gobooks/internal/models"
 )
@@ -246,12 +247,16 @@ func AutoMatch(db *gorm.DB, params AutoMatchParams) (int, error) {
 // scoreCandidate applies the deterministic + heuristic signal battery to one
 // journal line and returns a [0,1] confidence and the contributing signals.
 //
-// Signal weights (must sum to ≤ 1.0 when all present):
+// The final confidence is a weighted average (see weightedSignals). Signal
+// weights are defined in the signalWeights registry. The amount signals are
+// mutually exclusive: exact_amount_match (0.35) fires when the candidate
+// equals targetNet exactly; amount_proximity (0.20) fires otherwise.
 //
-//	exact_amount_match / amount_proximity : 0.35
-//	date_proximity                        : 0.25
-//	source_reliability                    : 0.15
-//	historical_match                      : 0.25
+//	exact_amount_match (exclusive) : 0.35
+//	amount_proximity   (exclusive) : 0.20
+//	date_proximity                 : 0.25
+//	source_reliability             : 0.15
+//	historical_match (if present)  : 0.25
 func scoreCandidate(
 	cand ReconcileCandidate,
 	targetNet decimal.Decimal,
@@ -370,15 +375,22 @@ func sourceReliabilityScore(sourceType string) (float64, string) {
 	}
 }
 
-// weightedSignals computes a weighted average over the signal set.
-// Signals not in the weight registry default to 0.10.
+// weightedSignals computes a weighted average: sum(score*weight) / sum(weight).
+// Because it is an average, weights are relative — they do NOT need to sum to
+// any particular value. A higher weight simply pulls that signal's score closer
+// to the final result. Signals whose names are not in the registry default to
+// weight 0.10 so they still contribute but are treated as low-confidence.
+//
+// Note: group_exact_sum signals are stored in ExplanationJSON for display only;
+// they are NOT passed to weightedSignals (buildGroupSugg scores groups by
+// averaging member scores directly). The entry is absent intentionally.
 var signalWeights = map[string]float64{
 	"exact_amount_match": 0.35,
 	"amount_proximity":   0.20,
 	"date_proximity":     0.25,
 	"source_reliability": 0.15,
 	"historical_match":   0.25,
-	"group_exact_sum":    0.30,
+	"date_payee_cluster": 0.20, // context signal for group display
 }
 
 func weightedSignals(signals []MatchSignal) float64 {
@@ -695,34 +707,42 @@ func UpdateMemoryFromAcceptedLines(db *gorm.DB, companyID, accountID uint, lineI
 			customerID = &id
 		}
 
-		var existing models.ReconciliationMemory
-		err := db.Where(
-			"company_id = ? AND account_id = ? AND normalized_book_memo = ? AND source_type = ?",
-			companyID, accountID, normMemo, r.SourceType,
-		).First(&existing).Error
-
-		if err == nil {
-			// Increment existing entry.
-			newCount := existing.MatchedCount + 1
-			newBoost := math.Min(0.30, float64(newCount)*0.05)
-			_ = db.Model(&existing).Updates(map[string]any{
-				"matched_count":    newCount,
-				"last_matched_at":  now,
-				"confidence_boost": decimal.NewFromFloat(newBoost),
-			}).Error
-		} else {
-			// Create new memory entry.
-			_ = db.Create(&models.ReconciliationMemory{
-				CompanyID:          companyID,
-				AccountID:          accountID,
-				NormalizedBookMemo: normMemo,
-				SourceType:         r.SourceType,
-				VendorID:           vendorID,
-				CustomerID:         customerID,
-				MatchedCount:       1,
-				LastMatchedAt:      now,
-				ConfidenceBoost:    decimal.NewFromFloat(0.05),
-			}).Error
+		// Atomic upsert: INSERT … ON CONFLICT DO UPDATE.
+		// Avoids the SELECT-then-CREATE/UPDATE race when two concurrent accepts
+		// produce the same (company_id, account_id, normalized_book_memo, source_type).
+		// The CASE WHEN expression computes the capped boost purely from matched_count
+		// so the value remains correct regardless of prior state.
+		rec := models.ReconciliationMemory{
+			CompanyID:          companyID,
+			AccountID:          accountID,
+			NormalizedBookMemo: normMemo,
+			SourceType:         r.SourceType,
+			VendorID:           vendorID,
+			CustomerID:         customerID,
+			MatchedCount:       1,
+			LastMatchedAt:      now,
+			ConfidenceBoost:    decimal.NewFromFloat(0.05),
+		}
+		if err := db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "company_id"},
+				{Name: "account_id"},
+				{Name: "normalized_book_memo"},
+				{Name: "source_type"},
+			},
+			DoUpdates: clause.Assignments(map[string]any{
+				"matched_count":   gorm.Expr("matched_count + 1"),
+				"last_matched_at": now,
+				// Boost = min(0.30, new_count * 0.05).
+				// Uses matched_count+1 (the post-increment value) to stay in sync
+				// with the count update above. Works in both PostgreSQL and SQLite.
+				"confidence_boost": gorm.Expr(
+					"CASE WHEN (matched_count + 1) * 0.05 > 0.30 THEN 0.30 ELSE (matched_count + 1) * 0.05 END",
+				),
+				"updated_at": now,
+			}),
+		}).Create(&rec).Error; err != nil {
+			return err
 		}
 	}
 
