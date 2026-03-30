@@ -7,28 +7,26 @@ templ Sidebar(vm SidebarVM) {
 
 templ sidebarShell(vm SidebarVM) {
 	<aside class="w-[220px] bg-surface border-r border-border p-4">
-		<nav class="mt-2 space-y-6">
+		<nav class="mt-2 space-y-5">
+
+			// ── Core ───────────────────────────────────────────────────────────────
 			<div class="sidebar-collapsible" data-sidebar-section="core" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "core") }>
 				<button
 					type="button"
-					class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md text-left hover:bg-background"
-					aria-expanded="true"
+					class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background"
 					data-sidebar-toggle
 				>
-					<span class="text-small font-semibold text-text-muted uppercase tracking-wider">Core</span>
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" data-sidebar-chevron aria-hidden="true">
+					<span class="text-small font-semibold uppercase tracking-wider text-text-muted">Core</span>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" data-sidebar-chevron aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
 					</svg>
 				</button>
-				<div class="sidebar-section-panel mt-3 space-y-1" data-sidebar-panel>
+				<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
 					if vm.HasCompany {
 						@navItem("/", "Dashboard", "dashboard", vm.Active == "Dashboard")
-						@navItem("/accounts", "Accounts", "accounts", vm.Active == "Accounts")
 						@navItem("/journal-entry", "Journal Entry", "journal", vm.Active == "Journal Entry")
 						@navItem("/invoices", "Invoices", "invoice", vm.Active == "Invoices")
 						@navItem("/bills", "Bills", "bill", vm.Active == "Bills")
-						@navItem("/reports/trial-balance", "Reports", "reports", vm.Active == "Reports")
-						// Products & Services 已移至 Settings > Company 页面的功能卡片入口
 					} else {
 						@navItem("/setup", "Setup", "setup", vm.Active == "Setup")
 					}
@@ -36,56 +34,74 @@ templ sidebarShell(vm SidebarVM) {
 			</div>
 
 			if vm.HasCompany {
-				<div class="sidebar-collapsible" data-sidebar-section="contacts" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "contacts") }>
+				// ── Sales & Get Paid ───────────────────────────────────────────────
+				<div class="sidebar-collapsible" data-sidebar-section="sales" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "sales") }>
 					<button
 						type="button"
-						class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md text-left hover:bg-background"
-						aria-expanded="true"
+						class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background"
 						data-sidebar-toggle
 					>
-						<span class="text-small font-semibold text-text-muted uppercase tracking-wider">Contacts</span>
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" data-sidebar-chevron aria-hidden="true">
+						<span class="text-small font-semibold uppercase tracking-wider text-text-muted">Sales & Get Paid</span>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" data-sidebar-chevron aria-hidden="true">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
 						</svg>
 					</button>
-					<div class="sidebar-section-panel mt-3 space-y-1" data-sidebar-panel>
+					<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
 						@navItem("/customers", "Customers", "customers", vm.Active == "Customers")
-						@navItem("/vendors", "Vendors", "vendors", vm.Active == "Vendors")
+						@navItem("/banking/receive-payment", "Receive Payment", "receive", vm.Active == "Receive Payment")
 					</div>
 				</div>
 
-				<div class="sidebar-collapsible" data-sidebar-section="banking" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "banking") }>
+				// ── Expense & Bills ────────────────────────────────────────────────
+				<div class="sidebar-collapsible" data-sidebar-section="expenses" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "expenses") }>
 					<button
 						type="button"
-						class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md text-left hover:bg-background"
-						aria-expanded="true"
+						class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background"
 						data-sidebar-toggle
 					>
-						<span class="text-small font-semibold text-text-muted uppercase tracking-wider">Banking</span>
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" data-sidebar-chevron aria-hidden="true">
+						<span class="text-small font-semibold uppercase tracking-wider text-text-muted">Expense & Bills</span>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" data-sidebar-chevron aria-hidden="true">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
 						</svg>
 					</button>
-					<div class="sidebar-section-panel mt-3 space-y-1" data-sidebar-panel>
-						@navItem("/banking/reconcile", "Reconcile", "reconcile", vm.Active == "Bank Reconcile")
-						@navItem("/banking/receive-payment", "Receive Payment", "receive", vm.Active == "Receive Payment")
+					<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
+						@navItem("/vendors", "Vendors", "vendors", vm.Active == "Vendors")
 						@navItem("/banking/pay-bills", "Pay Bills", "pay", vm.Active == "Pay Bills")
 					</div>
 				</div>
 
-				<div class="sidebar-collapsible" data-sidebar-section="settings" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "settings") }>
+				// ── Accounting ─────────────────────────────────────────────────────
+				<div class="sidebar-collapsible" data-sidebar-section="accounting" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "accounting") }>
 					<button
 						type="button"
-						class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md text-left hover:bg-background"
-						aria-expanded="true"
+						class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background"
 						data-sidebar-toggle
 					>
-						<span class="text-small font-semibold text-text-muted uppercase tracking-wider">Settings</span>
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" data-sidebar-chevron aria-hidden="true">
+						<span class="text-small font-semibold uppercase tracking-wider text-text-muted">Accounting</span>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" data-sidebar-chevron aria-hidden="true">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
 						</svg>
 					</button>
-					<div class="sidebar-section-panel mt-3 space-y-1" data-sidebar-panel>
+					<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
+						@navItem("/banking/reconcile", "Reconciliation", "reconcile", vm.Active == "Bank Reconcile")
+						@navItem("/reports/trial-balance", "Reports", "reports", vm.Active == "Reports")
+						@navItem("/accounts", "Chart of Accounts", "accounts", vm.Active == "Accounts")
+					</div>
+				</div>
+
+				// ── Settings ───────────────────────────────────────────────────────
+				<div class="sidebar-collapsible" data-sidebar-section="settings" data-contains-active={ BoolStr(SectionKeyForActivePage(vm.Active) == "settings") }>
+					<button
+						type="button"
+						class="sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background"
+						data-sidebar-toggle
+					>
+						<span class="text-small font-semibold uppercase tracking-wider text-text-muted">Settings</span>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" data-sidebar-chevron aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+						</svg>
+					</button>
+					<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
 						@navItem("/settings/company", "Company", "company", IsCompanySettingsNavActive(vm.Active))
 						@navItem("/settings/ai-connect", "AI Connect", "ai", vm.Active == "AI Connect Settings")
 						@navItem("/settings/members", "Members", "members", vm.Active == "Members Settings")
@@ -103,8 +119,14 @@ templ sidebarCollapseScript() {
 		(function () {
 			if (window.__gobooksSidebarCollapsibleInit) return;
 			window.__gobooksSidebarCollapsibleInit = true;
-			var keys = { core: "sidebar.section.core", contacts: "sidebar.section.contacts", banking: "sidebar.section.banking", settings: "sidebar.section.settings" };
-			var sectionIDs = ["core", "contacts", "banking", "settings"];
+			var keys = {
+				core:       "sidebar.section.core",
+				sales:      "sidebar.section.sales",
+				expenses:   "sidebar.section.expenses",
+				accounting: "sidebar.section.accounting",
+				settings:   "sidebar.section.settings",
+			};
+			var sectionIDs = ["core", "sales", "expenses", "accounting", "settings"];
 
 			function readExpanded(sectionKey, containsActive) {
 				if (containsActive) return true;
@@ -117,9 +139,9 @@ templ sidebarCollapseScript() {
 
 			function applySection(sectionKey, expanded) {
 				document.querySelectorAll('[data-sidebar-section="' + sectionKey + '"]').forEach(function (el) {
-					var btn = el.querySelector("[data-sidebar-toggle]");
+					var btn   = el.querySelector("[data-sidebar-toggle]");
 					var panel = el.querySelector("[data-sidebar-panel]");
-					var chev = el.querySelector("[data-sidebar-chevron]");
+					var chev  = el.querySelector("[data-sidebar-chevron]");
 					if (!btn || !panel || !chev) return;
 					if (expanded) {
 						panel.classList.remove("hidden");
@@ -137,7 +159,7 @@ templ sidebarCollapseScript() {
 				sectionIDs.forEach(function (sk) {
 					var first = document.querySelector('[data-sidebar-section="' + sk + '"]');
 					if (!first) return;
-					var ca = first.getAttribute("data-contains-active") === "true";
+					var ca  = first.getAttribute("data-contains-active") === "true";
 					var exp = readExpanded(sk, ca);
 					applySection(sk, exp);
 				});
@@ -184,97 +206,95 @@ templ navItem(href string, label string, iconKind string, isActive bool) {
 }
 
 templ icon(kind string) {
-	<!-- Icons use `currentColor` so active/inactive styling comes from the parent link -->
+	<!-- Icons use `currentColor` so active/inactive styling is inherited from the parent link -->
 	if kind == "dashboard" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2 3 3 6-6 4 4" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M21 21H3" />
-		</svg>
-	} else if kind == "accounts" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18" />
+		// LayoutGrid — four equal squares
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<rect x="3" y="3" width="7" height="7" rx="1" stroke-linejoin="round"/>
+			<rect x="14" y="3" width="7" height="7" rx="1" stroke-linejoin="round"/>
+			<rect x="3" y="14" width="7" height="7" rx="1" stroke-linejoin="round"/>
+			<rect x="14" y="14" width="7" height="7" rx="1" stroke-linejoin="round"/>
 		</svg>
 	} else if kind == "journal" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M7 7h10M7 11h10M7 15h6" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+		// BookOpen — open book
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
 		</svg>
 	} else if kind == "invoice" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6M9 16h6" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M7 3h10l2 2v16H5V5l2-2z" />
+		// DocumentText — document with lines
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
 		</svg>
 	} else if kind == "bill" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 8h.01M12 12h.01M12 16h.01" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v14H4V6z" />
-		</svg>
-	} else if kind == "reports" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M4 4h16v16H4V4z" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M8 12h8M8 16h6M8 8h8" />
-		</svg>
-	} else if kind == "setup" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3h-6" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+		// Receipt / purchase document
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
 		</svg>
 	} else if kind == "customers" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M16 11a4 4 0 10-8 0" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M20 21a8 8 0 10-16 0" />
-		</svg>
-	} else if kind == "vendors" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M6 10h12" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M7 20h10" />
-		</svg>
-	} else if kind == "reconcile" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M9 11l3 3L22 4" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M3 7h7M3 12h4M3 17h4" />
+		// UserGroup — two people
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
 		</svg>
 	} else if kind == "receive" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 8V4m0 4l-4-4m4 4l4-4" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M4 20h16" />
+		// ArrowDownCircle — money coming in
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+		</svg>
+	} else if kind == "vendors" {
+		// BuildingOffice — supplier building
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M3 7l9-4 9 4M4 7v14h16V7M9 21v-6h6v6"/>
 		</svg>
 	} else if kind == "pay" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 16v4m0-4l-4 4m4-4l4 4" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M4 4h16" />
+		// CreditCard — paying out
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+		</svg>
+	} else if kind == "reconcile" {
+		// Scale/Balance — reconciliation
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M3 6l9-3 9 3M3 6l3 9c0 1.657 1.343 3 3 3s3-1.343 3-3L6 6m12 0l-3 9c0 1.657 1.343 3 3 3s3-1.343 3-3l-3-9M12 3v18"/>
+		</svg>
+	} else if kind == "reports" {
+		// ChartBar — bar chart
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+		</svg>
+	} else if kind == "accounts" {
+		// TableCells — chart of accounts / spreadsheet
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 6v12M3 6h18a0 0 0 010 0v12a0 0 0 010 0H3a0 0 0 010 0V6a0 0 0 010 0z"/>
+			<rect x="3" y="6" width="18" height="12" rx="1" stroke-linejoin="round"/>
+		</svg>
+	} else if kind == "setup" {
+		// PlusCircle — initial setup
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3h-6"/>
+			<path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
 		</svg>
 	} else if kind == "company" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M5 7v14h14V7" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M9 11h6v6H9v-6z" />
-		</svg>
-	} else if kind == "numbering" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+		// OfficeBuildingFilled — company settings
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 8v-4h4v4H9z"/>
 		</svg>
 	} else if kind == "ai" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+		// CpuChip / LightBulb — AI
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
 		</svg>
 	} else if kind == "members" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+		// Users
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
 		</svg>
 	} else if kind == "audit" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
-			<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
-		</svg>
-	} else if kind == "products" {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
+		// ClipboardDocumentList — audit log
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
 		</svg>
 	} else {
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
 		</svg>
 	}
 }

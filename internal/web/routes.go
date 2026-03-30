@@ -103,9 +103,11 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/invoices/:id/void", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceApprove), s.handleInvoiceVoid)
 
 	// ── 账单 ─────────────────────────────────────────────────────────────────────
-	// 创建账单需要 ap_access（ap 及以上）
+	// 查看列表对所有成员开放；创建 / 编辑需要 ap_access（ap 及以上）
 	app.Get("/bills", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBills)
-	app.Post("/bills", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleBillCreate)
+	app.Get("/bills/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBillNew)
+	app.Get("/bills/:id/edit", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBillEdit)
+	app.Post("/bills/save-draft", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleBillSaveDraft)
 
 	// ── 报表（需 view_reports 权限；AP 角色无权访问）─────────────────────────────
 	app.Get("/reports", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), func(c *fiber.Ctx) error {
@@ -147,6 +149,11 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	// 付款归入 AP 操作（ap_access，ap 及以上）
 	app.Get("/banking/reconcile", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBankReconcileForm)
 	app.Post("/banking/reconcile", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleBankReconcileSubmit)
+	app.Post("/banking/reconcile/void", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleVoidReconciliation)
+	// Auto-match engine: suggest → accept/reject (membership only; no accounting changes)
+	app.Post("/banking/reconcile/auto-match", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleAutoMatch)
+	app.Post("/banking/reconcile/suggest/accept", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleAcceptSuggestion)
+	app.Post("/banking/reconcile/suggest/reject", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleRejectSuggestion)
 	app.Get("/banking/receive-payment", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleReceivePaymentForm)
 	app.Post("/banking/receive-payment", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleReceivePaymentSubmit)
 	app.Get("/banking/pay-bills", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePayBillsForm)

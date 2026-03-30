@@ -43,26 +43,14 @@ type BillsVM struct {
 	Vendors []models.Vendor
 	Bills   []models.Bill
 
-	BillNumber string
-	VendorID   string
-	BillDate   string
-	Amount     string
-	Memo       string
+	FormError string
 
-	BillNumberError string
-	VendorError     string
-	DateError       string
-	AmountError     string
-	FormError       string
+	// Saved is set after a save-draft redirect (?saved=1).
+	Saved bool
 
-	DuplicateWarning bool
-	DuplicateMessage string
-
-	Created bool
-
-	FilterQ       string
+	FilterQ        string
 	FilterVendorID string
-	FilterFrom    string
-	FilterTo      string
+	FilterFrom     string
+	FilterTo       string
 }
 

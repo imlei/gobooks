@@ -7,17 +7,17 @@ import "strings"
 // Used to keep the section containing the current route expanded on load.
 func SectionKeyForActivePage(active string) string {
 	switch active {
-	case "Dashboard", "Accounts", "Journal Entry", "Invoices", "Bills", "Reports", "Setup":
+	case "Dashboard", "Journal Entry", "Invoices", "Bills", "Setup":
 		return "core"
-	case "Customers", "Vendors":
-		return "contacts"
-	case "Bank Reconcile", "Receive Payment", "Pay Bills":
-		return "banking"
+	case "Customers", "Receive Payment":
+		return "sales"
+	case "Vendors", "Pay Bills":
+		return "expenses"
+	case "Bank Reconcile", "Reports", "Accounts":
+		return "accounting"
 	case "AI Connect Settings", "Members Settings", "Audit Log", "Products & Services":
-		// "Products & Services" 已移至 Settings > Company，访问时保持 Settings 区块展开
 		return "settings"
 	default:
-		// Any /settings/company/* page uses Active values like "Company Hub", "Company Profile", …
 		if IsCompanySettingsNavActive(active) {
 			return "settings"
 		}

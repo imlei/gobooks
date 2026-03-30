@@ -249,6 +249,10 @@ type Bill struct {
 	BillDate time.Time  `gorm:"not null"`
 	Status   BillStatus `gorm:"type:text;not null;default:'draft'"`
 
+	// Terms and DueDate mirror the invoice payment-terms pattern.
+	Terms   InvoiceTerms `gorm:"type:text;not null;default:'net_30'"`
+	DueDate *time.Time   `gorm:"index"`
+
 	// Amount is the cached grand total (Subtotal + TaxTotal).
 	Amount decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
 	// Subtotal is the cached sum of all BillLine.LineNet values.

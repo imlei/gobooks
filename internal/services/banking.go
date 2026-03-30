@@ -2,10 +2,14 @@
 package services
 
 import (
+	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+
+	"gobooks/internal/models"
 )
 
 // ReconcileCandidate is one unreconciled journal line for an account.
@@ -13,13 +17,20 @@ type ReconcileCandidate struct {
 	LineID    uint
 	EntryDate time.Time
 	JournalNo string
-	Memo      string
-	Debit       decimal.Decimal
-	Credit      decimal.Decimal
+	SourceType string
+	PayeeName  string
+	Memo       string
+	Debit      decimal.Decimal
+	Credit     decimal.Decimal
 
 	// Amount is a convenience: for the bank account (asset),
 	// amount = debit - credit.
 	Amount decimal.Decimal
+
+	// Payment is money leaving the bank account (credit side).
+	// Deposit is money entering the bank account (debit side).
+	Payment decimal.Decimal
+	Deposit decimal.Decimal
 }
 
 // ListReconcileCandidates returns unreconciled lines for a given account
@@ -32,10 +43,21 @@ SELECT
   jl.id AS line_id,
   je.entry_date AS entry_date,
   je.journal_no AS journal_no,
+  COALESCE(je.source_type, '') AS source_type,
+  COALESCE(
+    CASE
+      WHEN jl.party_type = 'customer' THEN (SELECT name FROM customers WHERE id = jl.party_id LIMIT 1)
+      WHEN jl.party_type = 'vendor'   THEN (SELECT name FROM vendors   WHERE id = jl.party_id LIMIT 1)
+      ELSE ''
+    END,
+    ''
+  ) AS payee_name,
   jl.memo AS memo,
   jl.debit AS debit,
   jl.credit AS credit,
-  (jl.debit - jl.credit) AS amount
+  (jl.debit - jl.credit) AS amount,
+  jl.credit AS payment,
+  jl.debit AS deposit
 FROM journal_lines jl
 JOIN journal_entries je ON je.id = jl.journal_entry_id
 WHERE jl.account_id = ?
@@ -73,3 +95,65 @@ WHERE jl.account_id = ?
 	return r.Amount, err
 }
 
+// LatestActiveReconciliation returns the most recent non-voided reconciliation
+// for the given account, or nil if none exists.
+func LatestActiveReconciliation(db *gorm.DB, companyID, accountID uint) (*models.Reconciliation, error) {
+	var rec models.Reconciliation
+	err := db.Where("company_id = ? AND account_id = ? AND is_voided = FALSE", companyID, accountID).
+		Order("id DESC").
+		First(&rec).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &rec, nil
+}
+
+// VoidReconciliation voids the given reconciliation inside a transaction.
+// Only the latest active reconciliation for an account may be voided.
+// All journal lines linked to it are unreconciled (reconciliation_id = NULL).
+func VoidReconciliation(db *gorm.DB, companyID uint, recID uint, userID uuid.UUID, reason string) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		var rec models.Reconciliation
+		if err := tx.Where("id = ? AND company_id = ? AND is_voided = FALSE", recID, companyID).
+			First(&rec).Error; err != nil {
+			return err
+		}
+
+		// Verify no newer active reconciliation exists for this account.
+		var newer int64
+		if err := tx.Model(&models.Reconciliation{}).
+			Where("account_id = ? AND company_id = ? AND id > ? AND is_voided = FALSE", rec.AccountID, companyID, recID).
+			Count(&newer).Error; err != nil {
+			return err
+		}
+		if newer > 0 {
+			return errors.New("only the latest reconciliation can be voided")
+		}
+
+		// Unreconcile all journal lines linked to this reconciliation.
+		if err := tx.Model(&models.JournalLine{}).
+			Where("reconciliation_id = ?", recID).
+			Updates(map[string]any{
+				"reconciliation_id": nil,
+				"reconciled_at":     nil,
+			}).Error; err != nil {
+			return err
+		}
+
+		// Mark the reconciliation as voided.
+		now := time.Now()
+		if err := tx.Model(&rec).Updates(map[string]any{
+			"is_voided":           true,
+			"void_reason":         reason,
+			"voided_at":           &now,
+			"voided_by_user_id":   userID,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}

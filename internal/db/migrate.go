@@ -77,6 +77,10 @@ func Migrate(db *gorm.DB) error {
 		// COA Template system: default Chart of Accounts templates
 		&models.COATemplate{},
 		&models.COATemplateAccount{},
+		// Reconciliation match engine: suggestions, suggestion lines, and memory layer
+		&models.ReconciliationMatchSuggestion{},
+		&models.ReconciliationMatchSuggestionLine{},
+		&models.ReconciliationMemory{},
 	); err != nil {
 		return err
 	}

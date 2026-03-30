@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
@@ -15,6 +16,21 @@ import (
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
+
+// buildCandidatesJSON serialises reconcile candidates to a compact JSON array
+// consumed by the Alpine reconcilePage() component.
+func buildCandidatesJSON(cands []services.ReconcileCandidate) string {
+	type item struct {
+		ID     uint   `json:"id"`
+		Amount string `json:"amount"`
+	}
+	items := make([]item, len(cands))
+	for i, c := range cands {
+		items[i] = item{ID: c.LineID, Amount: c.Amount.StringFixed(2)}
+	}
+	b, _ := json.Marshal(items)
+	return string(b)
+}
 
 func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 	companyID, ok := ActiveCompanyIDFromCtx(c)
@@ -36,16 +52,27 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 	statementDateStr := strings.TrimSpace(c.Query("statement_date"))
 	endingBalanceStr := strings.TrimSpace(c.Query("ending_balance"))
 
+	formError := ""
+	if c.Query("void_error") == "1" {
+		formError = "Could not void reconciliation. Please try again."
+	}
+
 	vm := pages.BankReconcileVM{
-		HasCompany:        true,
-		Accounts:          accounts,
-		AccountID:         accountIDStr,
-		StatementDate:     statementDateStr,
-		EndingBalance:     endingBalanceStr,
-		Active:            "Bank Reconcile",
-		Saved:             c.Query("saved") == "1",
-		PreviouslyCleared: "0.00",
-		Candidates:        []services.ReconcileCandidate{},
+		HasCompany:          true,
+		Accounts:            accounts,
+		AccountID:           accountIDStr,
+		StatementDate:       statementDateStr,
+		EndingBalance:       endingBalanceStr,
+		Active:              "Bank Reconcile",
+		Saved:               c.Query("saved") == "1",
+		Voided:              c.Query("voided") == "1",
+		AutoMatchRan:        c.Query("auto_match") == "1",
+		FormError:           formError,
+		BeginningBalance:    "0.00",
+		PreviouslyCleared:   "0.00",
+		CandidatesJSON:      "[]",
+		AcceptedLineIDsJSON: "[]",
+		Candidates:          []services.ReconcileCandidate{},
 	}
 
 	if accountIDStr == "" {
@@ -90,7 +117,9 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 		vm.FormError = "Could not load cleared balance."
 		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
-	vm.PreviouslyCleared = pages.Money(prev)
+	prevStr := pages.Money(prev)
+	vm.PreviouslyCleared = prevStr
+	vm.BeginningBalance = prevStr
 
 	cands, err := services.ListReconcileCandidates(s.DB, companyID, accountID, statementDate)
 	if err != nil {
@@ -98,6 +127,35 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
 	vm.Candidates = cands
+	vm.CandidatesJSON = buildCandidatesJSON(cands)
+
+	latest, err := services.LatestActiveReconciliation(s.DB, companyID, accountID)
+	if err != nil {
+		vm.FormError = "Could not load previous reconciliation."
+		return pages.BankReconcile(vm).Render(c.Context(), c)
+	}
+	vm.LatestReconciliation = latest
+
+	// Load match-engine suggestions — pending (with actions) and accepted (with badge).
+	// Accepted suggestions remain visible so the user can see what is driving the
+	// pre-selected checkboxes; they show a static badge rather than action buttons.
+	pendingSuggs, _ := services.LoadActiveSuggestions(s.DB, companyID, accountID)
+
+	// Build candidate lookup for journal number enrichment.
+	candidatesByLineID := make(map[uint]services.ReconcileCandidate, len(cands))
+	for _, cd := range cands {
+		candidatesByLineID[cd.LineID] = cd
+	}
+	vm.Suggestions = pages.BuildMatchSuggestionVMs(pendingSuggs, candidatesByLineID)
+	vm.SuggestionCount = len(vm.Suggestions)
+
+	// Pre-select lines from accepted suggestions.
+	acceptedIDs, _ := services.LoadAcceptedLineIDs(s.DB, companyID, accountID)
+	vm.AcceptedLineIDs = acceptedIDs
+	if len(acceptedIDs) > 0 {
+		b, _ := json.Marshal(acceptedIDs)
+		vm.AcceptedLineIDsJSON = string(b)
+	}
 
 	return pages.BankReconcile(vm).Render(c.Context(), c)
 }
@@ -222,6 +280,10 @@ WHERE jl.id IN ?
 	}); err != nil {
 		return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&statement_date="+statementDateStr+"&ending_balance="+endingBalanceStr, fiber.StatusSeeOther)
 	}
+
+	// Link accepted suggestions to the completed reconciliation for cross-reference.
+	// Best-effort: a failure here does not roll back the reconciliation itself.
+	_ = services.LinkSuggestionsToReconciliation(s.DB, companyID, accountID, savedRecID)
 
 	actor := user.Email
 	if actor == "" {
@@ -539,6 +601,272 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 	}, &cid, &uid)
 
 	return c.Redirect("/banking/pay-bills?saved=1", fiber.StatusSeeOther)
+}
+
+// ── Auto-match handlers ──────────────────────────────────────────────────────
+
+// handleAutoMatch runs the three-layer matching engine for the given account
+// and redirects back to the reconcile page. It does NOT modify any journal line
+// or reconciliation record — it only creates suggestion rows.
+func (s *Server) handleAutoMatch(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
+	accountIDStr := strings.TrimSpace(c.FormValue("account_id"))
+	statementDateStr := strings.TrimSpace(c.FormValue("statement_date"))
+	endingBalanceStr := strings.TrimSpace(c.FormValue("ending_balance"))
+
+	redirect := func() error {
+		return c.Redirect(
+			"/banking/reconcile?account_id="+accountIDStr+
+				"&statement_date="+statementDateStr+
+				"&ending_balance="+endingBalanceStr+
+				"&auto_match=1",
+			fiber.StatusSeeOther,
+		)
+	}
+
+	accountIDU64, err := services.ParseUint(accountIDStr)
+	if err != nil || accountIDU64 == 0 {
+		return redirect()
+	}
+	accountID := uint(accountIDU64)
+
+	statementDate, err := time.Parse("2006-01-02", statementDateStr)
+	if err != nil {
+		return redirect()
+	}
+
+	endingBalance, err := services.ParseDecimalMoney(endingBalanceStr)
+	if err != nil {
+		return redirect()
+	}
+
+	// Load the beginning balance (previously cleared for this account + date).
+	beginning, _ := services.ClearedBalance(s.DB, companyID, accountID, statementDate)
+
+	// Load candidates.
+	cands, err := services.ListReconcileCandidates(s.DB, companyID, accountID, statementDate)
+	if err != nil {
+		return redirect()
+	}
+
+	params := services.AutoMatchParams{
+		CompanyID:        companyID,
+		AccountID:        accountID,
+		StatementDate:    statementDate,
+		EndingBalance:    endingBalance,
+		BeginningBalance: beginning,
+		Candidates:       cands,
+	}
+
+	user := UserFromCtx(c)
+	actor := "system"
+	var uidPtr *uuid.UUID
+	if user != nil {
+		actor = user.Email
+		uidPtr = &user.ID
+	}
+
+	suggCount, _ := services.AutoMatch(s.DB, params)
+
+	cid := companyID
+	services.TryWriteAuditLogWithContext(s.DB, "banking.reconcile.auto_match.run", "account", accountID, actor, map[string]any{
+		"account_id":         accountID,
+		"statement_date":     statementDateStr,
+		"candidate_count":    len(cands),
+		"suggestion_count":   suggCount,
+		"company_id":         companyID,
+	}, &cid, uidPtr)
+
+	return redirect()
+}
+
+// handleAcceptSuggestion marks a suggestion as accepted, pre-selects its lines
+// via the session layer, and updates the reconciliation memory.
+func (s *Server) handleAcceptSuggestion(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
+	suggIDStr := strings.TrimSpace(c.FormValue("suggestion_id"))
+	accountIDStr := strings.TrimSpace(c.FormValue("account_id"))
+	statementDateStr := strings.TrimSpace(c.FormValue("statement_date"))
+	endingBalanceStr := strings.TrimSpace(c.FormValue("ending_balance"))
+
+	redirect := func() error {
+		return c.Redirect(
+			"/banking/reconcile?account_id="+accountIDStr+
+				"&statement_date="+statementDateStr+
+				"&ending_balance="+endingBalanceStr,
+			fiber.StatusSeeOther,
+		)
+	}
+
+	suggIDU64, err := services.ParseUint(suggIDStr)
+	if err != nil || suggIDU64 == 0 {
+		return redirect()
+	}
+	suggID := uint(suggIDU64)
+
+	// Load the suggestion (verify ownership via company_id).
+	var sugg models.ReconciliationMatchSuggestion
+	if err := s.DB.Preload("Lines").
+		Where("id = ? AND company_id = ? AND status = ?", suggID, companyID, models.SuggStatusPending).
+		First(&sugg).Error; err != nil {
+		return redirect()
+	}
+
+	// Mark accepted — set both the dedicated accept fields and the legacy reviewed fields.
+	now := time.Now()
+	userID := user.ID
+	if err := s.DB.Model(&sugg).Updates(map[string]any{
+		"status":               models.SuggStatusAccepted,
+		"accepted_by_user_id":  userID,
+		"accepted_at":          &now,
+		"reviewed_at":          &now,
+		"reviewed_by_user_id":  userID,
+	}).Error; err != nil {
+		return redirect()
+	}
+
+	// Update memory for each accepted line.
+	lineIDs := make([]uint, 0, len(sugg.Lines))
+	for _, l := range sugg.Lines {
+		lineIDs = append(lineIDs, l.JournalLineID)
+	}
+	_ = services.UpdateMemoryFromAcceptedLines(s.DB, companyID, sugg.AccountID, lineIDs)
+
+	// Audit log.
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+	cid := companyID
+	uid := user.ID
+	services.TryWriteAuditLogWithContext(s.DB, "reconcile.suggestion.accepted", "reconciliation_match_suggestion", suggID, actor, map[string]any{
+		"account_id":    sugg.AccountID,
+		"line_count":    len(lineIDs),
+		"confidence":    sugg.ConfidenceScore.StringFixed(4),
+		"company_id":    companyID,
+	}, &cid, &uid)
+
+	return redirect()
+}
+
+// handleRejectSuggestion marks a suggestion as rejected. No accounting records
+// are modified; this is purely a status update on the suggestion row.
+func (s *Server) handleRejectSuggestion(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
+	suggIDStr := strings.TrimSpace(c.FormValue("suggestion_id"))
+	accountIDStr := strings.TrimSpace(c.FormValue("account_id"))
+	statementDateStr := strings.TrimSpace(c.FormValue("statement_date"))
+	endingBalanceStr := strings.TrimSpace(c.FormValue("ending_balance"))
+
+	redirect := func() error {
+		return c.Redirect(
+			"/banking/reconcile?account_id="+accountIDStr+
+				"&statement_date="+statementDateStr+
+				"&ending_balance="+endingBalanceStr,
+			fiber.StatusSeeOther,
+		)
+	}
+
+	suggIDU64, err := services.ParseUint(suggIDStr)
+	if err != nil || suggIDU64 == 0 {
+		return redirect()
+	}
+	suggID := uint(suggIDU64)
+
+	var sugg models.ReconciliationMatchSuggestion
+	if err := s.DB.
+		Where("id = ? AND company_id = ? AND status = ?", suggID, companyID, models.SuggStatusPending).
+		First(&sugg).Error; err != nil {
+		return redirect()
+	}
+
+	now := time.Now()
+	userID := user.ID
+	_ = s.DB.Model(&sugg).Updates(map[string]any{
+		"status":               models.SuggStatusRejected,
+		"rejected_by_user_id":  userID,
+		"rejected_at":          &now,
+		"reviewed_at":          &now,
+		"reviewed_by_user_id":  userID,
+	}).Error
+
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+	cid := companyID
+	uid := user.ID
+	services.TryWriteAuditLogWithContext(s.DB, "reconcile.suggestion.rejected", "reconciliation_match_suggestion", suggID, actor, map[string]any{
+		"account_id": sugg.AccountID,
+		"company_id": companyID,
+	}, &cid, &uid)
+
+	return redirect()
+}
+
+func (s *Server) handleVoidReconciliation(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+
+	recIDStr := strings.TrimSpace(c.FormValue("rec_id"))
+	accountIDStr := strings.TrimSpace(c.FormValue("account_id"))
+	reason := strings.TrimSpace(c.FormValue("void_reason"))
+
+	recIDU64, err := services.ParseUint(recIDStr)
+	if err != nil || recIDU64 == 0 {
+		return c.Redirect("/banking/reconcile?account_id="+accountIDStr, fiber.StatusSeeOther)
+	}
+
+	if reason == "" {
+		return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&void_error=1", fiber.StatusSeeOther)
+	}
+
+	if err := services.VoidReconciliation(s.DB, companyID, uint(recIDU64), user.ID, reason); err != nil {
+		return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&void_error=1", fiber.StatusSeeOther)
+	}
+
+	// Archive accepted suggestions linked to this reconciliation — preserves audit history.
+	_ = services.ArchiveSuggestionsForReconciliation(s.DB, companyID, uint(recIDU64))
+
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+	cid := companyID
+	uid := user.ID
+	services.TryWriteAuditLogWithContext(s.DB, "banking.reconciliation.voided", "reconciliation", uint(recIDU64), actor, map[string]any{
+		"account_id":  accountIDStr,
+		"reason":      reason,
+		"company_id":  companyID,
+	}, &cid, &uid)
+
+	return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&voided=1", fiber.StatusSeeOther)
 }
 
 func (s *Server) openPostedBillsForCompany(companyID uint) ([]models.Bill, error) {

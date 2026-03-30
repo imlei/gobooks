@@ -13,15 +13,34 @@ templ BankReconcile(vm BankReconcileVM) {
 }
 
 templ bodyBankReconcile(vm BankReconcileVM) {
-	<div class="max-w-[95%]" x-data="reconcileDraft()" x-init="init()">
-		<h1 class="text-title font-semibold">Bank Reconciliation</h1>
-		<p class="mt-2 text-text-muted2">
-			Match your bank statement to your cleared transactions. Difference must be 0.00 before you can finish.
-		</p>
+	<div
+		class="max-w-[95%]"
+		x-data="reconcilePage()"
+		x-init="init()"
+		data-beginning={ vm.BeginningBalance }
+		data-candidates={ vm.CandidatesJSON }
+		data-accepted-lines={ vm.AcceptedLineIDsJSON }
+	>
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div>
+				<h1 class="text-title font-semibold">Bank Reconciliation</h1>
+				<p class="mt-1 text-text-muted2">Match your bank statement to your cleared transactions. Difference must be $0.00 to finish.</p>
+			</div>
+		</div>
 
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
-				Reconciliation saved.
+				Reconciliation completed successfully.
+			</div>
+		}
+		if vm.Voided {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Reconciliation voided. All transactions have been unreconciled.
+			</div>
+		}
+		if vm.AutoMatchRan {
+			<div class="mt-4 rounded-md border border-primary/30 bg-primary/5 p-4 text-body text-primary">
+				Auto-match complete — { Itoa(vm.SuggestionCount) } suggestion(s) generated. Review them below and accept or reject each one.
 			</div>
 		}
 		if vm.FormError != "" {
@@ -30,12 +49,17 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 			</div>
 		}
 
+		<!-- Reconciliation info form -->
 		<form method="get" action="/banking/reconcile" class="mt-6 rounded-lg border border-border bg-surface p-6">
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-4">
+			<h2 class="text-section font-semibold text-text">Reconciliation Info</h2>
+			<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-4">
 				<div class="md:col-span-2">
 					<label class="block text-body font-medium text-text">Bank Account (GL) *</label>
-					<select name="account_id" x-model="header.account_id"
-						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+					<select
+						name="account_id"
+						x-model="header.account_id"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					>
 						<option value="">-- Select --</option>
 						for _, a := range vm.Accounts {
 							<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.AccountID }>{ a.Code } - { a.Name }</option>
@@ -44,13 +68,23 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 				</div>
 				<div>
 					<label class="block text-body font-medium text-text">Statement Date *</label>
-					<input type="date" name="statement_date" x-model="header.statement_date"
-						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					<input
+						type="date"
+						name="statement_date"
+						value={ vm.StatementDate }
+						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
 				</div>
 				<div>
 					<label class="block text-body font-medium text-text">Ending Balance *</label>
-					<input type="text" inputmode="decimal" name="ending_balance" x-model="header.ending_balance" placeholder="0.00"
-						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					<input
+						type="text"
+						inputmode="decimal"
+						name="ending_balance"
+						value={ vm.EndingBalance }
+						placeholder="0.00"
+						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
 				</div>
 				<div class="md:col-span-4 flex justify-end">
 					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
@@ -60,148 +94,434 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 			</div>
 		</form>
 
-		<div class="mt-6 rounded-lg border border-border bg-surface p-6" x-show="header.account_id !== ''">
-			<div class="flex items-center justify-between">
-				<h2 class="text-section font-semibold text-text">Unreconciled transactions</h2>
-				<div class="text-body text-text-muted2">
-					Previously cleared: <span class="font-semibold">{ vm.PreviouslyCleared }</span>
+		if vm.AccountID != "" && vm.FormError == "" {
+			<!-- Summary bar -->
+			<div class="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface p-6 md:grid-cols-4">
+				<div class="text-center">
+					<p class="text-small uppercase tracking-wider text-text-muted">Statement Ending Balance</p>
+					<p class="mt-1 text-section font-semibold text-text" x-text="fmt(endingBalance)">{ vm.EndingBalance }</p>
+				</div>
+				<div class="text-center">
+					<p class="text-small uppercase tracking-wider text-text-muted">Beginning Balance</p>
+					<p class="mt-1 text-section font-semibold text-text">{ vm.BeginningBalance }</p>
+				</div>
+				<div class="text-center">
+					<p class="text-small uppercase tracking-wider text-text-muted">Cleared Balance</p>
+					<p class="mt-1 text-section font-semibold text-text" x-text="fmt(clearedBalance())"></p>
+				</div>
+				<div class="text-center">
+					<p class="text-small uppercase tracking-wider text-text-muted">Difference</p>
+					<p
+						class="mt-1 text-section font-semibold"
+						:class="diffOk() ? 'text-success-hover' : 'text-danger'"
+						x-text="fmt(difference())"
+					></p>
 				</div>
 			</div>
 
-			<div class="mt-4 overflow-x-auto">
-				<table class="w-full text-left text-body">
-					<thead class="text-small uppercase tracking-wider text-text-muted">
-						<tr class="border-b border-border">
-							<th class="py-3 pr-4 w-[6%]">✓</th>
-							<th class="py-3 pr-4 w-[16%]">Date</th>
-							<th class="py-3 pr-4 w-[40%]">Journal No.</th>
-							<th class="py-3 pr-4 w-[18%] text-right">Amount</th>
-							<th class="py-3 pr-0 w-[20%]">Memo</th>
-						</tr>
-					</thead>
-					<tbody class="text-text">
-						for _, c := range vm.Candidates {
-							<tr class="border-b border-border-subtle">
-								<td class="py-3 pr-4">
-									<input type="checkbox"
-										name="line_id"
-										value={ Uitoa(c.LineID) }
-										x-model="selected"
-										class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"/>
-									<input type="hidden" name={ "line_amount_" + Uitoa(c.LineID) } value={ Money(c.Amount) }/>
-								</td>
-								<td class="py-3 pr-4">{ c.EntryDate.Format("2006-01-02") }</td>
-								<td class="py-3 pr-4">{ c.JournalNo }</td>
-								<td class="py-3 pr-4 text-right">{ Money(c.Amount) }</td>
-								<td class="py-3 pr-0">{ c.Memo }</td>
-							</tr>
+			<!-- Auto-match suggestions panel -->
+			if len(vm.Suggestions) > 0 {
+				<div class="mt-6 rounded-lg border border-border bg-surface">
+					<div class="flex items-center justify-between border-b border-border px-6 py-4">
+						<div>
+							<h2 class="text-section font-semibold text-text">Auto-Match Suggestions</h2>
+							<p class="mt-0.5 text-small text-text-muted2">Engine-generated candidates — you must accept before they affect the reconciliation.</p>
+						</div>
+						<span class="rounded-full bg-primary/10 px-3 py-1 text-small font-semibold text-primary">
+							{ Itoa(len(vm.Suggestions)) } suggestion(s)
+						</span>
+					</div>
+
+					<div class="divide-y divide-border">
+						for _, sugg := range vm.Suggestions {
+							<div class="px-6 py-4" x-data="{ expanded: false }">
+								<div class="flex flex-wrap items-start gap-4">
+									<!-- Confidence badge -->
+									<div class="flex items-center gap-2 shrink-0">
+										<span class={ "inline-flex items-center rounded-full px-2.5 py-0.5 text-small font-semibold " + ConfidenceTierBadgeClass(sugg.ConfidenceTier) }>
+											{ sugg.ConfidencePct }
+										</span>
+										<span class="text-small text-text-muted">{ sugg.TypeLabel }</span>
+									</div>
+
+									<!-- Summary text -->
+									<div class="min-w-0 flex-1">
+										<p class="text-body font-medium text-text">{ sugg.Summary }</p>
+										<p class="mt-0.5 text-small text-text-muted2">
+											if len(sugg.JournalNos) > 0 {
+												Refs:
+												for i, jno := range sugg.JournalNos {
+													if i > 0 {
+														{ " · " }
+													}
+													{ jno }
+												}
+												&nbsp;·&nbsp;
+											}
+											Net: { sugg.NetAmount }
+										</p>
+									</div>
+
+									<!-- Actions -->
+									<div class="flex shrink-0 items-center gap-2">
+										if sugg.Status == "pending" {
+											<!-- Accept -->
+											<form method="post" action="/banking/reconcile/suggest/accept">
+												<input type="hidden" name="suggestion_id" value={ Uitoa(sugg.ID) }/>
+												<input type="hidden" name="account_id" value={ vm.AccountID }/>
+												<input type="hidden" name="statement_date" value={ vm.StatementDate }/>
+												<input type="hidden" name="ending_balance" value={ vm.EndingBalance }/>
+												<button type="submit"
+													class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">
+													Accept
+												</button>
+											</form>
+											<!-- Reject -->
+											<form method="post" action="/banking/reconcile/suggest/reject">
+												<input type="hidden" name="suggestion_id" value={ Uitoa(sugg.ID) }/>
+												<input type="hidden" name="account_id" value={ vm.AccountID }/>
+												<input type="hidden" name="statement_date" value={ vm.StatementDate }/>
+												<input type="hidden" name="ending_balance" value={ vm.EndingBalance }/>
+												<button type="submit"
+													class="rounded-md border border-border px-3 py-1.5 text-small font-semibold text-text hover:bg-background">
+													Reject
+												</button>
+											</form>
+										} else if sugg.Status == "accepted" {
+											<span class="rounded-full bg-success-soft px-2.5 py-0.5 text-small font-semibold text-success-hover">Accepted</span>
+										} else if sugg.Status == "rejected" {
+											<span class="rounded-full bg-background px-2.5 py-0.5 text-small font-semibold text-text-muted">Rejected</span>
+										}
+										<!-- Expand signals -->
+										if len(sugg.Signals) > 0 {
+											<button type="button" @click="expanded = !expanded"
+												class="text-small text-primary hover:underline">
+												<span x-text="expanded ? 'Hide details' : 'View signals'"></span>
+											</button>
+										}
+									</div>
+								</div>
+
+								<!-- Expandable signal detail (Layer 3 explanation) -->
+								if len(sugg.Signals) > 0 {
+									<div x-show="expanded" x-cloak class="mt-3 rounded-md border border-border-subtle bg-background p-4">
+										<p class="mb-2 text-small font-semibold uppercase tracking-wider text-text-muted">Scoring Signals</p>
+										<div class="space-y-2">
+											for _, sig := range sugg.Signals {
+												<div class="flex items-center gap-3 text-small">
+													<span class="w-40 shrink-0 text-text-muted">{ sig.Name }</span>
+													<span class="text-text-muted2">
+														for range sig.StarsFull {
+															&#9733;
+														}
+														for range sig.StarsEmpty {
+															&#9734;
+														}
+													</span>
+													<span class="text-text-muted2">{ sig.Detail }</span>
+												</div>
+											}
+										</div>
+									</div>
+								}
+							</div>
 						}
-					</tbody>
-				</table>
-			</div>
-
-			<form method="post" action="/banking/reconcile" class="mt-6" @submit="beforeSubmit($event)">
-				<input type="hidden" name="account_id" :value="header.account_id"/>
-				<input type="hidden" name="statement_date" :value="header.statement_date"/>
-				<input type="hidden" name="ending_balance" :value="header.ending_balance"/>
-
-				<template x-for="id in selected" :key="id">
-					<input type="hidden" name="line_ids" :value="id"/>
-				</template>
-
-				<div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-					<div class="text-body text-text-muted2" x-text="primary"></div>
-					<div class="flex items-center gap-6 text-body">
-						<div><span class="text-text-muted2">Selected:</span> <span class="font-semibold" x-text="formatMoney(selectedTotal)"></span></div>
-						<div><span class="text-text-muted2">Cleared (incl. prev):</span> <span class="font-semibold" x-text="formatMoney(clearedTotal)"></span></div>
-						<div><span class="text-text-muted2">Difference:</span> <span class="font-semibold" :class="diffOk ? 'text-text' : 'text-danger'" x-text="formatMoney(difference)"></span></div>
 					</div>
 				</div>
+			}
 
-				<div class="mt-4 flex items-center justify-end">
-					<button type="submit"
-						:disabled="!diffOk"
-						:class="diffOk ? 'bg-primary hover:bg-primary-hover text-onPrimary' : 'bg-disabled-bg text-disabled-text cursor-not-allowed'"
-						class="rounded-md px-4 py-2 text-body font-semibold">
-						Finish
-					</button>
+			<!-- Transaction table -->
+			<div class="mt-6 rounded-lg border border-border bg-surface">
+				<div class="flex items-center justify-between border-b border-border px-6 py-4">
+					<h2 class="text-section font-semibold text-text">Unreconciled Transactions</h2>
+					<span class="text-small text-text-muted2">{ Itoa(len(vm.Candidates)) } item(s)</span>
 				</div>
-			</form>
+
+				<div class="overflow-x-auto">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border bg-background">
+								<th class="py-3 pl-6 pr-4 w-[4%]">
+									<input type="checkbox" @change="toggleAll($event)"
+										class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"/>
+								</th>
+								<th class="py-3 pr-4 w-[10%]">Date</th>
+								<th class="py-3 pr-4 w-[9%]">Type</th>
+								<th class="py-3 pr-4 w-[13%]">Reference</th>
+								<th class="py-3 pr-4 w-[15%]">Payee</th>
+								<th class="py-3 pr-4 w-[20%]">Memo</th>
+								<th class="py-3 pr-4 w-[12%] text-right">Payment</th>
+								<th class="py-3 pr-6 w-[12%] text-right">Deposit</th>
+							</tr>
+						</thead>
+						<tbody class="text-text">
+							if len(vm.Candidates) == 0 {
+								<tr>
+									<td colspan="8" class="py-8 text-center text-text-muted2">No unreconciled transactions for this period.</td>
+								</tr>
+							}
+							for _, cand := range vm.Candidates {
+								<tr class="border-b border-border-subtle hover:bg-background"
+									:class={ "selected.includes('" + Uitoa(cand.LineID) + "') ? 'bg-primary/5' : ''" }>
+									<td class="py-3 pl-6 pr-4">
+										<input
+											type="checkbox"
+											x-model="selected"
+											value={ Uitoa(cand.LineID) }
+											class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+										/>
+										<input type="hidden" name={ "line_amount_" + Uitoa(cand.LineID) } value={ Money(cand.Amount) }/>
+									</td>
+									<td class="py-3 pr-4 text-text-muted2">{ cand.EntryDate.Format("2006-01-02") }</td>
+									<td class="py-3 pr-4">
+										<span class="rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted">
+											{ SourceTypeLabel(cand.SourceType) }
+										</span>
+									</td>
+									<td class="py-3 pr-4 font-medium">{ cand.JournalNo }</td>
+									<td class="py-3 pr-4 text-text-muted2">{ cand.PayeeName }</td>
+									<td class="py-3 pr-4 text-text-muted2">{ cand.Memo }</td>
+									<td class="py-3 pr-4 text-right">
+										if cand.Payment.IsPositive() {
+											<span class="text-danger">{ Money(cand.Payment) }</span>
+										}
+									</td>
+									<td class="py-3 pr-6 text-right">
+										if cand.Deposit.IsPositive() {
+											<span class="text-success-hover">{ Money(cand.Deposit) }</span>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+
+				<!-- Controls row -->
+				<div class="border-t border-border px-6 py-4">
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div class="text-body text-text-muted2">
+							<span x-text="selected.length"></span> item(s) selected
+							&nbsp;·&nbsp;
+							Net: <span class="font-semibold" x-text="fmt(selectedNet())"></span>
+						</div>
+						<div class="flex flex-wrap items-center gap-3">
+							<!-- Auto Match trigger -->
+							<form method="post" action="/banking/reconcile/auto-match">
+								<input type="hidden" name="account_id" value={ vm.AccountID }/>
+								<input type="hidden" name="statement_date" value={ vm.StatementDate }/>
+								<input type="hidden" name="ending_balance" value={ vm.EndingBalance }/>
+								<button type="submit"
+									class="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background">
+									<!-- sparkle icon -->
+									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+									</svg>
+									Auto Match
+								</button>
+							</form>
+
+							<a
+								href={ templ.SafeURL("/banking/reconcile?account_id=" + vm.AccountID + "&statement_date=" + vm.StatementDate + "&ending_balance=" + vm.EndingBalance) }
+								class="rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background"
+							>
+								Edit Info
+							</a>
+
+							<form method="post" action="/banking/reconcile" @submit="beforeSubmit($event)">
+								<input type="hidden" name="account_id" value={ vm.AccountID }/>
+								<input type="hidden" name="statement_date" value={ vm.StatementDate }/>
+								<input type="hidden" name="ending_balance" value={ vm.EndingBalance }/>
+
+								<template x-for="id in selected" :key="id">
+									<input type="hidden" name="line_ids" :value="id"/>
+								</template>
+
+								<button
+									type="submit"
+									:disabled="!diffOk()"
+									:class="diffOk() ? 'bg-primary hover:bg-primary-hover text-onPrimary' : 'bg-disabled-bg text-disabled-text cursor-not-allowed'"
+									class="rounded-md px-4 py-2 text-body font-semibold"
+								>
+									Finish Now
+								</button>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Previous Reconciliation / Void section -->
+			if vm.LatestReconciliation != nil {
+				<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+					<h2 class="text-section font-semibold text-text">Previous Reconciliation</h2>
+					<p class="mt-1 text-small text-text-muted2">Only the most recent reconciliation may be voided.</p>
+
+					<div class="mt-4 overflow-x-auto">
+						<table class="w-full text-left text-body">
+							<thead class="text-small uppercase tracking-wider text-text-muted">
+								<tr class="border-b border-border">
+									<th class="py-3 pr-4">Statement Date</th>
+									<th class="py-3 pr-4 text-right">Ending Balance</th>
+									<th class="py-3 pr-4 text-right">Cleared Balance</th>
+									<th class="py-3 pr-0"></th>
+								</tr>
+							</thead>
+							<tbody class="text-text">
+								<tr class="border-b border-border-subtle">
+									<td class="py-3 pr-4">{ vm.LatestReconciliation.StatementDate.Format("2006-01-02") }</td>
+									<td class="py-3 pr-4 text-right">{ Money(vm.LatestReconciliation.EndingBalance) }</td>
+									<td class="py-3 pr-4 text-right">{ Money(vm.LatestReconciliation.ClearedBalance) }</td>
+									<td class="py-3 pr-0 text-right">
+										<button
+											type="button"
+											@click={ "openVoidModal(" + Uitoa(vm.LatestReconciliation.ID) + ", '" + vm.LatestReconciliation.StatementDate.Format("2006-01-02") + "')" }
+											class="rounded-md border border-border-danger px-3 py-1.5 text-small font-semibold text-danger hover:bg-danger-soft"
+										>
+											Void
+										</button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			}
+		}
+
+		<!-- Void confirmation modal -->
+		<div
+			x-show="showVoidModal"
+			x-cloak
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+			@keydown.escape.window="showVoidModal = false"
+		>
+			<div class="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-xl" @click.stop>
+				<h3 class="text-section font-semibold text-text">Void Reconciliation</h3>
+				<p class="mt-2 text-body text-text-muted2">
+					This will unreconcile all transactions from the
+					<span class="font-semibold text-text" x-text="voidDate"></span>
+					reconciliation. This action cannot be undone.
+				</p>
+
+				<form method="post" action="/banking/reconcile/void" class="mt-4">
+					<input type="hidden" name="rec_id" :value="voidRecID"/>
+					<input type="hidden" name="account_id" value={ vm.AccountID }/>
+
+					<div>
+						<label class="block text-body font-medium text-text">Reason *</label>
+						<input
+							type="text"
+							name="void_reason"
+							x-model="voidReason"
+							maxlength="500"
+							placeholder="Enter reason for voiding..."
+							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+						<p x-show="voidSubmitted && !voidReason.trim()" class="mt-1 text-small text-danger">Reason is required.</p>
+					</div>
+
+					<div class="mt-6 flex items-center justify-end gap-3">
+						<button
+							type="button"
+							@click="showVoidModal = false"
+							class="rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							@click="voidSubmitted = true; if (!voidReason.trim()) $event.preventDefault()"
+							class="rounded-md bg-danger px-4 py-2 text-body font-semibold text-white hover:bg-danger-hover"
+						>
+							Void Reconciliation
+						</button>
+					</div>
+				</form>
+			</div>
 		</div>
 	</div>
 
 	<script>
-		function reconcileDraft() {
+		function reconcilePage() {
 			return {
 				header: { account_id: "", statement_date: "", ending_balance: "" },
-				selected: [],
-				selectedTotal: 0,
-				clearedTotal: 0,
-				difference: 0,
-				diffOk: false,
-				primary: "",
+				endingBalance: 0,
+				beginningBalance: 0,
+				candidates: [],  // [{id: string, amount: number}]
+				selected: [],    // string IDs of checked lines
+
+				showVoidModal: false,
+				voidRecID: 0,
+				voidDate: "",
+				voidReason: "",
+				voidSubmitted: false,
+
 				init() {
-					// Initialize from query (server-rendered values).
 					const url = new URL(window.location.href);
-					this.header.account_id = url.searchParams.get("account_id") || "";
+					this.header.account_id     = url.searchParams.get("account_id")     || "";
 					this.header.statement_date = url.searchParams.get("statement_date") || "";
 					this.header.ending_balance = url.searchParams.get("ending_balance") || "";
 
-					// If reconciliation saved, clear selection.
-					if (url.searchParams.get("saved") === "1") {
+					const eb = parseFloat(url.searchParams.get("ending_balance") || "0");
+					this.endingBalance = isNaN(eb) ? 0 : eb;
+
+					const bb = parseFloat(this.$el.dataset.beginning || "0");
+					this.beginningBalance = isNaN(bb) ? 0 : bb;
+
+					try {
+						const raw = JSON.parse(this.$el.dataset.candidates || "[]");
+						this.candidates = raw.map(c => ({ id: String(c.id), amount: parseFloat(c.amount) || 0 }));
+					} catch (_) { this.candidates = []; }
+
+					// Pre-select lines from accepted suggestions.
+					try {
+						const accepted = JSON.parse(this.$el.dataset.acceptedLines || "[]");
+						for (const id of accepted) {
+							const sid = String(id);
+							if (!this.selected.includes(sid)) {
+								this.selected.push(sid);
+							}
+						}
+					} catch (_) {}
+				},
+
+				selectedNet() {
+					return this.selected.reduce((sum, id) => {
+						const c = this.candidates.find(c => c.id === id);
+						return c ? sum + c.amount : sum;
+					}, 0);
+				},
+
+				clearedBalance() { return this.beginningBalance + this.selectedNet(); },
+				difference()     { return this.endingBalance - this.clearedBalance(); },
+				diffOk()         { return Math.abs(this.difference()) < 0.005; },
+
+				fmt(n) {
+					const v = typeof n === "number" ? n : parseFloat(n) || 0;
+					return v.toFixed(2);
+				},
+
+				toggleAll(e) {
+					if (e.target.checked) {
+						this.selected = this.candidates.map(c => c.id);
+					} else {
 						this.selected = [];
 					}
-
-					this.$watch("selected", () => this.recalc(), { deep: true });
-					this.$watch("header", () => this.recalc(), { deep: true });
-					this.recalc();
 				},
-				parseMoney(s) {
-					if (!s) return 0;
-					const n = Number(String(s).replace(/,/g, ""));
-					if (Number.isNaN(n)) return null;
-					return n;
+
+				openVoidModal(recID, date) {
+					this.voidRecID = recID;
+					this.voidDate  = date;
+					this.voidReason = "";
+					this.voidSubmitted = false;
+					this.showVoidModal = true;
 				},
-				formatMoney(n) {
-					return (Math.round(n * 100) / 100).toFixed(2);
-				},
-				recalc() {
-					const ending = this.parseMoney(this.header.ending_balance);
-					if (ending === null) {
-						this.primary = "Ending Balance must be a number.";
-						this.diffOk = false;
-						return;
-					}
 
-					let sel = 0;
-					for (const id of this.selected) {
-						const el = document.querySelector(`input[name="line_amount_${id}"]`);
-						if (!el) continue;
-						const amt = this.parseMoney(el.value);
-						if (amt === null) continue;
-						sel += amt;
-					}
-					this.selectedTotal = sel;
-
-					const prev = this.parseMoney("{ vm.PreviouslyCleared }");
-					const prevVal = prev === null ? 0 : prev;
-					this.clearedTotal = prevVal + sel;
-
-					this.difference = ending - this.clearedTotal;
-					this.diffOk = Math.abs(this.difference) < 0.0001;
-
-					if (!this.diffOk) {
-						this.primary = "Select cleared items until Difference is 0.00.";
-					} else {
-						this.primary = "";
-					}
-				},
 				beforeSubmit(e) {
-					this.recalc();
-					if (!this.diffOk) e.preventDefault();
+					if (!this.diffOk()) e.preventDefault();
 				},
 			};
 		}
 	</script>
 }
-
