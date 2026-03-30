@@ -116,6 +116,39 @@ func TestPurchaseAggregation_mergeExpenseSameAccount(t *testing.T) {
 	}
 }
 
+func TestAggregateJournalLines_differentAccountsStaySeparate(t *testing.T) {
+	// Two debit fragments on different accounts must never be merged, even though
+	// they are on the same side (debit). This verifies the "different accounts do
+	// not merge" invariant: merging is keyed on (account_id, side), not side alone.
+	frags := []PostingFragment{
+		{AccountID: 10, Debit: d("300.00"), Credit: d("0"), Memo: "office supplies"},
+		{AccountID: 20, Debit: d("700.00"), Credit: d("0"), Memo: "equipment"},
+		{AccountID: 99, Debit: d("0"), Credit: d("1000.00"), Memo: "AP"},
+	}
+	got, err := AggregateJournalLines(frags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("want 3 lines (accounts kept separate), got %d: %+v", len(got), got)
+	}
+	var acct10, acct20 *PostingFragment
+	for i := range got {
+		switch got[i].AccountID {
+		case 10:
+			acct10 = &got[i]
+		case 20:
+			acct20 = &got[i]
+		}
+	}
+	if acct10 == nil || !acct10.Debit.Equal(d("300.00")) {
+		t.Fatalf("account 10 debit: %+v", acct10)
+	}
+	if acct20 == nil || !acct20.Debit.Equal(d("700.00")) {
+		t.Fatalf("account 20 debit: %+v", acct20)
+	}
+}
+
 func TestAggregateJournalLines_dropsZeros(t *testing.T) {
 	got, err := AggregateJournalLines([]PostingFragment{
 		{AccountID: 1, Debit: decimal.Zero, Credit: decimal.Zero},

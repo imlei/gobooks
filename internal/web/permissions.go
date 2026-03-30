@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package web
 
 import "github.com/gofiber/fiber/v2"

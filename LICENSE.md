@@ -2,7 +2,7 @@
 
 **SPDX-License-Identifier: AGPL-3.0-only**
 
-Copyright © 2026 TAXDEEP CORP.
+Copyright © 2026 TAXDEEP CORP. — GoBooks v0.0.4
 
 This program is free software: you can redistribute it and/or modify it under the
 terms of the **GNU Affero General Public License as published by the Free Software

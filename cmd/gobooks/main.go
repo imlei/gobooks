@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package main
 
 import (

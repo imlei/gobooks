@@ -1,12 +1,54 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package services
+
+// invoice_post.go — PostInvoice: posting pipeline for customer invoices.
+//
+// Posting pipeline (Phase 4 + Phase 6 concurrency controls):
+//
+//   1. Load invoice + lines  (ProductService.RevenueAccount + TaxCode preloaded)
+//   2. Pre-flight validation  (fast reject before acquiring DB resources)
+//   3. Resolve Accounts Receivable account
+//   4. BuildInvoiceFragments  → raw []PostingFragment per line (fragment_builder.go)
+//   5. AggregateJournalLines  → collapse by account + side (journal_aggregate.go)
+//   6. Validate double-entry balance (ΣDebit == ΣCredit == invoice.Amount)
+//   7. Transaction:
+//        a. SELECT FOR UPDATE on invoice row; re-validate status inside lock
+//           (prevents concurrent double-posting; second caller blocks then sees
+//           status='sent' and returns ErrAlreadyPosted)
+//        b. INSERT journal_entries header (SourceType=invoice, SourceID=inv.ID)
+//           wrapUniqueViolation converts 23505 → ErrConcurrentPostingConflict
+//        c. INSERT journal_lines (one per aggregated fragment)
+//        d. ProjectToLedger   → INSERT ledger_entries (ledger.go)
+//        e. UPDATE invoices   → status='sent', journal_entry_id
+//        f. WriteAuditLog
+//
+// Before vs after journal shape — example invoice $1 000 net, 5% GST:
+//
+//   Line 1: Widget A  $800.00 net, GST $40.00 → revenue account 4000
+//   Line 2: Widget B  $200.00 net, GST $10.00 → revenue account 4000  (same acct)
+//
+//   Raw fragments (pre-aggregation):
+//     DR  1100 AR                  1 050.00
+//     CR  4000 Revenue               800.00   (Widget A net)
+//     CR  4000 Revenue               200.00   (Widget B net)
+//     CR  2300 GST Payable            40.00   (Widget A tax)
+//     CR  2300 GST Payable            10.00   (Widget B tax)
+//
+//   After AggregateJournalLines (merged by account + side):
+//     DR  1100 AR                  1 050.00
+//     CR  4000 Revenue             1 000.00   ← two lines merged
+//     CR  2300 GST Payable            50.00   ← two lines merged
+//
+//   Ledger entries (one per journal line, status=active):
+//     company 1, account 1100, debit  1 050.00, credit      0
+//     company 1, account 4000, debit      0,    credit  1 000.00
+//     company 1, account 2300, debit      0,    credit     50.00
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"gobooks/internal/models"
@@ -21,29 +63,19 @@ var ErrNoARAccount = errors.New("no active Accounts Receivable account found —
 // PostInvoice transitions a draft invoice to "sent" and generates a double-entry
 // journal entry in a single transaction.
 //
-// Accounting entries produced (after line-level tax + aggregation):
-//
-//	Dr  Accounts Receivable    invoice.Amount    (full gross total)
-//	Cr  Revenue account        line.LineNet      (credits; merged per revenue account)
-//	Cr  Sales Tax Payable      tax amount        (merged per sales tax GL account)
-//
-// All lines must have a ProductService (for the revenue account).
-// The AR account is the first active account with detail_type = accounts_receivable.
-//
 // Returns ErrInvoiceNotDraft, ErrNoARAccount, or a descriptive error on failure.
 func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *uuid.UUID) error {
-	// ── Load invoice with full line detail ───────────────────────────────────
+	// ── 1. Load invoice with full line detail ─────────────────────────────────
 	var inv models.Invoice
-	err := db.
+	if err := db.
 		Preload("Lines.ProductService.RevenueAccount").
 		Preload("Lines.TaxCode").
 		Where("id = ? AND company_id = ?", invoiceID, companyID).
-		First(&inv).Error
-	if err != nil {
+		First(&inv).Error; err != nil {
 		return fmt.Errorf("load invoice: %w", err)
 	}
 
-	// ── Pre-flight checks ────────────────────────────────────────────────────
+	// ── 2. Pre-flight checks ──────────────────────────────────────────────────
 	if inv.Status != models.InvoiceStatusDraft {
 		return ErrInvoiceNotDraft
 	}
@@ -71,48 +103,27 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		}
 	}
 
-	// ── Find AR account ───────────────────────────────────────────────────────
+	// ── 3. Resolve AR account ─────────────────────────────────────────────────
 	var arAccount models.Account
 	if err := db.
-		Where("company_id = ? AND detail_account_type = ? AND is_active = true", companyID, string(models.DetailAccountsReceivable)).
+		Where("company_id = ? AND detail_account_type = ? AND is_active = true",
+			companyID, string(models.DetailAccountsReceivable)).
 		Order("code asc").
 		First(&arAccount).Error; err != nil {
 		return ErrNoARAccount
 	}
 
-	// ── Build posting fragments (line-level tax) then aggregate ───────────────
-	var frags []PostingFragment
-
-	frags = append(frags, PostingFragment{
-		AccountID: arAccount.ID,
-		Debit:     inv.Amount,
-		Credit:    decimal.Zero,
-		Memo:      "Invoice " + inv.InvoiceNumber,
-	})
-
-	for _, l := range inv.Lines {
-		frags = append(frags, PostingFragment{
-			AccountID: l.ProductService.RevenueAccountID,
-			Debit:     decimal.Zero,
-			Credit:    l.LineNet,
-			Memo:      l.Description,
-		})
-
-		if l.TaxCodeID != nil && l.TaxCode != nil && l.TaxCode.Scope != models.TaxScopePurchase {
-			lt := ComputeLineTax(l.LineNet, *l.TaxCode)
-			if lt.TaxAmount.IsPositive() {
-				posting := SalesTaxPostingLine(lt.AsTaxResult(), *l.TaxCode)
-				frags = append(frags, PostingFragment{
-					AccountID: posting.AccountID,
-					Debit:     decimal.Zero,
-					Credit:    posting.Amount,
-					Memo:      "Tax on " + l.Description,
-				})
-			}
-		}
+	// ── 4. Build posting fragments ────────────────────────────────────────────
+	// Pure function: one DR (AR) + one CR (revenue) per line + one CR (tax) per
+	// taxable line. No DB calls; validated against company above.
+	frags, err := BuildInvoiceFragments(inv, arAccount.ID)
+	if err != nil {
+		return fmt.Errorf("build invoice fragments: %w", err)
 	}
 
-	// Recoverability does not change sales posting; full tax_amount credits SalesTaxAccountID.
+	// ── 5. Aggregate by account + side ────────────────────────────────────────
+	// Multiple lines pointing to the same revenue or tax account are merged into
+	// a single journal line. Debit and credit sides are never merged together.
 	jeLines, err := AggregateJournalLines(frags)
 	if err != nil {
 		return fmt.Errorf("aggregate journal lines: %w", err)
@@ -125,24 +136,52 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		return fmt.Errorf("journal line account validation: %w", err)
 	}
 
+	// ── 6. Double-entry balance check ─────────────────────────────────────────
 	creditSum := sumPostingCredits(jeLines)
 	debitSum := sumPostingDebits(jeLines)
 	if !creditSum.Equal(inv.Amount) || !debitSum.Equal(inv.Amount) {
-		return fmt.Errorf("journal entry imbalance: AR debit %s, credit sum %s, debit sum %s — check line totals",
-			inv.Amount.StringFixed(2), creditSum.StringFixed(2), debitSum.StringFixed(2))
+		return fmt.Errorf(
+			"journal entry imbalance: AR debit %s, credit sum %s, debit sum %s — check line totals",
+			inv.Amount.StringFixed(2), creditSum.StringFixed(2), debitSum.StringFixed(2),
+		)
 	}
 
-	// ── Transaction ───────────────────────────────────────────────────────────
+	// ── 7. Transaction ────────────────────────────────────────────────────────
 	return db.Transaction(func(tx *gorm.DB) error {
-		je := models.JournalEntry{
-			CompanyID: companyID,
-			EntryDate: inv.InvoiceDate,
-			JournalNo: inv.InvoiceNumber,
+		// a. Lock invoice row and re-validate status inside the lock.
+		//    applyLockForUpdate issues SELECT FOR UPDATE on Postgres so that a
+		//    concurrent PostInvoice call blocks here until this transaction
+		//    commits or rolls back, then re-reads and sees status='sent'.
+		var locked models.Invoice
+		if err := applyLockForUpdate(
+			tx.Select("id", "company_id", "status").
+				Where("id = ? AND company_id = ?", invoiceID, companyID),
+		).First(&locked).Error; err != nil {
+			return fmt.Errorf("lock invoice: %w", err)
 		}
-		if err := tx.Create(&je).Error; err != nil {
+		if locked.Status != models.InvoiceStatusDraft {
+			return ErrAlreadyPosted
+		}
+
+		// b. Journal entry header.
+		//    SourceType + SourceID enable the unique partial index backstop:
+		//    (company_id, source_type='invoice', source_id=inv.ID) WHERE status='posted'.
+		je := models.JournalEntry{
+			CompanyID:  companyID,
+			EntryDate:  inv.InvoiceDate,
+			JournalNo:  inv.InvoiceNumber,
+			Status:     models.JournalEntryStatusPosted,
+			SourceType: models.LedgerSourceInvoice,
+			SourceID:   inv.ID,
+		}
+		if err := wrapUniqueViolation(tx.Create(&je).Error, "create journal entry"); err != nil {
 			return fmt.Errorf("create journal entry: %w", err)
 		}
 
+		// c. Journal lines — one per aggregated fragment.
+		//    Collect created rows: ProjectToLedger needs AccountID + Debit/Credit
+		//    from the persisted rows (company_id cross-check inside ProjectToLedger).
+		createdLines := make([]models.JournalLine, 0, len(jeLines))
 		for _, jl := range jeLines {
 			line := models.JournalLine{
 				CompanyID:      companyID,
@@ -157,9 +196,20 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			if err := tx.Create(&line).Error; err != nil {
 				return fmt.Errorf("create journal line: %w", err)
 			}
+			createdLines = append(createdLines, line)
 		}
 
-		// Update invoice: mark sent, link journal entry.
+		// d. Ledger projection — one ledger_entry per journal_line, status=active.
+		if err := ProjectToLedger(tx, companyID, LedgerPostInput{
+			JournalEntry: je,
+			Lines:        createdLines,
+			SourceType:   models.LedgerSourceInvoice,
+			SourceID:     inv.ID,
+		}); err != nil {
+			return fmt.Errorf("project to ledger: %w", err)
+		}
+
+		// e. Update invoice: mark sent, link journal entry.
 		if err := tx.Model(&inv).Updates(map[string]any{
 			"status":           string(models.InvoiceStatusSent),
 			"journal_entry_id": je.ID,
@@ -167,6 +217,7 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return fmt.Errorf("update invoice status: %w", err)
 		}
 
+		// f. Audit log.
 		cid := companyID
 		return WriteAuditLogWithContextDetails(tx, "invoice.posted", "invoice", inv.ID, actor,
 			map[string]any{"company_id": companyID},

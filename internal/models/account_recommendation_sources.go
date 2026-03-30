@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package models
 
 // Recommendation source tracking (field_recommendation_sources) is for product analytics only.

@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 //
 // gobooks-reset drops all GoBooks application tables (and the company_role enum) in the configured
 // PostgreSQL database/schema so the next app start can run AutoMigrate on a clean slate.

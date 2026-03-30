@@ -32,6 +32,14 @@ templ adminQuickActionLogsCard() {
 	</div>
 }
 
+templ adminQuickActionCompaniesCard() {
+	@adminQuickActionLinkCard("/admin/companies", "Companies", "View and manage organizations. Deactivate blocks all members; data is preserved.", adminIconQABuilding())
+}
+
+templ adminQuickActionUsersCard() {
+	@adminQuickActionLinkCard("/admin/users", "Users", "Manage business accounts. Deactivate, reactivate, or reset a user's password.", adminIconQAUsers())
+}
+
 templ adminSectionHeading(title string, subtitle string) {
 	<div class="mb-4">
 		<h2 class="text-lg font-semibold tracking-tight text-text">{ title }</h2>

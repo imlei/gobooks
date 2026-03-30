@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package admin
 
 import (
@@ -56,6 +56,8 @@ func (s *Server) handleAdminAuditLog(c *fiber.Ctx) error {
 	var actions []string
 	s.DB.Model(&models.AuditLog{}).Distinct("action").Order("action").Pluck("action", &actions)
 
+	companyNames := buildCompanyNameMap(s, rows)
+
 	totalPages := int(total) / adminAuditPageSize
 	if int(total)%adminAuditPageSize > 0 {
 		totalPages++
@@ -65,6 +67,7 @@ func (s *Server) handleAdminAuditLog(c *fiber.Ctx) error {
 		AdminEmail:      AdminUserFromCtx(c).Email,
 		MaintenanceMode: IsMaintenanceMode(),
 		Items:           rows,
+		CompanyNames:    companyNames,
 		Actions:         actions,
 		FilterQ:         q,
 		FilterAction:    filterAction,

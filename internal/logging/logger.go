@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 // Package logging 封装应用全局结构化日志。
 // 使用 Go 标准库 log/slog，JSON 输出到 stdout，无数据库依赖。
 package logging

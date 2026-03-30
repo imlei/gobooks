@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package admintmpl
 
 import "gobooks/internal/models"
@@ -8,6 +8,7 @@ type AdminAuditLogVM struct {
 	AdminEmail       string
 	MaintenanceMode  bool
 	Items            []models.AuditLog
+	CompanyNames     map[uint]string // companyID → name
 	Actions          []string
 	FilterQ          string
 	FilterAction     string
@@ -93,9 +94,13 @@ templ bodyAdminAuditLog(vm AdminAuditLogVM) {
 					for _, a := range vm.Items {
 						<tr class={ adminClassTableRow() + " align-top" }>
 							<td class="py-2.5 pl-4 pr-3 whitespace-nowrap text-small text-text-muted2">{ a.CreatedAt.Format("2006-01-02 15:04:05") }</td>
-							<td class="py-2.5 pr-3 text-small text-text-muted2 tabular-nums">
+							<td class="py-2.5 pr-3 text-small text-text-muted2">
 								if a.CompanyID != nil {
-									{ adminUint(uint(*a.CompanyID)) }
+									if name, ok := vm.CompanyNames[*a.CompanyID]; ok && name != "" {
+										{ name }
+									} else {
+										{ adminUint(uint(*a.CompanyID)) }
+									}
 								} else {
 									—
 								}

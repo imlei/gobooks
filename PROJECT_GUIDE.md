@@ -12,16 +12,11 @@ Gobooks 硬性需求来源 v2（更新整合版 · 强化版）
 后端规则 > 前端假设
 可扩展架构 > 快速堆功能
 AI = 辅助层（永远不能破坏会计逻辑）
+
 二、系统结构
 🧩 双层架构
-1️⃣ Business App（用户侧）
-每个 company 独立
-Accounting / Invoicing / Billing / Reporting
-2️⃣ SysAdmin（系统侧）
-管理所有公司
-管理所有用户
-控制系统状态
-查看日志与系统运行状态
+1️⃣ Business App（用户侧）每个 company 独立 Accounting / Invoicing / Billing / Reporting
+2️⃣ SysAdmin（系统侧）：管理所有公司，管理所有用户，控制系统状态，查看日志与系统运行状态
 📦 MVP 模块
 Company Setup
 Chart of Accounts
@@ -36,19 +31,18 @@ Numbering
 Sales Tax
 AI Connect
 Audit Log
+
 三、编号系统（双层）
 1️⃣ 内部编号（entity_number）
 
-格式：
-
-ENYYYY########
+格式：ENYYYY########
 
 规则：
+*全局唯一
+*后端生成
+*不可修改
+*不可暴露为可编辑字段
 
-全局唯一
-后端生成
-不可修改
-不可暴露为可编辑字段
 2️⃣ 业务编号（Display Number）
 
 例如：
@@ -61,6 +55,7 @@ IN001
 可配置
 可重复检测
 不作为系统 identity
+
 四、Account Code（结构性约束）
 📏 长度规则
 Setup 时选择：4–12 位
@@ -73,6 +68,7 @@ Setup 时选择：4–12 位
 必须唯一（company 内）
 🔄 自动扩展
 1000 → 10000 → 100000
+
 五、Chart of Accounts（核心结构）
 1️⃣ Account Type（重构）
 Root Account Type（核心逻辑）
@@ -121,14 +117,13 @@ recommendation
 ❌ 不允许删除
 ✅ 使用 inactive
 六、GIFI 体系（CRA 映射）
-字段
-gifi_code (optional)
-作用
-CRA 报税映射
-不参与系统 identity
+字段gifi_code (optional)
+作用CRA 报税映射 不参与系统 identity. 但是可以导出作为报税依据（未完成）。
+
 推荐方式
 Rule-based（必须）
 AI-enhanced（可选）
+
 七、Sales Tax 系统（核心模块 🔥）
 🎯 核心原则
 
@@ -146,6 +141,7 @@ recovery_rate
 accounts：
 tax payable
 recoverable tax
+
 2️⃣ Sales 规则（固定）
 
 无论 recoverable / non-recoverable：
@@ -194,16 +190,13 @@ Cr GST Payable 55
 业务状态变化必须与 Journal Entry 同步
 
 POST
-
 → 生成 JE
 
 VOID
-
 → 生成冲销 / reversal
 → 保留 audit
 
 REVERSE
-
 → 创建反向 JE
 
 DELETE
@@ -261,7 +254,6 @@ file_size_bytes
 🎯 目标
 
 减少：
-
 account code 混乱
 命名不一致
 GIFI 成本

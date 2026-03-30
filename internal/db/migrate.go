@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package db
 
 import (
@@ -65,6 +65,8 @@ func Migrate(db *gorm.DB) error {
 		&models.CompanySecuritySettings{},
 		&models.SystemSecuritySettings{},
 		&models.SecurityEvent{},
+		// Posting Engine Phase 2: accounting fact layer (projection of posted journal lines)
+		&models.LedgerEntry{},
 	); err != nil {
 		return err
 	}

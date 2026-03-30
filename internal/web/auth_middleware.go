@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package web
 
 // Auth middleware (Fiber handlers) for session, user, company membership, and role checks.

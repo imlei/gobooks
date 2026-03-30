@@ -132,7 +132,7 @@ Gobooks is built as a **multi-tenant accounting platform** with two distinct lay
 
 
 
-**Version:** 0.0.2
+**Version:** 0.0.4
 
 GoBooks is a simple accounting web app focused on core bookkeeping workflows:
 
@@ -145,6 +145,18 @@ GoBooks is a simple accounting web app focused on core bookkeeping workflows:
 - Audit Log and Reverse Entry
 
 The codebase follows the product guide and keeps implementation straightforward.
+
+### 0.0.4 (summary)
+
+- **Ledger entries (Phase 2):** `ledger_entries` table introduced as the immutable projection layer. Every posted journal entry projects to ledger rows; reversals mark them reversed. Enables running-balance queries without scanning journal lines.
+- **Posting engine (Phase 3):** `PostingEngine` struct introduced as the single coordinator for all posting/voiding/reversal lifecycle operations. Delegates to domain services; no accounting logic in the engine itself.
+- **Fragment builder (Phase 4):** `BuildInvoiceFragments` and `BuildBillFragments` pure functions assemble `[]PostingFragment` from document lines. `AggregateJournalLines` merges same-account same-side fragments into canonical journal lines.
+- **Tax handling:** Full, partial, and non-recoverable purchase tax correctly splits ITC debit vs. expense debit. Sales tax credits post to the configured payable account.
+- **Concurrency-safe posting (Phase 6):** Three-layer defence against double-posting: L1 pre-flight status check, L2 SELECT FOR UPDATE row lock + status re-validation inside transaction, L3 unique partial index `uq_journal_entries_posted_source` as DB backstop. `ErrAlreadyPosted` and `ErrConcurrentPostingConflict` sentinels for callers.
+- **Document–journal lifecycle binding (Phase 5):** `JournalEntry` carries `Status`, `SourceType`, and `SourceID`. Voiding and reversal update the original JE status to `reversed`; ledger entries are marked reversed atomically.
+- **Lifecycle consistency checks (Phase 5):** `CheckInvoiceConsistency` / `CheckBillConsistency` detect crossed states (draft with posted JE, posted without JE, voided with active ledger entries).
+- **Test suite (Phase 7):** Pure unit tests for fragment builder and aggregator; DB-integration tests (SQLite in-memory) for the full posting, void, and reversal flows; company-isolation tests.
+- **Version bump:** Source files updated from `v1.0` to `v0.0.4` product-requirements tag; `internal/version` constant updated.
 
 ### 0.0.2 (summary)
 
@@ -269,7 +281,7 @@ go run ./cmd/gobooks
 ## Project Structure (High Level)
 
 - `cmd/gobooks/` - app entrypoint
-- `internal/version/` - release version string (`0.0.2`)
+- `internal/version/` - release version string (`0.0.4`)
 - `internal/config/` - environment config loading
 - `internal/db/` - database connection + migration
 - `internal/models/` - GORM models

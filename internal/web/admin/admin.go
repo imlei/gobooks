@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 // Package admin implements the SysAdmin subsystem.
 //
 // 认证流程与业务用户完全隔离：

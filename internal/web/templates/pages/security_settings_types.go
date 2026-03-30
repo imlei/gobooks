@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package pages
 
 // CompanySecuritySettingsVM is the view-model for Settings > Company > Security.

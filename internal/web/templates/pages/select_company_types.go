@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package pages
 
 // SelectCompanyVM is used when the user must choose an active company.

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -31,6 +32,8 @@ func testInvoicePostDB(t *testing.T) *gorm.DB {
 		&models.InvoiceLine{},
 		&models.JournalEntry{},
 		&models.JournalLine{},
+		&models.LedgerEntry{}, // Phase 4: PostInvoice now calls ProjectToLedger
+		&models.AuditLog{},    // Phase 6: successful posting reaches WriteAuditLog
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -136,5 +139,85 @@ func TestPostInvoiceRejectsCrossCompanyProductService(t *testing.T) {
 	err := PostInvoice(db, companyA, invoice.ID, "tester", nil)
 	if err == nil || !strings.Contains(err.Error(), "product/service is not valid for this company") {
 		t.Fatalf("expected cross-company product/service error, got %v", err)
+	}
+}
+
+// TestPostInvoicePreventsDoublePosting verifies that posting an already-posted
+// invoice is always rejected. In the sequential case, the pre-flight check
+// (Layer 1) fires first and returns ErrInvoiceNotDraft. Under concurrency, a
+// second request that somehow passed the pre-flight check will hit the FOR UPDATE
+// re-validation inside the transaction (Layer 2) and return ErrAlreadyPosted.
+// Both paths result in a non-nil error that unwraps to the correct sentinel.
+func TestPostInvoicePreventsDoublePosting(t *testing.T) {
+	db := testInvoicePostDB(t)
+
+	companyID := seedInvoicePostCompany(t, db, "DoublePost Co")
+	customer := models.Customer{CompanyID: companyID, Name: "Customer"}
+	if err := db.Create(&customer).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	arAccountID := seedInvoicePostAccount(t, db, companyID, "1100",
+		models.RootAsset, models.DetailAccountsReceivable)
+	revenueID := seedInvoicePostAccount(t, db, companyID, "4000",
+		models.RootRevenue, models.DetailServiceRevenue)
+
+	product := models.ProductService{
+		CompanyID:        companyID,
+		Name:             "Service A",
+		Type:             models.ProductServiceTypeService,
+		RevenueAccountID: revenueID,
+		IsActive:         true,
+	}
+	if err := db.Create(&product).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	invoice := models.Invoice{
+		CompanyID:     companyID,
+		InvoiceNumber: "INV-001",
+		CustomerID:    customer.ID,
+		InvoiceDate:   time.Date(2026, 3, 29, 0, 0, 0, 0, time.UTC),
+		Status:        models.InvoiceStatusDraft,
+		Amount:        decimal.RequireFromString("100.00"),
+		Subtotal:      decimal.RequireFromString("100.00"),
+		TaxTotal:      decimal.Zero,
+	}
+	if err := db.Create(&invoice).Error; err != nil {
+		t.Fatal(err)
+	}
+	line := models.InvoiceLine{
+		CompanyID:        companyID,
+		InvoiceID:        invoice.ID,
+		SortOrder:        1,
+		ProductServiceID: &product.ID,
+		Description:      "Consulting",
+		Qty:              decimal.RequireFromString("1"),
+		UnitPrice:        decimal.RequireFromString("100"),
+		LineNet:          decimal.RequireFromString("100.00"),
+		LineTax:          decimal.Zero,
+		LineTotal:        decimal.RequireFromString("100.00"),
+	}
+	if err := db.Create(&line).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Seed AR account in invoice_post.go's AR account lookup path.
+	_ = arAccountID
+
+	// First posting: must succeed.
+	if err := PostInvoice(db, companyID, invoice.ID, "tester", nil); err != nil {
+		t.Fatalf("first PostInvoice failed unexpectedly: %v", err)
+	}
+
+	// Second posting: must be rejected. In the sequential case the pre-flight
+	// check returns ErrInvoiceNotDraft (Layer 1); under true concurrency the
+	// in-transaction re-validation returns ErrAlreadyPosted (Layer 2).
+	err := PostInvoice(db, companyID, invoice.ID, "tester", nil)
+	if err == nil {
+		t.Fatal("expected an error on second PostInvoice, got nil")
+	}
+	if !errors.Is(err, ErrInvoiceNotDraft) && !errors.Is(err, ErrAlreadyPosted) {
+		t.Fatalf("expected ErrInvoiceNotDraft or ErrAlreadyPosted, got: %v", err)
 	}
 }

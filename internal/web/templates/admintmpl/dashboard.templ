@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package admintmpl
 
 import (
@@ -13,6 +13,7 @@ type AdminDashboardVM struct {
 	ActiveCompanyCount int
 	UserCount          int
 	RecentAuditLogs    []models.AuditLog
+	CompanyNames       map[uint]string // companyID → name for recent activity
 	MaintenanceMode    bool
 	SysCPU             string
 	SysMemoryMB        string
@@ -74,7 +75,9 @@ templ bodyAdminDashboard(vm AdminDashboardVM) {
 
 	<section class="mb-10">
 		@adminSectionHeading("Quick actions", "")
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			@adminQuickActionCompaniesCard()
+			@adminQuickActionUsersCard()
 			@adminQuickActionLogsCard()
 			@adminQuickActionLinkCard("/admin/system", "System control", "Maintenance mode, operational tools, and restart logging.", adminIconQACog())
 		</div>
@@ -94,6 +97,7 @@ templ bodyAdminDashboard(vm AdminDashboardVM) {
 					<thead class="border-b border-border bg-background text-xs font-semibold uppercase tracking-wide text-text-muted">
 						<tr>
 							<th class="py-3 pl-4 pr-3">Time</th>
+							<th class="py-3 pr-3">Company</th>
 							<th class="py-3 pr-3">Action</th>
 							<th class="py-3 pr-3">Entity</th>
 							<th class="py-3 pr-4">Actor</th>
@@ -102,7 +106,7 @@ templ bodyAdminDashboard(vm AdminDashboardVM) {
 					<tbody class="text-text">
 						if len(vm.RecentAuditLogs) == 0 {
 							<tr>
-								<td colspan="4" class="px-4 py-10 text-center text-small text-text-muted2">
+								<td colspan="5" class="px-4 py-10 text-center text-small text-text-muted2">
 									<p class="font-medium text-text">No activity yet</p>
 									<p class="mt-1">Events appear as admins and users work in the product.</p>
 								</td>
@@ -111,6 +115,17 @@ templ bodyAdminDashboard(vm AdminDashboardVM) {
 						for _, a := range vm.RecentAuditLogs {
 							<tr class={ adminClassTableRow() }>
 								<td class="py-2.5 pl-4 pr-3 whitespace-nowrap text-small text-text-muted2">{ a.CreatedAt.Format("2006-01-02 15:04") }</td>
+								<td class="py-2.5 pr-3 text-small text-text-muted2">
+									if a.CompanyID != nil {
+										if name, ok := vm.CompanyNames[*a.CompanyID]; ok && name != "" {
+											{ name }
+										} else {
+											{ adminUint(uint(*a.CompanyID)) }
+										}
+									} else {
+										—
+									}
+								</td>
 								<td class="py-2.5 pr-3 font-medium">{ a.Action }</td>
 								<td class="py-2.5 pr-3 text-small text-text-muted2">{ a.EntityType }</td>
 								<td class="py-2.5 pr-4 text-small">{ a.Actor }</td>

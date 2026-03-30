@@ -1,4 +1,4 @@
-// 遵循产品需求 v1.0
+// 遵循project_guide.md
 package admintmpl
 
 // AdminAccountVM 是 SysAdmin 自助账户页的视图模型。
@@ -66,7 +66,7 @@ templ bodyAdminAccount(vm AdminAccountVM) {
 				}
 			</div>
 			<div>
-				<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-white hover:bg-primary-hover">
+				<button type="submit" class={ adminClassPrimaryButton() }>
 					Update Password
 				</button>
 			</div>
