@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -85,6 +86,7 @@ func (s *Server) handleAdminNotificationsPost(c *fiber.Ctx) error {
 }
 
 // handleAdminNotificationsTestEmail runs a test email using the system SMTP config.
+// The outcome is persisted so readiness state survives page reloads.
 func (s *Server) handleAdminNotificationsTestEmail(c *fiber.Ctx) error {
 	row, err := services.LoadSystemNotificationSettings(s.DB)
 	if err != nil || row.ID == 0 {
@@ -101,13 +103,22 @@ func (s *Server) handleAdminNotificationsTestEmail(c *fiber.Ctx) error {
 		Encryption: row.SMTPEncryption,
 	}
 	_, testErr := services.SendTestEmail(cfg)
+
+	success := testErr == nil
+	errMsg := ""
 	if testErr != nil {
-		return c.Redirect("/admin/settings/notifications?flash=test_email_err&msg="+url.QueryEscape(testErr.Error()), fiber.StatusSeeOther)
+		errMsg = testErr.Error()
+	}
+	_ = services.RecordSystemEmailTestResult(s.DB, success, errMsg, AdminUserFromCtx(c).Email)
+
+	if !success {
+		return c.Redirect("/admin/settings/notifications?flash=test_email_err&msg="+url.QueryEscape(errMsg), fiber.StatusSeeOther)
 	}
 	return c.Redirect("/admin/settings/notifications?flash=test_email_ok", fiber.StatusSeeOther)
 }
 
 // handleAdminNotificationsTestSMS runs a test SMS using the system SMS config.
+// The outcome is persisted so readiness state survives page reloads.
 func (s *Server) handleAdminNotificationsTestSMS(c *fiber.Ctx) error {
 	row, err := services.LoadSystemNotificationSettings(s.DB)
 	if err != nil || row.ID == 0 {
@@ -121,8 +132,16 @@ func (s *Server) handleAdminNotificationsTestSMS(c *fiber.Ctx) error {
 		SenderID:  row.SMSSenderID,
 	}
 	_, testErr := services.SendTestSMS(cfg)
+
+	success := testErr == nil
+	errMsg := ""
 	if testErr != nil {
-		return c.Redirect("/admin/settings/notifications?flash=test_sms_err&msg="+url.QueryEscape(testErr.Error()), fiber.StatusSeeOther)
+		errMsg = testErr.Error()
+	}
+	_ = services.RecordSystemSMSTestResult(s.DB, success, errMsg, AdminUserFromCtx(c).Email)
+
+	if !success {
+		return c.Redirect("/admin/settings/notifications?flash=test_sms_err&msg="+url.QueryEscape(errMsg), fiber.StatusSeeOther)
 	}
 	return c.Redirect("/admin/settings/notifications?flash=test_sms_ok", fiber.StatusSeeOther)
 }
@@ -151,7 +170,41 @@ func sysNotifVMFromRow(row models.SystemNotificationSettings, adminEmail string)
 		SMSAPISecretMaskedHint: row.SMSAPISecretMaskedHint,
 		SMSSenderID:            row.SMSSenderID,
 		AllowCompanyOverride:   row.AllowCompanyOverride,
+		EmailStatus:            sysNotifEmailStatusVM(row),
+		SMSStatus:              sysNotifSMSStatusVM(row),
 	}
+}
+
+func sysNotifEmailStatusVM(row models.SystemNotificationSettings) pages.NotifChannelStatusVM {
+	return pages.NotifChannelStatusVM{
+		TestStatus:        string(row.EmailTestStatus),
+		LastTestedAt:      fmtOptTime(row.EmailLastTestedAt),
+		LastTestedBy:      row.EmailLastTestedBy,
+		LastSuccessAt:     fmtOptTime(row.EmailLastSuccessAt),
+		LastFailureAt:     fmtOptTime(row.EmailLastFailureAt),
+		LastError:         row.EmailLastError,
+		VerificationReady: row.EmailVerificationReady,
+	}
+}
+
+func sysNotifSMSStatusVM(row models.SystemNotificationSettings) pages.NotifChannelStatusVM {
+	return pages.NotifChannelStatusVM{
+		TestStatus:        string(row.SMSTestStatus),
+		LastTestedAt:      fmtOptTime(row.SMSLastTestedAt),
+		LastTestedBy:      row.SMSLastTestedBy,
+		LastSuccessAt:     fmtOptTime(row.SMSLastSuccessAt),
+		LastFailureAt:     fmtOptTime(row.SMSLastFailureAt),
+		LastError:         row.SMSLastError,
+		VerificationReady: row.SMSVerificationReady,
+	}
+}
+
+// fmtOptTime formats a nullable time pointer as "2006-01-02 15:04 UTC".
+func fmtOptTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.UTC().Format("2006-01-02 15:04 UTC")
 }
 
 func applySysNotifFormOverrides(vm *pages.SystemNotificationSettingsVM, in services.SystemNotificationSettingsInput) {

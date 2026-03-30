@@ -364,6 +364,31 @@ JE 与业务脱节
 - draft document 可编辑、可删除，不应产生正式 ledger entries
 - posted document 必须产生 posted journal entry 和 ledger entries
 - voided / reversed document 必须有对应的会计反映
+
+Notifications infrastructure must store not only configuration values, but also delivery readiness state.
+
+For SMTP and SMS, the system must track:
+- whether the channel is enabled
+- whether required configuration fields are present
+- whether a test has ever been executed
+- the last test status (never / success / failed)
+- the last tested time
+- the user who executed the last test
+- the last success time
+- the last failure time
+- the last error message
+- whether the channel is verification-ready
+
+A channel is verification-ready only when:
+- it is enabled
+- configuration is complete
+- the latest test succeeded
+- the configuration has not changed since that successful test
+
+Changing SMTP or SMS configuration must invalidate previous test success until a new successful test is completed.
+
+Email/password security flows must rely on backend verification-ready checks, not frontend assumptions.
+
 ✅ 最终总结
 
 Gobooks = 结构化会计系统（强规则） + 智能建议层（AI + Rule） + 系统级管理能力（SysAdmin + Observability）

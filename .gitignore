@@ -42,3 +42,10 @@ AccountingApp.spec
 *~
 schema_out.txt
 
+# Runtime log files (local process manager output)
+*.log
+gobooks-runtime*.err
+gobooks-runtime*.out
+gobooks-service*.err
+gobooks-service*.out
+

@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -135,7 +136,12 @@ func (s *Server) handleCompanyNotificationsPost(c *fiber.Ctx) error {
 }
 
 // handleCompanyNotificationsTestEmail runs a test email using the company SMTP config.
+// The outcome is persisted to the DB so readiness state survives page reloads.
 func (s *Server) handleCompanyNotificationsTestEmail(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
 	companyID, ok := ActiveCompanyIDFromCtx(c)
 	if !ok {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
@@ -156,14 +162,27 @@ func (s *Server) handleCompanyNotificationsTestEmail(c *fiber.Ctx) error {
 		Encryption: row.SMTPEncryption,
 	}
 	_, testErr := services.SendTestEmail(cfg)
+
+	success := testErr == nil
+	errMsg := ""
 	if testErr != nil {
-		return c.Redirect("/settings/company/notifications?test_email=err&test_email_msg="+url.QueryEscape(testErr.Error()), fiber.StatusSeeOther)
+		errMsg = testErr.Error()
+	}
+	_ = services.RecordCompanyEmailTestResult(s.DB, companyID, success, errMsg, user.Email)
+
+	if !success {
+		return c.Redirect("/settings/company/notifications?test_email=err&test_email_msg="+url.QueryEscape(errMsg), fiber.StatusSeeOther)
 	}
 	return c.Redirect("/settings/company/notifications?test_email=ok", fiber.StatusSeeOther)
 }
 
 // handleCompanyNotificationsTestSMS runs a test SMS using the company SMS config.
+// The outcome is persisted to the DB so readiness state survives page reloads.
 func (s *Server) handleCompanyNotificationsTestSMS(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
 	companyID, ok := ActiveCompanyIDFromCtx(c)
 	if !ok {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
@@ -181,8 +200,16 @@ func (s *Server) handleCompanyNotificationsTestSMS(c *fiber.Ctx) error {
 		SenderID:  row.SMSSenderID,
 	}
 	_, testErr := services.SendTestSMS(cfg)
+
+	success := testErr == nil
+	errMsg := ""
 	if testErr != nil {
-		return c.Redirect("/settings/company/notifications?test_sms=err&test_sms_msg="+url.QueryEscape(testErr.Error()), fiber.StatusSeeOther)
+		errMsg = testErr.Error()
+	}
+	_ = services.RecordCompanySMSTestResult(s.DB, companyID, success, errMsg, user.Email)
+
+	if !success {
+		return c.Redirect("/settings/company/notifications?test_sms=err&test_sms_msg="+url.QueryEscape(errMsg), fiber.StatusSeeOther)
 	}
 	return c.Redirect("/settings/company/notifications?test_sms=ok", fiber.StatusSeeOther)
 }
@@ -213,7 +240,54 @@ func companyNotifVMFromRow(row models.CompanyNotificationSettings, systemAllowsO
 		SMSSenderID:            row.SMSSenderID,
 		AllowSystemFallback:    row.AllowSystemFallback,
 		SystemAllowsOverride:   systemAllowsOverride,
+		EmailStatus:            notifEmailStatusVM(row.EmailTestStatus, row.EmailLastTestedAt, row.EmailLastSuccessAt, row.EmailLastFailureAt, row.EmailLastTestedBy, row.EmailLastError, row.EmailVerificationReady),
+		SMSStatus:              notifSMSStatusVM(row.SMSTestStatus, row.SMSLastTestedAt, row.SMSLastSuccessAt, row.SMSLastFailureAt, row.SMSLastTestedBy, row.SMSLastError, row.SMSVerificationReady),
 	}
+}
+
+// notifEmailStatusVM builds a NotifChannelStatusVM from raw model fields.
+func notifEmailStatusVM(
+	status models.NotifTestStatus,
+	lastTestedAt, lastSuccessAt, lastFailureAt *time.Time,
+	lastTestedBy, lastError string,
+	ready bool,
+) pages.NotifChannelStatusVM {
+	return pages.NotifChannelStatusVM{
+		TestStatus:        string(status),
+		LastTestedAt:      fmtOptTime(lastTestedAt),
+		LastTestedBy:      lastTestedBy,
+		LastSuccessAt:     fmtOptTime(lastSuccessAt),
+		LastFailureAt:     fmtOptTime(lastFailureAt),
+		LastError:         lastError,
+		VerificationReady: ready,
+	}
+}
+
+// notifSMSStatusVM builds a NotifChannelStatusVM from raw SMS model fields.
+func notifSMSStatusVM(
+	status models.NotifTestStatus,
+	lastTestedAt, lastSuccessAt, lastFailureAt *time.Time,
+	lastTestedBy, lastError string,
+	ready bool,
+) pages.NotifChannelStatusVM {
+	return pages.NotifChannelStatusVM{
+		TestStatus:        string(status),
+		LastTestedAt:      fmtOptTime(lastTestedAt),
+		LastTestedBy:      lastTestedBy,
+		LastSuccessAt:     fmtOptTime(lastSuccessAt),
+		LastFailureAt:     fmtOptTime(lastFailureAt),
+		LastError:         lastError,
+		VerificationReady: ready,
+	}
+}
+
+// fmtOptTime formats a nullable time pointer as "2006-01-02 15:04 UTC".
+// Returns empty string if nil.
+func fmtOptTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.UTC().Format("2006-01-02 15:04 UTC")
 }
 
 // applyFormOverrides copies form-entered non-secret values into vm so the user

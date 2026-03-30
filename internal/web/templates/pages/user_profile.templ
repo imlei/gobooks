@@ -1,0 +1,155 @@
+// 遵循project_guide.md
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ UserProfile(vm UserProfileVM) {
+	@layout.Layout(
+		"GoBooks - Profile",
+		ui.SidebarVM{Active: "Profile", HasCompany: vm.HasCompany, UserEmail: vm.CurrentEmail},
+		bodyUserProfile(vm),
+	)
+}
+
+templ bodyUserProfile(vm UserProfileVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Profile</h1>
+		<p class="mt-2 max-w-3xl text-text-muted2">
+			Manage your email address and password. Changes require a verification code sent to your email.
+		</p>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+		if vm.FormSuccess != "" {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				{ vm.FormSuccess }
+			</div>
+		}
+
+		<div class="mt-6 space-y-6">
+
+			<!-- ── Email section ─────────────────────────────────────────────── -->
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="-mx-6 -mt-6 mb-6 border-b border-border bg-background px-6 py-3">
+					<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Email Address</div>
+				</div>
+
+				<p class="text-body text-text-muted2">
+					Current email: <span class="font-medium text-text">{ vm.CurrentEmail }</span>
+				</p>
+
+				if vm.EmailStep == "verify" {
+					<!-- Code entry form -->
+					<form method="post" action="/profile/verify-email-change" class="mt-5 max-w-sm space-y-4">
+						<input type="hidden" name="challenge_id" value={ vm.EmailChallengeID }/>
+						<input type="hidden" name="new_email" value={ vm.EmailNewInput }/>
+						<div>
+							<label class="block text-body font-medium text-text">Verification code</label>
+							<p class="mt-1 text-small text-text-muted2">
+								A 6-character code was sent to <span class="font-medium">{ vm.EmailNewInput }</span>.
+								It expires in 15 minutes.
+							</p>
+							<input
+								type="text"
+								name="code"
+								maxlength="6"
+								autocomplete="one-time-code"
+								placeholder="ABC123"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body font-mono uppercase outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+						<div class="flex gap-3">
+							@ui.ButtonPrimary("Confirm Email Change", "submit", false)
+							<a href="/profile" class="inline-flex items-center rounded-md border border-border-input bg-surface px-4 py-2 text-body font-medium text-text-muted3 hover:bg-background">Cancel</a>
+						</div>
+					</form>
+				} else {
+					<!-- Request form -->
+					<form method="post" action="/profile/request-email-change" class="mt-5 max-w-sm space-y-4">
+						<div>
+							<label class="block text-body font-medium text-text">New email address</label>
+							<input
+								type="email"
+								name="new_email"
+								value={ vm.EmailNewInput }
+								placeholder="you@example.com"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+						@ui.ButtonPrimary("Request Email Change", "submit", false)
+					</form>
+				}
+			</div>
+
+			<!-- ── Password section ──────────────────────────────────────────── -->
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<div class="-mx-6 -mt-6 mb-6 border-b border-border bg-background px-6 py-3">
+					<div class="text-small font-semibold uppercase tracking-wider text-text-muted">Password</div>
+				</div>
+
+				if vm.PasswordStep == "verify" {
+					<!-- Code entry + new password form -->
+					<form method="post" action="/profile/verify-password-change" class="mt-2 max-w-sm space-y-4">
+						<input type="hidden" name="challenge_id" value={ vm.PasswordChallengeID }/>
+						<div>
+							<label class="block text-body font-medium text-text">Verification code</label>
+							<p class="mt-1 text-small text-text-muted2">
+								A 6-character code was sent to <span class="font-medium">{ vm.CurrentEmail }</span>.
+								It expires in 15 minutes.
+							</p>
+							<input
+								type="text"
+								name="code"
+								maxlength="6"
+								autocomplete="one-time-code"
+								placeholder="ABC123"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body font-mono uppercase outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+						<div>
+							<label class="block text-body font-medium text-text">New password</label>
+							<input
+								type="password"
+								name="new_password"
+								autocomplete="new-password"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+						<div>
+							<label class="block text-body font-medium text-text">Confirm new password</label>
+							<input
+								type="password"
+								name="confirm_password"
+								autocomplete="new-password"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+						<div class="flex gap-3">
+							@ui.ButtonPrimary("Set New Password", "submit", false)
+							<a href="/profile" class="inline-flex items-center rounded-md border border-border-input bg-surface px-4 py-2 text-body font-medium text-text-muted3 hover:bg-background">Cancel</a>
+						</div>
+					</form>
+				} else {
+					<!-- Current password + request form -->
+					<form method="post" action="/profile/request-password-change" class="mt-2 max-w-sm space-y-4">
+						<div>
+							<label class="block text-body font-medium text-text">Current password</label>
+							<input
+								type="password"
+								name="current_password"
+								autocomplete="current-password"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+						@ui.ButtonPrimary("Request Password Change", "submit", false)
+					</form>
+				}
+			</div>
+
+		</div>
+	</div>
+}

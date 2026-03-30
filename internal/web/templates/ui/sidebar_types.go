@@ -6,5 +6,6 @@ package ui
 type SidebarVM struct {
 	Active     string
 	HasCompany bool
+	UserEmail  string // optional; shown in top-bar user menu when set
 }
 

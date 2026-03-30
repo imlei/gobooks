@@ -28,18 +28,17 @@ func ValidateSMSConfig(cfg SMSConfig) error {
 	return nil
 }
 
-// SendTestSMS validates cfg and, when valid, performs a stub send.
+// SendTestSMS validates cfg and, when valid, returns a success message.
 //
-// Real provider integration (Twilio, Vonage, etc.) is intentionally deferred
-// until actual notification features are built. This function validates the
-// configuration and returns a clear message for UI feedback.
-//
-// STUB: No SMS is sent. Replace with a real provider client when SMS delivery
-// is implemented (see Phase 4 implementation note).
+// IMPORTANT: This function only validates that the required fields are present.
+// It does NOT make a real API call to the SMS provider. Consequently,
+// SMSVerificationReady being true means "config looks complete", not
+// "delivery confirmed". Real provider integration (Twilio, Vonage, etc.)
+// is deferred to a future release at which point this function should be
+// replaced with an actual test-send via the provider SDK.
 func SendTestSMS(cfg SMSConfig) (string, error) {
 	if err := ValidateSMSConfig(cfg); err != nil {
 		return "", err
 	}
-	// TODO(phase4): replace stub with provider-specific REST call (Twilio/Vonage SDK).
-	return "Configuration looks valid. (Stub — no SMS sent. Real delivery will be wired in a future release.)", nil
+	return "SMS configuration looks valid (fields complete). Note: no test message was sent — real provider connectivity is not yet verified.", nil
 }

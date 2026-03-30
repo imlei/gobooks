@@ -218,7 +218,7 @@ func (s *Server) handleBootstrapSubmit(c *fiber.Ctx) error {
 			return err
 		}
 
-		if err := services.ImportDefaultChartOfAccounts(tx, company.ID, entityType, businessType, codeLen); err != nil {
+		if err := services.CreateDefaultAccountsForCompany(tx, company.ID, codeLen); err != nil {
 			return err
 		}
 		if err := tx.Model(&models.Company{}).Where("id = ?", company.ID).Update("account_code_length_locked", true).Error; err != nil {

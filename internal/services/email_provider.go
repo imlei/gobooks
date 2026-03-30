@@ -34,22 +34,23 @@ func ValidateEmailConfig(cfg EmailConfig) error {
 	return nil
 }
 
-// SendTestEmail validates cfg and, when valid, performs a stub send.
+// SendTestEmail validates cfg and, when valid, attempts a real SMTP delivery
+// by sending a test message from and to cfg.FromEmail (a self-send).
+// A successful return means the SMTP server was actually reachable and accepted
+// the message — this is the signal that sets EmailVerificationReady in the DB.
 //
-// Real SMTP delivery (net/smtp or a library) is intentionally deferred until
-// actual notification features are built. Until then, this function validates
-// the configuration and returns a clear message so the UI can distinguish
-// "config looks complete" from "config is missing required fields".
-//
-// Returns (message, error).  error is non-nil only for configuration problems,
-// not for SMTP delivery failures (which are handled by the caller as soft errors).
-//
-// STUB: No email is sent. Replace with a real dialler when email delivery is
-// implemented (see Phase 4 implementation note).
+// Returns (message, error). error is non-nil for both configuration problems
+// and SMTP delivery failures.
 func SendTestEmail(cfg EmailConfig) (string, error) {
 	if err := ValidateEmailConfig(cfg); err != nil {
 		return "", err
 	}
-	// TODO(phase4): replace stub with actual net/smtp or gomail dial + send.
-	return "Configuration looks valid. (Stub — no email sent. Real delivery will be wired in a future release.)", nil
+	subject := "GoBooks – SMTP configuration test"
+	body := "This is an automated test message from your GoBooks notification system.\n\n" +
+		"If you received this message your SMTP configuration is working correctly.\n" +
+		"You do not need to reply to this email."
+	if err := SendEmail(cfg, cfg.FromEmail, subject, body); err != nil {
+		return "", err
+	}
+	return "Test email sent to " + cfg.FromEmail + ". Check your inbox to confirm delivery.", nil
 }

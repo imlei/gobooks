@@ -135,6 +135,11 @@ func UpsertCompanyNotificationSettings(db *gorm.DB, companyID uint, in CompanyNo
 		row.SMSAPISecretMaskedHint = MaskAPIKey(s)
 	}
 
+	// Recompute config hashes so that any field change immediately invalidates
+	// the prior test success on the backend — no frontend action required.
+	applyCompanyEmailConfigHash(&row)
+	applyCompanySMSConfigHash(&row)
+
 	if row.ID == 0 {
 		return db.Create(&row).Error
 	}
@@ -219,6 +224,9 @@ func UpsertSystemNotificationSettings(db *gorm.DB, in SystemNotificationSettings
 		row.SMSAPISecretEncrypted = enc
 		row.SMSAPISecretMaskedHint = MaskAPIKey(s)
 	}
+
+	applySystemEmailConfigHash(&row)
+	applySystemSMSConfigHash(&row)
 
 	if row.ID == 0 {
 		return db.Create(&row).Error

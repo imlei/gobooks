@@ -10,7 +10,7 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title }</title>
-			<link rel="stylesheet" href="/static/app.css?v=2"/>
+			<link rel="stylesheet" href="/static/app.css?v=3"/>
 			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 			<script>
@@ -85,19 +85,64 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 							/>
 						</div>
 
-						<div class="flex items-center gap-3">
-							<!-- Simple user menu placeholder -->
-							<div class="hidden md:block text-small text-text-muted3">User</div>
+						<!-- User menu dropdown -->
+						<div class="relative" x-data="{ userMenuOpen: false }" @keydown.escape="userMenuOpen = false" @click.outside="userMenuOpen = false">
 							<button
 								type="button"
-								class="inline-flex items-center justify-center rounded-md border border-border-input bg-surface px-3 py-2 text-body font-semibold text-text-muted3"
+								class="inline-flex items-center gap-2 rounded-md border border-border-input bg-surface px-3 py-2 text-body font-semibold text-text-muted3 hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus"
+								@click="userMenuOpen = !userMenuOpen"
 								aria-label="User menu"
+								:aria-expanded="userMenuOpen"
 							>
 								<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 01-8 0 4 4 0 018 0z" />
-									<path stroke-linecap="round" stroke-linejoin="round" d="M12 14c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z" />
+									<path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 01-8 0 4 4 0 018 0z"/>
+									<path stroke-linecap="round" stroke-linejoin="round" d="M12 14c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"/>
+								</svg>
+								if sidebar.UserEmail != "" {
+									<span class="hidden md:inline text-small">{ sidebar.UserEmail }</span>
+								}
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-150" :class="userMenuOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
 								</svg>
 							</button>
+
+							<div
+								x-show="userMenuOpen"
+								x-transition:enter="transition ease-out duration-100"
+								x-transition:enter-start="opacity-0 scale-95"
+								x-transition:enter-end="opacity-100 scale-100"
+								x-transition:leave="transition ease-in duration-75"
+								x-transition:leave-start="opacity-100 scale-100"
+								x-transition:leave-end="opacity-0 scale-95"
+								class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md border border-border bg-surface shadow-lg"
+								style="display: none;"
+							>
+								<div class="py-1">
+									<a
+										href="/profile"
+										class="flex items-center gap-2 px-4 py-2 text-body text-text hover:bg-background"
+										@click="userMenuOpen = false"
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-text-muted3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 01-8 0 4 4 0 018 0z"/>
+											<path stroke-linecap="round" stroke-linejoin="round" d="M12 14c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"/>
+										</svg>
+										Profile
+									</a>
+									<div class="my-1 border-t border-border"></div>
+									<form method="post" action="/logout">
+										<button
+											type="submit"
+											class="flex w-full items-center gap-2 px-4 py-2 text-body text-text hover:bg-background"
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-text-muted3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+											</svg>
+											Log out
+										</button>
+									</form>
+								</div>
+							</div>
 						</div>
 					</div>
 				</header>

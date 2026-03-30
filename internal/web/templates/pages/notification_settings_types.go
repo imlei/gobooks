@@ -3,6 +3,25 @@ package pages
 
 import "strconv"
 
+// NotifChannelStatusVM carries the delivery readiness state for one channel
+// (email or SMS). All time strings are pre-formatted by the handler; empty
+// string means the field has never been set.
+type NotifChannelStatusVM struct {
+	// TestStatus is "never", "success", or "failed".
+	TestStatus string
+
+	LastTestedAt  string // formatted UTC time or ""
+	LastTestedBy  string
+	LastSuccessAt string
+	LastFailureAt string
+	LastError     string
+
+	// VerificationReady is true only when: enabled, config complete, last test
+	// succeeded, and config has not changed since that test. This value comes
+	// directly from the DB row — it is never derived on the frontend.
+	VerificationReady bool
+}
+
 // CompanyNotificationSettingsVM is the view-model for Settings > Company > Notifications.
 type CompanyNotificationSettingsVM struct {
 	HasCompany bool
@@ -18,7 +37,7 @@ type CompanyNotificationSettingsVM struct {
 	TestSMSResult   string // "ok" | "err" | ""
 	TestSMSMsg      string
 
-	// Email / SMTP
+	// Email / SMTP config
 	EmailEnabled           bool
 	SMTPHost               string
 	SMTPPort               string // string for round-trip form safety
@@ -28,7 +47,7 @@ type CompanyNotificationSettingsVM struct {
 	SMTPFromName           string
 	SMTPEncryption         string // "none" | "ssl_tls" | "starttls"
 
-	// SMS
+	// SMS config
 	SMSEnabled             bool
 	SMSProvider            string
 	SMSAPIKeyMaskedHint    string // display-only; never plaintext
@@ -39,6 +58,10 @@ type CompanyNotificationSettingsVM struct {
 
 	// System policy: reflects system_notification_settings.allow_company_override
 	SystemAllowsOverride bool
+
+	// Delivery readiness state (from DB, not derived on frontend).
+	EmailStatus NotifChannelStatusVM
+	SMSStatus   NotifChannelStatusVM
 }
 
 // SystemNotificationSettingsVM is the view-model for SysAdmin > Settings > Notifications.
@@ -53,7 +76,7 @@ type SystemNotificationSettingsVM struct {
 	TestSMSResult   string
 	TestSMSMsg      string
 
-	// Email / SMTP
+	// Email / SMTP config
 	EmailEnabled           bool
 	SMTPHost               string
 	SMTPPort               string
@@ -63,7 +86,7 @@ type SystemNotificationSettingsVM struct {
 	SMTPFromName           string
 	SMTPEncryption         string
 
-	// SMS
+	// SMS config
 	SMSEnabled             bool
 	SMSProvider            string
 	SMSAPIKeyMaskedHint    string
@@ -71,6 +94,10 @@ type SystemNotificationSettingsVM struct {
 	SMSSenderID            string
 
 	AllowCompanyOverride bool
+
+	// Delivery readiness state.
+	EmailStatus NotifChannelStatusVM
+	SMSStatus   NotifChannelStatusVM
 }
 
 // intStr converts an int to string for form display (port numbers etc.).
