@@ -15,10 +15,22 @@ var logger *slog.Logger
 // 日志级别通过 LOG_LEVEL 环境变量控制（DEBUG / INFO / WARN / ERROR）。
 // 未设置时默认 INFO，适合生产环境。
 // 必须在启动服务器前调用一次。
+// 注意：如果 LOG_LEVEL 通过 .env 文件加载，应在 config.Load() 后调用 SetLevel。
 func Init() {
 	level := parseLogLevel(os.Getenv("LOG_LEVEL"))
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
+	})
+	logger = slog.New(handler)
+	slog.SetDefault(logger)
+}
+
+// SetLevel reinitialises the logger with the given level string.
+// Call this after config.Load() so that LOG_LEVEL values from .env take effect.
+func SetLevel(level string) {
+	l := parseLogLevel(level)
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: l,
 	})
 	logger = slog.New(handler)
 	slog.SetDefault(logger)

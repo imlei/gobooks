@@ -201,6 +201,20 @@ at [info@taxdeep.com](mailto:info@taxdeep.com) to obtain a commercial license.
 **GoBooks** is a trademark of **TAXDEEP CORP.** and may not be used in derivative
 products without permission.
 
+## Migration Strategy
+
+Gobooks uses a two-phase, explicit migration model:
+
+| Phase | Tool | What it does |
+|---|---|---|
+| 1 — GORM AutoMigrate | `db.Migrate()` | Creates/alters tables based on model structs (never drops columns) |
+| 2 — SQL file migrations | `db.ApplySQLMigrations()` | Applies tracked `migrations/*.sql` files via `schema_migrations` table |
+
+**`cmd/gobooks-migrate`** runs both phases in order and is the canonical migration entry point.
+**`cmd/gobooks`** (the app) runs Phase 1 only on startup as a local-dev safety net. SQL file migrations must be applied separately.
+
+In Docker, the `migrate` service runs to completion before the `app` service starts — both phases are always applied.
+
 ## Quick Start (Recommended): Docker
 
 ### 1) Prerequisites
@@ -209,11 +223,14 @@ products without permission.
 
 ### 2) Run
 
-From `d:\Coding\gobooks`:
-
 ```bash
 docker compose up --build
 ```
+
+Docker automatically:
+1. Waits for PostgreSQL to pass its healthcheck
+2. Runs `gobooks-migrate` (both migration phases) to completion
+3. Starts the application
 
 ### 3) Open App
 
@@ -232,10 +249,10 @@ On first run, you will see the Setup page and can create your company profile.
 ### 2) Configure environment
 
 ```bash
-copy .env.example .env
+cp .env.example .env
 ```
 
-Update `.env` with your local PostgreSQL values.
+Edit `.env` with your local PostgreSQL values. See `.env.example` for all supported variables.
 
 ### 3) Install frontend dependencies
 
@@ -249,33 +266,59 @@ npm install
 npm run build:css
 ```
 
-For development watch mode (optional, another terminal):
+For development watch mode (optional, separate terminal):
 
 ```bash
 npm run dev:css
 ```
 
-### 5) Run backend
+### 5) Run migrations (required before first run and after any schema changes)
+
+```bash
+go run ./cmd/gobooks-migrate
+```
+
+This applies both GORM AutoMigrate and all SQL file migrations. It is idempotent — safe to run multiple times.
+
+### 6) Run the application
 
 ```bash
 go run ./cmd/gobooks
 ```
 
-### 6) Open app
+### 7) Open app
 
 - <http://localhost:6768>
 
+## Production Deployment
+
+The recommended production flow is explicit migrate-then-run:
+
+```bash
+# Step 1 — apply all migrations (exits 0 on success)
+./gobooks-migrate
+
+# Step 2 — start the application
+./gobooks
+```
+
+With a process manager or Kubernetes init container, always run `gobooks-migrate` before `gobooks`.
+
 ## Useful Commands
 
-- Run app with Docker:
+- **Docker — start stack:**
   - `docker compose up --build`
-- Stop Docker stack:
+- **Docker — stop stack:**
   - `docker compose down`
-- Run backend locally:
+- **Docker — run migrations only:**
+  - `docker compose run --rm migrate`
+- **Local — run migrations:**
+  - `go run ./cmd/gobooks-migrate`
+- **Local — run app:**
   - `go run ./cmd/gobooks`
-- Build CSS once:
+- **Build CSS once:**
   - `npm run build:css`
-- Watch CSS:
+- **Watch CSS:**
   - `npm run dev:css`
 
 ## Project Structure (High Level)

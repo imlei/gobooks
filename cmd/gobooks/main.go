@@ -15,6 +15,7 @@ import (
 
 func main() {
 	// 初始化结构化日志（JSON 输出到 stdout）。必须在所有其他组件之前调用。
+	// LOG_LEVEL 来自环境变量；若仅在 .env 中设置，SetLevel 会在 config.Load() 后修正。
 	logging.Init()
 
 	// Load configuration from .env / environment variables.
@@ -22,15 +23,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("config load failed: %v", err)
 	}
+	// Re-apply log level now that godotenv has loaded .env values into the environment.
+	logging.SetLevel(cfg.LogLevel)
+
 	if err := services.ConfigureAISecretKey(cfg.AISecretKey); err != nil {
 		log.Fatalf("AI secret key config failed: %v", err)
 	}
 
-	// Connect to PostgreSQL (GORM) and run basic migrations.
+	// Connect to PostgreSQL (GORM) with retry/backoff.
 	gormDB, err := db.Connect(cfg)
 	if err != nil {
 		log.Fatalf("db connect failed: %v", err)
 	}
+
+	// Run GORM AutoMigrate: safe schema additions (idempotent, never drops columns).
+	// SQL file migrations (migrations/*.sql) must be applied separately via:
+	//   go run ./cmd/gobooks-migrate
+	// In Docker, the migrate service handles both phases before the app starts.
 	if err := db.Migrate(gormDB); err != nil {
 		log.Fatalf("db migrate failed: %v", err)
 	}
