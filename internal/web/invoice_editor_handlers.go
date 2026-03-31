@@ -131,11 +131,17 @@ func (s *Server) handleInvoiceEdit(c *fiber.Ctx) error {
 		HasCompany:    true,
 		IsEdit:        true,
 		EditingID:     invoiceID,
+		ReviewLocked:  c.Query("locked") == "1",
 		InvoiceNumber: inv.InvoiceNumber,
 		CustomerID:    strconv.FormatUint(uint64(inv.CustomerID), 10),
 		InvoiceDate:   inv.InvoiceDate.Format("2006-01-02"),
 		Terms:         string(inv.Terms),
 		Memo:          inv.Memo,
+		FormError:     strings.TrimSpace(c.Query("error")),
+		Saved:         c.Query("saved") == "1",
+	}
+	if CanFromCtx(c, ActionInvoiceApprove) {
+		vm.SubmitPath = fmt.Sprintf("/invoices/%d/issue", invoiceID)
 	}
 	if inv.DueDate != nil {
 		vm.DueDate = inv.DueDate.Format("2006-01-02")
@@ -204,6 +210,9 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		Terms:         termsRaw,
 		DueDate:       dueDateRaw,
 		Memo:          memo,
+	}
+	if isEdit && CanFromCtx(c, ActionInvoiceApprove) {
+		vm.SubmitPath = fmt.Sprintf("/invoices/%d/issue", editingID)
 	}
 	_ = s.loadEditorDropdowns(companyID, &vm)
 
@@ -480,6 +489,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		return pages.InvoiceEditor(vm).Render(c.Context(), c)
 	}
 
+	var savedInvoiceID uint
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var inv models.Invoice
 
@@ -560,6 +570,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		if isEdit {
 			action = "invoice.updated"
 		}
+		savedInvoiceID = inv.ID
 		return services.WriteAuditLogWithContextDetails(tx, action, "invoice", inv.ID, actor,
 			map[string]any{"company_id": companyID},
 			&cid, &uid, nil,
@@ -576,7 +587,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		return pages.InvoiceEditor(vm).Render(c.Context(), c)
 	}
 
-	return c.Redirect("/invoices?saved=1", fiber.StatusSeeOther)
+	return redirectTo(c, fmt.Sprintf("/invoices/%d/edit?saved=1&locked=1", savedInvoiceID))
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

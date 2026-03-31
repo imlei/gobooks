@@ -62,6 +62,7 @@ internal/web/static/app.css
 # Go build / test / cache
 # -------------------------
 .gocache/
+.gomodcache/
 .coverprofile
 coverage.out
 *.test

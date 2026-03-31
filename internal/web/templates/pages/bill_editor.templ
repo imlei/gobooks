@@ -58,7 +58,7 @@ templ bodyBillEditor(vm BillEditorVM) {
 			}
 
 			// Wrapper div — JS adds disabled state to lock fields on review
-			<div id="be-fields">
+			<fieldset id="be-fields" disabled?={ vm.ReviewLocked }>
 
 			// ── Header ──────────────────────────────────────────────────────────
 			<div class="rounded-lg border border-border bg-surface p-6">
@@ -339,14 +339,18 @@ templ bodyBillEditor(vm BillEditorVM) {
 				<script src="/static/bill_editor.js?v=3"></script>
 			</div>
 
-			</div>
+			</fieldset>
 
 			// ── Review banner ─────────────────────────────────────────────────
 			<div
 				id="be-review-banner"
-				style="display:none"
+				style={ editorDisplay(vm.ReviewLocked) }
 				class="rounded-md border border-border bg-background px-4 py-3 text-body text-text-muted2"
 			>
+				if vm.Saved {
+					<span class="font-semibold text-text">Draft saved.</span>
+					<span> </span>
+				}
 				Review your bill. If everything looks correct, click <strong class="text-text">Submit</strong> to save — or click <strong class="text-text">← Edit</strong> to make changes.
 			</div>
 
@@ -355,13 +359,14 @@ templ bodyBillEditor(vm BillEditorVM) {
 				<a
 					id="be-cancel-link"
 					href="/bills"
+					style={ editorDisplay(!vm.ReviewLocked) }
 					class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
 				>
 					Cancel
 				</a>
 				<button
 					id="be-edit-btn"
-					style="display:none"
+					style={ editorDisplay(vm.ReviewLocked) }
 					type="button"
 					onclick="beExitReview()"
 					class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
@@ -370,42 +375,36 @@ templ bodyBillEditor(vm BillEditorVM) {
 				</button>
 				<button
 					id="be-save-btn"
-					type="button"
-					onclick="beEnterReview()"
+					style={ editorDisplay(!vm.ReviewLocked) }
+					type="submit"
 					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
 				>
 					Save Draft
 				</button>
-				<button
-					id="be-submit-btn"
-					style="display:none"
-					type="submit"
-					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
-				>
-					Submit
-				</button>
+				if vm.SubmitPath != "" {
+					<button
+						id="be-submit-btn"
+						style={ editorDisplay(vm.ReviewLocked) }
+						type="submit"
+						formmethod="post"
+						formaction={ vm.SubmitPath }
+						class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+					>
+						Submit
+					</button>
+				}
 			</div>
 
 			<script>
-				function beEnterReview() {
-					document.querySelectorAll('#be-fields input, #be-fields select, #be-fields textarea, #be-fields button').forEach(function(el) {
-						el.disabled = true;
-					});
-					document.getElementById('be-review-banner').style.display = '';
-					document.getElementById('be-cancel-link').style.display = 'none';
-					document.getElementById('be-edit-btn').style.display = '';
-					document.getElementById('be-save-btn').style.display = 'none';
-					document.getElementById('be-submit-btn').style.display = '';
-				}
 				function beExitReview() {
-					document.querySelectorAll('#be-fields input, #be-fields select, #be-fields textarea, #be-fields button').forEach(function(el) {
-						el.disabled = false;
-					});
+					var fieldset = document.getElementById('be-fields');
+					var submitBtn = document.getElementById('be-submit-btn');
+					if (fieldset) fieldset.disabled = false;
 					document.getElementById('be-review-banner').style.display = 'none';
 					document.getElementById('be-cancel-link').style.display = '';
 					document.getElementById('be-edit-btn').style.display = 'none';
 					document.getElementById('be-save-btn').style.display = '';
-					document.getElementById('be-submit-btn').style.display = 'none';
+					if (submitBtn) submitBtn.style.display = 'none';
 				}
 			</script>
 		</form>

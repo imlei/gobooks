@@ -9,6 +9,11 @@ type BillEditorVM struct {
 	// IsEdit is true when editing an existing draft; false for new bills.
 	IsEdit    bool
 	EditingID uint
+	// ReviewLocked is true after a draft save when the editor re-opens in
+	// review mode.
+	ReviewLocked bool
+	// SubmitPath is used by the locked-state Submit button.
+	SubmitPath string
 
 	// Header fields (form values).
 	BillNumber string

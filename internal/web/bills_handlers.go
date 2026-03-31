@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
@@ -69,6 +70,7 @@ func (s *Server) handleBills(c *fiber.Ctx) error {
 		HasCompany:     true,
 		Vendors:        vendors,
 		Bills:          bills,
+		Posted:         c.Query("posted") == "1",
 		Saved:          c.Query("saved") == "1",
 		FilterQ:        filterQ,
 		FilterVendorID: filterVendorID,
@@ -134,14 +136,20 @@ func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 	}
 
 	vm := pages.BillEditorVM{
-		HasCompany: true,
-		IsEdit:     true,
-		EditingID:  billID,
-		BillNumber: bill.BillNumber,
-		VendorID:   strconv.FormatUint(uint64(bill.VendorID), 10),
-		BillDate:   bill.BillDate.Format("2006-01-02"),
-		Terms:      string(bill.Terms),
-		Memo:       bill.Memo,
+		HasCompany:   true,
+		IsEdit:       true,
+		EditingID:    billID,
+		ReviewLocked: c.Query("locked") == "1",
+		BillNumber:   bill.BillNumber,
+		VendorID:     strconv.FormatUint(uint64(bill.VendorID), 10),
+		BillDate:     bill.BillDate.Format("2006-01-02"),
+		Terms:        string(bill.Terms),
+		Memo:         bill.Memo,
+		FormError:    strings.TrimSpace(c.Query("error")),
+		Saved:        c.Query("saved") == "1",
+	}
+	if CanFromCtx(c, ActionBillUpdate) {
+		vm.SubmitPath = fmt.Sprintf("/bills/%d/post", billID)
 	}
 	if bill.DueDate != nil {
 		vm.DueDate = bill.DueDate.Format("2006-01-02")
@@ -207,6 +215,9 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		Terms:      termsRaw,
 		DueDate:    dueDateRaw,
 		Memo:       memo,
+	}
+	if isEdit && CanFromCtx(c, ActionBillUpdate) {
+		vm.SubmitPath = fmt.Sprintf("/bills/%d/post", editingID)
 	}
 	_ = s.loadBillEditorDropdowns(companyID, &vm)
 
@@ -477,6 +488,7 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		actor = "user"
 	}
 
+	var savedBillID uint
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var bill models.Bill
 
@@ -544,6 +556,7 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		if isEdit {
 			action = "bill.updated"
 		}
+		savedBillID = bill.ID
 		return services.WriteAuditLogWithContextDetails(tx, action, "bill", bill.ID, actor,
 			map[string]any{"company_id": companyID},
 			&cid, &uid, nil,
@@ -560,7 +573,37 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		return pages.BillEditor(vm).Render(c.Context(), c)
 	}
 
-	return c.Redirect("/bills?saved=1", fiber.StatusSeeOther)
+	return redirectTo(c, fmt.Sprintf("/bills/%d/edit?saved=1&locked=1", savedBillID))
+}
+
+// handleBillPost submits a saved draft bill and posts it to accounting.
+func (s *Server) handleBillPost(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return redirectErr(c, "/bills", "company context required")
+	}
+
+	billID, err := parseBillID(c)
+	if err != nil {
+		return redirectErr(c, "/bills", "invalid bill ID")
+	}
+
+	user := UserFromCtx(c)
+	actor := "system"
+	var uid *uuid.UUID
+	if user != nil {
+		u := user.ID
+		uid = &u
+		if user.Email != "" {
+			actor = user.Email
+		}
+	}
+
+	if err := services.PostBill(s.DB, companyID, billID, actor, uid); err != nil {
+		return redirectErr(c, fmt.Sprintf("/bills/%d/edit?locked=1", billID), "Could not submit: "+err.Error())
+	}
+
+	return redirectTo(c, "/bills?posted=1")
 }
 
 func (s *Server) billsForCompany(companyID uint) ([]models.Bill, error) {
@@ -635,4 +678,13 @@ func buildBillInitialLinesJSON(rows []pages.BillLineFormRow) string {
 	}
 	b, _ := json.Marshal(items)
 	return string(b)
+}
+
+func parseBillID(c *fiber.Ctx) (uint, error) {
+	idStr := c.Params("id")
+	id64, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint(id64), nil
 }

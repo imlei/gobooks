@@ -58,7 +58,7 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 			}
 
 			// Wrapper div — JS adds 'ie-reviewing' class to lock fields
-			<div id="ie-fields">
+			<fieldset id="ie-fields" disabled?={ vm.ReviewLocked }>
 
 			// ── Header ──────────────────────────────────────────────────────
 			<div class="rounded-lg border border-border bg-surface p-6">
@@ -355,14 +355,18 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 				<script src="/static/invoice_editor.js?v=3"></script>
 			</div>
 
-			</div>
+			</fieldset>
 
 			// ── Review banner ─────────────────────────────────────────────────
 			<div
 				id="ie-review-banner"
-				style="display:none"
+				style={ editorDisplay(vm.ReviewLocked) }
 				class="rounded-md border border-border bg-background px-4 py-3 text-body text-text-muted2"
 			>
+				if vm.Saved {
+					<span class="font-semibold text-text">Draft saved.</span>
+					<span> </span>
+				}
 				Review your invoice. If everything looks correct, click <strong class="text-text">Submit</strong> to save — or click <strong class="text-text">← Edit</strong> to make changes.
 			</div>
 
@@ -371,13 +375,14 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 				<a
 					id="ie-cancel-link"
 					href="/invoices"
+					style={ editorDisplay(!vm.ReviewLocked) }
 					class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
 				>
 					Cancel
 				</a>
 				<button
 					id="ie-edit-btn"
-					style="display:none"
+					style={ editorDisplay(vm.ReviewLocked) }
 					type="button"
 					onclick="ieExitReview()"
 					class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
@@ -386,43 +391,36 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 				</button>
 				<button
 					id="ie-save-btn"
-					type="button"
-					onclick="ieEnterReview()"
+					style={ editorDisplay(!vm.ReviewLocked) }
+					type="submit"
 					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
 				>
 					Save Draft
 				</button>
-				<button
-					id="ie-submit-btn"
-					style="display:none"
-					type="submit"
-					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
-				>
-					Submit
-				</button>
+				if vm.SubmitPath != "" {
+					<button
+						id="ie-submit-btn"
+						style={ editorDisplay(vm.ReviewLocked) }
+						type="submit"
+						formmethod="post"
+						formaction={ vm.SubmitPath }
+						class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+					>
+						Submit
+					</button>
+				}
 			</div>
 
 			<script>
-				function ieEnterReview() {
-					// Lock all inputs/selects/textareas inside the fields wrapper
-					document.querySelectorAll('#ie-fields input, #ie-fields select, #ie-fields textarea, #ie-fields button').forEach(function(el) {
-						el.disabled = true;
-					});
-					document.getElementById('ie-review-banner').style.display = '';
-					document.getElementById('ie-cancel-link').style.display = 'none';
-					document.getElementById('ie-edit-btn').style.display = '';
-					document.getElementById('ie-save-btn').style.display = 'none';
-					document.getElementById('ie-submit-btn').style.display = '';
-				}
 				function ieExitReview() {
-					document.querySelectorAll('#ie-fields input, #ie-fields select, #ie-fields textarea, #ie-fields button').forEach(function(el) {
-						el.disabled = false;
-					});
+					var fieldset = document.getElementById('ie-fields');
+					var submitBtn = document.getElementById('ie-submit-btn');
+					if (fieldset) fieldset.disabled = false;
 					document.getElementById('ie-review-banner').style.display = 'none';
 					document.getElementById('ie-cancel-link').style.display = '';
 					document.getElementById('ie-edit-btn').style.display = 'none';
 					document.getElementById('ie-save-btn').style.display = '';
-					document.getElementById('ie-submit-btn').style.display = 'none';
+					if (submitBtn) submitBtn.style.display = 'none';
 				}
 			</script>
 		</form>
