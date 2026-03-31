@@ -10,6 +10,7 @@ function billEditor() {
     billDate: "",
     dueDate: "",
     dueDateEditable: false,
+    reviewing: false,
 
     init() {
       const el = this.$el;
