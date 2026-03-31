@@ -88,7 +88,7 @@ templ dateField(label string, name string, value string, err string) {
 templ monthDayField(label string, name string, value string, err string) {
 	<div>
 		<label class="block text-body font-medium text-text">{ label }</label>
-		<div class="mt-2 flex gap-2">
+		<div class="mt-2 grid grid-cols-[1fr_5.5rem] gap-2">
 			<select
 				name={ name + "_month" }
 				class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
@@ -104,7 +104,7 @@ templ monthDayField(label string, name string, value string, err string) {
 			</select>
 			<select
 				name={ name + "_day" }
-				class="block w-28 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+				class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 			>
 				<option value="">Day</option>
 				for _, dv := range []string{
