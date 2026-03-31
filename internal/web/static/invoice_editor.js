@@ -1,5 +1,5 @@
 // invoice_editor.js — Alpine component for the invoice line-items editor.
-// v=2
+// v=3
 function invoiceEditor() {
   return {
     lines: [],

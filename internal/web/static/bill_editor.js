@@ -1,5 +1,5 @@
 // bill_editor.js — Alpine component for the bill line-items editor.
-// v=2
+// v=3
 function billEditor() {
   return {
     lines: [],
