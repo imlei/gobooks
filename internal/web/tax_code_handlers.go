@@ -422,12 +422,12 @@ func validateTaxCodeAccounts(db *gorm.DB, companyID uint, vm *pages.SalesTaxVM, 
 
 	var purchaseAcct models.Account
 	if err := db.Where("id = ? AND company_id = ? AND is_active = true", *purchaseAcctID, companyID).First(&purchaseAcct).Error; err != nil {
-		vm.PurchaseRecoverableAccountIDError = "Purchase recoverable account must be an active asset account in this company."
+		vm.PurchaseRecoverableAccountIDError = "Purchase recoverable account must be an active liability account in this company."
 		*valid = false
 		return
 	}
-	if purchaseAcct.RootAccountType != models.RootAsset {
-		vm.PurchaseRecoverableAccountIDError = "Purchase recoverable account must be an asset account."
+	if purchaseAcct.RootAccountType != models.RootLiability {
+		vm.PurchaseRecoverableAccountIDError = "Purchase recoverable account must be a liability account."
 		*valid = false
 	}
 }
