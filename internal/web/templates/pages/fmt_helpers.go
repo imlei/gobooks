@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/shopspring/decimal"
 	"gobooks/internal/models"
 )
 
@@ -45,5 +46,14 @@ func FiscalYearEndDay(value string) string {
 		return value[3:]
 	}
 	return ""
+}
+
+// invoiceBalanceDue returns the outstanding balance for an invoice.
+// Uses BalanceDue if positive, otherwise falls back to the full Amount.
+func invoiceBalanceDue(inv models.Invoice) decimal.Decimal {
+	if inv.BalanceDue.GreaterThan(decimal.Zero) {
+		return inv.BalanceDue
+	}
+	return inv.Amount
 }
 
