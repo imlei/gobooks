@@ -271,10 +271,11 @@ type InvoiceLine struct {
 type BillStatus string
 
 const (
-	BillStatusDraft  BillStatus = "draft"
-	BillStatusPosted BillStatus = "posted" // JE generated, AP liability recorded
-	BillStatusPaid   BillStatus = "paid"
-	BillStatusVoided BillStatus = "voided"
+	BillStatusDraft         BillStatus = "draft"
+	BillStatusPosted        BillStatus = "posted" // JE generated, AP liability recorded
+	BillStatusPartiallyPaid BillStatus = "partially_paid"
+	BillStatusPaid          BillStatus = "paid"
+	BillStatusVoided        BillStatus = "voided"
 )
 
 // ── Bill model ───────────────────────────────────────────────────────────────
@@ -310,6 +311,8 @@ type Bill struct {
 	Subtotal decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
 	// TaxTotal is the cached sum of all BillLine.LineTax values.
 	TaxTotal decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
+	// BalanceDue = Amount - (sum of payments recorded); updated on each payment.
+	BalanceDue decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0;index"`
 
 	Memo string `gorm:"not null;default:''"`
 

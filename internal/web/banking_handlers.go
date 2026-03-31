@@ -482,15 +482,11 @@ func (s *Server) handlePayBillsForm(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	var vendors []models.Vendor
-	_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vendors).Error
-
 	accounts, _ := s.activeAccountsForCompany(companyID)
 	openBills, _ := s.openPostedBillsForCompany(companyID)
 
 	vm := pages.PayBillsVM{
 		HasCompany: true,
-		Vendors:    vendors,
 		Accounts:   accounts,
 		OpenBills:  openBills,
 		Saved:      c.Query("saved") == "1",
@@ -510,41 +506,27 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	var vendors []models.Vendor
-	_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vendors).Error
 	accounts, _ := s.activeAccountsForCompany(companyID)
 	openBills, _ := s.openPostedBillsForCompany(companyID)
 
-	vendorIDRaw := strings.TrimSpace(c.FormValue("vendor_id"))
-	billIDRaw := strings.TrimSpace(c.FormValue("bill_id"))
 	entryDateRaw := strings.TrimSpace(c.FormValue("entry_date"))
 	bankIDRaw := strings.TrimSpace(c.FormValue("bank_account_id"))
 	apIDRaw := strings.TrimSpace(c.FormValue("ap_account_id"))
-	amountRaw := strings.TrimSpace(c.FormValue("amount"))
 	memo := strings.TrimSpace(c.FormValue("memo"))
 
 	vm := pages.PayBillsVM{
 		HasCompany:    true,
-		Vendors:       vendors,
 		Accounts:      accounts,
 		OpenBills:     openBills,
-		VendorID:      vendorIDRaw,
-		BillID:        billIDRaw,
 		EntryDate:     entryDateRaw,
 		BankAccountID: bankIDRaw,
 		APAccountID:   apIDRaw,
-		Amount:        amountRaw,
 		Memo:          memo,
-	}
-
-	venU64, err := services.ParseUint(vendorIDRaw)
-	if err != nil || venU64 == 0 {
-		vm.VendorError = "Vendor is required."
 	}
 
 	entryDate, err := time.Parse("2006-01-02", entryDateRaw)
 	if err != nil {
-		vm.DateError = "Date is required."
+		vm.DateError = "Payment date is required."
 	}
 
 	bankU64, err := services.ParseUint(bankIDRaw)
@@ -557,42 +539,57 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 		vm.APError = "A/P account is required."
 	}
 
-	amount, err := services.ParseDecimalMoney(amountRaw)
-	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
-		vm.AmountError = "Amount must be greater than 0."
-	}
-
-	if vm.VendorError != "" || vm.DateError != "" || vm.BankError != "" || vm.APError != "" || vm.AmountError != "" {
+	if vm.DateError != "" || vm.BankError != "" || vm.APError != "" {
 		return pages.PayBills(vm).Render(c.Context(), c)
 	}
 
-	var billIDPtr *uint
-	if billIDRaw != "" && billIDRaw != "0" {
-		if billU64, err := services.ParseUint(billIDRaw); err == nil && billU64 > 0 {
-			id := uint(billU64)
-			billIDPtr = &id
-		} else {
-			vm.BillError = "Selected bill is invalid."
+	// Collect selected bills and their payment amounts from the form.
+	// The template posts: bill_selected=<id> (checkbox, may repeat) and
+	// pay_amount_<id>=<amount> (one hidden/text input per row).
+	selectedIDs := c.Request().PostArgs().PeekMultiBytes([]byte("bill_selected"))
+	if len(selectedIDs) == 0 {
+		vm.FormError = "Please select at least one bill to pay."
+		return pages.PayBills(vm).Render(c.Context(), c)
+	}
+
+	billAmounts := make(map[string]string, len(selectedIDs))
+	var billPayments []services.BillPayment
+	for _, idBytes := range selectedIDs {
+		idStr := string(idBytes)
+		amtRaw := strings.TrimSpace(c.FormValue("pay_amount_" + idStr))
+		billAmounts[idStr] = amtRaw
+		amt, aErr := services.ParseDecimalMoney(amtRaw)
+		if aErr != nil || amt.LessThanOrEqual(decimal.Zero) {
+			vm.FormError = "Payment amount for bill " + idStr + " must be greater than 0."
+			vm.BillAmounts = billAmounts
 			return pages.PayBills(vm).Render(c.Context(), c)
 		}
+		idU64, idErr := services.ParseUint(idStr)
+		if idErr != nil || idU64 == 0 {
+			vm.FormError = "Invalid bill selection."
+			vm.BillAmounts = billAmounts
+			return pages.PayBills(vm).Render(c.Context(), c)
+		}
+		billPayments = append(billPayments, services.BillPayment{
+			BillID: uint(idU64),
+			Amount: amt,
+		})
 	}
 
 	var jeID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
-		var err error
-		jeID, err = services.RecordPayBills(tx, services.PayBillsInput{
+		var txErr error
+		jeID, txErr = services.RecordPayBills(tx, services.PayBillsInput{
 			CompanyID:     companyID,
-			VendorID:      uint(venU64),
 			EntryDate:     entryDate,
 			BankAccountID: uint(bankU64),
 			APAccountID:   uint(apU64),
-			BillID:        billIDPtr,
-			Amount:        amount,
+			Bills:         billPayments,
 			Memo:          memo,
 		})
-		return err
+		return txErr
 	}); err != nil {
-		vm.FormError = "Could not record payment. Please try again."
+		vm.FormError = "Could not record payment: " + err.Error()
 		return pages.PayBills(vm).Render(c.Context(), c)
 	}
 
@@ -603,10 +600,9 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 	cid := companyID
 	uid := user.ID
 	services.TryWriteAuditLogWithContext(s.DB, "bills.paid", "journal_entry", jeID, actor, map[string]any{
-		"vendor_id":  vendorIDRaw,
-		"amount":     amount.StringFixed(2),
-		"entry_date": entryDateRaw,
-		"company_id": companyID,
+		"bill_count":  len(billPayments),
+		"entry_date":  entryDateRaw,
+		"company_id":  companyID,
 	}, &cid, &uid)
 
 	return c.Redirect("/banking/pay-bills?saved=1", fiber.StatusSeeOther)
@@ -889,7 +885,7 @@ func (s *Server) handleVoidReconciliation(c *fiber.Ctx) error {
 func (s *Server) openPostedBillsForCompany(companyID uint) ([]models.Bill, error) {
 	var bills []models.Bill
 	err := s.DB.Preload("Vendor").
-		Where("company_id = ? AND status = ?", companyID, models.BillStatusPosted).
+		Where("company_id = ? AND status IN ?", companyID, []models.BillStatus{models.BillStatusPosted, models.BillStatusPartiallyPaid}).
 		Order("bill_date asc, id asc").
 		Find(&bills).Error
 	return bills, err

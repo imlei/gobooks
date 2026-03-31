@@ -26,6 +26,10 @@ func Migrate(db *gorm.DB) error {
 	if err := migrateAccountsRootDetail(db); err != nil {
 		return err
 	}
+	// Adds balance_due to bills table (backfills from amount). Safe on fresh installs.
+	if err := migrateBillsAddBalanceDue(db); err != nil {
+		return err
+	}
 	// Historical databases may contain stale optional foreign keys that predate
 	// current constraints. Null them before AutoMigrate adds FK constraints.
 	if err := clearOptionalForeignKeyOrphans(db); err != nil {
@@ -248,6 +252,37 @@ ON invoices (company_id, lower(invoice_number));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_bills_company_vendor_bill_number_ci
 ON bills (company_id, vendor_id, lower(bill_number));
 `).Error
+}
+
+// migrateBillsAddBalanceDue adds the balance_due column to the bills table if it
+// does not already exist, and backfills it with the existing amount value so that
+// previously-posted bills remain accurate. On fresh installs (table not yet
+// created) the function is a no-op; AutoMigrate will create the column via GORM.
+func migrateBillsAddBalanceDue(db *gorm.DB) error {
+	err := db.Exec(`
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = CURRENT_SCHEMA()
+      AND table_name = 'bills'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = CURRENT_SCHEMA()
+      AND table_name   = 'bills'
+      AND column_name  = 'balance_due'
+  ) THEN
+    ALTER TABLE bills ADD COLUMN balance_due NUMERIC(18,2) NOT NULL DEFAULT 0;
+    -- Backfill: existing posted bills with no payments owe their full amount.
+    -- Paid bills already owe nothing; set balance_due = 0 (default).
+    UPDATE bills SET balance_due = amount WHERE status IN ('posted', 'partially_paid');
+  END IF;
+END $$;
+`).Error
+	if err != nil && strings.Contains(err.Error(), "42P01") {
+		return nil
+	}
+	return err
 }
 
 // migrateCustomerAddressToStructured copies the legacy free-form `address` column
