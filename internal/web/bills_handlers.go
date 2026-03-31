@@ -355,6 +355,24 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		return pages.BillEditor(vm).Render(c.Context(), c)
 	}
 
+	// ── Parse tax adjustments (user-edited per-code amounts) ─────────────────
+	taxAdjCountRaw := strings.TrimSpace(c.FormValue("tax_adj_count"))
+	taxAdjCount, _ := strconv.Atoi(taxAdjCountRaw)
+	taxAdjMap := map[uint]decimal.Decimal{} // taxCodeID → user-supplied amount
+	for i := 0; i < taxAdjCount; i++ {
+		idRaw := strings.TrimSpace(c.FormValue(fmt.Sprintf("tax_adj_id[%d]", i)))
+		amtRaw := strings.TrimSpace(c.FormValue(fmt.Sprintf("tax_adj_amount[%d]", i)))
+		tcID64, err := strconv.ParseUint(idRaw, 10, 64)
+		if err != nil || tcID64 == 0 {
+			continue
+		}
+		amt, err := decimal.NewFromString(amtRaw)
+		if err != nil || amt.IsNegative() {
+			continue
+		}
+		taxAdjMap[uint(tcID64)] = amt.RoundBank(2)
+	}
+
 	// ── Compute line amounts ──────────────────────────────────────────────────
 	taxCodeCache := map[uint]*models.TaxCode{}
 	for _, pl := range parsedLines {
@@ -381,27 +399,64 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	}
 	var computed []computedBillLine
 	subtotal := decimal.Zero
-	taxTotal := decimal.Zero
 
-	for _, pl := range parsedLines {
+	// First pass: auto-compute tax per line, group by tax code.
+	type lineCalc struct {
+		net     decimal.Decimal
+		autoTax decimal.Decimal
+	}
+	lineCalcs := make([]lineCalc, len(parsedLines))
+	autoTaxByCode := map[uint]decimal.Decimal{}
+	for i, pl := range parsedLines {
 		lineNet := pl.Amount.RoundBank(2)
-		var lineTax decimal.Decimal
+		var autoTax decimal.Decimal
 		if pl.TaxCodeID != nil {
 			if tc, ok := taxCodeCache[*pl.TaxCodeID]; ok {
 				results := services.CalculateTax(lineNet, *tc)
-				lineTax = services.SumTaxResults(results)
+				autoTax = services.SumTaxResults(results)
+				autoTaxByCode[*pl.TaxCodeID] = autoTaxByCode[*pl.TaxCodeID].Add(autoTax)
 			}
 		}
-		lineTotal := lineNet.Add(lineTax)
+		lineCalcs[i] = lineCalc{net: lineNet, autoTax: autoTax}
 		subtotal = subtotal.Add(lineNet)
+	}
+
+	// Second pass: apply user tax overrides proportionally across lines per code.
+	taxTotal := decimal.Zero
+	for i, pl := range parsedLines {
+		lc := lineCalcs[i]
+		lineTax := lc.autoTax
+		if pl.TaxCodeID != nil {
+			if userAdj, ok := taxAdjMap[*pl.TaxCodeID]; ok {
+				codeAuto := autoTaxByCode[*pl.TaxCodeID]
+				if !codeAuto.Equal(userAdj) && !codeAuto.IsZero() {
+					// Redistribute proportionally.
+					lineTax = userAdj.Mul(lc.autoTax).Div(codeAuto).RoundBank(2)
+				} else if codeAuto.IsZero() {
+					lineTax = decimal.Zero
+				}
+			}
+		}
+		lineTotal := lc.net.Add(lineTax)
 		taxTotal = taxTotal.Add(lineTax)
 		computed = append(computed, computedBillLine{
 			parsedBillLine: pl,
-			LineNet:        lineNet,
+			LineNet:        lc.net,
 			LineTax:        lineTax,
 			LineTotal:      lineTotal,
 		})
 	}
+
+	// If there are user-supplied adjustments not covered proportionally
+	// (e.g. rounding), use the sum of user adjustments as taxTotal directly.
+	if len(taxAdjMap) > 0 {
+		adjSum := decimal.Zero
+		for _, amt := range taxAdjMap {
+			adjSum = adjSum.Add(amt)
+		}
+		taxTotal = adjSum
+	}
+
 	grandTotal := subtotal.Add(taxTotal)
 
 	// ── Compute due date ──────────────────────────────────────────────────────
@@ -557,6 +612,7 @@ func buildBillInitialLinesJSON(rows []pages.BillLineFormRow) string {
 		Amount           string `json:"amount"`
 		TaxCodeID        string `json:"tax_code_id"`
 		LineNet          string `json:"line_net"`
+		LineTax          string `json:"line_tax"`
 	}
 	items := make([]alpineLine, 0, len(rows))
 	for _, r := range rows {
@@ -564,12 +620,17 @@ func buildBillInitialLinesJSON(rows []pages.BillLineFormRow) string {
 		if net == "" {
 			net = "0.00"
 		}
+		tax := r.LineTax
+		if tax == "" {
+			tax = "0.00"
+		}
 		items = append(items, alpineLine{
 			ExpenseAccountID: r.ExpenseAccountID,
 			Description:      r.Description,
 			Amount:           r.Amount,
 			TaxCodeID:        r.TaxCodeID,
 			LineNet:          net,
+			LineTax:          tax,
 		})
 	}
 	b, _ := json.Marshal(items)

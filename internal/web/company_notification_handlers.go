@@ -149,7 +149,7 @@ func (s *Server) handleCompanyNotificationsTestEmail(c *fiber.Ctx) error {
 
 	row, err := services.LoadCompanyNotificationSettings(s.DB, companyID)
 	if err != nil || row.ID == 0 {
-		return c.Redirect("/settings/company/notifications?test_email=err&test_email_msg=Save+settings+first", fiber.StatusSeeOther)
+		return c.Redirect("/settings/company/notifications?test_email=err&test_email_msg=Save+settings+first#email-test-card", fiber.StatusSeeOther)
 	}
 
 	cfg := services.EmailConfig{
@@ -171,9 +171,9 @@ func (s *Server) handleCompanyNotificationsTestEmail(c *fiber.Ctx) error {
 	_ = services.RecordCompanyEmailTestResult(s.DB, companyID, success, errMsg, user.Email)
 
 	if !success {
-		return c.Redirect("/settings/company/notifications?test_email=err&test_email_msg="+url.QueryEscape(errMsg), fiber.StatusSeeOther)
+		return c.Redirect("/settings/company/notifications?test_email=err&test_email_msg="+url.QueryEscape(errMsg)+"#email-test-card", fiber.StatusSeeOther)
 	}
-	return c.Redirect("/settings/company/notifications?test_email=ok", fiber.StatusSeeOther)
+	return c.Redirect("/settings/company/notifications?test_email=ok#email-test-card", fiber.StatusSeeOther)
 }
 
 // handleCompanyNotificationsTestSMS runs a test SMS using the company SMS config.
@@ -190,7 +190,7 @@ func (s *Server) handleCompanyNotificationsTestSMS(c *fiber.Ctx) error {
 
 	row, err := services.LoadCompanyNotificationSettings(s.DB, companyID)
 	if err != nil || row.ID == 0 {
-		return c.Redirect("/settings/company/notifications?test_sms=err&test_sms_msg=Save+settings+first", fiber.StatusSeeOther)
+		return c.Redirect("/settings/company/notifications?test_sms=err&test_sms_msg=Save+settings+first#sms-test-card", fiber.StatusSeeOther)
 	}
 
 	cfg := services.SMSConfig{
@@ -209,9 +209,9 @@ func (s *Server) handleCompanyNotificationsTestSMS(c *fiber.Ctx) error {
 	_ = services.RecordCompanySMSTestResult(s.DB, companyID, success, errMsg, user.Email)
 
 	if !success {
-		return c.Redirect("/settings/company/notifications?test_sms=err&test_sms_msg="+url.QueryEscape(errMsg), fiber.StatusSeeOther)
+		return c.Redirect("/settings/company/notifications?test_sms=err&test_sms_msg="+url.QueryEscape(errMsg)+"#sms-test-card", fiber.StatusSeeOther)
 	}
-	return c.Redirect("/settings/company/notifications?test_sms=ok", fiber.StatusSeeOther)
+	return c.Redirect("/settings/company/notifications?test_sms=ok#sms-test-card", fiber.StatusSeeOther)
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

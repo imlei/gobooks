@@ -44,6 +44,14 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 			method="post"
 			action="/invoices/save-draft"
 			class="mt-6 space-y-6"
+			x-data="invoiceEditor()"
+			x-init="init()"
+			data-products={ vm.ProductsJSON }
+			data-tax-codes={ vm.TaxCodesJSON }
+			data-initial-lines={ vm.InitialLinesJSON }
+			data-initial-terms={ vm.Terms }
+			data-initial-date={ vm.InvoiceDate }
+			data-initial-due-date={ vm.DueDate }
 		>
 			if vm.IsEdit {
 				<input type="hidden" name="invoice_id" value={ Uitoa(vm.EditingID) }/>
@@ -179,14 +187,6 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 			// ── Line Items (Alpine-driven) ────────────────────────────────────
 			<div
 				class="rounded-lg border border-border bg-surface p-6"
-				x-data="invoiceEditor()"
-				x-init="init()"
-				data-products={ vm.ProductsJSON }
-				data-tax-codes={ vm.TaxCodesJSON }
-				data-initial-lines={ vm.InitialLinesJSON }
-				data-initial-terms={ vm.Terms }
-				data-initial-date={ vm.InvoiceDate }
-				data-initial-due-date={ vm.DueDate }
 			>
 				<div class="flex items-center justify-between">
 					<h2 class="text-section font-semibold text-text">Line Items</h2>

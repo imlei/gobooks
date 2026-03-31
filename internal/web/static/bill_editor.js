@@ -1,10 +1,11 @@
 // bill_editor.js — Alpine component for the bill line-items editor.
-// v=1
+// v=2
 function billEditor() {
   return {
     lines: [],
     accounts: [],
-    taxCodes: [],
+    taxCodes: [],   // [{id, code, name, rate}]  rate is a fraction string e.g. "0.05"
+    taxAdj: {},     // keyed by taxCodeId (string): { calc: "0.00", user: null }
     terms: "net_30",
     billDate: "",
     dueDate: "",
@@ -12,19 +13,20 @@ function billEditor() {
 
     init() {
       const el = this.$el;
-      this.accounts = JSON.parse(el.dataset.accounts || "[]");
-      this.taxCodes = JSON.parse(el.dataset.taxCodes || "[]");
-      this.terms = el.dataset.initialTerms || "net_30";
-      this.billDate = el.dataset.initialDate || "";
-      this.dueDate = el.dataset.initialDueDate || "";
+      this.accounts  = JSON.parse(el.dataset.accounts   || "[]");
+      this.taxCodes  = JSON.parse(el.dataset.taxCodes   || "[]");
+      this.terms     = el.dataset.initialTerms  || "net_30";
+      this.billDate  = el.dataset.initialDate   || "";
+      this.dueDate   = el.dataset.initialDueDate || "";
       this.dueDateEditable = this.terms === "custom";
 
       const initial = JSON.parse(el.dataset.initialLines || "[]");
       if (initial.length > 0) {
-        this.lines = initial;
+        this.lines = initial.map(l => Object.assign({ line_tax: "0.00" }, l));
       } else {
         this.addLine();
       }
+      this._recalcAll();
     },
 
     // ── Line management ──────────────────────────────────────────────────────
@@ -36,26 +38,123 @@ function billEditor() {
         amount: "0.00",
         tax_code_id: "",
         line_net: "0.00",
+        line_tax: "0.00",
       });
+      this._recalcAll();
     },
 
     removeLine(idx) {
       if (this.lines.length > 1) {
         this.lines.splice(idx, 1);
+        this._recalcAll();
       }
     },
 
     calcLine(idx) {
+      this._recalcLine(idx);
+      this._recalcAll();
+    },
+
+    onTaxCodeChange(idx) {
+      this._recalcLine(idx);
+      this._recalcAll();
+    },
+
+    // ── Internal recalculation ───────────────────────────────────────────────
+
+    _recalcLine(idx) {
       const line = this.lines[idx];
-      line.line_net = (parseFloat(line.amount) || 0).toFixed(2);
+      const net = parseFloat(line.amount) || 0;
+      line.line_net = net.toFixed(2);
+
+      const rate = this._taxRate(line.tax_code_id);
+      line.line_tax = (net * rate).toFixed(2);
+    },
+
+    _recalcAll() {
+      for (let i = 0; i < this.lines.length; i++) {
+        this._recalcLine(i);
+      }
+      // Rebuild taxAdj: for each code used, recompute calculated total;
+      // preserve user overrides.
+      const newAdj = {};
+      for (const line of this.lines) {
+        const cid = String(line.tax_code_id);
+        if (!cid) continue;
+        if (!newAdj[cid]) newAdj[cid] = 0;
+        newAdj[cid] += parseFloat(line.line_tax) || 0;
+      }
+      const next = {};
+      for (const [cid, calcAmt] of Object.entries(newAdj)) {
+        const calc = calcAmt.toFixed(2);
+        const prev = this.taxAdj[cid];
+        next[cid] = {
+          calc,
+          // Keep existing user override only if this code was already tracked.
+          user: prev ? prev.user : null,
+        };
+      }
+      this.taxAdj = next;
+    },
+
+    _taxRate(taxCodeId) {
+      if (!taxCodeId) return 0;
+      const tc = this.taxCodes.find(t => String(t.id) === String(taxCodeId));
+      if (!tc) return 0;
+      return parseFloat(tc.rate) || 0;
+    },
+
+    // ── Tax adjustment API (called from template inputs) ─────────────────────
+
+    taxAdjValue(cid) {
+      const a = this.taxAdj[String(cid)];
+      if (!a) return "0.00";
+      return a.user !== null ? a.user : a.calc;
+    },
+
+    onTaxAdjInput(cid, val) {
+      const a = this.taxAdj[String(cid)];
+      if (!a) return;
+      const trimmed = val.trim();
+      if (trimmed === "" || trimmed === a.calc) {
+        a.user = null;
+      } else {
+        a.user = trimmed;
+      }
+    },
+
+    // ── Aggregates used by the template ─────────────────────────────────────
+
+    taxBreakdown() {
+      const byCode = {};
+      for (const line of this.lines) {
+        const cid = String(line.tax_code_id);
+        if (!cid) continue;
+        if (!byCode[cid]) {
+          const tc = this.taxCodes.find(t => String(t.id) === cid);
+          if (!tc) continue;
+          byCode[cid] = { id: tc.id, code: tc.code, name: tc.name, rate: parseFloat(tc.rate) || 0, base: 0 };
+        }
+        byCode[cid].base += parseFloat(line.line_net) || 0;
+      }
+      return Object.values(byCode);
     },
 
     subtotal() {
-      const s = this.lines.reduce(
-        (acc, l) => acc + (parseFloat(l.line_net) || 0),
-        0
-      );
-      return s.toFixed(2);
+      return this.lines.reduce((acc, l) => acc + (parseFloat(l.line_net) || 0), 0).toFixed(2);
+    },
+
+    totalTax() {
+      let t = 0;
+      for (const [cid, a] of Object.entries(this.taxAdj)) {
+        const v = a.user !== null ? parseFloat(a.user) : parseFloat(a.calc);
+        t += isNaN(v) ? 0 : v;
+      }
+      return t.toFixed(2);
+    },
+
+    grandTotal() {
+      return (parseFloat(this.subtotal()) + parseFloat(this.totalTax())).toFixed(2);
     },
 
     // ── Terms / due-date auto-computation ────────────────────────────────────
@@ -76,12 +175,7 @@ function billEditor() {
     },
 
     _computeDueDate(dateStr, terms) {
-      const days = {
-        net_15: 15,
-        net_30: 30,
-        net_60: 60,
-        due_on_receipt: 0,
-      }[terms];
+      const days = { net_15: 15, net_30: 30, net_60: 60, due_on_receipt: 0 }[terms];
       if (days === undefined) return "";
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return "";
