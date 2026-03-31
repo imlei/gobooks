@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"strconv"
 	"strings"
 	"time"
 
@@ -117,10 +118,22 @@ func (s *Server) handleAdminLoginPost(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database error")
 	}
 	if user == nil || !user.IsActive {
+		services.EvaluateLoginSecurity(s.DB, services.LoginSecurityContext{
+			IPAddress: c.IP(),
+			UserAgent: c.Get("User-Agent"),
+			Success:   false,
+		})
 		vm.FormError = "Invalid email or password."
 		return admintmpl.AdminLogin(vm).Render(c.Context(), c)
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		services.EvaluateLoginSecurity(s.DB, services.LoginSecurityContext{
+			UserID:    strconv.FormatUint(uint64(user.ID), 10),
+			UserEmail: user.Email,
+			IPAddress: c.IP(),
+			UserAgent: c.Get("User-Agent"),
+			Success:   false,
+		})
 		vm.FormError = "Invalid email or password."
 		return admintmpl.AdminLogin(vm).Render(c.Context(), c)
 	}
@@ -142,6 +155,13 @@ func (s *Server) createAdminSessionAndRedirect(c *fiber.Ctx, user *models.Sysadm
 	if err := sessRepo.Create(sess); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "could not create session")
 	}
+	services.EvaluateLoginSecurity(s.DB, services.LoginSecurityContext{
+		UserID:    strconv.FormatUint(uint64(user.ID), 10),
+		UserEmail: user.Email,
+		IPAddress: c.IP(),
+		UserAgent: c.Get("User-Agent"),
+		Success:   true,
+	})
 	setAdminCookie(c, s.Cfg, cookieVal)
 	return c.Redirect("/admin/dashboard", fiber.StatusSeeOther)
 }

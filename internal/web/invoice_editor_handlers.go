@@ -599,7 +599,7 @@ func buildProductsJSON(products []models.ProductService) string {
 func buildTaxCodesJSON(codes []models.TaxCode) string {
 	items := make([]taxCodeJSONItem, 0, len(codes))
 	for _, tc := range codes {
-		items = append(items, taxCodeJSONItem{ID: tc.ID, Code: tc.Name, Name: tc.Name})
+		items = append(items, taxCodeJSONItem{ID: tc.ID, Code: tc.Code, Name: tc.Name})
 	}
 	b, _ := json.Marshal(items)
 	return string(b)

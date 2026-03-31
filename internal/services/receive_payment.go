@@ -120,17 +120,25 @@ func RecordReceivePayment(tx *gorm.DB, in ReceivePaymentInput) (uint, error) {
 		if inv.CustomerID != in.CustomerID {
 			return 0, fmt.Errorf("invoice does not belong to the selected customer")
 		}
-		if inv.Status != models.InvoiceStatusSent {
+		switch inv.Status {
+		case models.InvoiceStatusSent, models.InvoiceStatusOverdue, models.InvoiceStatusPartiallyPaid:
+			// supported open states
+		default:
 			return 0, fmt.Errorf("invoice is not open for payment (status: %s)", inv.Status)
 		}
-		if !inv.Amount.Equal(in.Amount) {
+		outstanding := inv.BalanceDue
+		if outstanding.LessThanOrEqual(decimal.Zero) {
+			outstanding = inv.Amount
+		}
+		if !outstanding.Equal(in.Amount) {
 			return 0, fmt.Errorf(
-				"linked invoice payments currently support full settlement only: payment amount (%s) must equal invoice total (%s); leave the invoice blank to record a partial or unapplied receipt",
-				in.Amount.StringFixed(2), inv.Amount.StringFixed(2),
+				"linked invoice payments currently support full settlement only: payment amount (%s) must equal the remaining balance due (%s); leave the invoice blank to record a partial or unapplied receipt",
+				in.Amount.StringFixed(2), outstanding.StringFixed(2),
 			)
 		}
 		if err := tx.Model(&inv).Updates(map[string]any{
-			"status": models.InvoiceStatusPaid,
+			"status":      models.InvoiceStatusPaid,
+			"balance_due": decimal.Zero,
 		}).Error; err != nil {
 			return 0, err
 		}

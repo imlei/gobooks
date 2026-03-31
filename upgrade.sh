@@ -16,7 +16,8 @@
 #   6. Restarts the GoBooks service
 #   7. Verifies the service is healthy
 #
-# If anything fails, the old binaries and database remain untouched.
+# If anything fails, the database backup and old binaries remain available
+# for manual rollback.
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -25,6 +26,10 @@ set -euo pipefail
 
 INSTALL_DIR="/opt/gobooks"
 BACKUP_DIR="/var/backups/gobooks"
+GO_VERSION="1.23.6"
+GO_MIN_MAJOR=1
+GO_MIN_MINOR=23
+NODE_MAJOR=20
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -64,11 +69,13 @@ if [[ ! -f "${SOURCE_DIR}/go.mod" ]]; then
     exit 1
 fi
 
-# ── Ensure Go is available and meets minimum version ─────────────────────────
+if ! command -v rsync &>/dev/null; then
+    log "Installing missing dependency: rsync..."
+    apt-get update -qq
+    apt-get install -y -qq rsync
+fi
 
-GO_VERSION="1.23.6"
-GO_MIN_MAJOR=1
-GO_MIN_MINOR=23
+# ── Ensure Go is available and meets minimum version ─────────────────────────
 
 export PATH=$PATH:/usr/local/go/bin
 
@@ -106,6 +113,34 @@ fi
 
 # ── Read current config ──────────────────────────────────────────────────────
 
+node_version_ok() {
+    if ! command -v node &>/dev/null; then
+        return 1
+    fi
+    local major
+    major=$(node -v | sed -E 's/^v([0-9]+).*/\1/')
+    [[ -n "$major" && "$major" -ge "$NODE_MAJOR" ]]
+}
+
+install_node() {
+    log "Installing Node.js ${NODE_MAJOR}.x..."
+    apt-get install -y -qq curl ca-certificates gnupg
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
+    apt-get install -y -qq nodejs
+    log "Node.js $(node -v) installed."
+}
+
+if node_version_ok; then
+    log "Node.js $(node -v) OK (>= ${NODE_MAJOR})."
+else
+    if command -v node &>/dev/null; then
+        warn "Installed Node.js $(node -v) is below minimum ${NODE_MAJOR}. Upgrading..."
+    else
+        log "Node.js not found. Installing..."
+    fi
+    install_node
+fi
+
 set -a; source "${INSTALL_DIR}/.env"; set +a
 DB_USER="${DB_USER:-gobooks}"
 DB_NAME="${DB_NAME:-gobooks}"
@@ -132,7 +167,8 @@ if sudo -u postgres pg_dump "$DB_NAME" | gzip > "$BACKUP_FILE"; then
     BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
     log "Backup saved: ${BACKUP_FILE} (${BACKUP_SIZE})"
 else
-    warn "Database backup failed. Continuing anyway (existing data is not modified until migration)."
+    err "Database backup failed. Upgrade aborted."
+    exit 1
 fi
 
 # ── 2. Stop service ──────────────────────────────────────────────────────────
@@ -151,29 +187,36 @@ fi
 # ── 4. Sync source code ──────────────────────────────────────────────────────
 
 log "Syncing source code from ${SOURCE_DIR}..."
-rsync -a \
-    --exclude='.git' \
-    --exclude='node_modules' \
-    --exclude='bin/' \
-    --exclude='.env' \
-    --exclude='data/' \
-    --exclude='*.bak' \
-    "${SOURCE_DIR}/" "${INSTALL_DIR}/"
+if [[ "${SOURCE_DIR}" != "${INSTALL_DIR}" ]]; then
+    rsync -a \
+        --exclude='.git' \
+        --exclude='node_modules' \
+        --exclude='bin/' \
+        --exclude='.env' \
+        --exclude='data/' \
+        --exclude='*.bak' \
+        "${SOURCE_DIR}/" "${INSTALL_DIR}/"
+else
+    log "Source directory matches install directory; using in-place checked out files."
+fi
 
 # ── 5. Rebuild ────────────────────────────────────────────────────────────────
 
 cd "$INSTALL_DIR"
 
 log "Installing Node.js dependencies..."
-npm install --silent 2>/dev/null
+npm ci --silent 2>/dev/null || npm install --silent
 
 log "Building Tailwind CSS..."
 npm run build:css
 
 log "Building Go binaries..."
 mkdir -p bin
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/gobooks         ./cmd/gobooks
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/gobooks-migrate  ./cmd/gobooks-migrate
+NEW_APP_BIN="${INSTALL_DIR}/bin/gobooks.new"
+NEW_MIGRATE_BIN="${INSTALL_DIR}/bin/gobooks-migrate.new"
+rm -f "$NEW_APP_BIN" "$NEW_MIGRATE_BIN"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$NEW_APP_BIN"      ./cmd/gobooks
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$NEW_MIGRATE_BIN"  ./cmd/gobooks-migrate
 
 log "Build complete."
 
@@ -181,8 +224,12 @@ log "Build complete."
 
 log "Running database migrations..."
 set -a; source "${INSTALL_DIR}/.env"; set +a
-"${INSTALL_DIR}/bin/gobooks-migrate"
+"${NEW_MIGRATE_BIN}"
 log "Migrations complete."
+
+log "Activating new binaries..."
+mv -f "$NEW_APP_BIN" "${INSTALL_DIR}/bin/gobooks"
+mv -f "$NEW_MIGRATE_BIN" "${INSTALL_DIR}/bin/gobooks-migrate"
 
 # ── 7. Fix ownership ─────────────────────────────────────────────────────────
 
@@ -219,6 +266,7 @@ fi
 # ── 10. Clean up old backups ─────────────────────────────────────────────────
 
 rm -f "${INSTALL_DIR}/bin/gobooks.bak" "${INSTALL_DIR}/bin/gobooks-migrate.bak"
+rm -f "${INSTALL_DIR}/bin/gobooks.new" "${INSTALL_DIR}/bin/gobooks-migrate.new"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 

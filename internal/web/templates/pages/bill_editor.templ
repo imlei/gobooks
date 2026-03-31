@@ -259,7 +259,7 @@ templ bodyBillEditor(vm BillEditorVM) {
 										>
 											<option value="">-- None --</option>
 											<template x-for="tc in taxCodes" :key="tc.id">
-												<option :value="tc.id" :selected="String(line.tax_code_id) === String(tc.id)" x-text="tc.name"></option>
+												<option :value="tc.id" :selected="String(line.tax_code_id) === String(tc.id)" x-text="tc.code + ' — ' + tc.name"></option>
 											</template>
 										</select>
 									</td>
@@ -290,7 +290,7 @@ templ bodyBillEditor(vm BillEditorVM) {
 				<div class="mt-4 flex justify-end">
 					<dl class="w-56 space-y-1 text-body">
 						<div class="flex justify-between">
-							<dt class="text-text-muted">Subtotal</dt>
+							<dt class="text-text-muted">Pre-tax subtotal</dt>
 							<dd class="tabular-nums text-text" x-text="subtotal()"></dd>
 						</div>
 						<div class="flex justify-between">
@@ -298,7 +298,7 @@ templ bodyBillEditor(vm BillEditorVM) {
 							<dd class="tabular-nums text-text-muted2 text-small">calculated on save</dd>
 						</div>
 						<div class="flex justify-between border-t border-border pt-1 font-semibold">
-							<dt>Total</dt>
+							<dt>Pre-tax total</dt>
 							<dd class="tabular-nums" x-text="subtotal()"></dd>
 						</div>
 					</dl>

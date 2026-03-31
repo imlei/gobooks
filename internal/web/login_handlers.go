@@ -12,6 +12,7 @@ import (
 
 	"gobooks/internal/models"
 	"gobooks/internal/repository"
+	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
 
@@ -64,11 +65,25 @@ func (s *Server) handleLoginPost(c *fiber.Ctx) error {
 	}
 
 	if user == nil || !user.IsActive {
+		services.EvaluateLoginSecurity(s.DB, services.LoginSecurityContext{
+			IPAddress: c.IP(),
+			UserAgent: c.Get("User-Agent"),
+			Success:   false,
+		})
 		vm.FormError = "Invalid email or password."
 		return pages.Login(vm).Render(c.Context(), c)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		userID := user.ID.String()
+		services.EvaluateLoginSecurity(s.DB, services.LoginSecurityContext{
+			CompanyID: firstMembershipCompanyID(s.DB, user.ID),
+			UserID:    userID,
+			UserEmail: user.Email,
+			IPAddress: c.IP(),
+			UserAgent: c.Get("User-Agent"),
+			Success:   false,
+		})
 		vm.FormError = "Invalid email or password."
 		return pages.Login(vm).Render(c.Context(), c)
 	}
@@ -93,6 +108,16 @@ func (s *Server) handleLoginPost(c *fiber.Ctx) error {
 		vm.FormError = "Could not create session. Please try again."
 		return pages.Login(vm).Render(c.Context(), c)
 	}
+
+	userID := user.ID.String()
+	services.EvaluateLoginSecurity(s.DB, services.LoginSecurityContext{
+		CompanyID: activeCompanyID,
+		UserID:    userID,
+		UserEmail: user.Email,
+		IPAddress: c.IP(),
+		UserAgent: c.Get("User-Agent"),
+		Success:   true,
+	})
 
 	setSessionCookie(c, s.Cfg, cookieVal, SessionCookieMaxAgeSec)
 

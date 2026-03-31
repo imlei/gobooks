@@ -434,7 +434,7 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 	return c.Redirect("/banking/receive-payment?saved=1", fiber.StatusSeeOther)
 }
 
-// buildOpenInvoicesJSON returns a JSON array of sent (open) invoices for the company,
+// buildOpenInvoicesJSON returns a JSON array of open invoices for the company,
 // used by the Receive Payment Alpine component to filter by customer.
 func buildOpenInvoicesJSON(s *Server, companyID uint) string {
 	type invJSON struct {
@@ -445,7 +445,12 @@ func buildOpenInvoicesJSON(s *Server, companyID uint) string {
 		DueDate       string `json:"due_date"`
 	}
 	var invoices []models.Invoice
-	_ = s.DB.Where("company_id = ? AND status = ?", companyID, models.InvoiceStatusSent).
+	openStatuses := []models.InvoiceStatus{
+		models.InvoiceStatusSent,
+		models.InvoiceStatusOverdue,
+		models.InvoiceStatusPartiallyPaid,
+	}
+	_ = s.DB.Where("company_id = ? AND status IN ?", companyID, openStatuses).
 		Order("invoice_date asc").
 		Find(&invoices).Error
 
@@ -455,11 +460,15 @@ func buildOpenInvoicesJSON(s *Server, companyID uint) string {
 		if inv.DueDate != nil {
 			dueDate = inv.DueDate.Format("2006-01-02")
 		}
+		outstanding := inv.BalanceDue
+		if outstanding.LessThanOrEqual(decimal.Zero) {
+			outstanding = inv.Amount
+		}
 		items = append(items, invJSON{
 			ID:            inv.ID,
 			CustomerID:    inv.CustomerID,
 			InvoiceNumber: inv.InvoiceNumber,
-			Amount:        inv.Amount.StringFixed(2),
+			Amount:        outstanding.StringFixed(2),
 			DueDate:       dueDate,
 		})
 	}
@@ -674,11 +683,11 @@ func (s *Server) handleAutoMatch(c *fiber.Ctx) error {
 
 	cid := companyID
 	services.TryWriteAuditLogWithContext(s.DB, "banking.reconcile.auto_match.run", "account", accountID, actor, map[string]any{
-		"account_id":         accountID,
-		"statement_date":     statementDateStr,
-		"candidate_count":    len(cands),
-		"suggestion_count":   suggCount,
-		"company_id":         companyID,
+		"account_id":       accountID,
+		"statement_date":   statementDateStr,
+		"candidate_count":  len(cands),
+		"suggestion_count": suggCount,
+		"company_id":       companyID,
 	}, &cid, uidPtr)
 
 	return redirect()
@@ -756,10 +765,10 @@ func (s *Server) handleAcceptSuggestion(c *fiber.Ctx) error {
 	cid := companyID
 	uid := user.ID
 	services.TryWriteAuditLogWithContext(s.DB, "reconcile.suggestion.accepted", "reconciliation_match_suggestion", suggID, actor, map[string]any{
-		"account_id":    sugg.AccountID,
-		"line_count":    len(lineIDs),
-		"confidence":    sugg.ConfidenceScore.StringFixed(4),
-		"company_id":    companyID,
+		"account_id": sugg.AccountID,
+		"line_count": len(lineIDs),
+		"confidence": sugg.ConfidenceScore.StringFixed(4),
+		"company_id": companyID,
 	}, &cid, &uid)
 
 	return redirect()
@@ -869,9 +878,9 @@ func (s *Server) handleVoidReconciliation(c *fiber.Ctx) error {
 	cid := companyID
 	uid := user.ID
 	services.TryWriteAuditLogWithContext(s.DB, "banking.reconciliation.voided", "reconciliation", uint(recIDU64), actor, map[string]any{
-		"account_id":  accountIDStr,
-		"reason":      reason,
-		"company_id":  companyID,
+		"account_id": accountIDStr,
+		"reason":     reason,
+		"company_id": companyID,
 	}, &cid, &uid)
 
 	return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&voided=1", fiber.StatusSeeOther)

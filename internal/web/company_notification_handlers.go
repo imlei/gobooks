@@ -39,7 +39,7 @@ func (s *Server) handleCompanyNotificationsGet(c *fiber.Ctx) error {
 	switch c.Query("test_email") {
 	case "ok":
 		vm.TestEmailResult = "ok"
-		vm.TestEmailMsg = "Test email submitted. (Stub — no actual email sent yet.)"
+		vm.TestEmailMsg = "Test email sent. Check the configured inbox to confirm delivery."
 	case "err":
 		vm.TestEmailResult = "err"
 		vm.TestEmailMsg = c.Query("test_email_msg")
