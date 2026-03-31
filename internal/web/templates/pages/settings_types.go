@@ -58,5 +58,5 @@ type SalesTaxVM struct {
 
 	// Dropdown data.
 	LiabilityAccounts []models.Account // for Sales Tax Account (GST/HST Payable, etc.)
-	AssetAccounts     []models.Account // for Purchase Recoverable Account (ITC Receivable, etc.)
+	AssetAccounts     []models.Account // for Purchase Recoverable Account — also liability (can share the same account as SalesTaxAccount)
 }

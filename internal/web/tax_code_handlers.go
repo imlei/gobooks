@@ -283,7 +283,7 @@ func (s *Server) loadSalesTaxDropdowns(companyID uint, vm *pages.SalesTaxVM) err
 		return err
 	}
 	if err := s.DB.
-		Where("company_id = ? AND is_active = true AND root_account_type = 'asset'", companyID).
+		Where("company_id = ? AND is_active = true AND root_account_type = 'liability'", companyID).
 		Order("code asc").
 		Find(&vm.AssetAccounts).Error; err != nil {
 		return err

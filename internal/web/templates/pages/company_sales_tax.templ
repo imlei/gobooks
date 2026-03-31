@@ -348,7 +348,7 @@ templ stFormFields(vm SalesTaxVM) {
 				class={ stSelectClass(vm.PurchaseRecoverableAccountIDError != "") }
 			>
 				<option value="">-- None --</option>
-				for _, a := range vm.AssetAccounts {
+				for _, a := range vm.LiabilityAccounts {
 					<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.PurchaseRecoverableAccountID }>{ a.Code + " · " + a.Name }</option>
 				}
 			</select>
@@ -356,7 +356,7 @@ templ stFormFields(vm SalesTaxVM) {
 				<p class="mt-1 text-body text-danger">{ vm.PurchaseRecoverableAccountIDError }</p>
 			} else {
 				<p class="mt-1 text-small text-text-muted2">
-					Asset account debited for recoverable ITC on purchases (e.g. Input Tax Credits Receivable).
+					Liability account for recoverable ITC on purchases. Can be the same as the sales tax account (e.g. GST/HST Payable).
 				</p>
 			}
 		</div>
