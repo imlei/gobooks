@@ -2,6 +2,8 @@
 package db
 
 import (
+	"strings"
+
 	"gobooks/internal/models"
 
 	"gorm.io/gorm"
@@ -171,6 +173,10 @@ WHERE journal_entry_id IS NOT NULL
 
 	for _, stmt := range statements {
 		if err := db.Exec(stmt).Error; err != nil {
+			// Fresh databases don't have these tables yet; skip safely.
+			if strings.Contains(err.Error(), "42P01") {
+				continue
+			}
 			return err
 		}
 	}
