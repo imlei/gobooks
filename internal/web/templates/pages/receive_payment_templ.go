@@ -358,125 +358,66 @@ func bodyReceivePayment(vm ReceivePaymentVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div><div><label class=\"block text-body font-medium text-text\">Accounts Receivable *</label> <select name=\"ar_account_id\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">-- Select --</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, a := range vm.Accounts {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<option value=\"")
+		if vm.ARError != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"md:col-span-2 rounded-md border border-border-danger bg-danger-soft p-3 text-body text-danger-hover\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(a.ID))
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(vm.ARError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 127, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 120, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if Uitoa(a.ID) == vm.ARAccountID {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " selected")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, ">")
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div><label class=\"block text-body font-medium text-text\">Amount *</label> <input type=\"text\" inputmode=\"decimal\" name=\"amount\" x-model=\"amount\" :readonly=\"invoiceId !== ''\" placeholder=\"0.00\" class=\"mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\" :class=\"invoiceId !== '' ? 'bg-surface-muted cursor-not-allowed' : ''\"><p x-show=\"invoiceId !== ''\" class=\"mt-1 text-small text-text-muted2\">Amount is set by the selected invoice.</p>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if vm.AmountError != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"mt-1 text-body text-danger\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
-			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(a.Code)
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AmountError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 127, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 139, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, " - ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var20 string
-			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(a.Name)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 127, Col: 104}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</option>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</select> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div><div><label class=\"block text-body font-medium text-text\">Memo</label> <input type=\"text\" name=\"memo\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if vm.ARError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<div class=\"mt-1 text-body text-danger\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var21 string
-			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(vm.ARError)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 131, Col: 60}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		var templ_7745c5c3_Var20 string
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Memo)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 149, Col: 23}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</div><div><label class=\"block text-body font-medium text-text\">Amount *</label> <input type=\"text\" inputmode=\"decimal\" name=\"amount\" x-model=\"amount\" :readonly=\"invoiceId !== ''\" placeholder=\"0.00\" class=\"mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\" :class=\"invoiceId !== '' ? 'bg-surface-muted cursor-not-allowed' : ''\"><p x-show=\"invoiceId !== ''\" class=\"mt-1 text-small text-text-muted2\">Amount is set by the selected invoice.</p>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if vm.AmountError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<div class=\"mt-1 text-body text-danger\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var22 string
-			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AmountError)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 150, Col: 64}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</div><div><label class=\"block text-body font-medium text-text\">Memo</label> <input type=\"text\" name=\"memo\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var23 string
-		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Memo)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/receive_payment.templ`, Line: 160, Col: 23}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div></div><div class=\"mt-6 flex items-center justify-end\"><button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\">Record Payment</button></div></div></form><script>\n\t\t\t\tfunction receivePaymentForm() {\n\t\t\t\t\treturn {\n\t\t\t\t\t\tallInvoices: [],\n\t\t\t\t\t\tcustomerId: '',\n\t\t\t\t\t\tinvoiceId: '',\n\t\t\t\t\t\tamount: '',\n\n\t\t\t\t\t\tget filteredInvoices() {\n\t\t\t\t\t\t\tif (!this.customerId) return [];\n\t\t\t\t\t\t\treturn this.allInvoices.filter(inv => String(inv.customer_id) === String(this.customerId));\n\t\t\t\t\t\t},\n\n\t\t\t\t\t\tinit() {\n\t\t\t\t\t\t\tconst el = this.$el;\n\t\t\t\t\t\t\ttry { this.allInvoices = JSON.parse(el.getAttribute('data-invoices') || '[]'); } catch(e) { this.allInvoices = []; }\n\t\t\t\t\t\t\tthis.customerId = el.getAttribute('data-initial-customer') || '';\n\t\t\t\t\t\t\tthis.invoiceId  = el.getAttribute('data-initial-invoice') || '';\n\t\t\t\t\t\t\tthis.amount     = el.getAttribute('data-initial-amount') || '';\n\t\t\t\t\t\t},\n\n\t\t\t\t\t\tonCustomerChange() {\n\t\t\t\t\t\t\tthis.invoiceId = '';\n\t\t\t\t\t\t\tthis.amount = '';\n\t\t\t\t\t\t},\n\n\t\t\t\t\t\tonInvoiceChange() {\n\t\t\t\t\t\t\tif (!this.invoiceId) {\n\t\t\t\t\t\t\t\tthis.amount = '';\n\t\t\t\t\t\t\t\treturn;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\tconst inv = this.allInvoices.find(i => String(i.id) === String(this.invoiceId));\n\t\t\t\t\t\t\tif (inv) this.amount = inv.amount;\n\t\t\t\t\t\t},\n\t\t\t\t\t};\n\t\t\t\t}\n\t\t\t</script></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" class=\"mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div></div><div class=\"mt-6 flex items-center justify-end\"><button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\">Record Payment</button></div></div></form><script>\n\t\t\t\tfunction receivePaymentForm() {\n\t\t\t\t\treturn {\n\t\t\t\t\t\tallInvoices: [],\n\t\t\t\t\t\tcustomerId: '',\n\t\t\t\t\t\tinvoiceId: '',\n\t\t\t\t\t\tamount: '',\n\n\t\t\t\t\t\tget filteredInvoices() {\n\t\t\t\t\t\t\tif (!this.customerId) return [];\n\t\t\t\t\t\t\treturn this.allInvoices.filter(inv => String(inv.customer_id) === String(this.customerId));\n\t\t\t\t\t\t},\n\n\t\t\t\t\t\tinit() {\n\t\t\t\t\t\t\tconst el = this.$el;\n\t\t\t\t\t\t\ttry { this.allInvoices = JSON.parse(el.getAttribute('data-invoices') || '[]'); } catch(e) { this.allInvoices = []; }\n\t\t\t\t\t\t\tthis.customerId = el.getAttribute('data-initial-customer') || '';\n\t\t\t\t\t\t\tthis.invoiceId  = el.getAttribute('data-initial-invoice') || '';\n\t\t\t\t\t\t\tthis.amount     = el.getAttribute('data-initial-amount') || '';\n\t\t\t\t\t\t},\n\n\t\t\t\t\t\tonCustomerChange() {\n\t\t\t\t\t\t\tthis.invoiceId = '';\n\t\t\t\t\t\t\tthis.amount = '';\n\t\t\t\t\t\t},\n\n\t\t\t\t\t\tonInvoiceChange() {\n\t\t\t\t\t\t\tif (!this.invoiceId) {\n\t\t\t\t\t\t\t\tthis.amount = '';\n\t\t\t\t\t\t\t\treturn;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\tconst inv = this.allInvoices.find(i => String(i.id) === String(this.invoiceId));\n\t\t\t\t\t\t\tif (inv) this.amount = inv.amount;\n\t\t\t\t\t\t},\n\t\t\t\t\t};\n\t\t\t\t}\n\t\t\t</script></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -343,7 +343,6 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 	customerIDRaw := strings.TrimSpace(c.FormValue("customer_id"))
 	entryDateRaw := strings.TrimSpace(c.FormValue("entry_date"))
 	bankIDRaw := strings.TrimSpace(c.FormValue("bank_account_id"))
-	arIDRaw := strings.TrimSpace(c.FormValue("ar_account_id"))
 	invoiceIDRaw := strings.TrimSpace(c.FormValue("invoice_id"))
 	amountRaw := strings.TrimSpace(c.FormValue("amount"))
 	memo := strings.TrimSpace(c.FormValue("memo"))
@@ -356,7 +355,6 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 		CustomerID:       customerIDRaw,
 		EntryDate:        entryDateRaw,
 		BankAccountID:    bankIDRaw,
-		ARAccountID:      arIDRaw,
 		InvoiceID:        invoiceIDRaw,
 		Amount:           amountRaw,
 		Memo:             memo,
@@ -377,14 +375,15 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 		vm.BankError = "Bank account is required."
 	}
 
-	arU64, err := services.ParseUint(arIDRaw)
-	if err != nil || arU64 == 0 {
-		vm.ARError = "A/R account is required."
-	}
-
 	amount, err := services.ParseDecimalMoney(amountRaw)
 	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
 		vm.AmountError = "Amount must be greater than 0."
+	}
+
+	// Auto-resolve the Accounts Receivable account for this company.
+	arU64, arErr := s.defaultARAccountID(companyID)
+	if arErr != nil {
+		vm.ARError = "No Accounts Receivable account found. Please add one to your Chart of Accounts."
 	}
 
 	if vm.CustomerError != "" || vm.DateError != "" || vm.BankError != "" || vm.ARError != "" || vm.AmountError != "" {
@@ -401,18 +400,18 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 
 	var jeID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
-		var err error
-		jeID, err = services.RecordReceivePayment(tx, services.ReceivePaymentInput{
+		var txErr error
+		jeID, txErr = services.RecordReceivePayment(tx, services.ReceivePaymentInput{
 			CompanyID:     companyID,
 			CustomerID:    uint(custU64),
 			EntryDate:     entryDate,
 			BankAccountID: uint(bankU64),
-			ARAccountID:   uint(arU64),
+			ARAccountID:   arU64,
 			InvoiceID:     invoiceIDPtr,
 			Amount:        amount,
 			Memo:          memo,
 		})
-		return err
+		return txErr
 	}); err != nil {
 		vm.FormError = "Could not record payment: " + err.Error()
 		return pages.ReceivePayment(vm).Render(c.Context(), c)
@@ -889,4 +888,18 @@ func (s *Server) openPostedBillsForCompany(companyID uint) ([]models.Bill, error
 		Order("bill_date asc, id asc").
 		Find(&bills).Error
 	return bills, err
+}
+
+// defaultARAccountID returns the ID of the first active Accounts Receivable account
+// for the given company. Returns an error if none is found.
+func (s *Server) defaultARAccountID(companyID uint) (uint, error) {
+	var acc models.Account
+	err := s.DB.
+		Where("company_id = ? AND detail_account_type = ? AND is_active = true", companyID, models.DetailAccountsReceivable).
+		Order("code asc").
+		First(&acc).Error
+	if err != nil {
+		return 0, errors.New("no Accounts Receivable account found")
+	}
+	return acc.ID, nil
 }
