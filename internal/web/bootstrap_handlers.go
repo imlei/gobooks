@@ -71,7 +71,12 @@ func (s *Server) handleBootstrapSubmit(c *fiber.Ctx) error {
 	businessNumber := strings.TrimSpace(c.FormValue("business_number"))
 	industry := strings.TrimSpace(c.FormValue("industry"))
 	incorporatedDate := strings.TrimSpace(c.FormValue("incorporated_date"))
-	fiscalYearEnd := strings.TrimSpace(c.FormValue("fiscal_year_end"))
+	fiscalMonth := strings.TrimSpace(c.FormValue("fiscal_year_end_month"))
+	fiscalDay := strings.TrimSpace(c.FormValue("fiscal_year_end_day"))
+	fiscalYearEnd := ""
+	if fiscalMonth != "" && fiscalDay != "" {
+		fiscalYearEnd = fiscalMonth + "-" + fiscalDay
+	}
 	accountCodeLengthRaw := strings.TrimSpace(c.FormValue("account_code_length"))
 
 	values := pages.BootstrapFormValues{

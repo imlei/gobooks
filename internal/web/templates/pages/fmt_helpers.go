@@ -31,3 +31,19 @@ func AccountClassificationLabel(a models.Account) string {
 	return models.ClassificationDisplay(a.RootAccountType, a.DetailAccountType)
 }
 
+// FiscalYearEndMonth extracts the MM part from a "MM-DD" fiscal year end value.
+func FiscalYearEndMonth(value string) string {
+	if len(value) == 5 && value[2] == '-' {
+		return value[:2]
+	}
+	return ""
+}
+
+// FiscalYearEndDay extracts the DD part from a "MM-DD" fiscal year end value.
+func FiscalYearEndDay(value string) string {
+	if len(value) == 5 && value[2] == '-' {
+		return value[3:]
+	}
+	return ""
+}
+
