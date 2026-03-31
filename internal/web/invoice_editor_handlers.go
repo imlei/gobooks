@@ -424,7 +424,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 			inv.BalanceDue = grandTotal
 			inv.CustomerNameSnapshot = customer.Name
 			inv.CustomerEmailSnapshot = customer.Email
-			inv.CustomerAddressSnapshot = customer.Address
+			inv.CustomerAddressSnapshot = customer.FormattedAddress()
 			if err := tx.Save(&inv).Error; err != nil {
 				return err
 			}
@@ -448,7 +448,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 				BalanceDue:              grandTotal,
 				CustomerNameSnapshot:    customer.Name,
 				CustomerEmailSnapshot:   customer.Email,
-				CustomerAddressSnapshot: customer.Address,
+				CustomerAddressSnapshot: customer.FormattedAddress(),
 			}
 			if err := tx.Create(&inv).Error; err != nil {
 				return err

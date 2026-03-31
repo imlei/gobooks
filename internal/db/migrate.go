@@ -31,6 +31,12 @@ func Migrate(db *gorm.DB) error {
 	if err := clearOptionalForeignKeyOrphans(db); err != nil {
 		return err
 	}
+	// Migrate customers.address (free-form text) to addr_street1 before AutoMigrate
+	// adds the new structured columns. Safe to run on fresh databases (no-op when
+	// the old column does not exist).
+	if err := migrateCustomerAddressToStructured(db); err != nil {
+		return err
+	}
 	if err := db.AutoMigrate(
 		&models.Company{},
 		&models.User{},
@@ -242,4 +248,34 @@ ON invoices (company_id, lower(invoice_number));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_bills_company_vendor_bill_number_ci
 ON bills (company_id, vendor_id, lower(bill_number));
 `).Error
+}
+
+// migrateCustomerAddressToStructured copies the legacy free-form `address` column
+// into `addr_street1` when upgrading an existing database.  On fresh installs the
+// customers table doesn't exist yet, so the function is a no-op (42P01 = undefined table).
+func migrateCustomerAddressToStructured(db *gorm.DB) error {
+	err := db.Exec(`
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = CURRENT_SCHEMA()
+      AND table_name   = 'customers'
+      AND column_name  = 'address'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = CURRENT_SCHEMA()
+      AND table_name   = 'customers'
+      AND column_name  = 'addr_street1'
+  ) THEN
+    ALTER TABLE customers ADD COLUMN addr_street1 TEXT NOT NULL DEFAULT '';
+    UPDATE customers SET addr_street1 = address WHERE address IS NOT NULL AND address <> '';
+    ALTER TABLE customers DROP COLUMN address;
+  END IF;
+END $$;
+`).Error
+	if err != nil && strings.Contains(err.Error(), "42P01") {
+		return nil
+	}
+	return err
 }

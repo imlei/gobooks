@@ -6,15 +6,27 @@ import "gobooks/internal/models"
 type CustomersVM struct {
 	HasCompany bool
 
-	Name        string
-	Email       string
-	Address     string
-	PaymentTerm string
-	NameError   string
-	FormError   string
-	Created     bool
+	FormError string
+	Created   bool
 
 	Customers []models.Customer
+}
+
+type CustomerNewVM struct {
+	HasCompany bool
+
+	Name           string
+	Email          string
+	PaymentTerm    string
+	AddrStreet1    string
+	AddrStreet2    string
+	AddrCity       string
+	AddrProvince   string
+	AddrPostalCode string
+	AddrCountry    string
+
+	NameError   string
+	FormError   string
 }
 
 type VendorsVM struct {
@@ -29,4 +41,3 @@ type VendorsVM struct {
 
 	Vendors []models.Vendor
 }
-

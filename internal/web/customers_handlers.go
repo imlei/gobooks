@@ -2,6 +2,7 @@
 package web
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,6 +11,8 @@ import (
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
+
+var rePostalCode = regexp.MustCompile(`^[A-Za-z0-9 \-]*$`)
 
 func (s *Server) handleCustomers(c *fiber.Ctx) error {
 	companyID, ok := ActiveCompanyIDFromCtx(c)
@@ -33,6 +36,14 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 	}).Render(c.Context(), c)
 }
 
+func (s *Server) handleCustomerNew(c *fiber.Ctx) error {
+	_, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	return pages.CustomerNew(pages.CustomerNewVM{HasCompany: true}).Render(c.Context(), c)
+}
+
 func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 	user := UserFromCtx(c)
 	if user == nil {
@@ -43,56 +54,85 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	name := strings.TrimSpace(c.FormValue("name"))
-	email := strings.TrimSpace(c.FormValue("email"))
-	address := strings.TrimSpace(c.FormValue("address"))
-	paymentTerm := strings.TrimSpace(c.FormValue("payment_term"))
+	name           := strings.TrimSpace(c.FormValue("name"))
+	email          := strings.TrimSpace(c.FormValue("email"))
+	paymentTerm    := strings.TrimSpace(c.FormValue("payment_term"))
+	addrStreet1    := strings.TrimSpace(c.FormValue("addr_street1"))
+	addrStreet2    := strings.TrimSpace(c.FormValue("addr_street2"))
+	addrCity       := strings.TrimSpace(c.FormValue("addr_city"))
+	addrProvince   := strings.TrimSpace(c.FormValue("addr_province"))
+	addrPostalCode := strings.TrimSpace(c.FormValue("addr_postal_code"))
+	addrCountry    := strings.TrimSpace(c.FormValue("addr_country"))
 
-	vm := pages.CustomersVM{
-		HasCompany:  true,
-		Name:        name,
-		Email:       email,
-		Address:     address,
-		PaymentTerm: paymentTerm,
+	vm := pages.CustomerNewVM{
+		HasCompany:     true,
+		Name:           name,
+		Email:          email,
+		PaymentTerm:    paymentTerm,
+		AddrStreet1:    addrStreet1,
+		AddrStreet2:    addrStreet2,
+		AddrCity:       addrCity,
+		AddrProvince:   addrProvince,
+		AddrPostalCode: addrPostalCode,
+		AddrCountry:    addrCountry,
 	}
 
+	// ── Validation ────────────────────────────────────────────────────────────
 	if name == "" {
 		vm.NameError = "Name is required."
+	} else if len(name) > 200 {
+		vm.NameError = "Name must be 200 characters or fewer."
+	}
+	if len(email) > 200 {
+		vm.FormError = "Email must be 200 characters or fewer."
+	}
+	if len(paymentTerm) > 100 {
+		vm.FormError = "Payment term must be 100 characters or fewer."
+	}
+	if len(addrStreet1) > 200 || len(addrStreet2) > 200 {
+		vm.FormError = "Street address must be 200 characters or fewer."
+	}
+	if len(addrCity) > 100 || len(addrProvince) > 100 || len(addrCountry) > 100 {
+		vm.FormError = "City, province, and country must be 100 characters or fewer."
+	}
+	if len(addrPostalCode) > 20 {
+		vm.FormError = "Postal code must be 20 characters or fewer."
+	} else if addrPostalCode != "" && !rePostalCode.MatchString(addrPostalCode) {
+		vm.FormError = "Postal code may only contain letters, numbers, spaces, and hyphens."
 	}
 
-	customers, listErr := s.customersForCompany(companyID)
-	if listErr != nil {
-		vm.FormError = "Could not load customers."
-	} else {
-		vm.Customers = customers
+	if vm.NameError != "" || vm.FormError != "" {
+		return pages.CustomerNew(vm).Render(c.Context(), c)
 	}
 
-	if vm.NameError != "" {
-		return pages.Customers(vm).Render(c.Context(), c)
-	}
-
+	// ── Duplicate name check ──────────────────────────────────────────────────
 	var count int64
 	if err := s.DB.Model(&models.Customer{}).
 		Where("company_id = ? AND lower(name) = lower(?)", companyID, name).
 		Count(&count).Error; err != nil {
 		vm.FormError = "Could not validate customer name."
-		return pages.Customers(vm).Render(c.Context(), c)
+		return pages.CustomerNew(vm).Render(c.Context(), c)
 	}
 	if count > 0 {
 		vm.NameError = "A customer with this name already exists for this company."
-		return pages.Customers(vm).Render(c.Context(), c)
+		return pages.CustomerNew(vm).Render(c.Context(), c)
 	}
 
 	customer := models.Customer{
-		CompanyID:   companyID,
-		Name:        name,
-		Email:       email,
-		Address:     address,
-		PaymentTerm: paymentTerm,
+		CompanyID:      companyID,
+		Name:           name,
+		Email:          email,
+		PaymentTerm:    paymentTerm,
+		AddrStreet1:    addrStreet1,
+		AddrStreet2:    addrStreet2,
+		AddrCity:       addrCity,
+		AddrProvince:   addrProvince,
+		AddrPostalCode: addrPostalCode,
+		AddrCountry:    addrCountry,
 	}
 	if err := s.DB.Create(&customer).Error; err != nil {
 		vm.FormError = "Could not create customer. Please try again."
-		return pages.Customers(vm).Render(c.Context(), c)
+		return pages.CustomerNew(vm).Render(c.Context(), c)
 	}
 
 	cid := companyID
