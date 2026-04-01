@@ -1,7 +1,6 @@
 // 遵循project_guide.md
 package pages
 
-import "gobooks/internal/models"
 import "gobooks/internal/web/templates/layout"
 import "gobooks/internal/web/templates/ui"
 
@@ -49,7 +48,9 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 			data-products={ vm.ProductsJSON }
 			data-tax-codes={ vm.TaxCodesJSON }
 			data-initial-lines={ vm.InitialLinesJSON }
-			data-initial-terms={ vm.Terms }
+			data-payment-terms={ vm.PaymentTermsJSON }
+			data-contact-terms={ vm.CustomersTermsJSON }
+			data-initial-terms={ vm.TermCode }
 			data-initial-date={ vm.InvoiceDate }
 			data-initial-due-date={ vm.DueDate }
 		>
@@ -95,6 +96,7 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 						if vm.CustomerError != "" {
 							<select
 								name="customer_id"
+								@change="onContactChange($event.target.value)"
 								class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
 							>
 								<option value="">-- Select --</option>
@@ -106,6 +108,7 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 						} else {
 							<select
 								name="customer_id"
+								@change="onContactChange($event.target.value)"
 								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 							>
 								<option value="">-- Select --</option>
@@ -150,8 +153,9 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 							@change="onTermsChange($event.target.value)"
 							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 						>
-							for _, t := range models.AllInvoiceTerms() {
-								<option value={ string(t) } selected?={ string(t) == vm.Terms }>{ models.InvoiceTermsLabel(t) }</option>
+							<option value="">-- Select --</option>
+							for _, pt := range vm.PaymentTerms {
+								<option value={ pt.Code } selected?={ pt.Code == vm.TermCode }>{ pt.DropdownLabel() }</option>
 							}
 						</select>
 					</div>
@@ -184,6 +188,63 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 						/>
 					</div>
+
+					if vm.MultiCurrencyEnabled {
+						// Currency
+						<div>
+							<label class="block text-body font-medium text-text">Currency</label>
+							if vm.CurrencyError != "" {
+								<select
+									name="currency_code"
+									class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+								>
+									<option value="">{ vm.BaseCurrencyCode } (base)</option>
+									for _, cc := range vm.CompanyCurrencies {
+										<option value={ cc.CurrencyCode } selected?={ cc.CurrencyCode == vm.CurrencyCode }>{ cc.CurrencyCode }</option>
+									}
+								</select>
+								<div class="mt-1 text-body text-danger">{ vm.CurrencyError }</div>
+							} else {
+								<select
+									name="currency_code"
+									class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+								>
+									<option value="">{ vm.BaseCurrencyCode } (base)</option>
+									for _, cc := range vm.CompanyCurrencies {
+										<option value={ cc.CurrencyCode } selected?={ cc.CurrencyCode == vm.CurrencyCode }>{ cc.CurrencyCode }</option>
+									}
+								</select>
+							}
+						</div>
+
+						// Exchange Rate
+						<div>
+							<label class="block text-body font-medium text-text">Exchange Rate</label>
+							if vm.ExchangeRateError != "" {
+								<input
+									type="text"
+									name="exchange_rate"
+									value={ vm.ExchangeRate }
+									placeholder="e.g. 1.3500 (leave blank to auto-lookup)"
+									autocomplete="off"
+									inputmode="decimal"
+									class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+								/>
+								<div class="mt-1 text-body text-danger">{ vm.ExchangeRateError }</div>
+							} else {
+								<input
+									type="text"
+									name="exchange_rate"
+									value={ vm.ExchangeRate }
+									placeholder="e.g. 1.3500 (leave blank to auto-lookup)"
+									autocomplete="off"
+									inputmode="decimal"
+									class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+								/>
+							}
+							<p class="mt-1 text-small text-text-muted2">Base units per 1 foreign unit. Leave blank to auto-lookup from exchange rates.</p>
+						</div>
+					}
 				</div>
 			</div>
 
@@ -240,8 +301,18 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 											x-model="line.description"
 											placeholder="Description"
 											autocomplete="off"
-											class="block w-full rounded-md border border-border-input px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+											@input="calcLine(idx)"
+											class="block w-full rounded-md px-2 py-1.5 text-body outline-none"
+											:class="line.error
+												? 'border border-danger focus:ring-2 focus:ring-danger-focus'
+												: 'border border-border-input focus:ring-2 focus:ring-primary-focus'"
 										/>
+										<p
+											x-cloak
+											x-show="line.error"
+											x-text="line.error"
+											class="mt-1 text-small text-danger"
+										></p>
 									</td>
 									// Qty
 									<td class="py-2 pr-3">
@@ -352,7 +423,7 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 					</div>
 				</div>
 
-				<script src="/static/invoice_editor.js?v=3"></script>
+				<script src="/static/invoice_editor.js?v=5"></script>
 			</div>
 
 			</fieldset>

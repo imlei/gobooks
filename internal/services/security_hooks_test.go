@@ -98,3 +98,36 @@ func TestEvaluateLoginSecurityCreatesUnusualIPAlertAfterPriorSuccess(t *testing.
 		t.Fatalf("expected alert metadata to include configured channel, got %+v", events[2].MetadataJSON)
 	}
 }
+
+func TestCheckLoginThrottleBlocksRecentFailures(t *testing.T) {
+	db := testSecurityHooksDB(t)
+
+	userID := "user-1"
+	ipAddress := "203.0.113.55"
+	for i := int64(0); i < maxFailedLoginAttemptsPerUser; i++ {
+		if err := LogSecurityEvent(db, nil, &userID, loginEventType(false), ipAddress, "Mozilla/5.0", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	state, err := CheckLoginThrottle(db, nil, &userID, ipAddress)
+	if err != nil {
+		t.Fatalf("CheckLoginThrottle: %v", err)
+	}
+	if !state.Blocked {
+		t.Fatal("expected login throttle to block after recent failures")
+	}
+	if state.RetryAfter <= 0 {
+		t.Fatalf("expected positive retry-after, got %s", state.RetryAfter)
+	}
+
+	RecordBlockedLogin(db, nil, &userID, ipAddress, "Mozilla/5.0")
+
+	var blockedEvents []models.SecurityEvent
+	if err := db.Where("event_type = ?", blockedLoginEventType).Find(&blockedEvents).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(blockedEvents) != 1 {
+		t.Fatalf("expected 1 blocked login event, got %d", len(blockedEvents))
+	}
+}

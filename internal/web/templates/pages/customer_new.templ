@@ -75,14 +75,15 @@ templ bodyCustomerNew(vm CustomerNewVM) {
 					// Payment term (optional)
 					<div>
 						<label class="block text-body font-medium text-text">Payment term <span class="text-text-muted2">(optional)</span></label>
-						<input
-							type="text"
+						<select
 							name="payment_term"
-							value={ vm.PaymentTerm }
-							placeholder="e.g. Net 30, Due on receipt"
-							maxlength="100"
-							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-						/>
+							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						>
+							<option value="">— Use company default —</option>
+							for _, pt := range vm.PaymentTerms {
+								<option value={ pt.Code } selected?={ pt.Code == vm.DefaultPaymentTermCode }>{ pt.DropdownLabel() }</option>
+							}
+						</select>
 					</div>
 				</div>
 			</div>

@@ -1,28 +1,32 @@
 // bill_editor.js — Alpine component for the bill line-items editor.
-// v=4
+// v=5
 function billEditor() {
   return {
     lines: [],
     accounts: [],
-    taxCodes: [],   // [{id, code, name, rate}]  rate is a fraction string e.g. "0.05"
-    taxAdj: {},     // keyed by taxCodeId (string): { calc: "0.00", user: null }
-    terms: "net_30",
+    taxCodes: [],       // [{id, code, name, rate}]  rate is a fraction string e.g. "0.05"
+    paymentTerms: [],   // [{code, netDays}]
+    contactTerms: {},   // {"vendorId": "termCode", ...}
+    taxAdj: {},         // keyed by taxCodeId (string): { calc: "0.00", user: null }
+    terms: "",
     billDate: "",
     dueDate: "",
     dueDateEditable: false,
 
     init() {
       const el = this.$el;
-      this.accounts  = JSON.parse(el.dataset.accounts   || "[]");
-      this.taxCodes  = JSON.parse(el.dataset.taxCodes   || "[]");
-      this.terms     = el.dataset.initialTerms  || "net_30";
-      this.billDate  = el.dataset.initialDate   || "";
-      this.dueDate   = el.dataset.initialDueDate || "";
-      this.dueDateEditable = this.terms === "custom";
+      this.accounts     = JSON.parse(el.dataset.accounts     || "[]");
+      this.taxCodes     = JSON.parse(el.dataset.taxCodes     || "[]");
+      this.paymentTerms = JSON.parse(el.dataset.paymentTerms || "[]");
+      this.contactTerms = JSON.parse(el.dataset.contactTerms || "{}");
+      this.terms        = el.dataset.initialTerms   || "";
+      this.billDate     = el.dataset.initialDate    || "";
+      this.dueDate      = el.dataset.initialDueDate || "";
+      this.dueDateEditable = this._isEditable(this.terms);
 
       const initial = JSON.parse(el.dataset.initialLines || "[]");
       if (initial.length > 0) {
-        this.lines = initial.map(l => Object.assign({ line_tax: "0.00" }, l));
+        this.lines = initial.map(l => Object.assign({ line_tax: "0.00", error: "" }, l));
       } else {
         this.addLine();
       }
@@ -39,6 +43,7 @@ function billEditor() {
         tax_code_id: "",
         line_net: "0.00",
         line_tax: "0.00",
+        error: "",
       });
       this._recalcAll();
     },
@@ -56,9 +61,11 @@ function billEditor() {
       if (!line.description) {
         line.description = this._accountName(accountId);
       }
+      this._clearLineError(idx);
     },
 
     calcLine(idx) {
+      this._clearLineError(idx);
       this._recalcLine(idx);
       this._recalcAll();
     },
@@ -83,8 +90,6 @@ function billEditor() {
       for (let i = 0; i < this.lines.length; i++) {
         this._recalcLine(i);
       }
-      // Rebuild taxAdj: for each code used, recompute calculated total;
-      // preserve user overrides.
       const newAdj = {};
       for (const line of this.lines) {
         const cid = String(line.tax_code_id);
@@ -98,7 +103,6 @@ function billEditor() {
         const prev = this.taxAdj[cid];
         next[cid] = {
           calc,
-          // Keep existing user override only if this code was already tracked.
           user: prev ? prev.user : null,
         };
       }
@@ -116,6 +120,14 @@ function billEditor() {
       if (!accountId) return "";
       const account = this.accounts.find(a => String(a.id) === String(accountId));
       return account ? (account.name || "") : "";
+    },
+
+    _clearLineError(idx) {
+      const line = this.lines[idx];
+      if (!line || !line.error) return;
+      if ((line.description || "").trim() !== "") {
+        line.error = "";
+      }
     },
 
     // ── Tax adjustment API (called from template inputs) ─────────────────────
@@ -173,27 +185,48 @@ function billEditor() {
 
     // ── Terms / due-date auto-computation ────────────────────────────────────
 
+    // Called when the vendor dropdown changes; auto-fills terms from vendor default.
+    onContactChange(vendorId) {
+      if (!vendorId) return;
+      const termCode = this.contactTerms[String(vendorId)];
+      if (termCode) {
+        this.onTermsChange(termCode);
+      }
+    },
+
     onTermsChange(val) {
       this.terms = val;
-      this.dueDateEditable = val === "custom";
-      if (val !== "custom") {
+      this.dueDateEditable = this._isEditable(val);
+      if (!this.dueDateEditable) {
         this.dueDate = this._computeDueDate(this.billDate, val);
       }
     },
 
     onDateChange(val) {
       this.billDate = val;
-      if (this.terms !== "custom") {
+      if (!this.dueDateEditable) {
         this.dueDate = this._computeDueDate(val, this.terms);
       }
     },
 
-    _computeDueDate(dateStr, terms) {
-      const days = { net_15: 15, net_30: 30, net_60: 60, due_on_receipt: 0 }[terms];
-      if (days === undefined) return "";
+    // Due date is manually editable only when no payment term is selected.
+    _isEditable(termCode) {
+      return termCode === "";
+    },
+
+    // Look up netDays for a term code from the DB-driven paymentTerms list.
+    _netDays(termCode) {
+      const pt = this.paymentTerms.find(p => p.code === termCode);
+      return pt ? pt.netDays : null;
+    },
+
+    _computeDueDate(dateStr, termCode) {
+      if (!termCode) return "";
+      const netDays = this._netDays(termCode);
+      if (netDays === null || netDays === 0) return "";
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return "";
-      d.setDate(d.getDate() + days);
+      d.setDate(d.getDate() + netDays);
       return d.toISOString().slice(0, 10);
     },
   };

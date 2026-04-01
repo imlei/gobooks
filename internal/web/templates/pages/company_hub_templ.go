@@ -104,6 +104,14 @@ func bodyCompanyHub(vm CompanyHubVM) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = companyHubCard(
+			"/settings/company/payment-terms",
+			"Payment Terms",
+			"Define payment windows, early-payment discounts, and the company default.",
+		).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = companyHubCard(
 			"/settings/company/numbering",
 			"Numbering",
 			"Configure visible document numbering rules.",
@@ -115,6 +123,14 @@ func bodyCompanyHub(vm CompanyHubVM) templ.Component {
 			"/products-services",
 			"Products & Services",
 			"Manage your product and service catalog used in invoices and bills.",
+		).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = companyHubCard(
+			"/settings/company/currency",
+			"Currency",
+			"Set base currency, enable multi-currency, manage foreign currencies and exchange rates.",
 		).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -171,7 +187,7 @@ func companyHubCard(href string, title string, description string) templ.Compone
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_hub.templ`, Line: 66, Col: 13}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_hub.templ`, Line: 76, Col: 13}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -184,7 +200,7 @@ func companyHubCard(href string, title string, description string) templ.Compone
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_hub.templ`, Line: 69, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_hub.templ`, Line: 79, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -197,7 +213,7 @@ func companyHubCard(href string, title string, description string) templ.Compone
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_hub.templ`, Line: 70, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_hub.templ`, Line: 80, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {

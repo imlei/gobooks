@@ -269,7 +269,7 @@ func TestLegacySetupCreatesOwnerMembershipAndActivatesSessionCompany(t *testing.
 	form.Set("business_number", "123456789")
 	form.Set("industry", string(models.IndustryRetail))
 	form.Set("incorporated_date", "2024-01-01")
-	form.Set("fiscal_year_end", "2024-12-31")
+	form.Set("fiscal_year_end", "12-31")
 	form.Set("account_code_length", "4")
 
 	resp := performFormRequest(t, app, http.MethodPost, "/setup", form, rawToken)

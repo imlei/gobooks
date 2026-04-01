@@ -37,8 +37,10 @@ type Customer struct {
 	AddrProvince   string `gorm:"type:text;not null;default:''"`
 	AddrPostalCode string `gorm:"type:text;not null;default:''"`
 	AddrCountry    string `gorm:"type:text;not null;default:''"`
-	PaymentTerm    string `gorm:"type:text"` // optional, e.g. Net 30, Due on receipt
-	CreatedAt      time.Time
+	// DefaultPaymentTermCode references a PaymentTerm.Code for this company.
+	// Empty string means "use company default at document creation time".
+	DefaultPaymentTermCode string `gorm:"type:text;not null;default:''"`
+	CreatedAt              time.Time
 }
 
 // FormattedAddress returns a newline-separated address string composed from
@@ -81,8 +83,9 @@ type Vendor struct {
 	ID          uint   `gorm:"primaryKey"`
 	CompanyID   uint   `gorm:"not null;index"`
 	Name        string `gorm:"not null"`
-	Address     string `gorm:"type:text"` // optional mailing / remittance address
-	PaymentTerm string `gorm:"type:text"` // optional, e.g. Net 30, Due on receipt
-	CreatedAt   time.Time
+	Address string `gorm:"type:text"` // optional mailing / remittance address
+	// DefaultPaymentTermCode references a PaymentTerm.Code for this company.
+	DefaultPaymentTermCode string `gorm:"type:text;not null;default:''"`
+	CreatedAt              time.Time
 }
 

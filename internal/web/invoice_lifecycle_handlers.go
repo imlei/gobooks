@@ -10,10 +10,10 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 	"gobooks/internal/models"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
+	"gorm.io/gorm"
 )
 
 // handleInvoiceIssue transitions an invoice from draft to issued.
@@ -31,7 +31,7 @@ func (s *Server) handleInvoiceIssue(c *fiber.Ctx) error {
 
 	_, err = services.IssueInvoice(s.DB, companyID, invoiceID)
 	if err != nil {
-		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), err.Error())
+		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), "Could not issue invoice.")
 	}
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?issued=1", invoiceID))
@@ -52,7 +52,7 @@ func (s *Server) handleInvoiceSend(c *fiber.Ctx) error {
 
 	_, err = services.SendInvoice(s.DB, companyID, invoiceID)
 	if err != nil {
-		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), err.Error())
+		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), "Could not mark invoice as sent.")
 	}
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?sent=1", invoiceID))
@@ -73,7 +73,7 @@ func (s *Server) handleInvoiceMarkPaid(c *fiber.Ctx) error {
 
 	_, err = services.MarkInvoicePaid(s.DB, companyID, invoiceID)
 	if err != nil {
-		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), err.Error())
+		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), "Could not mark invoice as paid.")
 	}
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?paid=1", invoiceID))
@@ -104,10 +104,7 @@ func (s *Server) handleInvoiceVoid(c *fiber.Ctx) error {
 	}
 
 	if err := services.VoidInvoice(s.DB, companyID, invoiceID, actor, userID); err != nil {
-		return c.Redirect(
-			fmt.Sprintf("/invoices/%d?voiderror=%s", invoiceID, url.QueryEscape(err.Error())),
-			fiber.StatusSeeOther,
-		)
+		return c.Redirect(fmt.Sprintf("/invoices/%d?voiderror=Could+not+void+invoice.", invoiceID), fiber.StatusSeeOther)
 	}
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?voided=1", invoiceID))
@@ -138,7 +135,7 @@ func (s *Server) handleInvoicePost(c *fiber.Ctx) error {
 	}
 
 	if err := services.PostInvoice(s.DB, companyID, invoiceID, actor, uid); err != nil {
-		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), "Could not post: "+err.Error())
+		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), "Could not post invoice.")
 	}
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?issued=1", invoiceID))
@@ -169,7 +166,7 @@ func (s *Server) handleInvoiceDelete(c *fiber.Ctx) error {
 	}
 
 	if err := services.DeleteInvoice(s.DB, companyID, invoiceID, actor, userID); err != nil {
-		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), err.Error())
+		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), "Could not delete invoice.")
 	}
 
 	return redirectTo(c, "/invoices?deleted=1")

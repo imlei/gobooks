@@ -15,10 +15,10 @@ type CustomersVM struct {
 	EditingID  uint
 
 	// Editable form fields (repopulated on validation failure)
-	Name           string
-	Email          string
-	PaymentTerm    string
-	AddrStreet1    string
+	Name                   string
+	Email                  string
+	DefaultPaymentTermCode string
+	AddrStreet1            string
 	AddrStreet2    string
 	AddrCity       string
 	AddrProvince   string
@@ -27,16 +27,17 @@ type CustomersVM struct {
 
 	NameError string
 
-	Customers []models.Customer
+	Customers    []models.Customer
+	PaymentTerms []models.PaymentTerm
 }
 
 type CustomerNewVM struct {
 	HasCompany bool
 
-	Name           string
-	Email          string
-	PaymentTerm    string
-	AddrStreet1    string
+	Name                   string
+	Email                  string
+	DefaultPaymentTermCode string
+	AddrStreet1            string
 	AddrStreet2    string
 	AddrCity       string
 	AddrProvince   string
@@ -45,17 +46,20 @@ type CustomerNewVM struct {
 
 	NameError string
 	FormError string
+
+	PaymentTerms []models.PaymentTerm
 }
 
 type VendorsVM struct {
 	HasCompany bool
 
-	Name        string
-	Address     string
-	PaymentTerm string
-	NameError   string
+	Name                   string
+	Address                string
+	DefaultPaymentTermCode string
+	NameError              string
 	FormError   string
 	Created     bool
 
-	Vendors []models.Vendor
+	Vendors      []models.Vendor
+	PaymentTerms []models.PaymentTerm
 }

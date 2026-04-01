@@ -440,10 +440,12 @@ func TestBusinessLoginWritesSecurityEvent(t *testing.T) {
 	db := testSecurityDB(t)
 	companyID := seedBusinessLoginUser(t, db, models.CompanyRoleBookkeeper, "bookkeeper@example.com", "supersecret")
 	app := testSecurityApp(t, db)
+	csrf := newCSRFToken(t)
 
 	form := url.Values{}
 	form.Set("email", "bookkeeper@example.com")
 	form.Set("password", "supersecret")
+	form.Set(CSRFFormField, csrf)
 
 	resp := performSecurityRequest(
 		t,
@@ -452,6 +454,7 @@ func TestBusinessLoginWritesSecurityEvent(t *testing.T) {
 		"/login",
 		[]byte(form.Encode()),
 		"application/x-www-form-urlencoded",
+		&http.Cookie{Name: CSRFCookieName, Value: csrf, Path: "/"},
 	)
 
 	if resp.StatusCode != http.StatusSeeOther {
@@ -477,10 +480,12 @@ func TestAdminLoginWritesSecurityEvent(t *testing.T) {
 	db := testSecurityDB(t)
 	adminID := seedSysadminLoginUser(t, db, "admin@example.com", "supersecret")
 	app := testSecurityApp(t, db)
+	csrf := newCSRFToken(t)
 
 	form := url.Values{}
 	form.Set("email", "admin@example.com")
 	form.Set("password", "supersecret")
+	form.Set(CSRFFormField, csrf)
 
 	resp := performSecurityRequest(
 		t,
@@ -489,6 +494,7 @@ func TestAdminLoginWritesSecurityEvent(t *testing.T) {
 		"/admin/login",
 		[]byte(form.Encode()),
 		"application/x-www-form-urlencoded",
+		&http.Cookie{Name: CSRFCookieName, Value: csrf, Path: "/"},
 	)
 
 	if resp.StatusCode != http.StatusSeeOther {
@@ -510,5 +516,42 @@ func TestAdminLoginWritesSecurityEvent(t *testing.T) {
 	}
 	if events[0].UserID == nil || *events[0].UserID != fmt.Sprintf("%d", adminID) {
 		t.Fatalf("expected user_id=%d, got %+v", adminID, events[0].UserID)
+	}
+}
+
+func TestLoginPostsRequireCSRFTokens(t *testing.T) {
+	db := testSecurityDB(t)
+	app := testSecurityApp(t, db)
+
+	businessForm := url.Values{}
+	businessForm.Set("email", "bookkeeper@example.com")
+	businessForm.Set("password", "supersecret")
+
+	businessResp := performSecurityRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/login",
+		[]byte(businessForm.Encode()),
+		"application/x-www-form-urlencoded",
+	)
+	if businessResp.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected %d, got %d", http.StatusForbidden, businessResp.StatusCode)
+	}
+
+	adminForm := url.Values{}
+	adminForm.Set("email", "admin@example.com")
+	adminForm.Set("password", "supersecret")
+
+	adminResp := performSecurityRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/admin/login",
+		[]byte(adminForm.Encode()),
+		"application/x-www-form-urlencoded",
+	)
+	if adminResp.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected %d, got %d", http.StatusForbidden, adminResp.StatusCode)
 	}
 }

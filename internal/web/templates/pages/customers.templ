@@ -90,8 +90,8 @@ templ bodyCustomers(vm CustomersVM) {
 									}
 								</td>
 								<td class="py-3 pr-4 text-small text-text-muted2">
-									if c.PaymentTerm != "" {
-										{ c.PaymentTerm }
+									if c.DefaultPaymentTermCode != "" {
+										{ c.DefaultPaymentTermCode }
 									} else {
 										<span class="text-text-muted3">—</span>
 									}
@@ -152,14 +152,12 @@ templ custEditDrawerForm(vm CustomersVM) {
 			// Payment term
 			<div>
 				<label class="block text-body font-medium text-text">Payment term <span class="font-normal text-text-muted2">(optional)</span></label>
-				<input
-					type="text"
-					name="payment_term"
-					value={ vm.PaymentTerm }
-					placeholder="e.g. Net 30, Due on receipt"
-					maxlength="100"
-					class={ custInputClass(false) }
-				/>
+				<select name="payment_term" class={ custInputClass(false) }>
+					<option value="">— Use company default —</option>
+					for _, pt := range vm.PaymentTerms {
+						<option value={ pt.Code } selected?={ pt.Code == vm.DefaultPaymentTermCode }>{ pt.DropdownLabel() }</option>
+					}
+				</select>
 			</div>
 			// Address section
 			<div class="border-t border-border pt-4">

@@ -9,6 +9,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"gobooks/internal/models"
@@ -32,6 +33,8 @@ func testEditorFlowDB(t *testing.T) *gorm.DB {
 		&models.TaxCode{},
 		&models.ProductService{},
 		&models.NumberingSetting{},
+		&models.PaymentTerm{},
+		&models.CompanyCurrency{},
 		&models.Invoice{},
 		&models.InvoiceLine{},
 		&models.Bill{},
@@ -96,17 +99,17 @@ func TestHandleInvoiceSaveDraftRedirectsToLockedEdit(t *testing.T) {
 	app := editorFlowApp(server, user, companyID)
 
 	form := url.Values{
-		"invoice_number":       {"INV-LOCK-001"},
-		"customer_id":          {fmt.Sprintf("%d", customerID)},
-		"invoice_date":         {"2026-03-31"},
-		"terms":                {string(models.InvoiceTermsNet30)},
-		"due_date":             {"2026-04-30"},
-		"memo":                 {"Review mode test"},
-		"line_count":           {"2"},
-		"line_description[0]":  {"Draft invoice line"},
-		"line_qty[0]":          {"1"},
-		"line_unit_price[0]":   {"120.00"},
-		"line_tax_code_id[0]":  {""},
+		"invoice_number":             {"INV-LOCK-001"},
+		"customer_id":                {fmt.Sprintf("%d", customerID)},
+		"invoice_date":               {"2026-03-31"},
+		"terms":                      {"N30"},
+		"due_date":                   {"2026-04-30"},
+		"memo":                       {"Review mode test"},
+		"line_count":                 {"2"},
+		"line_description[0]":        {"Draft invoice line"},
+		"line_qty[0]":                {"1"},
+		"line_unit_price[0]":         {"120.00"},
+		"line_tax_code_id[0]":        {""},
 		"line_product_service_id[0]": {""},
 		"line_description[1]":        {""},
 		"line_qty[1]":                {"1"},
@@ -145,17 +148,17 @@ func TestHandleBillSaveDraftAndPostFlow(t *testing.T) {
 	app := editorFlowApp(server, user, companyID)
 
 	form := url.Values{
-		"bill_number":              {"BILL-LOCK-001"},
-		"vendor_id":                {fmt.Sprintf("%d", vendorID)},
-		"bill_date":                {"2026-03-31"},
-		"terms":                    {string(models.InvoiceTermsNet30)},
-		"due_date":                 {"2026-04-30"},
-		"memo":                     {"Review mode test"},
-		"line_count":               {"2"},
+		"bill_number":                {"BILL-LOCK-001"},
+		"vendor_id":                  {fmt.Sprintf("%d", vendorID)},
+		"bill_date":                  {"2026-03-31"},
+		"terms":                      {"N30"},
+		"due_date":                   {"2026-04-30"},
+		"memo":                       {"Review mode test"},
+		"line_count":                 {"2"},
 		"line_expense_account_id[0]": {fmt.Sprintf("%d", expenseAccountID)},
-		"line_description[0]":      {""},
-		"line_amount[0]":           {"120.00"},
-		"line_tax_code_id[0]":      {""},
+		"line_description[0]":        {""},
+		"line_amount[0]":             {"120.00"},
+		"line_tax_code_id[0]":        {""},
 		"line_expense_account_id[1]": {""},
 		"line_description[1]":        {""},
 		"line_amount[1]":             {"0.00"},
@@ -207,5 +210,122 @@ func TestHandleBillSaveDraftAndPostFlow(t *testing.T) {
 	}
 	if bill.JournalEntryID == nil {
 		t.Fatal("expected posted bill to have a journal entry")
+	}
+}
+
+func TestHandleInvoiceSaveDraftPersistsManualExchangeRate(t *testing.T) {
+	db := testEditorFlowDB(t)
+	server := &Server{DB: db}
+	user := seedEditorFlowUser(t, db)
+	companyID := seedValidationCompany(t, db, "Invoice FX Co")
+	customerID := seedValidationCustomer(t, db, companyID, "Customer FX")
+	if err := db.Model(&models.Company{}).
+		Where("id = ?", companyID).
+		Updates(map[string]any{
+			"multi_currency_enabled": true,
+			"base_currency_code":     "CAD",
+		}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.CompanyCurrency{
+		CompanyID:    companyID,
+		CurrencyCode: "USD",
+		IsActive:     true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	app := editorFlowApp(server, user, companyID)
+
+	form := url.Values{
+		"invoice_number":             {"INV-FX-001"},
+		"customer_id":                {fmt.Sprintf("%d", customerID)},
+		"invoice_date":               {"2026-03-31"},
+		"currency_code":              {"USD"},
+		"exchange_rate":              {"1.3700"},
+		"line_count":                 {"1"},
+		"line_description[0]":        {"FX line"},
+		"line_qty[0]":                {"1"},
+		"line_unit_price[0]":         {"100.00"},
+		"line_tax_code_id[0]":        {""},
+		"line_product_service_id[0]": {""},
+	}
+
+	resp := performFormRequest(t, app, http.MethodPost, "/invoices/save-draft", form, "")
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected %d, got %d", http.StatusSeeOther, resp.StatusCode)
+	}
+
+	var inv models.Invoice
+	if err := db.Where("company_id = ? AND invoice_number = ?", companyID, "INV-FX-001").First(&inv).Error; err != nil {
+		t.Fatalf("expected saved invoice, got %v", err)
+	}
+	if inv.CurrencyCode != "USD" {
+		t.Fatalf("expected USD invoice currency, got %q", inv.CurrencyCode)
+	}
+	if !inv.ExchangeRate.Equal(decimal.RequireFromString("1.3700")) {
+		t.Fatalf("expected exchange rate 1.3700, got %s", inv.ExchangeRate)
+	}
+}
+
+func TestHandleBillSaveDraftKeepsAdjustedTaxTotalsConsistent(t *testing.T) {
+	db := testEditorFlowDB(t)
+	server := &Server{DB: db}
+	user := seedEditorFlowUser(t, db)
+	companyID := seedValidationCompany(t, db, "Bill Tax Co")
+	vendorID := seedEditorFlowVendor(t, db, companyID, "Vendor Tax")
+	expenseAccountID := seedValidationAccount(t, db, companyID, "6100", models.RootExpense, models.DetailOfficeExpense)
+	liabilityAccountID := seedValidationAccount(t, db, companyID, "2200", models.RootLiability, models.DetailSalesTaxPayable)
+	taxCodeID := seedValidationTaxCode(t, db, companyID, liabilityAccountID, "GST")
+	app := editorFlowApp(server, user, companyID)
+
+	form := url.Values{
+		"bill_number":                {"BILL-TAX-001"},
+		"vendor_id":                  {fmt.Sprintf("%d", vendorID)},
+		"bill_date":                  {"2026-03-31"},
+		"line_count":                 {"3"},
+		"line_expense_account_id[0]": {fmt.Sprintf("%d", expenseAccountID)},
+		"line_description[0]":        {"Line A"},
+		"line_amount[0]":             {"0.20"},
+		"line_tax_code_id[0]":        {fmt.Sprintf("%d", taxCodeID)},
+		"line_expense_account_id[1]": {fmt.Sprintf("%d", expenseAccountID)},
+		"line_description[1]":        {"Line B"},
+		"line_amount[1]":             {"0.20"},
+		"line_tax_code_id[1]":        {fmt.Sprintf("%d", taxCodeID)},
+		"line_expense_account_id[2]": {fmt.Sprintf("%d", expenseAccountID)},
+		"line_description[2]":        {"Line C"},
+		"line_amount[2]":             {"0.20"},
+		"line_tax_code_id[2]":        {fmt.Sprintf("%d", taxCodeID)},
+		"tax_adj_count":              {"1"},
+		"tax_adj_id[0]":              {fmt.Sprintf("%d", taxCodeID)},
+		"tax_adj_amount[0]":          {"0.02"},
+	}
+
+	resp := performFormRequest(t, app, http.MethodPost, "/bills/save-draft", form, "")
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected %d, got %d", http.StatusSeeOther, resp.StatusCode)
+	}
+
+	var bill models.Bill
+	if err := db.Where("company_id = ? AND bill_number = ?", companyID, "BILL-TAX-001").First(&bill).Error; err != nil {
+		t.Fatalf("expected saved bill, got %v", err)
+	}
+
+	var lines []models.BillLine
+	if err := db.Where("bill_id = ?", bill.ID).Order("sort_order asc").Find(&lines).Error; err != nil {
+		t.Fatalf("load bill lines: %v", err)
+	}
+	if len(lines) != 3 {
+		t.Fatalf("expected 3 saved bill lines, got %d", len(lines))
+	}
+
+	lineTaxSum := decimal.Zero
+	for _, line := range lines {
+		lineTaxSum = lineTaxSum.Add(line.LineTax)
+	}
+	if !bill.TaxTotal.Equal(decimal.RequireFromString("0.02")) {
+		t.Fatalf("expected bill tax total 0.02, got %s", bill.TaxTotal)
+	}
+	if !lineTaxSum.Equal(bill.TaxTotal) {
+		t.Fatalf("expected bill tax total %s to equal sum of line taxes %s", bill.TaxTotal, lineTaxSum)
 	}
 }

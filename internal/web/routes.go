@@ -41,8 +41,21 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/settings/company/sales-tax/deactivate", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleTaxCodeDeactivate)
 	app.Get("/settings/company/numbering", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleNumberingSettingsGet)
 	app.Post("/settings/company/numbering", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleNumberingSettingsPost)
+	app.Get("/settings/company/payment-terms", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePaymentTermsGet)
+	app.Post("/settings/company/payment-terms", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentTermCreate)
+	app.Post("/settings/company/payment-terms/update", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentTermUpdate)
+	app.Post("/settings/company/payment-terms/set-default", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentTermSetDefault)
+	app.Post("/settings/company/payment-terms/toggle", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentTermToggle)
+	app.Post("/settings/company/payment-terms/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentTermDelete)
 	app.Get("/settings/company", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyHub)
 	app.Post("/settings/company", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyProfileSubmit)
+	// ── 设置：多币种 ─────────────────────────────────────────────────────────
+	app.Get("/settings/company/currency", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyCurrencyGet)
+	app.Post("/settings/company/currency/enable", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyCurrencyEnableMulti)
+	app.Post("/settings/company/currency/add", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyCurrencyAdd)
+	app.Get("/settings/company/exchange-rates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleExchangeRatesGet)
+	app.Post("/settings/company/exchange-rates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleExchangeRatesAdd)
+	app.Post("/settings/company/exchange-rates/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleExchangeRatesDelete)
 
 	// ── 设置：通知（SMTP / SMS）────────────────────────────────────────────────
 	app.Get("/settings/company/notifications", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyNotificationsGet)

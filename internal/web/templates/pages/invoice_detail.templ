@@ -209,7 +209,7 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 				</div>
 				<div>
 					<p class="text-small font-medium text-text-muted uppercase tracking-wider">Terms</p>
-					<p class="mt-1 text-body text-text">{ models.InvoiceTermsLabel(vm.Invoice.Terms) }</p>
+					<p class="mt-1 text-body text-text">{ vm.Invoice.TermDescription }</p>
 				</div>
 				<div>
 					<p class="text-small font-medium text-text-muted uppercase tracking-wider">Due Date</p>

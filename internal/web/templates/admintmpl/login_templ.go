@@ -41,7 +41,7 @@ func AdminLogin(vm AdminLoginVM) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>System sign in — GoBooks</title><link rel=\"stylesheet\" href=\"/static/app.css?v=3\"></head><body class=\"bg-background text-text\"><div class=\"min-h-screen flex items-center justify-center px-4 py-10\"><div class=\"w-full max-w-sm\"><div class=\"mb-8 text-center\"><div class=\"mb-3 flex justify-center\"><span class=\"rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-text-muted3\">GoBooks · System</span></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>System sign in — GoBooks</title><link rel=\"stylesheet\" href=\"/static/app.css?v=3\"><script>\n\t\t\t\t(function () {\n\t\t\t\t\tfunction readCookie(name) {\n\t\t\t\t\t\tconst prefix = name + \"=\";\n\t\t\t\t\t\tconst parts = document.cookie ? document.cookie.split(\"; \") : [];\n\t\t\t\t\t\tfor (const part of parts) {\n\t\t\t\t\t\t\tif (part.indexOf(prefix) === 0) return decodeURIComponent(part.substring(prefix.length));\n\t\t\t\t\t\t}\n\t\t\t\t\t\treturn \"\";\n\t\t\t\t\t}\n\t\t\t\t\tdocument.addEventListener(\"submit\", function (event) {\n\t\t\t\t\t\tconst form = event.target;\n\t\t\t\t\t\tif (!(form instanceof HTMLFormElement)) return;\n\t\t\t\t\t\tif ((form.method || \"get\").toLowerCase() === \"get\") return;\n\t\t\t\t\t\tconst token = readCookie(\"gobooks_csrf\");\n\t\t\t\t\t\tif (!token) return;\n\t\t\t\t\t\tlet input = form.querySelector('input[name=\"_csrf\"]');\n\t\t\t\t\t\tif (!input) {\n\t\t\t\t\t\t\tinput = document.createElement(\"input\");\n\t\t\t\t\t\t\tinput.type = \"hidden\";\n\t\t\t\t\t\t\tinput.name = \"_csrf\";\n\t\t\t\t\t\t\tform.appendChild(input);\n\t\t\t\t\t\t}\n\t\t\t\t\t\tinput.value = token;\n\t\t\t\t\t});\n\t\t\t\t})();\n\t\t\t</script></head><body class=\"bg-background text-text\"><div class=\"min-h-screen flex items-center justify-center px-4 py-10\"><div class=\"w-full max-w-sm\"><div class=\"mb-8 text-center\"><div class=\"mb-3 flex justify-center\"><span class=\"rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-text-muted3\">GoBooks · System</span></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -68,7 +68,7 @@ func AdminLogin(vm AdminLoginVM) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 41, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 68, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -86,7 +86,7 @@ func AdminLogin(vm AdminLoginVM) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Email)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 51, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 78, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -104,7 +104,7 @@ func AdminLogin(vm AdminLoginVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EmailError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 57, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 84, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -127,7 +127,7 @@ func AdminLogin(vm AdminLoginVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(vm.PasswordError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 69, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 96, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -155,7 +155,7 @@ func AdminLogin(vm AdminLoginVM) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(vm.ConfirmError)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 82, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/login.templ`, Line: 109, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {

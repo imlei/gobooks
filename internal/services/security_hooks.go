@@ -23,13 +23,14 @@ package services
 //
 // - IP reputation / geolocation comparison (needs persistent IP history)
 // - Device fingerprint storage and comparison
-// - Failed-login threshold counting (needs a short-lived counter store)
+// - Advanced failed-login heuristics (current release ships a basic recent-event throttle)
 // - Real alert dispatch (SendTestEmail / SendTestSMS are stubs today)
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
 import (
 	"encoding/json"
+	"time"
 
 	"gobooks/internal/models"
 
@@ -47,7 +48,18 @@ type LoginSecurityContext struct {
 	Success   bool // false = failed login attempt
 }
 
-const unusualIPAlertEventType = "security.alert.unusual_ip_login"
+const (
+	unusualIPAlertEventType             = "security.alert.unusual_ip_login"
+	blockedLoginEventType               = "login.blocked"
+	failedLoginWindow                   = 15 * time.Minute
+	maxFailedLoginAttemptsPerIP   int64 = 10
+	maxFailedLoginAttemptsPerUser int64 = 5
+)
+
+type LoginThrottleState struct {
+	Blocked    bool
+	RetryAfter time.Duration
+}
 
 // EvaluateLoginSecurity is the shared login-time security hook for business and
 // sysadmin authentication flows. It always writes a raw success / failure event
@@ -99,6 +111,79 @@ func loginEventType(success bool) string {
 		return "login.success"
 	}
 	return "login.failed"
+}
+
+func CheckLoginThrottle(db *gorm.DB, _ *uint, userID *string, ipAddress string) (LoginThrottleState, error) {
+	now := time.Now().UTC()
+	cutoff := now.Add(-failedLoginWindow)
+	state := LoginThrottleState{}
+
+	if ipAddress != "" {
+		count, lastAttemptAt, err := recentFailedLoginCount(db, cutoff, func(q *gorm.DB) *gorm.DB {
+			return q.Where("ip_address = ?", ipAddress)
+		})
+		if err != nil {
+			return state, err
+		}
+		if count >= maxFailedLoginAttemptsPerIP {
+			state.Blocked = true
+			state.RetryAfter = loginThrottleRetryAfter(now, lastAttemptAt)
+			return state, nil
+		}
+	}
+
+	if userID != nil && *userID != "" {
+		count, lastAttemptAt, err := recentFailedLoginCount(db, cutoff, func(q *gorm.DB) *gorm.DB {
+			return q.Where("user_id = ?", *userID)
+		})
+		if err != nil {
+			return state, err
+		}
+		if count >= maxFailedLoginAttemptsPerUser {
+			state.Blocked = true
+			state.RetryAfter = loginThrottleRetryAfter(now, lastAttemptAt)
+			return state, nil
+		}
+	}
+
+	return state, nil
+}
+
+func RecordBlockedLogin(db *gorm.DB, companyID *uint, userID *string, ipAddress, userAgent string) {
+	_ = LogSecurityEvent(db, companyID, userID, blockedLoginEventType, ipAddress, userAgent, nil)
+}
+
+func recentFailedLoginCount(db *gorm.DB, cutoff time.Time, scope func(*gorm.DB) *gorm.DB) (int64, time.Time, error) {
+	query := db.Model(&models.SecurityEvent{}).
+		Where("event_type = ? AND created_at >= ?", loginEventType(false), cutoff)
+	if scope != nil {
+		query = scope(query)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, time.Time{}, err
+	}
+	if count == 0 {
+		return 0, time.Time{}, nil
+	}
+
+	var event models.SecurityEvent
+	if err := query.Select("created_at").Order("created_at desc").First(&event).Error; err != nil {
+		return 0, time.Time{}, err
+	}
+	return count, event.CreatedAt, nil
+}
+
+func loginThrottleRetryAfter(now, lastAttemptAt time.Time) time.Duration {
+	if lastAttemptAt.IsZero() {
+		return failedLoginWindow
+	}
+	remaining := failedLoginWindow - now.Sub(lastAttemptAt)
+	if remaining < time.Minute {
+		return time.Minute
+	}
+	return remaining
 }
 
 func shouldTriggerUnusualIPAlert(db *gorm.DB, ctx LoginSecurityContext, userID *string) (bool, models.AlertChannel) {

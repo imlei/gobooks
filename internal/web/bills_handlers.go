@@ -98,16 +98,24 @@ func (s *Server) handleBillNew(c *fiber.Ctx) error {
 		IsEdit:     false,
 		BillNumber: nextNo,
 		BillDate:   today,
-		Terms:      string(models.InvoiceTermsNet30),
-	}
-	due := models.ComputeDueDate(time.Now(), models.InvoiceTermsNet30)
-	if due != nil {
-		vm.DueDate = due.Format("2006-01-02")
 	}
 
 	if err := s.loadBillEditorDropdowns(companyID, &vm); err != nil {
 		vm.FormError = "Could not load dropdown data."
 	}
+
+	// Pre-select default payment term and compute default due date.
+	for _, pt := range vm.PaymentTerms {
+		if pt.IsDefault {
+			vm.TermCode = pt.Code
+			due := models.ComputeDueDate(time.Now(), pt.NetDays)
+			if due != nil {
+				vm.DueDate = due.Format("2006-01-02")
+			}
+			break
+		}
+	}
+
 	return pages.BillEditor(vm).Render(c.Context(), c)
 }
 
@@ -143,10 +151,12 @@ func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 		BillNumber:   bill.BillNumber,
 		VendorID:     strconv.FormatUint(uint64(bill.VendorID), 10),
 		BillDate:     bill.BillDate.Format("2006-01-02"),
-		Terms:        string(bill.Terms),
+		TermCode:     bill.TermCode,
 		Memo:         bill.Memo,
 		FormError:    strings.TrimSpace(c.Query("error")),
 		Saved:        c.Query("saved") == "1",
+		CurrencyCode: bill.CurrencyCode,
+		ExchangeRate: displayDocumentExchangeRate(bill.CurrencyCode, bill.ExchangeRate),
 	}
 	if CanFromCtx(c, ActionBillUpdate) {
 		vm.SubmitPath = fmt.Sprintf("/bills/%d/post", billID)
@@ -193,6 +203,8 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	termsRaw := strings.TrimSpace(c.FormValue("terms"))
 	dueDateRaw := strings.TrimSpace(c.FormValue("due_date"))
 	memo := strings.TrimSpace(c.FormValue("memo"))
+	currencyCodeRaw := strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
+	exchangeRateRaw := strings.TrimSpace(c.FormValue("exchange_rate"))
 	lineCountRaw := strings.TrimSpace(c.FormValue("line_count"))
 
 	isEdit := billIDRaw != "" && billIDRaw != "0"
@@ -206,15 +218,17 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	}
 
 	vm := pages.BillEditorVM{
-		HasCompany: true,
-		IsEdit:     isEdit,
-		EditingID:  editingID,
-		BillNumber: billNo,
-		VendorID:   vendorRaw,
-		BillDate:   dateRaw,
-		Terms:      termsRaw,
-		DueDate:    dueDateRaw,
-		Memo:       memo,
+		HasCompany:   true,
+		IsEdit:       isEdit,
+		EditingID:    editingID,
+		BillNumber:   billNo,
+		VendorID:     vendorRaw,
+		BillDate:     dateRaw,
+		TermCode:     termsRaw,
+		DueDate:      dueDateRaw,
+		Memo:         memo,
+		CurrencyCode: currencyCodeRaw,
+		ExchangeRate: exchangeRateRaw,
 	}
 	if isEdit && CanFromCtx(c, ActionBillUpdate) {
 		vm.SubmitPath = fmt.Sprintf("/bills/%d/post", editingID)
@@ -235,17 +249,29 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	if dateErr != nil {
 		vm.DateError = "Bill Date is required."
 	}
-	terms, _ := func() (models.InvoiceTerms, error) {
-		switch models.InvoiceTerms(termsRaw) {
-		case models.InvoiceTermsNet15, models.InvoiceTermsNet30, models.InvoiceTermsNet60,
-			models.InvoiceTermsDueOnReceipt, models.InvoiceTermsCustom:
-			return models.InvoiceTerms(termsRaw), nil
-		default:
-			return models.InvoiceTermsNet30, fmt.Errorf("unknown")
+	currencySelection, currencyErr, exchangeRateErr := normalizeDocumentCurrencySelection(
+		vm.MultiCurrencyEnabled,
+		vm.BaseCurrencyCode,
+		vm.CompanyCurrencies,
+		currencyCodeRaw,
+		exchangeRateRaw,
+	)
+	vm.CurrencyError = currencyErr
+	vm.ExchangeRateError = exchangeRateErr
+	if vm.CurrencyError == "" {
+		vm.CurrencyCode = currencySelection.CurrencyCode
+	}
+	if vm.ExchangeRateError == "" {
+		vm.ExchangeRate = displayDocumentExchangeRate(currencySelection.CurrencyCode, currencySelection.ExchangeRate)
+	}
+	// Look up the selected payment term from the master table.
+	var selectedTerm *models.PaymentTerm
+	if termsRaw != "" {
+		var pt models.PaymentTerm
+		if err := s.DB.Where("company_id = ? AND code = ?", companyID, termsRaw).
+			First(&pt).Error; err == nil {
+			selectedTerm = &pt
 		}
-	}()
-	if termsRaw == "" {
-		terms = models.InvoiceTermsNet30
 	}
 
 	// ── Parse lines ───────────────────────────────────────────────────────────
@@ -337,6 +363,7 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	}
 
 	if vm.BillNumberError != "" || vm.VendorError != "" || vm.DateError != "" ||
+		vm.CurrencyError != "" || vm.ExchangeRateError != "" ||
 		vm.LinesError != "" || hasLineErr {
 		return pages.BillEditor(vm).Render(c.Context(), c)
 	}
@@ -433,69 +460,84 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	var computed []computedBillLine
 	subtotal := decimal.Zero
 
-	// First pass: auto-compute tax per line, group by tax code.
-	type lineCalc struct {
-		net     decimal.Decimal
-		autoTax decimal.Decimal
+	// First pass: compute line nets and unadjusted taxes; track per-code calculated totals.
+	type perCodeData struct {
+		calcTotal decimal.Decimal
+		indices   []int
 	}
-	lineCalcs := make([]lineCalc, len(parsedLines))
-	autoTaxByCode := map[uint]decimal.Decimal{}
-	for i, pl := range parsedLines {
+	codeData := map[uint]*perCodeData{}
+
+	for _, pl := range parsedLines {
 		lineNet := pl.Amount.RoundBank(2)
-		var autoTax decimal.Decimal
+		var lineTax decimal.Decimal
 		if pl.TaxCodeID != nil {
 			if tc, ok := taxCodeCache[*pl.TaxCodeID]; ok {
 				results := services.CalculateTax(lineNet, *tc)
-				autoTax = services.SumTaxResults(results)
-				autoTaxByCode[*pl.TaxCodeID] = autoTaxByCode[*pl.TaxCodeID].Add(autoTax)
+				lineTax = services.SumTaxResults(results)
 			}
 		}
-		lineCalcs[i] = lineCalc{net: lineNet, autoTax: autoTax}
 		subtotal = subtotal.Add(lineNet)
-	}
-
-	// Second pass: apply user tax overrides proportionally across lines per code.
-	taxTotal := decimal.Zero
-	for i, pl := range parsedLines {
-		lc := lineCalcs[i]
-		lineTax := lc.autoTax
-		if pl.TaxCodeID != nil {
-			if userAdj, ok := taxAdjMap[*pl.TaxCodeID]; ok {
-				codeAuto := autoTaxByCode[*pl.TaxCodeID]
-				if !codeAuto.Equal(userAdj) && !codeAuto.IsZero() {
-					// Redistribute proportionally.
-					lineTax = userAdj.Mul(lc.autoTax).Div(codeAuto).RoundBank(2)
-				} else if codeAuto.IsZero() {
-					lineTax = decimal.Zero
-				}
-			}
-		}
-		lineTotal := lc.net.Add(lineTax)
-		taxTotal = taxTotal.Add(lineTax)
+		idx := len(computed)
 		computed = append(computed, computedBillLine{
 			parsedBillLine: pl,
-			LineNet:        lc.net,
+			LineNet:        lineNet,
 			LineTax:        lineTax,
-			LineTotal:      lineTotal,
+			LineTotal:      lineNet.Add(lineTax),
 		})
+		if pl.TaxCodeID != nil {
+			cd := codeData[*pl.TaxCodeID]
+			if cd == nil {
+				cd = &perCodeData{}
+				codeData[*pl.TaxCodeID] = cd
+			}
+			cd.calcTotal = cd.calcTotal.Add(lineTax)
+			cd.indices = append(cd.indices, idx)
+		}
 	}
 
-	// If there are user-supplied adjustments not covered proportionally
-	// (e.g. rounding), use the sum of user adjustments as taxTotal directly.
-	if len(taxAdjMap) > 0 {
-		adjSum := decimal.Zero
-		for _, amt := range taxAdjMap {
-			adjSum = adjSum.Add(amt)
+	// Second pass: if the user adjusted a tax code total, redistribute proportionally.
+	taxTotal := decimal.Zero
+	for codeID, cd := range codeData {
+		adj, hasAdj := taxAdjMap[codeID]
+		if !hasAdj || adj.Equal(cd.calcTotal) {
+			taxTotal = taxTotal.Add(cd.calcTotal)
+			continue
 		}
-		taxTotal = adjSum
+		if cd.calcTotal.IsZero() {
+			each := adj.Div(decimal.NewFromInt(int64(len(cd.indices)))).RoundBank(2)
+			remainder := adj
+			for i, li := range cd.indices {
+				lineTax := each
+				if i == len(cd.indices)-1 {
+					lineTax = remainder
+				}
+				computed[li].LineTax = lineTax
+				computed[li].LineTotal = computed[li].LineNet.Add(lineTax)
+				remainder = remainder.Sub(lineTax)
+			}
+		} else {
+			remaining := adj
+			for i, li := range cd.indices {
+				var lineTax decimal.Decimal
+				if i == len(cd.indices)-1 {
+					lineTax = remaining
+				} else {
+					lineTax = computed[li].LineTax.Mul(adj).Div(cd.calcTotal).RoundBank(2)
+				}
+				computed[li].LineTax = lineTax
+				computed[li].LineTotal = computed[li].LineNet.Add(lineTax)
+				remaining = remaining.Sub(lineTax)
+			}
+		}
+		taxTotal = taxTotal.Add(adj)
 	}
 
 	grandTotal := subtotal.Add(taxTotal)
 
 	// ── Compute due date ──────────────────────────────────────────────────────
 	var dueDate *time.Time
-	if terms != models.InvoiceTermsCustom {
-		dueDate = models.ComputeDueDate(billDate, terms)
+	if selectedTerm != nil && selectedTerm.NetDays > 0 {
+		dueDate = models.ComputeDueDate(billDate, selectedTerm.NetDays)
 	} else if dueDateRaw != "" {
 		if d, err := time.Parse("2006-01-02", dueDateRaw); err == nil {
 			dueDate = &d
@@ -524,9 +566,15 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 			bill.BillNumber = billNo
 			bill.VendorID = uint(vendorID)
 			bill.BillDate = billDate
-			bill.Terms = terms
+			if selectedTerm != nil {
+				bill.PaymentTermSnapshot = models.BuildSnapshot(*selectedTerm)
+			} else {
+				bill.PaymentTermSnapshot = models.PaymentTermSnapshot{TermCode: termsRaw}
+			}
 			bill.DueDate = dueDate
 			bill.Memo = memo
+			bill.CurrencyCode = currencySelection.CurrencyCode
+			bill.ExchangeRate = currencySelection.ExchangeRate
 			bill.Subtotal = subtotal
 			bill.TaxTotal = taxTotal
 			bill.Amount = grandTotal
@@ -537,18 +585,26 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 				return err
 			}
 		} else {
+			var billSnap models.PaymentTermSnapshot
+			if selectedTerm != nil {
+				billSnap = models.BuildSnapshot(*selectedTerm)
+			} else {
+				billSnap = models.PaymentTermSnapshot{TermCode: termsRaw}
+			}
 			bill = models.Bill{
-				CompanyID:  companyID,
-				BillNumber: billNo,
-				VendorID:   uint(vendorID),
-				BillDate:   billDate,
-				Terms:      terms,
-				DueDate:    dueDate,
-				Status:     models.BillStatusDraft,
-				Memo:       memo,
-				Subtotal:   subtotal,
-				TaxTotal:   taxTotal,
-				Amount:     grandTotal,
+				CompanyID:           companyID,
+				BillNumber:          billNo,
+				VendorID:            uint(vendorID),
+				BillDate:            billDate,
+				PaymentTermSnapshot: billSnap,
+				DueDate:             dueDate,
+				Status:              models.BillStatusDraft,
+				Memo:                memo,
+				CurrencyCode:        currencySelection.CurrencyCode,
+				ExchangeRate:        currencySelection.ExchangeRate,
+				Subtotal:            subtotal,
+				TaxTotal:            taxTotal,
+				Amount:              grandTotal,
 			}
 			if err := tx.Create(&bill).Error; err != nil {
 				return err
@@ -622,7 +678,7 @@ func (s *Server) handleBillPost(c *fiber.Ctx) error {
 	}
 
 	if err := services.PostBill(s.DB, companyID, billID, actor, uid); err != nil {
-		return redirectErr(c, fmt.Sprintf("/bills/%d/edit?locked=1", billID), "Could not submit: "+err.Error())
+		return redirectErr(c, fmt.Sprintf("/bills/%d/edit?locked=1", billID), "Could not submit bill.")
 	}
 
 	return redirectTo(c, "/bills?posted=1")
@@ -634,7 +690,8 @@ func (s *Server) billsForCompany(companyID uint) ([]models.Bill, error) {
 	return bills, err
 }
 
-// loadBillEditorDropdowns fills vendors, accounts, taxCodes + JSON blobs on vm.
+// loadBillEditorDropdowns fills vendors, accounts, taxCodes, paymentTerms + JSON blobs on vm.
+// Also loads multi-currency settings when the company has it enabled.
 func (s *Server) loadBillEditorDropdowns(companyID uint, vm *pages.BillEditorVM) error {
 	if err := s.DB.Where("company_id = ?", companyID).Order("name asc").
 		Find(&vm.Vendors).Error; err != nil {
@@ -649,8 +706,26 @@ func (s *Server) loadBillEditorDropdowns(companyID uint, vm *pages.BillEditorVM)
 		Find(&vm.TaxCodes).Error; err != nil {
 		return err
 	}
+	if err := s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").
+		Find(&vm.PaymentTerms).Error; err != nil {
+		return err
+	}
 	vm.AccountsJSON = buildBillAccountsJSON(vm.Accounts)
 	vm.TaxCodesJSON = buildTaxCodesJSON(vm.TaxCodes)
+	vm.PaymentTermsJSON = buildPaymentTermsJSON(vm.PaymentTerms)
+	vm.VendorsTermsJSON = buildVendorsTermsJSON(vm.Vendors)
+
+	// Multi-currency: load company settings and enabled currencies.
+	var company models.Company
+	if err := s.DB.Select("id", "base_currency_code", "multi_currency_enabled").
+		First(&company, companyID).Error; err == nil {
+		vm.MultiCurrencyEnabled = company.MultiCurrencyEnabled
+		vm.BaseCurrencyCode = company.BaseCurrencyCode
+		if company.MultiCurrencyEnabled {
+			ccs, _ := services.ListCompanyCurrencies(s.DB, companyID)
+			vm.CompanyCurrencies = ccs
+		}
+	}
 	return nil
 }
 
@@ -669,6 +744,18 @@ func buildBillAccountsJSON(accounts []models.Account) string {
 	return string(b)
 }
 
+// buildVendorsTermsJSON returns a JSON object mapping vendor ID → DefaultPaymentTermCode.
+func buildVendorsTermsJSON(vendors []models.Vendor) string {
+	m := make(map[string]string, len(vendors))
+	for _, v := range vendors {
+		if v.DefaultPaymentTermCode != "" {
+			m[strconv.FormatUint(uint64(v.ID), 10)] = v.DefaultPaymentTermCode
+		}
+	}
+	b, _ := json.Marshal(m)
+	return string(b)
+}
+
 // buildBillInitialLinesJSON serialises BillLineFormRow slice for Alpine's data-initial-lines.
 func buildBillInitialLinesJSON(rows []pages.BillLineFormRow) string {
 	type alpineLine struct {
@@ -678,6 +765,7 @@ func buildBillInitialLinesJSON(rows []pages.BillLineFormRow) string {
 		TaxCodeID        string `json:"tax_code_id"`
 		LineNet          string `json:"line_net"`
 		LineTax          string `json:"line_tax"`
+		Error            string `json:"error"`
 	}
 	items := make([]alpineLine, 0, len(rows))
 	for _, r := range rows {
@@ -696,6 +784,7 @@ func buildBillInitialLinesJSON(rows []pages.BillLineFormRow) string {
 			TaxCodeID:        r.TaxCodeID,
 			LineNet:          net,
 			LineTax:          tax,
+			Error:            r.Error,
 		})
 	}
 	b, _ := json.Marshal(items)

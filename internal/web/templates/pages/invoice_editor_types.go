@@ -1,7 +1,9 @@
 // 遵循project_guide.md
 package pages
 
-import "gobooks/internal/models"
+import (
+	"gobooks/internal/models"
+)
 
 // InvoiceEditorVM is the view-model for the invoice create/edit editor page.
 type InvoiceEditorVM struct {
@@ -19,7 +21,7 @@ type InvoiceEditorVM struct {
 	InvoiceNumber string
 	CustomerID    string
 	InvoiceDate   string
-	Terms         string
+	TermCode      string
 	DueDate       string
 	Memo          string
 
@@ -27,11 +29,14 @@ type InvoiceEditorVM struct {
 	InvoiceNumberError string
 	CustomerError      string
 	DateError          string
+	CurrencyError      string
+	ExchangeRateError  string
 	LinesError         string
 	FormError          string
 
 	// Dropdown data.
-	Customers []models.Customer
+	Customers    []models.Customer
+	PaymentTerms []models.PaymentTerm
 	// Products contains only active ProductServices for this company.
 	// Serialised to ProductsJSON for Alpine.
 	Products []models.ProductService
@@ -43,6 +48,10 @@ type InvoiceEditorVM struct {
 	ProductsJSON     string
 	TaxCodesJSON     string
 	InitialLinesJSON string
+	// PaymentTermsJSON is a JSON array [{code, netDays}] for Alpine due-date calc.
+	PaymentTermsJSON string
+	// CustomersTermsJSON is a JSON object {"customerId": "termCode"} for auto-fill.
+	CustomersTermsJSON string
 
 	// Line rows — used when re-rendering after a validation error.
 	Lines []InvoiceLineFormRow
@@ -53,6 +62,19 @@ type InvoiceEditorVM struct {
 	Total    string
 
 	Saved bool
+
+	// ── Multi-currency (Phase 6) ───────────────────────────────────────────
+	// MultiCurrencyEnabled is true when the company has multi-currency turned on.
+	MultiCurrencyEnabled bool
+	// BaseCurrencyCode is the company's home currency (e.g. "CAD").
+	BaseCurrencyCode string
+	// CompanyCurrencies lists foreign currencies enabled for the company.
+	CompanyCurrencies []models.CompanyCurrency
+	// CurrencyCode is the currency selected for this invoice (empty = base).
+	CurrencyCode string
+	// ExchangeRate is the manually-entered rate (base per 1 foreign unit).
+	// Optional: if empty the posting service looks it up from exchange_rates.
+	ExchangeRate string
 }
 
 // InvoiceLineFormRow carries one line's form values (and optional error) for

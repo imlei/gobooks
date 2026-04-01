@@ -26,6 +26,7 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 		Created:    c.Query("created") == "1",
 		Updated:    c.Query("updated") == "1",
 	}
+	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
 	// Load customer list.
 	if err := s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vm.Customers).Error; err != nil {
@@ -43,7 +44,7 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 				vm.EditingID = uint(id64)
 				vm.Name = cust.Name
 				vm.Email = cust.Email
-				vm.PaymentTerm = cust.PaymentTerm
+				vm.DefaultPaymentTermCode = cust.DefaultPaymentTermCode
 				vm.AddrStreet1 = cust.AddrStreet1
 				vm.AddrStreet2 = cust.AddrStreet2
 				vm.AddrCity = cust.AddrCity
@@ -58,11 +59,13 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleCustomerNew(c *fiber.Ctx) error {
-	_, ok := ActiveCompanyIDFromCtx(c)
+	companyID, ok := ActiveCompanyIDFromCtx(c)
 	if !ok {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
-	return pages.CustomerNew(pages.CustomerNewVM{HasCompany: true}).Render(c.Context(), c)
+	vm := pages.CustomerNewVM{HasCompany: true}
+	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
+	return pages.CustomerNew(vm).Render(c.Context(), c)
 }
 
 func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
@@ -78,17 +81,18 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 	name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry := parseCustomerForm(c)
 
 	vm := pages.CustomerNewVM{
-		HasCompany:     true,
-		Name:           name,
-		Email:          email,
-		PaymentTerm:    paymentTerm,
-		AddrStreet1:    addrStreet1,
+		HasCompany:             true,
+		Name:                   name,
+		Email:                  email,
+		DefaultPaymentTermCode: paymentTerm,
+		AddrStreet1:            addrStreet1,
 		AddrStreet2:    addrStreet2,
 		AddrCity:       addrCity,
 		AddrProvince:   addrProvince,
 		AddrPostalCode: addrPostalCode,
 		AddrCountry:    addrCountry,
 	}
+	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
 	if errMsg := validateCustomerFields(name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry, &vm.NameError); errMsg != "" {
 		vm.FormError = errMsg
@@ -112,11 +116,11 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 	}
 
 	customer := models.Customer{
-		CompanyID:      companyID,
-		Name:           name,
-		Email:          email,
-		PaymentTerm:    paymentTerm,
-		AddrStreet1:    addrStreet1,
+		CompanyID:              companyID,
+		Name:                   name,
+		Email:                  email,
+		DefaultPaymentTermCode: paymentTerm,
+		AddrStreet1:            addrStreet1,
 		AddrStreet2:    addrStreet2,
 		AddrCity:       addrCity,
 		AddrProvince:   addrProvince,
@@ -173,13 +177,13 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 	// Build a VM for re-rendering the list page with the drawer open on error.
 	buildErrVM := func(nameErr, formErr string) pages.CustomersVM {
 		vm := pages.CustomersVM{
-			HasCompany:     true,
-			DrawerOpen:     true,
-			EditingID:      customerID,
-			Name:           name,
-			Email:          email,
-			PaymentTerm:    paymentTerm,
-			AddrStreet1:    addrStreet1,
+			HasCompany:             true,
+			DrawerOpen:             true,
+			EditingID:              customerID,
+			Name:                   name,
+			Email:                  email,
+			DefaultPaymentTermCode: paymentTerm,
+			AddrStreet1:            addrStreet1,
 			AddrStreet2:    addrStreet2,
 			AddrCity:       addrCity,
 			AddrProvince:   addrProvince,
@@ -189,6 +193,7 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 			FormError:      formErr,
 		}
 		_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vm.Customers)
+		_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 		return vm
 	}
 
@@ -213,7 +218,7 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 
 	existing.Name = name
 	existing.Email = email
-	existing.PaymentTerm = paymentTerm
+	existing.DefaultPaymentTermCode = paymentTerm
 	existing.AddrStreet1 = addrStreet1
 	existing.AddrStreet2 = addrStreet2
 	existing.AddrCity = addrCity
