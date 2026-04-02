@@ -147,7 +147,12 @@ func VoidInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return fmt.Errorf("project reversal to ledger: %w", err)
 		}
 
-		// g. Mark invoice voided.
+		// g. Reverse inventory movements for stock items (same transaction).
+		if err := ReverseSaleMovements(tx, companyID, inv, reversalJE.ID); err != nil {
+			return fmt.Errorf("reverse inventory movements: %w", err)
+		}
+
+		// h. Mark invoice voided.
 		if err := tx.Model(&inv).Updates(map[string]any{
 			"status": string(models.InvoiceStatusVoided),
 		}).Error; err != nil {

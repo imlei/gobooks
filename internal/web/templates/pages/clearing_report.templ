@@ -1,0 +1,130 @@
+// 遵循project_guide.md
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+import "fmt"
+
+templ ClearingReport(vm ClearingReportVM) {
+	@layout.Layout(
+		"GoBooks - Clearing Account Report",
+		ui.SidebarVM{Active: "Channels", HasCompany: vm.HasCompany},
+		bodyClearingReport(vm),
+	)
+}
+
+templ bodyClearingReport(vm ClearingReportVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<h1 class="text-title font-semibold">Clearing Account Report</h1>
+				<p class="mt-2 text-text-muted2">
+					Track the flow of funds through channel clearing accounts. A zero balance means all sales have been settled and paid out.
+				</p>
+			</div>
+			<a href="/settings/channels" class="text-body text-primary hover:text-primary-hover">← Channels</a>
+		</div>
+
+		// Summary cards
+		if len(vm.Summaries) == 0 {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<p class="text-body text-text-muted2">No channel accounts with clearing account mappings configured.</p>
+			</div>
+		}
+
+		for _, s := range vm.Summaries {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<div class="flex items-center justify-between">
+					<h2 class="text-section font-semibold text-text">
+						{ s.ChannelDisplayName }
+						<span class="ml-2 text-small font-normal text-text-muted2">{ s.ClearingAccountCode } · { s.ClearingAccountName }</span>
+					</h2>
+					<a
+						href={ "/reports/clearing?channel=" + Uitoa(s.ChannelAccountID) }
+						class="text-small font-medium text-primary hover:text-primary-hover"
+					>
+						View Movements →
+					</a>
+				</div>
+				<div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
+					<div>
+						<span class="text-small text-text-muted uppercase">Sales</span>
+						<p class="mt-1 font-semibold tabular-nums text-success-hover">{ s.SalesTotal.StringFixed(2) }</p>
+					</div>
+					<div>
+						<span class="text-small text-text-muted uppercase">Fees</span>
+						<p class="mt-1 font-semibold tabular-nums text-danger">{ s.FeesTotal.StringFixed(2) }</p>
+					</div>
+					<div>
+						<span class="text-small text-text-muted uppercase">Reversals</span>
+						<p class="mt-1 font-semibold tabular-nums">{ s.ReversalsTotal.StringFixed(2) }</p>
+					</div>
+					<div>
+						<span class="text-small text-text-muted uppercase">Balance</span>
+						<p class={ "mt-1 font-semibold tabular-nums " + clearingBalanceClass(s.CurrentBalance.IsZero()) }>
+							{ s.CurrentBalance.StringFixed(2) }
+						</p>
+					</div>
+					<div>
+						if !s.CurrentBalance.IsZero() {
+							<span class="inline-block mt-2 rounded px-2 py-0.5 text-small font-medium bg-warning-soft text-warning">Unsettled</span>
+						} else {
+							<span class="inline-block mt-2 rounded px-2 py-0.5 text-small font-medium bg-success-soft text-success-hover">Settled</span>
+						}
+					</div>
+				</div>
+			</div>
+		}
+
+		// Movement detail (if a channel is selected)
+		if vm.SelectedChannelID > 0 && len(vm.Movements) > 0 {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Clearing Movements</h2>
+				<div class="mt-4 overflow-x-auto">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border">
+								<th class="py-3 pr-4">Date</th>
+								<th class="py-3 pr-4">Source</th>
+								<th class="py-3 pr-4 text-right">Debit</th>
+								<th class="py-3 pr-4 text-right">Credit</th>
+								<th class="py-3 pr-4 text-right">Balance</th>
+								<th class="py-3 pr-0">JE</th>
+							</tr>
+						</thead>
+						<tbody class="text-text">
+							for _, m := range vm.Movements {
+								<tr class="border-b border-border-subtle">
+									<td class="py-3 pr-4 text-small tabular-nums">{ m.Date }</td>
+									<td class="py-3 pr-4 text-small">
+										{ m.SourceLabel }
+										<span class="text-text-muted3"> #{ fmt.Sprintf("%d", m.SourceID) }</span>
+									</td>
+									<td class="py-3 pr-4 text-right tabular-nums">
+										if !m.Debit.IsZero() {
+											{ m.Debit.StringFixed(2) }
+										}
+									</td>
+									<td class="py-3 pr-4 text-right tabular-nums">
+										if !m.Credit.IsZero() {
+											{ m.Credit.StringFixed(2) }
+										}
+									</td>
+									<td class="py-3 pr-4 text-right tabular-nums font-medium">{ m.RunningBalance.StringFixed(2) }</td>
+									<td class="py-3 pr-0 text-small text-text-muted2">#{ fmt.Sprintf("%d", m.JournalEntryID) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+func clearingBalanceClass(isZero bool) string {
+	if isZero {
+		return "text-success-hover"
+	}
+	return "text-warning"
+}

@@ -97,6 +97,10 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		if l.ExpenseAccountID == nil {
 			return fmt.Errorf("line %d (%q): expense account is required before posting", i+1, l.Description)
 		}
+		// Bundle items cannot be used on bills — bundles are sales-only combinations.
+		if l.ProductService != nil && l.ProductService.ItemStructureType == models.ItemStructureBundle {
+			return fmt.Errorf("line %d (%q): bundle items cannot be used on purchase bills", i+1, l.Description)
+		}
 	}
 
 	// ── 2b. Load company (needed for base currency code) ─────────────────────
@@ -155,6 +159,9 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 	if err != nil {
 		return fmt.Errorf("build bill fragments: %w", err)
 	}
+
+	// ── 4b. For inventory items, redirect expense debit → inventory asset debit.
+	frags = AdjustBillFragmentsForInventory(frags, bill)
 
 	// ── 5. Aggregate by account + side ────────────────────────────────────────
 	// Lines sharing the same expense account are merged. ITC lines sharing the
@@ -240,7 +247,12 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 			return fmt.Errorf("project to ledger: %w", err)
 		}
 
-		// e. Update bill: mark posted, cache grand total (document-currency), link journal entry,
+		// e. Record inventory purchase movements for stock items (same transaction).
+		if err := CreatePurchaseMovements(tx, companyID, bill, je.ID); err != nil {
+			return fmt.Errorf("inventory purchase movements: %w", err)
+		}
+
+		// f. Update bill: mark posted, cache grand total (document-currency), link journal entry,
 		//    and snapshot base-currency equivalents.
 		// Phase 4: also set balance_due = amount (doc currency) and balance_due_base = amountBase
 		// so FX settlement can pro-rate the AP carrying value across partial payments.

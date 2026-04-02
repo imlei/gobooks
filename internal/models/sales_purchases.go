@@ -161,6 +161,11 @@ type Invoice struct {
 	JournalEntryID *uint         `gorm:"index"`
 	JournalEntry   *JournalEntry `gorm:"foreignKey:JournalEntryID"`
 
+	// ChannelOrderID links to the source channel order if this invoice was
+	// created via channel order conversion. When set, posting uses the channel's
+	// clearing account instead of AR for the debit-side entry.
+	ChannelOrderID *uint `gorm:"index"`
+
 	// TemplateID optionally links to an invoice template for rendering.
 	TemplateID *uint            `gorm:"index"`
 	Template   *InvoiceTemplate `gorm:"foreignKey:TemplateID"`
@@ -264,7 +269,7 @@ type Bill struct {
 
 	CompanyID uint `gorm:"not null;index"`
 
-	BillNumber string `gorm:"not null;index"`
+	BillNumber string `gorm:"not null;default:'';index"`
 	VendorID   uint   `gorm:"not null;index"`
 	Vendor     Vendor `gorm:"foreignKey:VendorID"`
 

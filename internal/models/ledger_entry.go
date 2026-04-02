@@ -33,6 +33,8 @@ const (
 	LedgerSourceOpeningBalance LedgerSourceType = "opening_balance"
 	// LedgerSourceRevaluation is used by period-end unrealized-FX revaluation JEs.
 	LedgerSourceRevaluation LedgerSourceType = "revaluation"
+	// LedgerSourceSettlement is used by channel settlement fee/refund posting.
+	LedgerSourceSettlement LedgerSourceType = "settlement"
 )
 
 // LedgerEntry is one row in the accounting fact layer.

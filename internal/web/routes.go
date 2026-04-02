@@ -67,6 +67,26 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/settings/company/security", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanySecurityGet)
 	app.Post("/settings/company/security", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanySecurityPost)
 
+	// ── 设置：销售渠道集成 ──────────────────────────────────────────────────────
+	app.Get("/settings/channels", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleChannelAccounts)
+	app.Post("/settings/channels", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleChannelAccountCreate)
+	app.Post("/settings/channels/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleChannelAccountDelete)
+	app.Get("/settings/channels/mappings", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleChannelMappings)
+	app.Post("/settings/channels/mappings", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleChannelMappingCreate)
+	app.Get("/settings/channels/orders", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleChannelOrders)
+	app.Post("/settings/channels/orders", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleChannelOrderCreate)
+	app.Get("/settings/channels/orders/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleChannelOrderDetail)
+	app.Post("/settings/channels/orders/:id/convert", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleChannelOrderConvert)
+	app.Get("/settings/channels/accounting", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleAccountingMappings)
+	app.Post("/settings/channels/accounting", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleAccountingMappingSave)
+	app.Get("/settings/channels/settlements", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSettlements)
+	app.Post("/settings/channels/settlements", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleSettlementCreate)
+	app.Get("/settings/channels/settlements/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSettlementDetail)
+	app.Post("/settings/channels/settlements/:id/post", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleSettlementPost)
+	app.Post("/settings/channels/settlements/:id/record-payout", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleSettlementRecordPayout)
+	app.Post("/settings/channels/settlements/:id/reverse-fee", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleSettlementReverseFee)
+	app.Post("/settings/channels/settlements/:id/reverse-payout", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleSettlementReversePayout)
+
 	// 向后兼容：旧编号 URL（POST 转发；GET 重定向到新路径）
 	app.Post("/settings/numbering", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleNumberingSettingsPost)
 	app.Get("/settings/numbering", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), func(c *fiber.Ctx) error {
@@ -157,6 +177,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/reports/balance-sheet", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleBalanceSheet)
 	app.Get("/reports/journal-entries", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleJournalEntryReport)
 	app.Get("/reports/sales-tax", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleSalesTaxReport)
+	app.Get("/reports/clearing", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleClearingReport)
 
 	// ── 票据模板管理 ──────────────────────────────────────────────────────────────
 	// 模板管理界面
@@ -169,6 +190,9 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/products-services", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleProductServiceCreate)
 	app.Post("/products-services/update", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleProductServiceUpdate)
 	app.Post("/products-services/inactive", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleProductServiceInactive)
+	app.Get("/products-services/:id/ledger", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInventoryLedger)
+	app.Post("/products-services/opening", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleInventoryOpening)
+	app.Post("/products-services/adjustment", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleInventoryAdjustment)
 
 	// ── 往来单位（客户 / 供应商）────────────────────────────────────────────────
 	// 联系人数据对所有运营角色开放（不在现有 action 定义范围内，仅需成员资格）

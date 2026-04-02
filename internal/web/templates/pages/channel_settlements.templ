@@ -1,0 +1,349 @@
+// 遵循project_guide.md
+package pages
+
+import "gobooks/internal/models"
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+import "fmt"
+
+templ Settlements(vm SettlementsVM) {
+	@layout.Layout(
+		"GoBooks - Settlements",
+		ui.SidebarVM{Active: "Channels", HasCompany: vm.HasCompany},
+		bodySettlements(vm),
+	)
+}
+
+templ bodySettlements(vm SettlementsVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<h1 class="text-title font-semibold">Channel Settlements</h1>
+				<p class="mt-2 text-text-muted2">Settlement reports from external channels. Staged here before GL posting.</p>
+			</div>
+			<a href="/settings/channels" class="text-body text-primary hover:text-primary-hover">← Channels</a>
+		</div>
+
+		if vm.Created {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Settlement imported.</div>
+		}
+
+		// Manual entry form
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6" x-data="{ lineCount: 1 }">
+			<h2 class="text-section font-semibold text-text">Import Settlement</h2>
+			<form method="post" action="/settings/channels/settlements">
+				<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+					<div>
+						<label class="block text-body font-medium text-text">Channel *</label>
+						<select name="channel_account_id" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+							<option value="">-- Select --</option>
+							for _, a := range vm.Accounts {
+								<option value={ Uitoa(a.ID) }>{ a.DisplayName }</option>
+							}
+						</select>
+					</div>
+					<div>
+						<label class="block text-body font-medium text-text">Settlement ID</label>
+						<input type="text" name="external_settlement_id" placeholder="e.g. 12345678" class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-body font-medium text-text">Date</label>
+						<input type="date" name="settlement_date" class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-body font-medium text-text">Currency</label>
+						<input type="text" name="currency_code" placeholder="e.g. USD" maxlength="3" class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+				</div>
+
+				<div class="mt-6">
+					<div class="flex items-center justify-between">
+						<h3 class="text-body font-semibold text-text">Settlement Lines</h3>
+						<button type="button" @click="lineCount++" class="text-small font-medium text-primary hover:text-primary-hover">+ Add Line</button>
+					</div>
+					<input type="hidden" name="line_count" :value="lineCount"/>
+					<template x-for="idx in lineCount" :key="idx">
+						<div class="mt-3 grid grid-cols-3 gap-3 rounded border border-border-subtle bg-background p-3">
+							<div>
+								<label class="block text-small text-text-muted2">Type *</label>
+								<select :name="'line_type[' + (idx-1) + ']'" class="mt-1 block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-small outline-none focus:ring-2 focus:ring-primary-focus">
+									<option value="">-- Select --</option>
+									for _, lt := range models.AllSettlementLineTypes() {
+										<option value={ string(lt) }>{ models.SettlementLineTypeLabel(lt) }</option>
+									}
+								</select>
+							</div>
+							<div>
+								<label class="block text-small text-text-muted2">Description</label>
+								<input :name="'line_desc[' + (idx-1) + ']'" type="text" placeholder="e.g. FBA fee" class="mt-1 block w-full rounded-md border border-border-input px-2 py-1.5 text-small outline-none focus:ring-2 focus:ring-primary-focus"/>
+							</div>
+							<div>
+								<label class="block text-small text-text-muted2">Amount</label>
+								<input :name="'line_amount[' + (idx-1) + ']'" type="text" value="0.00" inputmode="decimal" class="mt-1 block w-full rounded-md border border-border-input px-2 py-1.5 text-small outline-none focus:ring-2 focus:ring-primary-focus"/>
+							</div>
+						</div>
+					</template>
+				</div>
+
+				<div class="mt-4 flex justify-end">
+					@ui.ButtonPrimary("Import Settlement", "submit", false)
+				</div>
+			</form>
+		</div>
+
+		// Settlements list
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Recent Settlements</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Channel</th>
+							<th class="py-3 pr-4">Settlement ID</th>
+							<th class="py-3 pr-4">Date</th>
+							<th class="py-3 pr-4 text-right">Gross</th>
+							<th class="py-3 pr-4 text-right">Fees</th>
+							<th class="py-3 pr-4 text-right">Net</th>
+							<th class="py-3 pr-0 text-right">Actions</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						@settlementRows(vm)
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+templ settlementRows(vm SettlementsVM) {
+	// vm.Settlements is interface{} — rendered via type assertion in Go.
+	// For simplicity, this placeholder shows the empty state.
+	// The actual rows are rendered by the handler's type.
+}
+
+templ SettlementDetail(vm SettlementDetailVM) {
+	@layout.Layout(
+		"GoBooks - Settlement Detail",
+		ui.SidebarVM{Active: "Channels", HasCompany: vm.HasCompany},
+		bodySettlementDetail(vm),
+	)
+}
+
+templ bodySettlementDetail(vm SettlementDetailVM) {
+	<div class="max-w-[95%]">
+		if vm.JustPosted {
+			<div class="mb-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Settlement posted to journal entry.
+				if vm.Settlement.PostedJournalEntryID != nil {
+					<span class="ml-1 font-mono">JE #{ Uitoa(*vm.Settlement.PostedJournalEntryID) }</span>
+				}
+			</div>
+		}
+
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<h1 class="text-title font-semibold">Settlement Detail</h1>
+				<p class="mt-1 text-text-muted2">
+					{ vm.Settlement.ExternalSettlementID }
+					if vm.Settlement.ChannelAccount.DisplayName != "" {
+						 · { vm.Settlement.ChannelAccount.DisplayName }
+					}
+				</p>
+			</div>
+			<a href="/settings/channels/settlements" class="text-body text-primary hover:text-primary-hover">← Back</a>
+		</div>
+
+		// Summary
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<div class="grid grid-cols-2 gap-4 sm:grid-cols-4 text-body">
+				<div>
+					<span class="text-small text-text-muted uppercase">Gross</span>
+					<p class="mt-1 font-semibold tabular-nums">{ vm.Settlement.GrossAmount.StringFixed(2) }</p>
+				</div>
+				<div>
+					<span class="text-small text-text-muted uppercase">Fees</span>
+					<p class="mt-1 font-semibold tabular-nums text-danger">{ vm.Settlement.FeeAmount.StringFixed(2) }</p>
+				</div>
+				<div>
+					<span class="text-small text-text-muted uppercase">Net</span>
+					<p class="mt-1 font-semibold tabular-nums">{ vm.Settlement.NetAmount.StringFixed(2) }</p>
+				</div>
+				<div>
+					<span class="text-small text-text-muted uppercase">Unmapped Lines</span>
+					<p class="mt-1">
+						if vm.UnmappedCount > 0 {
+							<span class="font-medium text-warning">{ fmt.Sprintf("%d", vm.UnmappedCount) }</span>
+						} else {
+							<span class="text-success-hover">All mapped</span>
+						}
+					</p>
+				</div>
+			</div>
+		</div>
+
+		// Lines
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Settlement Lines</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Type</th>
+							<th class="py-3 pr-4">Description</th>
+							<th class="py-3 pr-4 text-right">Amount</th>
+							<th class="py-3 pr-0">Mapped Account</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						for _, l := range vm.Lines {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4">
+									<span class={ settlementLineTypeClass(string(l.LineType)) }>
+										{ models.SettlementLineTypeLabel(l.LineType) }
+									</span>
+								</td>
+								<td class="py-3 pr-4 text-small">{ l.Description }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ l.Amount.StringFixed(2) }</td>
+								<td class="py-3 pr-0 text-small">
+									if l.MappedAccount != nil {
+										{ l.MappedAccount.Code + " · " + l.MappedAccount.Name }
+									} else {
+										<span class="inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-warning-soft text-warning">Unmapped</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		// ── Posting section ──────────────────────────────────────────────────
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Post to Journal</h2>
+			<p class="mt-2 text-small text-text-muted2">
+				Generate a journal entry from this settlement's fee, refund, and adjustment lines.
+				Sale and payout lines are skipped — revenue is recognized via invoices, and payouts are matched during bank reconciliation.
+			</p>
+
+			if vm.JustFeeReversed {
+				<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Fee posting reversed.</div>
+			}
+
+			if vm.Settlement.PostedReversalJEID != nil {
+				<div class="mt-4 flex items-center gap-3">
+					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-background text-text-muted border border-border line-through">Fee Posted</span>
+					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-danger-soft text-danger">Reversed</span>
+					<span class="text-small text-text-muted2">Original JE #{ Uitoa(*vm.Settlement.PostedJournalEntryID) } · Reversal JE #{ Uitoa(*vm.Settlement.PostedReversalJEID) }</span>
+				</div>
+			} else if vm.Settlement.PostedJournalEntryID != nil {
+				<div class="mt-4 flex items-center gap-3">
+					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-success-soft text-success-hover">Fee Posted</span>
+					<span class="text-small text-text-muted2">JE #{ Uitoa(*vm.Settlement.PostedJournalEntryID) }</span>
+					if vm.IsFeeReversible {
+						<form method="post" action={ "/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/reverse-fee" } class="inline">
+							<button type="submit" class="rounded-md border border-border-danger px-3 py-1 text-small font-medium text-danger hover:bg-danger-soft"
+								onclick="return confirm('Reverse the fee posting? This creates a reversal journal entry.');">
+								Reverse Fee Posting
+							</button>
+						</form>
+					}
+				</div>
+			} else if vm.IsPostable {
+				<form method="post" action={ "/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/post" } class="mt-4">
+					<button
+						type="submit"
+						class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+						onclick="return confirm('Post this settlement to a journal entry? This creates accounting entries for fees, refunds, and adjustments.');"
+					>
+						Post Settlement
+					</button>
+				</form>
+			} else {
+				<div class="mt-4 rounded-md border border-warning-soft bg-warning-soft p-4 text-body text-warning">
+					<p class="font-medium">Cannot post this settlement yet.</p>
+					<p class="mt-1 text-small">{ vm.PostableError }</p>
+				</div>
+			}
+		</div>
+
+		// ── Payout recording section ─────────────────────────────────────────
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Record Payout</h2>
+			<p class="mt-2 text-small text-text-muted2">
+				Record the bank deposit from this settlement. Creates: Dr Bank, Cr Clearing.
+			</p>
+
+			if vm.JustPayout {
+				<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payout recorded.</div>
+			}
+			if vm.JustPayoutReversed {
+				<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payout reversed.</div>
+			}
+
+			if vm.Settlement.PayoutReversalJEID != nil {
+				<div class="mt-4 flex items-center gap-3">
+					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-background text-text-muted border border-border line-through">Payout Recorded</span>
+					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-danger-soft text-danger">Reversed</span>
+					<span class="text-small text-text-muted2">Original JE #{ Uitoa(*vm.Settlement.PayoutJournalEntryID) } · Reversal JE #{ Uitoa(*vm.Settlement.PayoutReversalJEID) }</span>
+				</div>
+			} else if vm.Settlement.PayoutJournalEntryID != nil {
+				<div class="mt-4 flex items-center gap-3">
+					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-success-soft text-success-hover">Payout Recorded</span>
+					<span class="text-small text-text-muted2">JE #{ Uitoa(*vm.Settlement.PayoutJournalEntryID) }</span>
+					if vm.IsPayoutReversible {
+						<form method="post" action={ "/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/reverse-payout" } class="inline">
+							<button type="submit" class="rounded-md border border-border-danger px-3 py-1 text-small font-medium text-danger hover:bg-danger-soft"
+								onclick="return confirm('Reverse payout recording? This creates a reversal journal entry.');">
+								Reverse Payout
+							</button>
+						</form>
+					} else if vm.PayoutReverseError != "" {
+						<span class="text-small text-text-muted2" title={ vm.PayoutReverseError }>(cannot reverse)</span>
+					}
+				</div>
+			} else if vm.IsPayoutRecordable {
+				<form method="post" action={ "/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/record-payout" } class="mt-4">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						<div>
+							<label class="block text-body font-medium text-text">Bank Account *</label>
+							<select name="bank_account_id" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+								<option value="">-- Select --</option>
+								for _, a := range vm.BankAccounts {
+									<option value={ Uitoa(a.ID) }>{ a.Code + " · " + a.Name }</option>
+								}
+							</select>
+						</div>
+						<div class="flex items-end">
+							<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+								onclick="return confirm('Record payout to bank?');">
+								Record Payout
+							</button>
+						</div>
+					</div>
+				</form>
+			} else if vm.Settlement.PayoutJournalEntryID == nil {
+				<div class="mt-4 rounded-md border border-border bg-background p-3 text-small text-text-muted2">
+					{ vm.PayoutError }
+				</div>
+			}
+		</div>
+	</div>
+}
+
+func settlementLineTypeClass(lt string) string {
+	base := "inline-block rounded px-2 py-0.5 text-small font-medium "
+	switch lt {
+	case "sale":
+		return base + "bg-success-soft text-success-hover"
+	case "fee", "shipping_fee":
+		return base + "bg-danger-soft text-danger"
+	case "refund":
+		return base + "bg-warning-soft text-warning"
+	case "payout":
+		return base + "bg-primary-soft text-primary"
+	default:
+		return base + "bg-background text-text-muted"
+	}
+}

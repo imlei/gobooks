@@ -1,0 +1,184 @@
+// 遵循project_guide.md
+package services
+
+// inventory_read_service.go — Read-only queries for inventory visibility.
+// Provides snapshot, valuation, and movement history data for UI display.
+// All queries are company-scoped. No writes.
+
+import (
+	"github.com/shopspring/decimal"
+	"gobooks/internal/models"
+	"gorm.io/gorm"
+)
+
+// ── Snapshot ─────────────────────────────────────────────────────────────────
+
+// InventorySnapshot holds the current stock state for a single item.
+type InventorySnapshot struct {
+	ItemID         uint
+	QuantityOnHand decimal.Decimal
+	AverageCost    decimal.Decimal
+	InventoryValue decimal.Decimal // qty × avg_cost
+	CostingMethod  string
+	HasOpening     bool
+}
+
+// GetInventorySnapshot returns the current stock snapshot for an inventory item.
+// Returns zero values for non-inventory items or items with no balance record.
+func GetInventorySnapshot(db *gorm.DB, companyID, itemID uint) (*InventorySnapshot, error) {
+	bal, err := GetBalance(db, companyID, itemID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read company costing method.
+	var company models.Company
+	method := "moving_average"
+	if err := db.Select("id", "inventory_costing_method").First(&company, companyID).Error; err == nil {
+		if company.InventoryCostingMethod != "" {
+			method = company.InventoryCostingMethod
+		}
+	}
+
+	return &InventorySnapshot{
+		ItemID:         itemID,
+		QuantityOnHand: bal.QuantityOnHand,
+		AverageCost:    bal.AverageCost,
+		InventoryValue: bal.QuantityOnHand.Mul(bal.AverageCost).RoundBank(2),
+		CostingMethod:  method,
+		HasOpening:     HasOpening(db, companyID, itemID),
+	}, nil
+}
+
+// ── Valuation rows (list page) ───────────────────────────────────────────────
+
+// ItemValuation is a lightweight struct for the items list table.
+type ItemValuation struct {
+	QuantityOnHand string
+	AverageCost    string
+	InventoryValue string
+}
+
+// ListItemValuations returns valuation data for all inventory items in a company.
+// keyed by item_id. Non-inventory items are not included.
+func ListItemValuations(db *gorm.DB, companyID uint) map[uint]ItemValuation {
+	var balances []models.InventoryBalance
+	db.Where("company_id = ? AND location_type = ? AND location_ref = ?",
+		companyID, models.LocationTypeInternal, "").
+		Find(&balances)
+
+	result := make(map[uint]ItemValuation, len(balances))
+	for _, b := range balances {
+		value := b.QuantityOnHand.Mul(b.AverageCost).RoundBank(2)
+		result[b.ItemID] = ItemValuation{
+			QuantityOnHand: b.QuantityOnHand.String(),
+			AverageCost:    b.AverageCost.StringFixed(4),
+			InventoryValue: value.StringFixed(2),
+		}
+	}
+	return result
+}
+
+// ── Movement history ─────────────────────────────────────────────────────────
+
+// MovementRow is a display-ready inventory movement for the ledger page.
+type MovementRow struct {
+	ID             uint
+	Date           string
+	MovementType   string
+	MovementLabel  string // human-friendly label
+	SourceType     string
+	SourceLabel    string // human-friendly label
+	SourceID       *uint
+	QuantityDelta  string
+	UnitCost       string
+	TotalCost      string
+	JournalEntryID *uint
+	Note           string
+}
+
+// ListMovements returns paginated movement rows for an item, newest first.
+func ListMovements(db *gorm.DB, companyID, itemID uint, limit, offset int) ([]MovementRow, int64, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	var total int64
+	db.Model(&models.InventoryMovement{}).
+		Where("company_id = ? AND item_id = ?", companyID, itemID).
+		Count(&total)
+
+	var movs []models.InventoryMovement
+	err := db.Where("company_id = ? AND item_id = ?", companyID, itemID).
+		Order("movement_date DESC, id DESC").
+		Limit(limit).Offset(offset).
+		Find(&movs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows := make([]MovementRow, len(movs))
+	for i, m := range movs {
+		rows[i] = MovementRow{
+			ID:             m.ID,
+			Date:           m.MovementDate.Format("2006-01-02"),
+			MovementType:   string(m.MovementType),
+			MovementLabel:  movementTypeLabel(string(m.MovementType)),
+			SourceType:     m.SourceType,
+			SourceLabel:    sourceTypeLabel(m.SourceType),
+			SourceID:       m.SourceID,
+			QuantityDelta:  m.QuantityDelta.String(),
+			UnitCost:       formatOptDecimal(m.UnitCost),
+			TotalCost:      formatOptDecimal(m.TotalCost),
+			JournalEntryID: m.JournalEntryID,
+			Note:           m.ReferenceNote,
+		}
+	}
+	return rows, total, nil
+}
+
+// ── Label helpers ────────────────────────────────────────────────────────────
+
+func movementTypeLabel(t string) string {
+	switch t {
+	case "opening":
+		return "Opening"
+	case "adjustment":
+		return "Adjustment"
+	case "purchase":
+		return "Purchase"
+	case "sale":
+		return "Sale"
+	default:
+		return t
+	}
+}
+
+func sourceTypeLabel(s string) string {
+	switch s {
+	case "opening":
+		return "Opening Balance"
+	case "adjustment":
+		return "Manual Adjustment"
+	case "invoice":
+		return "Invoice"
+	case "bill":
+		return "Bill"
+	case "invoice_reversal":
+		return "Invoice Reversal"
+	case "bill_reversal":
+		return "Bill Reversal"
+	default:
+		if s == "" {
+			return "—"
+		}
+		return s
+	}
+}
+
+func formatOptDecimal(d *decimal.Decimal) string {
+	if d == nil {
+		return "—"
+	}
+	return d.StringFixed(2)
+}

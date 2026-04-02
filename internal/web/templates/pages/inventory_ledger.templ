@@ -1,0 +1,248 @@
+// 遵循project_guide.md
+package pages
+
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+import "fmt"
+
+templ InventoryLedger(vm InventoryLedgerVM) {
+	@layout.Layout(
+		"GoBooks - Inventory Ledger",
+		ui.SidebarVM{Active: "Products & Services", HasCompany: vm.HasCompany},
+		bodyInventoryLedger(vm),
+	)
+}
+
+templ bodyInventoryLedger(vm InventoryLedgerVM) {
+	<div class="max-w-[95%]">
+		// Header
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<h1 class="text-title font-semibold">Inventory Ledger</h1>
+				<p class="mt-1 text-text-muted2">
+					Review current stock, cost basis, and inventory movements for
+					<strong>{ vm.Item.Name }</strong>.
+				</p>
+			</div>
+			<div class="shrink-0">
+				<a href="/products-services" class="text-body text-primary hover:text-primary-hover">
+					← Back to Items
+				</a>
+			</div>
+		</div>
+
+		// Item info + snapshot
+		<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+			// Left: Item details
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Item Details</h2>
+				<div class="mt-4 space-y-3 text-body">
+					<div class="flex justify-between">
+						<span class="text-text-muted">Name</span>
+						<span class="font-medium">{ vm.Item.Name }</span>
+					</div>
+					if vm.Item.SKU != "" {
+						<div class="flex justify-between">
+							<span class="text-text-muted">SKU</span>
+							<span class="font-mono">{ vm.Item.SKU }</span>
+						</div>
+					}
+					if vm.IsBundle {
+						<div class="flex justify-between">
+							<span class="text-text-muted">Structure</span>
+							<span class="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase bg-primary-soft text-primary">Bundle</span>
+						</div>
+					}
+					<div class="flex justify-between">
+						<span class="text-text-muted">Revenue Account</span>
+						<span>{ vm.RevenueAccountLabel }</span>
+					</div>
+					if vm.COGSAccountLabel != "" {
+						<div class="flex justify-between">
+							<span class="text-text-muted">COGS Account</span>
+							<span>{ vm.COGSAccountLabel }</span>
+						</div>
+					}
+					if vm.InventoryAccountLabel != "" {
+						<div class="flex justify-between">
+							<span class="text-text-muted">Inventory Asset Account</span>
+							<span>{ vm.InventoryAccountLabel }</span>
+						</div>
+					}
+				</div>
+			</div>
+
+			// Right: Stock snapshot or bundle components
+			if vm.IsBundle {
+				<div class="rounded-lg border border-border bg-surface p-6">
+					<h2 class="text-section font-semibold text-text">Bundle Components</h2>
+					<p class="mt-2 text-small text-text-muted2">
+						This is a bundle item. Inventory is tracked on its component items, not on the bundle itself.
+					</p>
+					if len(vm.Components) > 0 {
+						<div class="mt-4 overflow-x-auto">
+							<table class="w-full text-left text-body">
+								<thead class="text-small uppercase tracking-wider text-text-muted">
+									<tr class="border-b border-border">
+										<th class="py-2 pr-4">Component</th>
+										<th class="py-2 pr-4">SKU</th>
+										<th class="py-2 pr-4 text-right">Qty per Bundle</th>
+										<th class="py-2 pr-0">Status</th>
+									</tr>
+								</thead>
+								<tbody>
+									for _, comp := range vm.Components {
+										<tr class="border-b border-border-subtle">
+											<td class="py-2 pr-4 font-medium">{ comp.Name }</td>
+											<td class="py-2 pr-4 text-small text-text-muted2">
+												if comp.SKU != "" {
+													{ comp.SKU }
+												} else {
+													<span class="text-text-muted3">—</span>
+												}
+											</td>
+											<td class="py-2 pr-4 text-right tabular-nums">{ comp.Quantity }</td>
+											<td class="py-2 pr-0">
+												if comp.IsActive {
+													<span class="text-small text-success-hover">Active</span>
+												} else {
+													<span class="text-small text-text-muted">Inactive</span>
+												}
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					} else {
+						<p class="mt-4 text-body text-text-muted2">No components configured.</p>
+					}
+				</div>
+			} else {
+				<div class="rounded-lg border border-border bg-surface p-6">
+					<h2 class="text-section font-semibold text-text">Current Stock</h2>
+					<div class="mt-4 space-y-3 text-body">
+						<div class="flex justify-between">
+							<span class="text-text-muted">Quantity on Hand</span>
+							<span class="font-semibold tabular-nums">{ vm.Snapshot.QuantityOnHand.String() }</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-text-muted">Average Cost</span>
+							<span class="tabular-nums">{ "$" + vm.Snapshot.AverageCost.StringFixed(4) }</span>
+						</div>
+						<div class="flex justify-between border-t border-border pt-3">
+							<span class="text-text-muted">Inventory Value</span>
+							<span class="font-semibold tabular-nums">{ "$" + vm.Snapshot.InventoryValue.StringFixed(2) }</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-text-muted">Costing Method</span>
+							<span class="text-small">{ vm.Snapshot.CostingMethod }</span>
+						</div>
+						if vm.Snapshot.HasOpening {
+							<div class="flex justify-between">
+								<span class="text-text-muted">Opening Balance</span>
+								<span class="text-small text-success-hover">Recorded</span>
+							</div>
+						} else {
+							<div class="flex justify-between">
+								<span class="text-text-muted">Opening Balance</span>
+								<span class="text-small text-warning">Not yet recorded</span>
+							</div>
+						}
+					</div>
+				</div>
+			}
+		</div>
+
+		// Movement ledger table
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<div class="flex items-center justify-between">
+				<h2 class="text-section font-semibold text-text">Movement History</h2>
+				<span class="text-small text-text-muted">
+					{ fmt.Sprintf("%d movements total", vm.TotalMovements) }
+				</span>
+			</div>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Date</th>
+							<th class="py-3 pr-4">Type</th>
+							<th class="py-3 pr-4">Source</th>
+							<th class="py-3 pr-4 text-right">Qty Change</th>
+							<th class="py-3 pr-4 text-right">Unit Cost</th>
+							<th class="py-3 pr-4 text-right">Total Cost</th>
+							<th class="py-3 pr-4">JE</th>
+							<th class="py-3 pr-0">Notes</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						if len(vm.Movements) == 0 {
+							<tr>
+								<td colspan="8" class="py-6 text-center text-text-muted2">
+									No inventory movements recorded yet.
+								</td>
+							</tr>
+						}
+						for _, m := range vm.Movements {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4 text-small tabular-nums">{ m.Date }</td>
+								<td class="py-3 pr-4">
+									<span class={ movementBadgeClass(m.MovementType) }>
+										{ m.MovementLabel }
+									</span>
+								</td>
+								<td class="py-3 pr-4 text-small text-text-muted2">
+									{ m.SourceLabel }
+									if m.SourceID != nil {
+										<span class="text-text-muted3"> #{ Uitoa(*m.SourceID) }</span>
+									}
+								</td>
+								<td class={ "py-3 pr-4 text-right tabular-nums " + qtyDeltaClass(m.QuantityDelta) }>
+									{ m.QuantityDelta }
+								</td>
+								<td class="py-3 pr-4 text-right tabular-nums text-text-muted2">{ m.UnitCost }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ m.TotalCost }</td>
+								<td class="py-3 pr-4 text-small text-text-muted2">
+									if m.JournalEntryID != nil {
+										#{ Uitoa(*m.JournalEntryID) }
+									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
+								<td class="py-3 pr-0 text-small text-text-muted2 max-w-xs truncate">
+									if m.Note != "" {
+										{ m.Note }
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+func movementBadgeClass(mtype string) string {
+	base := "inline-block rounded px-2 py-0.5 text-small font-medium "
+	switch mtype {
+	case "opening":
+		return base + "bg-primary-soft text-primary"
+	case "purchase":
+		return base + "bg-success-soft text-success-hover"
+	case "sale":
+		return base + "bg-warning-soft text-warning"
+	case "adjustment":
+		return base + "bg-background text-text-muted border border-border"
+	default:
+		return base + "bg-background text-text-muted"
+	}
+}
+
+func qtyDeltaClass(delta string) string {
+	if len(delta) > 0 && delta[0] == '-' {
+		return "text-danger"
+	}
+	return "text-success-hover"
+}

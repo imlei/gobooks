@@ -236,10 +236,10 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	_ = s.loadBillEditorDropdowns(companyID, &vm)
 
 	// ── Validate header ───────────────────────────────────────────────────────
-	if billNo == "" {
-		vm.BillNumberError = "Bill Number is required."
-	} else if err := services.ValidateDocumentNumber(billNo); err != nil {
-		vm.BillNumberError = err.Error()
+	if billNo != "" {
+		if err := services.ValidateDocumentNumber(billNo); err != nil {
+			vm.BillNumberError = err.Error()
+		}
 	}
 	vendorID, vendorErr := services.ParseUint(vendorRaw)
 	if vendorErr != nil || vendorID == 0 {
@@ -399,20 +399,22 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		}
 	}
 
-	// Duplicate bill number check.
-	var dupCount int64
-	dupQuery := s.DB.Model(&models.Bill{}).
-		Where("company_id = ? AND LOWER(bill_number) = LOWER(?)", companyID, billNo)
-	if isEdit {
-		dupQuery = dupQuery.Where("id <> ?", editingID)
-	}
-	if err := dupQuery.Count(&dupCount).Error; err != nil {
-		vm.FormError = "Could not validate bill number."
-		return pages.BillEditor(vm).Render(c.Context(), c)
-	}
-	if dupCount > 0 {
-		vm.BillNumberError = "Bill number already exists for this company (case-insensitive)."
-		return pages.BillEditor(vm).Render(c.Context(), c)
+	// Duplicate bill number check (skip when empty — empty bill numbers are allowed).
+	if billNo != "" {
+		var dupCount int64
+		dupQuery := s.DB.Model(&models.Bill{}).
+			Where("company_id = ? AND LOWER(bill_number) = LOWER(?)", companyID, billNo)
+		if isEdit {
+			dupQuery = dupQuery.Where("id <> ?", editingID)
+		}
+		if err := dupQuery.Count(&dupCount).Error; err != nil {
+			vm.FormError = "Could not validate bill number."
+			return pages.BillEditor(vm).Render(c.Context(), c)
+		}
+		if dupCount > 0 {
+			vm.BillNumberError = "Bill number already exists for this company (case-insensitive)."
+			return pages.BillEditor(vm).Render(c.Context(), c)
+		}
 	}
 
 	// ── Parse tax adjustments (user-edited per-code amounts) ─────────────────

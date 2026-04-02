@@ -1,0 +1,266 @@
+// 遵循project_guide.md
+package services
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/shopspring/decimal"
+	"gobooks/internal/models"
+	"gorm.io/gorm"
+)
+
+// ── Errors ───────────────────────────────────────────────────────────────────
+
+var (
+	ErrNotInventoryItem  = errors.New("only inventory-type items support stock operations")
+	ErrOpeningExists     = errors.New("opening balance already exists for this item and location")
+	ErrInsufficientStock = errors.New("adjustment would result in negative inventory — not allowed")
+)
+
+// ── Opening balance ──────────────────────────────────────────────────────────
+
+// OpeningBalanceInput holds the parameters for recording an inventory opening.
+type OpeningBalanceInput struct {
+	CompanyID    uint
+	ItemID       uint
+	Quantity     decimal.Decimal
+	UnitCost     decimal.Decimal
+	AsOfDate     time.Time
+	LocationType models.LocationType
+	LocationRef  string
+}
+
+// CreateOpeningBalance records the initial stock level for an inventory item.
+// Each (item, location_type, location_ref) combination may have at most one
+// opening movement. Uses CostingEngine.ApplyInbound for balance update.
+func CreateOpeningBalance(db *gorm.DB, in OpeningBalanceInput) (*models.InventoryMovement, error) {
+	if in.LocationType == "" {
+		in.LocationType = models.LocationTypeInternal
+	}
+
+	item, err := loadInventoryItem(db, in.CompanyID, in.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	_ = item
+
+	// Check no prior opening for this item + location.
+	var existing int64
+	db.Model(&models.InventoryMovement{}).
+		Where("company_id = ? AND item_id = ? AND movement_type = ? AND source_type = ?",
+			in.CompanyID, in.ItemID, models.MovementTypeOpening, "opening").
+		Count(&existing)
+	if existing > 0 {
+		return nil, ErrOpeningExists
+	}
+
+	if in.Quantity.IsNegative() {
+		return nil, fmt.Errorf("opening quantity cannot be negative")
+	}
+	if in.Quantity.IsPositive() && in.UnitCost.IsNegative() {
+		return nil, fmt.Errorf("unit cost cannot be negative")
+	}
+
+	totalCost := in.Quantity.Mul(in.UnitCost).RoundBank(2)
+
+	var mov models.InventoryMovement
+	err = db.Transaction(func(tx *gorm.DB) error {
+		// Use CostingEngine for balance update.
+		engine, err := ResolveCostingEngineForCompany(tx, in.CompanyID)
+		if err != nil {
+			return fmt.Errorf("resolve costing engine: %w", err)
+		}
+		_, err = engine.ApplyInbound(tx, InboundRequest{
+			CompanyID:    in.CompanyID,
+			ItemID:       in.ItemID,
+			Quantity:     in.Quantity,
+			UnitCost:     in.UnitCost,
+			MovementType: models.MovementTypeOpening,
+			LocationType: in.LocationType,
+			LocationRef:  in.LocationRef,
+			Date:         in.AsOfDate,
+		})
+		if err != nil {
+			return fmt.Errorf("costing engine inbound: %w", err)
+		}
+
+		mov = models.InventoryMovement{
+			CompanyID:     in.CompanyID,
+			ItemID:        in.ItemID,
+			MovementType:  models.MovementTypeOpening,
+			QuantityDelta: in.Quantity,
+			UnitCost:      &in.UnitCost,
+			TotalCost:     &totalCost,
+			SourceType:    "opening",
+			ReferenceNote: "Opening balance",
+			MovementDate:  in.AsOfDate,
+		}
+		return tx.Create(&mov).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &mov, nil
+}
+
+// ── Inventory adjustment ─────────────────────────────────────────────────────
+
+// AdjustmentInput holds the parameters for an inventory adjustment.
+type AdjustmentInput struct {
+	CompanyID     uint
+	ItemID        uint
+	QuantityDelta decimal.Decimal // positive = add, negative = remove
+	UnitCost      *decimal.Decimal
+	MovementDate  time.Time
+	Note          string
+	LocationType  models.LocationType
+	LocationRef   string
+}
+
+// CreateAdjustment records a manual inventory adjustment.
+// Positive adjustments use CostingEngine.ApplyInbound; negative use ApplyOutbound.
+func CreateAdjustment(db *gorm.DB, in AdjustmentInput) (*models.InventoryMovement, error) {
+	if in.LocationType == "" {
+		in.LocationType = models.LocationTypeInternal
+	}
+
+	if _, err := loadInventoryItem(db, in.CompanyID, in.ItemID); err != nil {
+		return nil, err
+	}
+
+	if in.UnitCost != nil && in.UnitCost.IsNegative() {
+		return nil, fmt.Errorf("unit cost cannot be negative")
+	}
+
+	var mov models.InventoryMovement
+	err := db.Transaction(func(tx *gorm.DB) error {
+		engine, err := ResolveCostingEngineForCompany(tx, in.CompanyID)
+		if err != nil {
+			return fmt.Errorf("resolve costing engine: %w", err)
+		}
+
+		var unitCostUsed decimal.Decimal
+		var totalCost decimal.Decimal
+
+		if in.QuantityDelta.IsPositive() {
+			// Positive adjustment = inbound.
+			uc := decimal.Zero
+			if in.UnitCost != nil {
+				uc = *in.UnitCost
+			}
+			result, err := engine.ApplyInbound(tx, InboundRequest{
+				CompanyID:    in.CompanyID,
+				ItemID:       in.ItemID,
+				Quantity:     in.QuantityDelta,
+				UnitCost:     uc,
+				MovementType: models.MovementTypeAdjustment,
+				LocationType: in.LocationType,
+				LocationRef:  in.LocationRef,
+				Date:         in.MovementDate,
+			})
+			if err != nil {
+				return err
+			}
+			unitCostUsed = result.UnitCostUsed
+			totalCost = result.TotalCost
+		} else if in.QuantityDelta.IsNegative() {
+			// Negative adjustment = outbound.
+			result, err := engine.ApplyOutbound(tx, OutboundRequest{
+				CompanyID:    in.CompanyID,
+				ItemID:       in.ItemID,
+				Quantity:     in.QuantityDelta.Abs(),
+				MovementType: models.MovementTypeAdjustment,
+				LocationType: in.LocationType,
+				LocationRef:  in.LocationRef,
+				Date:         in.MovementDate,
+			})
+			if err != nil {
+				return err
+			}
+			unitCostUsed = result.UnitCostUsed
+			totalCost = result.TotalCost
+		}
+		// Zero delta = no-op (movement is still recorded for audit).
+
+		mov = models.InventoryMovement{
+			CompanyID:     in.CompanyID,
+			ItemID:        in.ItemID,
+			MovementType:  models.MovementTypeAdjustment,
+			QuantityDelta: in.QuantityDelta,
+			UnitCost:      &unitCostUsed,
+			TotalCost:     &totalCost,
+			SourceType:    "adjustment",
+			ReferenceNote: in.Note,
+			MovementDate:  in.MovementDate,
+		}
+		return tx.Create(&mov).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &mov, nil
+}
+
+// ── Balance query ────────────────────────────────────────────────────────────
+
+// GetBalance returns the current inventory balance for an item at the default
+// internal location. Returns zero-value balance if no record exists.
+func GetBalance(db *gorm.DB, companyID, itemID uint) (*models.InventoryBalance, error) {
+	var bal models.InventoryBalance
+	err := db.Where("company_id = ? AND item_id = ? AND location_type = ? AND location_ref = ?",
+		companyID, itemID, models.LocationTypeInternal, "").
+		First(&bal).Error
+	if err == gorm.ErrRecordNotFound {
+		return &models.InventoryBalance{
+			CompanyID:      companyID,
+			ItemID:         itemID,
+			LocationType:   models.LocationTypeInternal,
+			QuantityOnHand: decimal.Zero,
+			AverageCost:    decimal.Zero,
+		}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &bal, nil
+}
+
+// HasOpening returns true if an opening movement exists for the item.
+func HasOpening(db *gorm.DB, companyID, itemID uint) bool {
+	var count int64
+	db.Model(&models.InventoryMovement{}).
+		Where("company_id = ? AND item_id = ? AND movement_type = ?",
+			companyID, itemID, models.MovementTypeOpening).
+		Count(&count)
+	return count > 0
+}
+
+// RecentMovements returns the most recent N movements for an item.
+func RecentMovements(db *gorm.DB, companyID, itemID uint, limit int) ([]models.InventoryMovement, error) {
+	var movs []models.InventoryMovement
+	err := db.Where("company_id = ? AND item_id = ?", companyID, itemID).
+		Order("movement_date DESC, id DESC").
+		Limit(limit).
+		Find(&movs).Error
+	return movs, err
+}
+
+// ── Internal helpers ─────────────────────────────────────────────────────────
+
+func loadInventoryItem(db *gorm.DB, companyID, itemID uint) (*models.ProductService, error) {
+	var item models.ProductService
+	if err := db.Where("id = ? AND company_id = ?", itemID, companyID).First(&item).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("item %d not found in company %d", itemID, companyID)
+		}
+		return nil, fmt.Errorf("item lookup failed: %w", err)
+	}
+	if item.Type != models.ProductServiceTypeInventory {
+		return nil, ErrNotInventoryItem
+	}
+	return &item, nil
+}

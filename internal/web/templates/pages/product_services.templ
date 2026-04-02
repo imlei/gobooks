@@ -4,6 +4,7 @@ package pages
 import "gobooks/internal/models"
 import "gobooks/internal/web/templates/layout"
 import "gobooks/internal/web/templates/ui"
+import "fmt"
 
 templ ProductServices(vm ProductServicesVM) {
 	@layout.Layout(
@@ -25,7 +26,7 @@ templ bodyProductServices(vm ProductServicesVM) {
 			<div class="min-w-0 flex-1">
 				<h1 class="text-title font-semibold">Products &amp; Services</h1>
 				<p class="mt-2 text-text-muted2">
-					Items that appear on invoice lines. Each item links to a revenue account for posting.
+					Items that appear on invoice and bill lines. Each item links to a revenue account for posting.
 				</p>
 			</div>
 			<div class="shrink-0">
@@ -53,6 +54,16 @@ templ bodyProductServices(vm ProductServicesVM) {
 				Item marked inactive. It will no longer appear when creating new invoice lines.
 			</div>
 		}
+		if vm.OpeningOK {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Opening balance recorded.
+			</div>
+		}
+		if vm.AdjustmentOK {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				Inventory adjustment recorded.
+			</div>
+		}
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
 				{ vm.FormError }
@@ -66,9 +77,13 @@ templ bodyProductServices(vm ProductServicesVM) {
 					<thead class="text-small uppercase tracking-wider text-text-muted">
 						<tr class="border-b border-border">
 							<th class="py-3 pr-4">Name</th>
+							<th class="py-3 pr-4">SKU</th>
 							<th class="py-3 pr-4">Type</th>
-							<th class="py-3 pr-4">Price</th>
+							<th class="py-3 pr-4 text-right">Price</th>
 							<th class="py-3 pr-4">Revenue Account</th>
+							<th class="py-3 pr-4 text-right">Qty on Hand</th>
+							<th class="py-3 pr-4 text-right">Avg Cost</th>
+							<th class="py-3 pr-4 text-right">Inv. Value</th>
 							<th class="py-3 pr-0 text-right">Actions</th>
 						</tr>
 					</thead>
@@ -81,9 +96,48 @@ templ bodyProductServices(vm ProductServicesVM) {
 										<span class="ml-2 text-small text-text-muted">(Inactive)</span>
 									}
 								</td>
-								<td class="py-3 pr-4">{ models.ProductServiceTypeLabel(item.Type) }</td>
-								<td class="py-3 pr-4">{ item.DefaultPrice.StringFixed(2) }</td>
+								<td class="py-3 pr-4 text-small text-text-muted2">
+									if item.SKU != "" {
+										{ item.SKU }
+									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
+								<td class="py-3 pr-4">
+									{ models.ProductServiceTypeLabel(item.Type) }
+									if item.ItemStructureType == models.ItemStructureBundle {
+										<span class="ml-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase bg-primary-soft text-primary">Bundle</span>
+									}
+								</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ item.DefaultPrice.StringFixed(2) }</td>
 								<td class="py-3 pr-4">{ psAccountLabel(item) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">
+									if v, ok := vm.Valuations[item.ID]; ok {
+										{ v.QuantityOnHand }
+									} else if item.Type == models.ProductServiceTypeInventory {
+										0
+									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
+								<td class="py-3 pr-4 text-right tabular-nums">
+									if v, ok := vm.Valuations[item.ID]; ok {
+										{ v.AverageCost }
+									} else if item.Type == models.ProductServiceTypeInventory {
+										0.00
+									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
+								<td class="py-3 pr-4 text-right tabular-nums">
+									if v, ok := vm.Valuations[item.ID]; ok {
+										{ v.InventoryValue }
+									} else if item.Type == models.ProductServiceTypeInventory {
+										0.00
+									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
 								<td class="py-3 pr-0 text-right whitespace-nowrap">
 									if item.IsActive {
 										<a
@@ -92,7 +146,16 @@ templ bodyProductServices(vm ProductServicesVM) {
 										>
 											Edit
 										</a>
-										<span class="inline-block px-2 text-text-muted3" aria-hidden="true">|</span>
+										if item.Type == models.ProductServiceTypeInventory || item.ItemStructureType == models.ItemStructureBundle {
+											<span class="inline-block px-1 text-text-muted3">|</span>
+											<a
+												href={ "/products-services/" + Uitoa(item.ID) + "/ledger" }
+												class="text-small font-medium text-text-muted2 hover:text-text"
+											>
+												View Details
+											</a>
+										}
+										<span class="inline-block px-1 text-text-muted3">|</span>
 										<form
 											method="post"
 											action="/products-services/inactive"
@@ -104,7 +167,7 @@ templ bodyProductServices(vm ProductServicesVM) {
 												type="submit"
 												class="text-small font-medium text-text-muted3 hover:text-text"
 											>
-												Make inactive
+												Inactive
 											</button>
 										</form>
 									} else {
@@ -120,7 +183,7 @@ templ bodyProductServices(vm ProductServicesVM) {
 
 		@ui.RightDrawerBackdrop()
 		if vm.DrawerMode == "edit" {
-			@ui.RightDrawerPanel("psDrawer", "ps-drawer-title", "Edit Item", "Update name, type, price, and account mapping.", psEditDrawerForm(vm))
+			@ui.RightDrawerPanel("psDrawer", "ps-drawer-title", "Edit Item", "Update item details and account mapping.", psEditDrawerForm(vm))
 		} else {
 			@ui.RightDrawerPanel("psDrawer", "ps-drawer-title", "New Item", "Create a product or service for use on invoice lines.", psCreateDrawerForm(vm))
 		}
@@ -175,139 +238,339 @@ templ psEditDrawerForm(vm ProductServicesVM) {
 }
 
 templ psFormFields(vm ProductServicesVM) {
-	<div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+	<div
+		class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4"
+		x-data={ fmt.Sprintf("{ itemType: '%s', structureType: '%s', compCount: %d }", vm.Type, vm.StructureType, maxInt(len(vm.Components), 1)) }
+	>
 		// Name
 		<div>
 			<label class="block text-body font-medium text-text">Name *</label>
+			<input
+				type="text"
+				name="name"
+				value={ vm.Name }
+				placeholder="e.g. Consulting Services"
+				autocomplete="off"
+				class={ psInputClass(vm.NameError != "") }
+			/>
 			if vm.NameError != "" {
-				<input
-					type="text"
-					name="name"
-					value={ vm.Name }
-					placeholder="e.g. Consulting Services"
-					autocomplete="off"
-					class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
-				/>
 				<div class="mt-1 text-body text-danger">{ vm.NameError }</div>
-			} else {
-				<input
-					type="text"
-					name="name"
-					value={ vm.Name }
-					placeholder="e.g. Consulting Services"
-					autocomplete="off"
-					class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-				/>
 			}
 		</div>
 
 		// Type
 		<div>
 			<label class="block text-body font-medium text-text">Type *</label>
+			<select
+				name="type"
+				x-model="itemType"
+				class={ psInputClass(vm.TypeError != "") }
+			>
+				<option value="">-- Select --</option>
+				for _, t := range models.AllProductServiceTypes() {
+					<option value={ string(t) } selected?={ string(t) == vm.Type }>{ models.ProductServiceTypeLabel(t) }</option>
+				}
+			</select>
 			if vm.TypeError != "" {
-				<select
-					name="type"
-					class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
-				>
-					<option value="">-- Select --</option>
-					for _, t := range models.AllProductServiceTypes() {
-						<option value={ string(t) } selected?={ string(t) == vm.Type }>{ models.ProductServiceTypeLabel(t) }</option>
-					}
-				</select>
 				<div class="mt-1 text-body text-danger">{ vm.TypeError }</div>
-			} else {
-				<select
-					name="type"
-					class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-				>
-					<option value="">-- Select --</option>
-					for _, t := range models.AllProductServiceTypes() {
-						<option value={ string(t) } selected?={ string(t) == vm.Type }>{ models.ProductServiceTypeLabel(t) }</option>
-					}
-				</select>
 			}
 		</div>
 
-		// Default Price
+		// SKU
 		<div>
-			<label class="block text-body font-medium text-text">Default price</label>
+			<label class="block text-body font-medium text-text">SKU <span class="font-normal text-text-muted2">(optional)</span></label>
+			<input
+				type="text"
+				name="sku"
+				value={ vm.SKU }
+				placeholder="e.g. WIDGET-001"
+				autocomplete="off"
+				class={ psInputClass(false) }
+			/>
+		</div>
+
+		// Structure Type (single / bundle)
+		<div x-show="itemType !== 'service'" x-cloak>
+			<label class="block text-body font-medium text-text">Structure</label>
+			<select
+				name="structure_type"
+				x-model="structureType"
+				class={ psInputClass(false) }
+			>
+				<option value="single" selected?={ vm.StructureType != "bundle" }>Single Item</option>
+				<option value="bundle" selected?={ vm.StructureType == "bundle" }>Bundle / Kit</option>
+			</select>
+			<p class="mt-1 text-small text-text-muted2">Bundle: a sellable package of inventory items. Inventory is tracked on components.</p>
+		</div>
+
+		// Default Price (sell)
+		<div>
+			<label class="block text-body font-medium text-text">Sell price</label>
+			<input
+				type="text"
+				name="default_price"
+				value={ vm.DefaultPrice }
+				placeholder="0.00"
+				inputmode="decimal"
+				autocomplete="off"
+				class={ psInputClass(vm.DefaultPriceError != "") }
+			/>
 			if vm.DefaultPriceError != "" {
-				<input
-					type="text"
-					name="default_price"
-					value={ vm.DefaultPrice }
-					placeholder="0.00"
-					inputmode="decimal"
-					autocomplete="off"
-					class="mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
-				/>
 				<div class="mt-1 text-body text-danger">{ vm.DefaultPriceError }</div>
-			} else {
-				<input
-					type="text"
-					name="default_price"
-					value={ vm.DefaultPrice }
-					placeholder="0.00"
-					inputmode="decimal"
-					autocomplete="off"
-					class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-				/>
 			}
-			<p class="mt-1 text-small text-text-muted2">Pre-fills the unit price on new invoice lines. Can be overridden per line.</p>
+			<p class="mt-1 text-small text-text-muted2">Pre-fills the unit price on new invoice lines.</p>
+		</div>
+
+		// Purchase Price — inventory only
+		<div x-show="itemType === 'inventory'" x-cloak>
+			<label class="block text-body font-medium text-text">Purchase price</label>
+			<input
+				type="text"
+				name="purchase_price"
+				value={ vm.PurchasePrice }
+				placeholder="0.00"
+				inputmode="decimal"
+				autocomplete="off"
+				class={ psInputClass(false) }
+			/>
+			<p class="mt-1 text-small text-text-muted2">Default cost used for purchase bills.</p>
 		</div>
 
 		// Revenue Account
 		<div>
 			<label class="block text-body font-medium text-text">Revenue account *</label>
+			<select
+				name="revenue_account_id"
+				class={ psInputClass(vm.RevenueAccountIDError != "") }
+			>
+				<option value="">-- Select --</option>
+				for _, a := range vm.RevenueAccounts {
+					<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.RevenueAccountID }>{ a.Code + " · " + a.Name }</option>
+				}
+			</select>
 			if vm.RevenueAccountIDError != "" {
-				<select
-					name="revenue_account_id"
-					class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
-				>
-					<option value="">-- Select --</option>
-					for _, a := range vm.RevenueAccounts {
-						<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.RevenueAccountID }>{ a.Code + " · " + a.Name }</option>
-					}
-				</select>
 				<div class="mt-1 text-body text-danger">{ vm.RevenueAccountIDError }</div>
-			} else {
-				<select
-					name="revenue_account_id"
-					class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-				>
-					<option value="">-- Select --</option>
-					for _, a := range vm.RevenueAccounts {
-						<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.RevenueAccountID }>{ a.Code + " · " + a.Name }</option>
-					}
-				</select>
 			}
 			<p class="mt-1 text-small text-text-muted2">The account credited when an invoice line using this item is posted.</p>
 		</div>
 
+		// COGS Account — inventory only
+		<div x-show="itemType === 'inventory'" x-cloak>
+			<label class="block text-body font-medium text-text">Cost of goods sold account *</label>
+			<select
+				name="cogs_account_id"
+				class={ psInputClass(vm.COGSAccountIDError != "") }
+			>
+				<option value="">-- Select --</option>
+				for _, a := range vm.COGSAccounts {
+					<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.COGSAccountID }>{ a.Code + " · " + a.Name }</option>
+				}
+			</select>
+			if vm.COGSAccountIDError != "" {
+				<div class="mt-1 text-body text-danger">{ vm.COGSAccountIDError }</div>
+			}
+		</div>
+
+		// Inventory Account — inventory only
+		<div x-show="itemType === 'inventory'" x-cloak>
+			<label class="block text-body font-medium text-text">Inventory asset account *</label>
+			<select
+				name="inventory_account_id"
+				class={ psInputClass(vm.InventoryAccountIDError != "") }
+			>
+				<option value="">-- Select --</option>
+				for _, a := range vm.InventoryAccounts {
+					<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.InventoryAccountID }>{ a.Code + " · " + a.Name }</option>
+				}
+			</select>
+			if vm.InventoryAccountIDError != "" {
+				<div class="mt-1 text-body text-danger">{ vm.InventoryAccountIDError }</div>
+			}
+		</div>
+
 		// Default Tax Code (optional)
 		<div>
-			<label class="block text-body font-medium text-text">Default tax code (optional)</label>
+			<label class="block text-body font-medium text-text">Default tax code <span class="font-normal text-text-muted2">(optional)</span></label>
 			<select
 				name="default_tax_code_id"
-				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+				class={ psInputClass(false) }
 			>
 				<option value="">-- None --</option>
 				for _, tc := range vm.TaxCodes {
 					<option value={ Uitoa(tc.ID) } selected?={ Uitoa(tc.ID) == vm.DefaultTaxCodeID }>{ tc.Name }</option>
 				}
 			</select>
-			<p class="mt-1 text-small text-text-muted2">Pre-fills the tax code on new invoice lines. Can be overridden per line.</p>
+			<p class="mt-1 text-small text-text-muted2">Pre-fills the tax code on new invoice lines.</p>
 		</div>
 
 		// Description
 		<div>
-			<label class="block text-body font-medium text-text">Description (optional)</label>
+			<label class="block text-body font-medium text-text">Description <span class="font-normal text-text-muted2">(optional)</span></label>
 			<textarea
 				name="description"
 				rows="3"
 				placeholder="Brief description shown on invoices."
-				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+				class={ psInputClass(false) }
 			>{ vm.Description }</textarea>
 		</div>
+
+		// ── Bundle components section ─────────────────────────────────────────
+		<div x-show="structureType === 'bundle'" x-cloak>
+			@psBundleComponentsSection(vm)
+		</div>
+
+		// ── Inventory section (edit mode only, inventory type only) ────────────
+		if vm.DrawerMode == "edit" {
+			<div x-show="itemType === 'inventory' && structureType !== 'bundle'" x-cloak>
+				@psInventorySection(vm)
+			</div>
+		}
 	</div>
+}
+
+templ psInventorySection(vm ProductServicesVM) {
+	<div class="border-t border-border pt-4 space-y-4">
+		<p class="text-small font-semibold uppercase tracking-wider text-text-muted">Inventory</p>
+
+		// Current qty on hand (read-only)
+		<div>
+			<label class="block text-body font-medium text-text">Quantity on hand</label>
+			<p class="mt-1 text-body font-semibold text-text tabular-nums">
+				if qty, ok := vm.Balances[vm.EditingID]; ok {
+					{ qty }
+				} else {
+					0
+				}
+			</p>
+		</div>
+
+		// Opening balance mini-form
+		<div class="rounded-md border border-border bg-background p-3 space-y-3">
+			<p class="text-small font-semibold text-text">Record Opening Balance</p>
+			<form method="post" action="/products-services/opening" class="space-y-3">
+				<input type="hidden" name="item_id" value={ Uitoa(vm.EditingID) }/>
+				<div class="grid grid-cols-3 gap-3">
+					<div>
+						<label class="block text-small text-text-muted2">Quantity</label>
+						<input type="text" name="opening_qty" value="0" inputmode="decimal" class={ psInputClass(false) }/>
+					</div>
+					<div>
+						<label class="block text-small text-text-muted2">Unit cost</label>
+						<input type="text" name="opening_cost" value="0.00" inputmode="decimal" class={ psInputClass(false) }/>
+					</div>
+					<div>
+						<label class="block text-small text-text-muted2">As of date</label>
+						<input type="date" name="opening_date" class={ psInputClass(false) }/>
+					</div>
+				</div>
+				<button
+					type="submit"
+					class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover"
+				>
+					Record Opening
+				</button>
+			</form>
+		</div>
+
+		// Adjustment mini-form
+		<div class="rounded-md border border-border bg-background p-3 space-y-3">
+			<p class="text-small font-semibold text-text">Adjust Inventory</p>
+			<form method="post" action="/products-services/adjustment" class="space-y-3">
+				<input type="hidden" name="item_id" value={ Uitoa(vm.EditingID) }/>
+				<div class="grid grid-cols-3 gap-3">
+					<div>
+						<label class="block text-small text-text-muted2">Qty change (+/-)</label>
+						<input type="text" name="adj_qty" value="0" inputmode="decimal" class={ psInputClass(false) }/>
+					</div>
+					<div>
+						<label class="block text-small text-text-muted2">Unit cost (opt.)</label>
+						<input type="text" name="adj_cost" placeholder="—" inputmode="decimal" class={ psInputClass(false) }/>
+					</div>
+					<div>
+						<label class="block text-small text-text-muted2">Date</label>
+						<input type="date" name="adj_date" class={ psInputClass(false) }/>
+					</div>
+				</div>
+				<div>
+					<label class="block text-small text-text-muted2">Note (optional)</label>
+					<input type="text" name="adj_note" placeholder="e.g. Physical count correction" class={ psInputClass(false) }/>
+				</div>
+				<button
+					type="submit"
+					class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-small font-semibold text-text hover:bg-background"
+				>
+					Record Adjustment
+				</button>
+			</form>
+		</div>
+	</div>
+}
+
+templ psBundleComponentsSection(vm ProductServicesVM) {
+	<div class="border-t border-border pt-4 space-y-3">
+		<p class="text-small font-semibold uppercase tracking-wider text-text-muted">Bundle Components</p>
+		if vm.ComponentError != "" {
+			<div class="text-body text-danger">{ vm.ComponentError }</div>
+		}
+		<p class="text-small text-text-muted2">Select inventory items that make up this bundle. Each component's stock is deducted when the bundle is sold.</p>
+
+		<input type="hidden" name="component_count" :value="compCount"/>
+
+		<template x-for="(_, idx) in Array.from({length: compCount})" :key="idx">
+			<div class="flex items-end gap-2 rounded border border-border-subtle bg-background p-2">
+				<div class="flex-1">
+					<label class="block text-small text-text-muted2">Item</label>
+					<select
+						:name="'comp_item[' + idx + ']'"
+						class="mt-1 block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-small outline-none focus:ring-2 focus:ring-primary-focus"
+					>
+						<option value="">-- Select --</option>
+						for _, item := range vm.InventoryItems {
+							<option value={ Uitoa(item.ID) }>{ item.Name }</option>
+						}
+					</select>
+				</div>
+				<div class="w-24">
+					<label class="block text-small text-text-muted2">Qty</label>
+					<input
+						type="text"
+						:name="'comp_qty[' + idx + ']'"
+						value="1"
+						inputmode="decimal"
+						class="mt-1 block w-full rounded-md border border-border-input px-2 py-1.5 text-small outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				</div>
+				<button
+					type="button"
+					@click="if (compCount > 1) compCount--"
+					class="mb-0.5 text-small text-text-muted3 hover:text-danger"
+					title="Remove"
+				>
+					&times;
+				</button>
+			</div>
+		</template>
+
+		<button
+			type="button"
+			@click="compCount++"
+			class="text-small font-medium text-primary hover:text-primary-hover"
+		>
+			+ Add Component
+		</button>
+	</div>
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func psInputClass(hasErr bool) string {
+	if hasErr {
+		return "mt-2 block w-full rounded-md border border-danger px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
+	}
+	return "mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 }

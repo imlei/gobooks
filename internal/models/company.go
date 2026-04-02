@@ -135,6 +135,11 @@ type Company struct {
 	// false = base-currency-only mode (safe default for existing companies).
 	MultiCurrencyEnabled bool `gorm:"not null;default:false"`
 
+	// Inventory costing method. Controls how unit costs are calculated on
+	// inbound/outbound movements. Default: moving_average.
+	// Once inventory movements exist for the company, this should not be changed.
+	InventoryCostingMethod string `gorm:"type:text;not null;default:'moving_average'"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

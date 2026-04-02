@@ -131,12 +131,29 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		}
 	}
 
-	// ── 3. Resolve AR account ─────────────────────────────────────────────────
-	// For foreign-currency invoices, prefer the system-generated AR account for
-	// that currency (system_key = "ar_{code}", created by AddCompanyCurrency).
-	// Fall back to the first active AR account if not found.
+	// ── 3. Resolve debit-side account (AR or channel clearing) ───────────────
+	// Channel-origin invoices (from channel order conversion) use the channel's
+	// clearing account instead of AR. This ensures the clearing account
+	// accumulates the platform receivable, later reduced by settlement fee
+	// posting and zeroed by payout recording. Normal invoices use standard AR.
 	var arAccount models.Account
-	if isForeignCurrency {
+	isChannelOrigin := inv.ChannelOrderID != nil
+
+	if isChannelOrigin {
+		var channelOrder models.ChannelOrder
+		if err := db.Where("id = ? AND company_id = ?", *inv.ChannelOrderID, companyID).
+			First(&channelOrder).Error; err != nil {
+			return fmt.Errorf("channel order not found for channel-origin invoice: %w", err)
+		}
+		mapping, _ := GetAccountingMapping(db, companyID, channelOrder.ChannelAccountID)
+		if mapping == nil || mapping.ClearingAccountID == nil {
+			return fmt.Errorf("clearing account not configured for channel — set it in Settings > Channels > Accounting Mappings")
+		}
+		if err := db.Where("id = ? AND company_id = ? AND is_active = true", *mapping.ClearingAccountID, companyID).
+			First(&arAccount).Error; err != nil {
+			return fmt.Errorf("clearing account is not active")
+		}
+	} else if isForeignCurrency {
 		sysKey := "ar_" + inv.CurrencyCode
 		err := db.Where("company_id = ? AND system_key = ? AND is_active = true", companyID, sysKey).
 			First(&arAccount).Error
@@ -158,6 +175,14 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		}
 	}
 
+	// ── 3b. Validate inventory stock (for stock items) ───────────────────────
+	// Must happen before the transaction to provide a clear error without
+	// acquiring locks. The actual deduction happens inside the transaction.
+	outboundCosts, bundleExpansions, stockErr := ValidateStockForInvoice(db, companyID, inv.Lines)
+	if stockErr != nil {
+		return stockErr
+	}
+
 	// ── 4. Build posting fragments ────────────────────────────────────────────
 	// Pure function: one DR (AR) + one CR (revenue) per line + one CR (tax) per
 	// taxable line. No DB calls; validated against company above.
@@ -165,6 +190,12 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 	if err != nil {
 		return fmt.Errorf("build invoice fragments: %w", err)
 	}
+
+	// ── 4b. Add COGS fragments for inventory items ───────────────────────────
+	// Dr COGS / Cr Inventory Asset for each stock item, using current avg cost.
+	// These are self-balancing (Dr == Cr) so they don't affect the AR balance check.
+	cogsFrags := BuildCOGSFragments(inv.Lines, outboundCosts, bundleExpansions)
+	frags = append(frags, cogsFrags...)
 
 	// ── 5. Aggregate by account + side ────────────────────────────────────────
 	// Multiple lines pointing to the same revenue or tax account are merged into
@@ -261,7 +292,12 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return fmt.Errorf("project to ledger: %w", err)
 		}
 
-		// e. Update invoice: mark issued (posted), link journal entry, snapshot base amounts.
+		// e. Record inventory sale movements for stock items (same transaction).
+		if err := CreateSaleMovements(tx, companyID, inv, je.ID, outboundCosts, bundleExpansions); err != nil {
+			return fmt.Errorf("inventory sale movements: %w", err)
+		}
+
+		// f. Update invoice: mark issued (posted), link journal entry, snapshot base amounts.
 		// Phase 4: also set balance_due = Amount and balance_due_base = amountBase so
 		// FX settlement can pro-rate the carrying value correctly across partial payments.
 		amountBase := debitSum

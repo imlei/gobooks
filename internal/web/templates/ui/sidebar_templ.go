@@ -217,6 +217,10 @@ func sidebarShell(vm SidebarVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			templ_7745c5c3_Err = navItem("/settings/channels", "Channels", "company", vm.Active == "Channels").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			templ_7745c5c3_Err = navItem("/settings/ai-connect", "AI Connect", "ai", vm.Active == "AI Connect Settings").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -267,7 +271,7 @@ func sidebarCollapseScript() templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<script>\n\t\t(function () {\n\t\t\tif (window.__gobooksSidebarCollapsibleInit) return;\n\t\t\twindow.__gobooksSidebarCollapsibleInit = true;\n\t\t\tvar keys = {\n\t\t\t\tcore:       \"sidebar.section.core\",\n\t\t\t\tsales:      \"sidebar.section.sales\",\n\t\t\t\texpenses:   \"sidebar.section.expenses\",\n\t\t\t\taccounting: \"sidebar.section.accounting\",\n\t\t\t\tsettings:   \"sidebar.section.settings\",\n\t\t\t};\n\t\t\tvar sectionIDs = [\"core\", \"sales\", \"expenses\", \"accounting\", \"settings\"];\n\n\t\t\tfunction readExpanded(sectionKey, containsActive) {\n\t\t\t\tif (containsActive) return true;\n\t\t\t\tvar k = keys[sectionKey];\n\t\t\t\tif (!k) return true;\n\t\t\t\tvar v = localStorage.getItem(k);\n\t\t\t\tif (v === null || v === undefined) return true;\n\t\t\t\treturn v === \"1\" || v === \"true\";\n\t\t\t}\n\n\t\t\tfunction applySection(sectionKey, expanded) {\n\t\t\t\tdocument.querySelectorAll('[data-sidebar-section=\"' + sectionKey + '\"]').forEach(function (el) {\n\t\t\t\t\tvar btn   = el.querySelector(\"[data-sidebar-toggle]\");\n\t\t\t\t\tvar panel = el.querySelector(\"[data-sidebar-panel]\");\n\t\t\t\t\tvar chev  = el.querySelector(\"[data-sidebar-chevron]\");\n\t\t\t\t\tif (!btn || !panel || !chev) return;\n\t\t\t\t\tif (expanded) {\n\t\t\t\t\t\tpanel.classList.remove(\"hidden\");\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"true\");\n\t\t\t\t\t\tchev.classList.remove(\"-rotate-90\");\n\t\t\t\t\t} else {\n\t\t\t\t\t\tpanel.classList.add(\"hidden\");\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"false\");\n\t\t\t\t\t\tchev.classList.add(\"-rotate-90\");\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\n\t\t\tfunction init() {\n\t\t\t\tsectionIDs.forEach(function (sk) {\n\t\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sk + '\"]');\n\t\t\t\t\tif (!first) return;\n\t\t\t\t\tvar ca  = first.getAttribute(\"data-contains-active\") === \"true\";\n\t\t\t\t\tvar exp = readExpanded(sk, ca);\n\t\t\t\t\tapplySection(sk, exp);\n\t\t\t\t});\n\t\t\t}\n\n\t\t\tdocument.addEventListener(\"click\", function (e) {\n\t\t\t\tvar btn = e.target.closest(\"[data-sidebar-toggle]\");\n\t\t\t\tif (!btn) return;\n\t\t\t\tvar wrap = btn.closest(\"[data-sidebar-section]\");\n\t\t\t\tif (!wrap) return;\n\t\t\t\tvar sectionKey = wrap.getAttribute(\"data-sidebar-section\");\n\t\t\t\tif (!sectionKey || !keys[sectionKey]) return;\n\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sectionKey + '\"]');\n\t\t\t\tif (!first) return;\n\t\t\t\tvar panel = first.querySelector(\"[data-sidebar-panel]\");\n\t\t\t\tif (!panel) return;\n\t\t\t\tvar collapsed = panel.classList.contains(\"hidden\");\n\t\t\t\tvar next = !collapsed;\n\t\t\t\tif (keys[sectionKey]) localStorage.setItem(keys[sectionKey], next ? \"0\" : \"1\");\n\t\t\t\tapplySection(sectionKey, !next);\n\t\t\t});\n\n\t\t\tif (document.readyState === \"loading\") {\n\t\t\t\tdocument.addEventListener(\"DOMContentLoaded\", init);\n\t\t\t} else {\n\t\t\t\tinit();\n\t\t\t}\n\t\t})();\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<script>\r\n\t\t(function () {\r\n\t\t\tif (window.__gobooksSidebarCollapsibleInit) return;\r\n\t\t\twindow.__gobooksSidebarCollapsibleInit = true;\r\n\t\t\tvar keys = {\r\n\t\t\t\tcore:       \"sidebar.section.core\",\r\n\t\t\t\tsales:      \"sidebar.section.sales\",\r\n\t\t\t\texpenses:   \"sidebar.section.expenses\",\r\n\t\t\t\taccounting: \"sidebar.section.accounting\",\r\n\t\t\t\tsettings:   \"sidebar.section.settings\",\r\n\t\t\t};\r\n\t\t\tvar sectionIDs = [\"core\", \"sales\", \"expenses\", \"accounting\", \"settings\"];\r\n\r\n\t\t\tfunction readExpanded(sectionKey, containsActive) {\r\n\t\t\t\tif (containsActive) return true;\r\n\t\t\t\tvar k = keys[sectionKey];\r\n\t\t\t\tif (!k) return true;\r\n\t\t\t\tvar v = localStorage.getItem(k);\r\n\t\t\t\tif (v === null || v === undefined) return true;\r\n\t\t\t\treturn v === \"1\" || v === \"true\";\r\n\t\t\t}\r\n\r\n\t\t\tfunction applySection(sectionKey, expanded) {\r\n\t\t\t\tdocument.querySelectorAll('[data-sidebar-section=\"' + sectionKey + '\"]').forEach(function (el) {\r\n\t\t\t\t\tvar btn   = el.querySelector(\"[data-sidebar-toggle]\");\r\n\t\t\t\t\tvar panel = el.querySelector(\"[data-sidebar-panel]\");\r\n\t\t\t\t\tvar chev  = el.querySelector(\"[data-sidebar-chevron]\");\r\n\t\t\t\t\tif (!btn || !panel || !chev) return;\r\n\t\t\t\t\tif (expanded) {\r\n\t\t\t\t\t\tpanel.classList.remove(\"hidden\");\r\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"true\");\r\n\t\t\t\t\t\tchev.classList.remove(\"-rotate-90\");\r\n\t\t\t\t\t} else {\r\n\t\t\t\t\t\tpanel.classList.add(\"hidden\");\r\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"false\");\r\n\t\t\t\t\t\tchev.classList.add(\"-rotate-90\");\r\n\t\t\t\t\t}\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tfunction init() {\r\n\t\t\t\tsectionIDs.forEach(function (sk) {\r\n\t\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sk + '\"]');\r\n\t\t\t\t\tif (!first) return;\r\n\t\t\t\t\tvar ca  = first.getAttribute(\"data-contains-active\") === \"true\";\r\n\t\t\t\t\tvar exp = readExpanded(sk, ca);\r\n\t\t\t\t\tapplySection(sk, exp);\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tdocument.addEventListener(\"click\", function (e) {\r\n\t\t\t\tvar btn = e.target.closest(\"[data-sidebar-toggle]\");\r\n\t\t\t\tif (!btn) return;\r\n\t\t\t\tvar wrap = btn.closest(\"[data-sidebar-section]\");\r\n\t\t\t\tif (!wrap) return;\r\n\t\t\t\tvar sectionKey = wrap.getAttribute(\"data-sidebar-section\");\r\n\t\t\t\tif (!sectionKey || !keys[sectionKey]) return;\r\n\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sectionKey + '\"]');\r\n\t\t\t\tif (!first) return;\r\n\t\t\t\tvar panel = first.querySelector(\"[data-sidebar-panel]\");\r\n\t\t\t\tif (!panel) return;\r\n\t\t\t\tvar collapsed = panel.classList.contains(\"hidden\");\r\n\t\t\t\tvar next = !collapsed;\r\n\t\t\t\tif (keys[sectionKey]) localStorage.setItem(keys[sectionKey], next ? \"0\" : \"1\");\r\n\t\t\t\tapplySection(sectionKey, !next);\r\n\t\t\t});\r\n\r\n\t\t\tif (document.readyState === \"loading\") {\r\n\t\t\t\tdocument.addEventListener(\"DOMContentLoaded\", init);\r\n\t\t\t} else {\r\n\t\t\t\tinit();\r\n\t\t\t}\r\n\t\t})();\r\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -304,7 +308,7 @@ func navItem(href string, label string, iconKind string, isActive bool) templ.Co
 			var templ_7745c5c3_Var10 templ.SafeURL
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 196, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 197, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -325,7 +329,7 @@ func navItem(href string, label string, iconKind string, isActive bool) templ.Co
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 198, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 199, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -343,7 +347,7 @@ func navItem(href string, label string, iconKind string, isActive bool) templ.Co
 			var templ_7745c5c3_Var12 templ.SafeURL
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 201, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 202, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -364,7 +368,7 @@ func navItem(href string, label string, iconKind string, isActive bool) templ.Co
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 203, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 204, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {

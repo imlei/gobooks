@@ -101,9 +101,7 @@ func (e *PostingEngine) VoidDocument(
 		return VoidInvoice(e.db, companyID, sourceID, actor, userID)
 
 	case models.LedgerSourceBill:
-		// Bill void workflow follows the same reversal pattern as VoidInvoice
-		// but targets the bills table. Implemented in a future phase.
-		return fmt.Errorf("%w: bill voiding is not yet implemented", ErrSourceTypeNotSupported)
+		return VoidBill(e.db, companyID, sourceID, actor, userID)
 
 	default:
 		return fmt.Errorf("%w: %q", ErrSourceTypeNotSupported, sourceType)

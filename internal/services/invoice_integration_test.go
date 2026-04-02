@@ -42,6 +42,8 @@ func testInvoiceDB(t *testing.T) *gorm.DB {
 		&models.JournalLine{},
 		&models.LedgerEntry{},
 		&models.AuditLog{},
+		&models.InventoryMovement{},
+		&models.InventoryBalance{},
 	); err != nil {
 		t.Fatal(err)
 	}

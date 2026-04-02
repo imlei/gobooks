@@ -103,6 +103,7 @@ templ sidebarShell(vm SidebarVM) {
 					</button>
 					<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
 						@navItem("/settings/company", "Company", "company", IsCompanySettingsNavActive(vm.Active))
+						@navItem("/settings/channels", "Channels", "company", vm.Active == "Channels")
 						@navItem("/settings/ai-connect", "AI Connect", "ai", vm.Active == "AI Connect Settings")
 						@navItem("/settings/members", "Members", "members", vm.Active == "Members Settings")
 						@navItem("/settings/audit-log", "Audit Log", "audit", vm.Active == "Audit Log")

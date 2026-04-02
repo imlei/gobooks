@@ -127,6 +127,17 @@ func Migrate(db *gorm.DB) error {
 		// Phase 5 multi-currency: period-end unrealized FX revaluation runs + lines
 		&models.RevaluationRun{},
 		&models.RevaluationLine{},
+		// Items extensibility: BOM components, inventory tracking, channel integration
+		&models.ItemComponent{},
+		&models.InventoryMovement{},
+		&models.InventoryBalance{},
+		&models.SalesChannelAccount{},
+		&models.ItemChannelMapping{},
+		&models.ChannelOrder{},
+		&models.ChannelOrderLine{},
+		&models.ChannelSettlement{},
+		&models.ChannelSettlementLine{},
+		&models.ChannelAccountingMapping{},
 	); err != nil {
 		return err
 	}
