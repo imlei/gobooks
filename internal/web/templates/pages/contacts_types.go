@@ -64,7 +64,12 @@ type VendorsVM struct {
 	FormError              string
 	Created                bool
 
+	// MultiCurrency indicates whether the company has multi-currency enabled.
+	// When false the currency selector is hidden and BaseCurrencyCode is shown read-only.
+	MultiCurrency    bool
+	BaseCurrencyCode string
+
 	Vendors      []models.Vendor
 	PaymentTerms []models.PaymentTerm
-	Currencies   []models.Currency // enabled currencies (base + foreign)
+	Currencies   []models.Currency // enabled currencies (base + foreign); only used when MultiCurrency == true
 }

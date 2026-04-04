@@ -29,14 +29,16 @@ func (s *Server) handleVendors(c *fiber.Ctx) error {
 	var paymentTerms []models.PaymentTerm
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&paymentTerms)
 
-	currencies, _ := s.enabledCurrenciesForCompany(companyID)
+	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
 
 	return pages.Vendors(pages.VendorsVM{
-		HasCompany:   true,
-		Vendors:      vendors,
-		Created:      c.Query("created") == "1",
-		PaymentTerms: paymentTerms,
-		Currencies:   currencies,
+		HasCompany:       true,
+		Vendors:          vendors,
+		Created:          c.Query("created") == "1",
+		PaymentTerms:     paymentTerms,
+		MultiCurrency:    multiCurrency,
+		BaseCurrencyCode: baseCurrency,
+		Currencies:       currencies,
 	}).Render(c.Context(), c)
 }
 
@@ -58,7 +60,7 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 	notes        := strings.TrimSpace(c.FormValue("notes"))
 	paymentTerm  := strings.TrimSpace(c.FormValue("payment_term"))
 
-	currencies, _ := s.enabledCurrenciesForCompany(companyID)
+	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
 
 	vm := pages.VendorsVM{
 		HasCompany:             true,
@@ -69,6 +71,8 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 		CurrencyCode:           currencyCode,
 		Notes:                  notes,
 		DefaultPaymentTermCode: paymentTerm,
+		MultiCurrency:          multiCurrency,
+		BaseCurrencyCode:       baseCurrency,
 		Currencies:             currencies,
 	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
@@ -98,6 +102,11 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 	if count > 0 {
 		vm.NameError = "A vendor with this name already exists for this company."
 		return pages.Vendors(vm).Render(c.Context(), c)
+	}
+
+	// Discard currency selection when multi-currency is not enabled.
+	if !multiCurrency {
+		currencyCode = ""
 	}
 
 	vendor := models.Vendor{
@@ -139,28 +148,28 @@ func (s *Server) vendorsForCompany(companyID uint) ([]models.Vendor, error) {
 	return vendors, err
 }
 
-// enabledCurrenciesForCompany returns the company's base currency plus any
-// additional foreign currencies they have enabled, as a slice of models.Currency.
-func (s *Server) enabledCurrenciesForCompany(companyID uint) ([]models.Currency, error) {
-	// Get company base currency.
+// vendorCurrencyInfo returns the multi-currency flag, base currency code, and
+// (when multi-currency is on) the list of enabled currencies for the dropdown.
+// On any DB error it returns safe defaults (single-currency, no list).
+func (s *Server) vendorCurrencyInfo(companyID uint) (multiCurrency bool, baseCurrency string, currencies []models.Currency) {
 	var co models.Company
-	if err := s.DB.Select("id, base_currency_code").First(&co, companyID).Error; err != nil {
-		return nil, err
+	if err := s.DB.Select("id, base_currency_code, multi_currency_enabled").First(&co, companyID).Error; err != nil {
+		return false, "", nil
+	}
+	baseCurrency = co.BaseCurrencyCode
+	if !co.MultiCurrencyEnabled {
+		return false, baseCurrency, nil
 	}
 
-	// Collect codes: base + active foreign currencies.
-	codes := []string{co.BaseCurrencyCode}
+	// Multi-currency: collect base + active foreign currency codes.
+	codes := []string{baseCurrency}
 	var foreign []models.CompanyCurrency
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Find(&foreign)
 	for _, f := range foreign {
-		if f.CurrencyCode != co.BaseCurrencyCode {
+		if f.CurrencyCode != baseCurrency {
 			codes = append(codes, f.CurrencyCode)
 		}
 	}
-
-	var currencies []models.Currency
-	if err := s.DB.Where("code IN ? AND is_active = true", codes).Order("code asc").Find(&currencies).Error; err != nil {
-		return nil, err
-	}
-	return currencies, nil
+	_ = s.DB.Where("code IN ? AND is_active = true", codes).Order("code asc").Find(&currencies)
+	return true, baseCurrency, currencies
 }
