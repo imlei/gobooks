@@ -59,52 +59,139 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 			</div>
 		}
 
-		<!-- Reconciliation info form -->
-		<form method="get" action="/banking/reconcile" class="mt-6 rounded-lg border border-border bg-surface p-6">
-			<h2 class="text-section font-semibold text-text">Reconciliation Info</h2>
-			<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-4">
-				<div class="md:col-span-2">
-					<label class="block text-body font-medium text-text">Bank Account (GL) *</label>
-					<select
-						name="account_id"
-						x-model="header.account_id"
-						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+		// ── No account selected: account picker ───────────────────────────────────
+		if vm.EntryMode == "" {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Select Account to Reconcile</h2>
+				<p class="mt-1 text-small text-text-muted2">Choose the bank or credit card account you want to reconcile against your statement.</p>
+				<form method="get" action="/banking/reconcile" class="mt-6">
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+						<div>
+							<label class="block text-body font-medium text-text">Bank Account (GL) *</label>
+							<select
+								name="account_id"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							>
+								<option value="">-- Select --</option>
+								for _, a := range vm.Accounts {
+									<option value={ Uitoa(a.ID) }>{ a.Code } - { a.Name }</option>
+								}
+							</select>
+						</div>
+					</div>
+					<div class="mt-6 flex justify-end">
+						<button type="submit" class="rounded-md bg-primary px-6 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+							Next →
+						</button>
+					</div>
+				</form>
+			</div>
+		}
+
+		// ── Setup mode: enter statement date + ending balance ─────────────────────
+		if vm.EntryMode == "setup" {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<div class="flex items-center justify-between">
+					<div>
+						<h2 class="text-section font-semibold text-text">{ vm.AccountName }</h2>
+						<p class="mt-0.5 text-small text-text-muted2">Enter your bank statement details to begin reconciling.</p>
+					</div>
+					<a href="/banking/reconcile" class="text-small text-primary hover:underline">Change Account</a>
+				</div>
+				if vm.LastStatementDateDisplay != "" {
+					<div class="mt-4 rounded-md border border-border-subtle bg-background px-4 py-3 text-small text-text-muted2">
+						Last reconciled: <span class="font-semibold text-text">{ vm.LastStatementDateDisplay }</span>
+					</div>
+				}
+				<form method="get" action="/banking/reconcile" class="mt-6">
+					<input type="hidden" name="account_id" value={ vm.AccountID }/>
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+						<div>
+							<label class="block text-body font-medium text-text">Statement Date *</label>
+							<input
+								type="date"
+								name="statement_date"
+								value={ vm.StatementDate }
+								class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+						<div>
+							<label class="block text-body font-medium text-text">Ending Balance *</label>
+							<input
+								type="text"
+								inputmode="decimal"
+								name="ending_balance"
+								value={ vm.EndingBalance }
+								placeholder="0.00"
+								class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+					</div>
+					<div class="mt-6 flex justify-end">
+						<button type="submit" class="rounded-md bg-primary px-6 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+							Start Reconciling →
+						</button>
+					</div>
+				</form>
+			</div>
+		}
+
+		// ── Resume mode: draft found for this account ─────────────────────────────
+		if vm.EntryMode == "resume" {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<div class="flex items-center justify-between">
+					<div>
+						<h2 class="text-section font-semibold text-text">{ vm.AccountName }</h2>
+						<p class="mt-0.5 text-small text-text-muted2">You have an in-progress reconciliation saved for this account.</p>
+					</div>
+					<a href="/banking/reconcile" class="text-small text-primary hover:underline">Change Account</a>
+				</div>
+				if vm.LastStatementDateDisplay != "" {
+					<div class="mt-4 rounded-md border border-border-subtle bg-background px-4 py-3 text-small text-text-muted2">
+						Last reconciled: <span class="font-semibold text-text">{ vm.LastStatementDateDisplay }</span>
+					</div>
+				}
+				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div>
+						<p class="text-small uppercase tracking-wider text-text-muted">Statement Date</p>
+						<p class="mt-1 text-body font-semibold text-text">{ vm.StatementDate }</p>
+					</div>
+					<div>
+						<p class="text-small uppercase tracking-wider text-text-muted">Ending Balance</p>
+						<p class="mt-1 text-body font-semibold text-text">{ vm.EndingBalance }</p>
+					</div>
+				</div>
+				<div class="mt-6 flex flex-wrap items-center gap-3">
+					<a
+						href={ templ.SafeURL("/banking/reconcile?account_id=" + vm.AccountID + "&statement_date=" + vm.StatementDate + "&ending_balance=" + vm.EndingBalance) }
+						class="rounded-md bg-primary px-6 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
 					>
-						<option value="">-- Select --</option>
-						for _, a := range vm.Accounts {
-							<option value={ Uitoa(a.ID) } selected?={ Uitoa(a.ID) == vm.AccountID }>{ a.Code } - { a.Name }</option>
-						}
-					</select>
-				</div>
-				<div>
-					<label class="block text-body font-medium text-text">Statement Date *</label>
-					<input
-						type="date"
-						name="statement_date"
-						value={ vm.StatementDate }
-						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-					/>
-				</div>
-				<div>
-					<label class="block text-body font-medium text-text">Ending Balance *</label>
-					<input
-						type="text"
-						inputmode="decimal"
-						name="ending_balance"
-						value={ vm.EndingBalance }
-						placeholder="0.00"
-						class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-					/>
-				</div>
-				<div class="md:col-span-4 flex justify-end">
-					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
-						Load
-					</button>
+						Resume
+					</a>
+					<form method="post" action="/banking/reconcile/discard-draft">
+						<input type="hidden" name="account_id" value={ vm.AccountID }/>
+						<button type="submit"
+							class="rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background">
+							Start New
+						</button>
+					</form>
 				</div>
 			</div>
-		</form>
+		}
 
-		if vm.AccountID != "" && vm.FormError == "" {
+		// ── Work mode: full working reconciliation page ───────────────────────────
+		if vm.EntryMode == "work" {
+			<!-- Compact account / statement info bar -->
+			<div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-border bg-surface px-6 py-4">
+				<span class="text-body font-semibold text-text">{ vm.AccountName }</span>
+				<span class="text-small text-text-muted2">Statement: { vm.StatementDate }</span>
+				<span class="text-small text-text-muted2">Ending Balance: { vm.EndingBalance }</span>
+				<a
+					href={ templ.SafeURL("/banking/reconcile?account_id=" + vm.AccountID) }
+					class="ml-auto text-small text-primary hover:underline"
+				>Edit Info</a>
+			</div>
+
 			<!-- Summary bar -->
 			<div class="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface p-6 md:grid-cols-4">
 				<div class="text-center">
@@ -330,13 +417,6 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 									Auto Match
 								</button>
 							</form>
-
-							<a
-								href={ templ.SafeURL("/banking/reconcile?account_id=" + vm.AccountID + "&statement_date=" + vm.StatementDate + "&ending_balance=" + vm.EndingBalance) }
-								class="rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background"
-							>
-								Edit Info
-							</a>
 
 							<!-- Save progress -->
 							<form method="post" action="/banking/reconcile/save-progress" @submit="beforeSave($event)">

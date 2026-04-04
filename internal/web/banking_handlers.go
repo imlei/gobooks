@@ -77,6 +77,7 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 	}
 
 	if accountIDStr == "" {
+		// No account selected: show account selector only.
 		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
 
@@ -92,51 +93,56 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 		vm.FormError = "Invalid account selected."
 		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
+	vm.AccountName = accRow.Code + " - " + accRow.Name
 
-	// Apply defaults when the user has not yet supplied URL params.
-	// ComputeReconcileDefaults is the single truth source for priority:
-	//   1. in-progress draft (highest)
-	//   2. inferred next month-end from last completed reconciliation
-	//   3. blank (first reconciliation for this account)
-	var selectedLineIDsFromDraft string
-	if statementDateStr == "" && endingBalanceStr == "" {
+	// ── Entry Gate ────────────────────────────────────────────────────────────
+	// Work mode requires BOTH statement_date AND ending_balance to be present in
+	// the URL — they must be explicitly confirmed by the user (via "Start" or
+	// "Resume" buttons in the entry panels). A URL with just account_id lands
+	// in entry/setup mode and never shows the working page directly.
+	isWorkMode := statementDateStr != "" && endingBalanceStr != ""
+
+	if !isWorkMode {
+		// ── Entry / Setup / Resume mode ───────────────────────────────────────
 		defaults, defErr := services.ComputeReconcileDefaults(s.DB, companyID, accountID)
-		if defErr == nil {
-			switch defaults.Source {
-			case services.ReconcileDefaultsDraft:
-				statementDateStr = defaults.StatementDate
-				endingBalanceStr = defaults.EndingBalance
-				selectedLineIDsFromDraft = defaults.SelectedLineIDs
-				vm.ResumingDraft = true
-			case services.ReconcileDefaultsInferred:
-				statementDateStr = defaults.StatementDate
-				// EndingBalance is intentionally left empty — user must enter it.
-			// ReconcileDefaultsBlank: leave both empty.
-			}
-			vm.StatementDate = statementDateStr
-			vm.EndingBalance = endingBalanceStr
+		if defErr != nil {
+			vm.FormError = "Could not load reconciliation state."
+			return pages.BankReconcile(vm).Render(c.Context(), c)
 		}
+
+		vm.StatementDate = defaults.StatementDate
+		vm.EndingBalance = defaults.EndingBalance
+		vm.LastStatementDateDisplay = defaults.LastStatementDate
+
+		switch defaults.Source {
+		case services.ReconcileDefaultsDraft:
+			vm.EntryMode = "resume"
+		case services.ReconcileDefaultsInferred:
+			vm.EntryMode = "setup"
+		default: // ReconcileDefaultsBlank
+			vm.EntryMode = "setup"
+		}
+		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
 
-	// statementDate is required to load candidates; default to today only as last resort
-	// when the user explicitly loaded the page with an account but no date.
-	if statementDateStr == "" {
-		statementDateStr = time.Now().Format("2006-01-02")
-		vm.StatementDate = statementDateStr
-	}
+	// ── Work mode ─────────────────────────────────────────────────────────────
+	vm.EntryMode = "work"
+
 	statementDate, err := time.Parse("2006-01-02", statementDateStr)
 	if err != nil {
 		vm.FormError = "Statement Date must be a valid date."
+		vm.EntryMode = "setup"
 		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
+	vm.StatementDate = statementDateStr
 	vm.StatementDateTime = statementDate
 
-	if endingBalanceStr != "" {
-		if _, err := services.ParseDecimalMoney(endingBalanceStr); err != nil {
-			vm.FormError = "Ending Balance must be a number."
-			return pages.BankReconcile(vm).Render(c.Context(), c)
-		}
+	if _, err := services.ParseDecimalMoney(endingBalanceStr); err != nil {
+		vm.FormError = "Ending Balance must be a number."
+		vm.EntryMode = "setup"
+		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
+	vm.EndingBalance = endingBalanceStr
 
 	prev, err := services.ClearedBalance(s.DB, companyID, accountID, statementDate)
 	if err != nil {
@@ -162,12 +168,8 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 	}
 	vm.LatestReconciliation = latest
 
-	// Load match-engine suggestions — pending (with actions) and accepted (with badge).
-	// Accepted suggestions remain visible so the user can see what is driving the
-	// pre-selected checkboxes; they show a static badge rather than action buttons.
+	// Load match-engine suggestions.
 	pendingSuggs, _ := services.LoadActiveSuggestions(s.DB, companyID, accountID)
-
-	// Build candidate lookup for journal number enrichment.
 	candidatesByLineID := make(map[uint]services.ReconcileCandidate, len(cands))
 	for _, cd := range cands {
 		candidatesByLineID[cd.LineID] = cd
@@ -175,7 +177,7 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 	vm.Suggestions = pages.BuildMatchSuggestionVMs(pendingSuggs, candidatesByLineID)
 	vm.SuggestionCount = len(vm.Suggestions)
 
-	// Pre-select lines from accepted suggestions.
+	// Pre-select lines from accepted suggestions, then override with draft if present.
 	acceptedIDs, _ := services.LoadAcceptedLineIDs(s.DB, companyID, accountID)
 	vm.AcceptedLineIDs = acceptedIDs
 	if len(acceptedIDs) > 0 {
@@ -183,13 +185,31 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 		vm.AcceptedLineIDsJSON = string(b)
 	}
 
-	// Draft selected IDs override accepted suggestion IDs — the draft captures the
-	// user's most recent check state and already includes any suggestion-driven selections.
-	if selectedLineIDsFromDraft != "" && selectedLineIDsFromDraft != "[]" {
-		vm.AcceptedLineIDsJSON = selectedLineIDsFromDraft
+	// Draft selected IDs take priority — they capture the user's most recent check state.
+	if draft, _ := services.GetReconcileDraft(s.DB, companyID, accountID); draft != nil {
+		if draft.SelectedLineIDs != "" && draft.SelectedLineIDs != "[]" {
+			vm.AcceptedLineIDsJSON = draft.SelectedLineIDs
+		}
+		vm.ResumingDraft = true
 	}
 
 	return pages.BankReconcile(vm).Render(c.Context(), c)
+}
+
+// handleBankReconcileDiscardDraft deletes the in-progress draft for an account
+// and redirects back to entry/setup mode so the user can start a new reconciliation.
+func (s *Server) handleBankReconcileDiscardDraft(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	accountIDStr := strings.TrimSpace(c.FormValue("account_id"))
+	accountIDU64, err := services.ParseUint(accountIDStr)
+	if err != nil || accountIDU64 == 0 {
+		return c.Redirect("/banking/reconcile", fiber.StatusSeeOther)
+	}
+	_ = services.DeleteReconcileDraft(s.DB, companyID, uint(accountIDU64))
+	return c.Redirect("/banking/reconcile?account_id="+accountIDStr, fiber.StatusSeeOther)
 }
 
 func (s *Server) handleBankReconcileSaveProgress(c *fiber.Ctx) error {

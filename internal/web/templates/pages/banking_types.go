@@ -16,6 +16,7 @@ type BankReconcileVM struct {
 	Accounts []models.Account
 
 	AccountID     string
+	AccountName   string // "Code - Name" of selected account
 	StatementDate string
 	EndingBalance string
 
@@ -25,7 +26,18 @@ type BankReconcileVM struct {
 	Saved         bool
 	Voided        bool
 	ProgressSaved bool // true when redirected after /save-progress POST
-	ResumingDraft bool // true when form is pre-filled from an in-progress draft
+	ResumingDraft bool // true when form is pre-filled from an in-progress draft (work mode)
+
+	// EntryMode controls which section of the page is rendered:
+	//   ""       — no account selected; show account selector only
+	//   "setup"  — account selected, no draft; show setup form (inferred or blank)
+	//   "resume" — account has an in-progress draft; show resume panel
+	//   "work"   — statement_date + ending_balance confirmed; show working page
+	EntryMode string
+
+	// LastStatementDateDisplay is the most recent completed reconciliation's statement
+	// date formatted for display (DD/MM/YYYY). Shown as a hint in setup/resume panels.
+	LastStatementDateDisplay string
 
 	// BeginningBalance = sum of already-cleared lines for this account as of
 	// statement date (equals PreviouslyCleared — alias kept for Alpine init).

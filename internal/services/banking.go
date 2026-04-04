@@ -141,6 +141,9 @@ type ReconcileDefaults struct {
 	EndingBalance string // decimal string or ""
 	// SelectedLineIDs is non-empty only when Source == ReconcileDefaultsDraft.
 	SelectedLineIDs string
+	// LastStatementDate is the most recent completed reconciliation's statement date,
+	// formatted for display (DD/MM/YYYY). Empty if no prior reconciliation exists.
+	LastStatementDate string
 }
 
 // ComputeReconcileDefaults decides what to pre-fill in the reconciliation form
@@ -182,9 +185,10 @@ func ComputeReconcileDefaults(db *gorm.DB, companyID, accountID uint) (Reconcile
 	if latest != nil {
 		next := nextMonthEnd(latest.StatementDate)
 		return ReconcileDefaults{
-			Source:        ReconcileDefaultsInferred,
-			StatementDate: next.Format("2006-01-02"),
-			EndingBalance: "", // do not guess; user must enter
+			Source:            ReconcileDefaultsInferred,
+			StatementDate:     next.Format("2006-01-02"),
+			EndingBalance:     "", // do not guess; user must enter
+			LastStatementDate: latest.StatementDate.Format("02/01/2006"),
 		}, nil
 	}
 
