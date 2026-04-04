@@ -29,11 +29,14 @@ func (s *Server) handleVendors(c *fiber.Ctx) error {
 	var paymentTerms []models.PaymentTerm
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&paymentTerms)
 
+	currencies, _ := s.enabledCurrenciesForCompany(companyID)
+
 	return pages.Vendors(pages.VendorsVM{
 		HasCompany:   true,
 		Vendors:      vendors,
 		Created:      c.Query("created") == "1",
 		PaymentTerms: paymentTerms,
+		Currencies:   currencies,
 	}).Render(c.Context(), c)
 }
 
@@ -47,15 +50,26 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	name := strings.TrimSpace(c.FormValue("name"))
-	address := strings.TrimSpace(c.FormValue("address"))
-	paymentTerm := strings.TrimSpace(c.FormValue("payment_term"))
+	name         := strings.TrimSpace(c.FormValue("name"))
+	email        := strings.TrimSpace(c.FormValue("email"))
+	phone        := strings.TrimSpace(c.FormValue("phone"))
+	address      := strings.TrimSpace(c.FormValue("address"))
+	currencyCode := strings.TrimSpace(c.FormValue("currency_code"))
+	notes        := strings.TrimSpace(c.FormValue("notes"))
+	paymentTerm  := strings.TrimSpace(c.FormValue("payment_term"))
+
+	currencies, _ := s.enabledCurrenciesForCompany(companyID)
 
 	vm := pages.VendorsVM{
 		HasCompany:             true,
 		Name:                   name,
+		Email:                  email,
+		Phone:                  phone,
 		Address:                address,
+		CurrencyCode:           currencyCode,
+		Notes:                  notes,
 		DefaultPaymentTermCode: paymentTerm,
+		Currencies:             currencies,
 	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
@@ -89,7 +103,11 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 	vendor := models.Vendor{
 		CompanyID:              companyID,
 		Name:                   name,
+		Email:                  email,
+		Phone:                  phone,
 		Address:                address,
+		CurrencyCode:           currencyCode,
+		Notes:                  notes,
 		DefaultPaymentTermCode: paymentTerm,
 	}
 	if err := s.DB.Create(&vendor).Error; err != nil {
@@ -119,4 +137,30 @@ func (s *Server) vendorsForCompany(companyID uint) ([]models.Vendor, error) {
 	var vendors []models.Vendor
 	err := s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vendors).Error
 	return vendors, err
+}
+
+// enabledCurrenciesForCompany returns the company's base currency plus any
+// additional foreign currencies they have enabled, as a slice of models.Currency.
+func (s *Server) enabledCurrenciesForCompany(companyID uint) ([]models.Currency, error) {
+	// Get company base currency.
+	var co models.Company
+	if err := s.DB.Select("id, base_currency_code").First(&co, companyID).Error; err != nil {
+		return nil, err
+	}
+
+	// Collect codes: base + active foreign currencies.
+	codes := []string{co.BaseCurrencyCode}
+	var foreign []models.CompanyCurrency
+	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Find(&foreign)
+	for _, f := range foreign {
+		if f.CurrencyCode != co.BaseCurrencyCode {
+			codes = append(codes, f.CurrencyCode)
+		}
+	}
+
+	var currencies []models.Currency
+	if err := s.DB.Where("code IN ? AND is_active = true", codes).Order("code asc").Find(&currencies).Error; err != nil {
+		return nil, err
+	}
+	return currencies, nil
 }

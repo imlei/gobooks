@@ -15,7 +15,7 @@ templ Vendors(vm VendorsVM) {
 templ bodyVendors(vm VendorsVM) {
 	<div class="max-w-[95%]">
 		<h1 class="text-title font-semibold">Vendors</h1>
-		<p class="mt-2 text-text-muted2">Manage vendor names used in Journal Entry “Name” selection.</p>
+		<p class="mt-2 text-text-muted2">Manage vendor names used in Journal Entry "Name" selection.</p>
 
 		if vm.Created {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
@@ -32,7 +32,10 @@ templ bodyVendors(vm VendorsVM) {
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<h2 class="text-section font-semibold text-text">Add Vendor</h2>
 				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+					<!-- Name -->
 					@textField("Name *", "name", vm.Name, vm.NameError, "e.g. Office Supplies Inc.")
+
+					<!-- Payment term -->
 					<div>
 						<label class="block text-body font-medium text-text">Payment term <span class="font-normal text-text-muted2">(optional)</span></label>
 						<select
@@ -45,15 +48,67 @@ templ bodyVendors(vm VendorsVM) {
 							}
 						</select>
 					</div>
+
+					<!-- Email -->
+					<div>
+						<label class="block text-body font-medium text-text">Email <span class="font-normal text-text-muted2">(optional)</span></label>
+						<input
+							type="email"
+							name="email"
+							value={ vm.Email }
+							placeholder="e.g. ap@supplier.com"
+							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+					</div>
+
+					<!-- Phone -->
+					<div>
+						<label class="block text-body font-medium text-text">Phone <span class="font-normal text-text-muted2">(optional)</span></label>
+						<input
+							type="text"
+							name="phone"
+							value={ vm.Phone }
+							placeholder="e.g. +1 416 555 0100"
+							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+					</div>
+
+					<!-- Currency -->
+					if len(vm.Currencies) > 0 {
+						<div>
+							<label class="block text-body font-medium text-text">Currency <span class="font-normal text-text-muted2">(optional)</span></label>
+							<select
+								name="currency_code"
+								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							>
+								<option value="">— Company default —</option>
+								for _, cur := range vm.Currencies {
+									<option value={ cur.Code } selected?={ cur.Code == vm.CurrencyCode }>{ cur.Code } – { cur.Name }</option>
+								}
+							</select>
+						</div>
+					}
+
+					<!-- Address -->
 					<div class="md:col-span-2">
-						<label class="block text-body font-medium text-text">Address (optional)</label>
+						<label class="block text-body font-medium text-text">Address <span class="font-normal text-text-muted2">(optional)</span></label>
 						<textarea
 							name="address"
-							rows="3"
+							rows="2"
 							placeholder="Street, city, province, postal code…"
 							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 						>{ vm.Address }</textarea>
-						<p class="mt-1 text-small text-text-muted2">Shown for your records; not required to save a vendor.</p>
+					</div>
+
+					<!-- Notes -->
+					<div class="md:col-span-2">
+						<label class="block text-body font-medium text-text">Notes <span class="font-normal text-text-muted2">(optional)</span></label>
+						<textarea
+							name="notes"
+							rows="2"
+							placeholder="Internal notes about this vendor…"
+							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+						>{ vm.Notes }</textarea>
 					</div>
 				</div>
 				<div class="mt-6 flex items-center justify-end">
@@ -71,25 +126,53 @@ templ bodyVendors(vm VendorsVM) {
 					<thead class="text-small uppercase tracking-wider text-text-muted">
 						<tr class="border-b border-border">
 							<th class="py-3 pr-4">Name</th>
-							<th class="py-3 pr-4">Address</th>
-							<th class="py-3 pr-0">Payment term</th>
+							<th class="py-3 pr-4">Email</th>
+							<th class="py-3 pr-4">Phone</th>
+							<th class="py-3 pr-4">Currency</th>
+							<th class="py-3 pr-4">Payment term</th>
+							<th class="py-3 pr-0">Address / Notes</th>
 						</tr>
 					</thead>
 					<tbody class="text-text">
 						for _, v := range vm.Vendors {
 							<tr class="border-b border-border-subtle">
 								<td class="py-3 pr-4 font-medium">{ v.Name }</td>
-								<td class="max-w-xs py-3 pr-4 text-small text-text-muted2">
-									if v.Address != "" {
-										<span class="line-clamp-2 whitespace-pre-wrap" title={ v.Address }>{ v.Address }</span>
+								<td class="py-3 pr-4 text-small text-text-muted2">
+									if v.Email != "" {
+										<a href={ templ.SafeURL("mailto:" + v.Email) } class="hover:underline">{ v.Email }</a>
 									} else {
 										<span class="text-text-muted3">—</span>
 									}
 								</td>
-								<td class="py-3 pr-0 text-small text-text-muted2">
+								<td class="py-3 pr-4 text-small text-text-muted2">
+									if v.Phone != "" {
+										{ v.Phone }
+									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
+								<td class="py-3 pr-4 text-small text-text-muted2">
+									if v.CurrencyCode != "" {
+										<span class="rounded-full bg-background px-2 py-0.5 font-mono text-small font-medium text-text-muted">{ v.CurrencyCode }</span>
+									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
+								<td class="py-3 pr-4 text-small text-text-muted2">
 									if v.DefaultPaymentTermCode != "" {
 										{ v.DefaultPaymentTermCode }
 									} else {
+										<span class="text-text-muted3">—</span>
+									}
+								</td>
+								<td class="max-w-xs py-3 pr-0 text-small text-text-muted2">
+									if v.Address != "" {
+										<span class="block line-clamp-1 whitespace-pre-wrap" title={ v.Address }>{ v.Address }</span>
+									}
+									if v.Notes != "" {
+										<span class="block line-clamp-1 text-text-muted3 italic" title={ v.Notes }>{ v.Notes }</span>
+									}
+									if v.Address == "" && v.Notes == "" {
 										<span class="text-text-muted3">—</span>
 									}
 								</td>
@@ -101,4 +184,3 @@ templ bodyVendors(vm VendorsVM) {
 		</div>
 	</div>
 }
-

@@ -54,12 +54,17 @@ type VendorsVM struct {
 	HasCompany bool
 
 	Name                   string
+	Email                  string
+	Phone                  string
 	Address                string
+	CurrencyCode           string
+	Notes                  string
 	DefaultPaymentTermCode string
 	NameError              string
-	FormError   string
-	Created     bool
+	FormError              string
+	Created                bool
 
 	Vendors      []models.Vendor
 	PaymentTerms []models.PaymentTerm
+	Currencies   []models.Currency // enabled currencies (base + foreign)
 }

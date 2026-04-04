@@ -80,10 +80,19 @@ func (c Customer) FormattedAddress() string {
 
 // Vendor is a company-scoped record for purchase-side party selection (bills, journal, etc.).
 type Vendor struct {
-	ID          uint   `gorm:"primaryKey"`
-	CompanyID   uint   `gorm:"not null;index"`
-	Name        string `gorm:"not null"`
+	ID        uint `gorm:"primaryKey"`
+	CompanyID uint `gorm:"not null;index"`
+	Name      string `gorm:"not null"`
+	// Email is the vendor's contact email address.
+	Email string `gorm:"type:text;not null;default:''"`
+	// Phone is the vendor's contact phone number.
+	Phone   string `gorm:"type:text;not null;default:''"`
 	Address string `gorm:"type:text"` // optional mailing / remittance address
+	// CurrencyCode is the vendor's default billing currency (ISO 4217, e.g. "USD").
+	// Empty string means the company's base currency is used.
+	CurrencyCode string `gorm:"type:text;not null;default:''"`
+	// Notes is a free-form internal note about this vendor.
+	Notes string `gorm:"type:text;not null;default:''"`
 	// DefaultPaymentTermCode references a PaymentTerm.Code for this company.
 	DefaultPaymentTermCode string `gorm:"type:text;not null;default:''"`
 	CreatedAt              time.Time
