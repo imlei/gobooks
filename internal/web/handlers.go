@@ -179,8 +179,13 @@ func resolvePeriodDates(presetRaw, fromRaw, toRaw, fyEnd string) (preset, from, 
 }
 
 // resolveAsOfDate resolves the effective as_of date from a period preset or
-// explicit value. For Balance Sheet, the preset's To date serves as "as of".
+// explicit value. For Balance Sheet, the preset's To date serves as the single
+// point-in-time "as of" date rather than a range boundary.
 func resolveAsOfDate(presetRaw, asOfRaw, fyEnd string) (preset, asOf string) {
+	return resolveAsOfDateAt(presetRaw, asOfRaw, fyEnd, time.Now())
+}
+
+func resolveAsOfDateAt(presetRaw, asOfRaw, fyEnd string, now time.Time) (preset, asOf string) {
 	asOfRaw = strings.TrimSpace(asOfRaw)
 	presetRaw = strings.TrimSpace(presetRaw)
 
@@ -195,9 +200,9 @@ func resolveAsOfDate(presetRaw, asOfRaw, fyEnd string) (preset, asOf string) {
 	if p == "" || p == services.PresetCustom {
 		p = services.PresetLastMonth
 	}
-	result := services.ComputeReportPeriod(p, fyEnd, time.Now())
+	result := services.ComputeReportPeriod(p, fyEnd, now)
 	if result.To.IsZero() {
-		return string(services.PresetCustom), time.Now().Format("2006-01-02")
+		return string(services.PresetCustom), now.Format("2006-01-02")
 	}
 	return string(p), result.To.Format("2006-01-02")
 }
@@ -384,7 +389,20 @@ func (s *Server) handleJournalEntryReport(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	fromDate, toDate, fromStr, toStr, errMsg := parseReportRange(c.Query("from"), c.Query("to"))
+	co := s.loadReportCompanyInfo(companyID)
+	preset, fromStr, toStr := resolvePeriodDates(
+		c.Query("period"), c.Query("from"), c.Query("to"), co.FiscalYearEnd)
+
+	fromDate, toDate, fromStr, toStr, errMsg := parseReportRange(fromStr, toStr)
+
+	toolbar := pages.ReportToolbarVM{
+		Preset: preset, From: fromStr, To: toStr,
+		FiscalYearEnd: co.FiscalYearEnd,
+		CompanyName:   co.Name,
+		ReportTitle:   "Journal Entries",
+		FormAction:    "/reports/journal-entries",
+		Mode:          "period",
+	}
 	if errMsg != "" {
 		return pages.JournalEntryReport(pages.JournalEntryReportVM{
 			HasCompany: true,
@@ -393,6 +411,7 @@ func (s *Server) handleJournalEntryReport(c *fiber.Ctx) error {
 			ActiveTab:  "journal",
 			Entries:    nil,
 			FormError:  errMsg,
+			Toolbar:    toolbar,
 		}).Render(c.Context(), c)
 	}
 
@@ -405,6 +424,7 @@ func (s *Server) handleJournalEntryReport(c *fiber.Ctx) error {
 			ActiveTab:  "journal",
 			Entries:    nil,
 			FormError:  "Could not run report.",
+			Toolbar:    toolbar,
 		}).Render(c.Context(), c)
 	}
 
@@ -414,6 +434,7 @@ func (s *Server) handleJournalEntryReport(c *fiber.Ctx) error {
 		To:         toStr,
 		ActiveTab:  "journal",
 		Entries:    entries,
+		Toolbar:    toolbar,
 	}).Render(c.Context(), c)
 }
 

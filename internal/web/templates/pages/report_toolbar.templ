@@ -5,6 +5,7 @@ package pages
 // statement pages. It is an Alpine.js component that:
 //   - drives period preset selection (Last Month / YTD / Last Fiscal Year / Custom)
 //   - auto-fills From/To (or As Of) from the selected preset client-side
+//   - treats Balance Sheet presets as quick "As Of" date selectors, not range filters
 //   - switches back to "Custom" when the user edits dates manually
 //   - provides Print and Export CSV actions
 //   - emits a print-only header with company name, report title, and period
@@ -50,6 +51,9 @@ templ ReportToolbar(vm ReportToolbarVM) {
 						<option value="last_fiscal_year">Last Fiscal Year</option>
 						<option value="custom">Custom</option>
 					</select>
+					if vm.Mode == "asof" {
+						<p class="mt-1 text-small text-text-muted2">For Balance Sheet, presets choose the As Of date.</p>
+					}
 				</div>
 
 				if vm.Mode == "asof" {
@@ -126,7 +130,8 @@ templ ReportToolbar(vm ReportToolbarVM) {
 			/* Hide chrome: top nav, sidebar, footer, toolbar form, report nav tabs */
 			header, footer,
 			.report-toolbar-form,
-			.report-nav-tabs {
+			.report-nav-tabs,
+			.report-nav-area {
 				display: none !important;
 			}
 			/* Hide desktop sidebar wrapper (layout.templ: <div class="hidden md:block"> wrapping Sidebar) */

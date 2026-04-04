@@ -15,4 +15,6 @@ type JournalEntryReportVM struct {
 	Entries []services.JournalEntryReportEntry
 
 	FormError string
+
+	Toolbar ReportToolbarVM
 }
