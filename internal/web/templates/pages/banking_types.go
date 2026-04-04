@@ -25,6 +25,7 @@ type BankReconcileVM struct {
 	Saved         bool
 	Voided        bool
 	ProgressSaved bool // true when redirected after /save-progress POST
+	ResumingDraft bool // true when form is pre-filled from an in-progress draft
 
 	// BeginningBalance = sum of already-cleared lines for this account as of
 	// statement date (equals PreviouslyCleared — alias kept for Alpine init).

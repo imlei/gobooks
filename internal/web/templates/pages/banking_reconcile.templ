@@ -43,11 +43,17 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 				Auto-match complete — { Itoa(vm.SuggestionCount) } suggestion(s) generated. Review them below and accept or reject each one.
 			</div>
 		}
+		if vm.ResumingDraft {
+			<div class="mt-4 rounded-md border border-primary/30 bg-primary/5 p-4 text-body text-primary">
+				Resuming saved draft — statement date and ending balance have been restored. Your previously checked transactions will be re-selected below.
+			</div>
+		}
 		if vm.ProgressSaved {
 			<div class="mt-4 rounded-md border border-border bg-background p-4 text-body text-text-muted2">
 				Progress saved. You can close this page and resume anytime by selecting the same account.
 			</div>
-		}
+		}</anpl:parameter>
+</invoke>
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
 				{ vm.FormError }

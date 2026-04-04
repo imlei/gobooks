@@ -117,6 +117,90 @@ type ReconcileDraftResult struct {
 	SelectedLineIDs string // JSON array of line ID strings
 }
 
+// ── Reconciliation default-value decision engine ──────────────────────────────
+
+// ReconcileDefaultSource describes which rule produced the defaults.
+type ReconcileDefaultSource int
+
+const (
+	// ReconcileDefaultsBlank: first-time reconciliation — no data for this account.
+	// Handler must leave StatementDate and EndingBalance empty.
+	ReconcileDefaultsBlank ReconcileDefaultSource = iota
+	// ReconcileDefaultsDraft: an in-progress draft was found. All fields are restored.
+	ReconcileDefaultsDraft
+	// ReconcileDefaultsInferred: no draft, but a prior completed reconciliation exists.
+	// StatementDate is set to the next month-end; EndingBalance is left empty.
+	ReconcileDefaultsInferred
+)
+
+// ReconcileDefaults holds the computed default values for the reconciliation form
+// when the user selects a bank account and has not yet supplied URL parameters.
+type ReconcileDefaults struct {
+	Source        ReconcileDefaultSource
+	StatementDate string // "2006-01-02" or ""
+	EndingBalance string // decimal string or ""
+	// SelectedLineIDs is non-empty only when Source == ReconcileDefaultsDraft.
+	SelectedLineIDs string
+}
+
+// ComputeReconcileDefaults decides what to pre-fill in the reconciliation form
+// for a given (company, account) when the user has not yet provided URL params.
+//
+// Priority:
+//  1. In-progress draft (ReconcileDefaultsDraft) — highest
+//  2. Completed reconciliation → infer next month-end (ReconcileDefaultsInferred)
+//  3. No data → blank form (ReconcileDefaultsBlank)
+//
+// Next-month-end rule:
+//
+//	Given last statement date D, the next default is the last calendar day of
+//	the month following D's month. This is true regardless of what day D falls on.
+//	Examples:
+//	  2026-03-31 → 2026-04-30
+//	  2026-01-15 → 2026-02-28
+//	  2025-12-31 → 2026-01-31
+func ComputeReconcileDefaults(db *gorm.DB, companyID, accountID uint) (ReconcileDefaults, error) {
+	// 1. Check for an in-progress draft.
+	draft, err := GetReconcileDraft(db, companyID, accountID)
+	if err != nil {
+		return ReconcileDefaults{}, err
+	}
+	if draft != nil {
+		return ReconcileDefaults{
+			Source:          ReconcileDefaultsDraft,
+			StatementDate:   draft.StatementDate,
+			EndingBalance:   draft.EndingBalance.StringFixed(2),
+			SelectedLineIDs: draft.SelectedLineIDs,
+		}, nil
+	}
+
+	// 2. Check for the most recent completed reconciliation.
+	latest, err := LatestActiveReconciliation(db, companyID, accountID)
+	if err != nil {
+		return ReconcileDefaults{}, err
+	}
+	if latest != nil {
+		next := nextMonthEnd(latest.StatementDate)
+		return ReconcileDefaults{
+			Source:        ReconcileDefaultsInferred,
+			StatementDate: next.Format("2006-01-02"),
+			EndingBalance: "", // do not guess; user must enter
+		}, nil
+	}
+
+	// 3. First reconciliation for this account.
+	return ReconcileDefaults{Source: ReconcileDefaultsBlank}, nil
+}
+
+// nextMonthEnd returns the last calendar day of the month following t.
+// It works by going to the first day of t's month + 2 months, then subtracting 1 day.
+func nextMonthEnd(t time.Time) time.Time {
+	// Advance to the first day of the month after next month, then subtract 1 day.
+	y, m, _ := t.Date()
+	firstOfMonthAfterNext := time.Date(y, m+2, 1, 0, 0, 0, 0, time.UTC)
+	return firstOfMonthAfterNext.AddDate(0, 0, -1)
+}
+
 // ── Reconciliation draft (save-progress) ─────────────────────────────────────
 
 // UpsertReconcileDraft saves or overwrites the in-progress reconcile state for

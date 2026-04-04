@@ -93,24 +93,33 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
 
-	// Load draft: if no explicit statement_date/ending_balance in URL, restore from draft.
-	// Selected IDs from the draft are applied after accepted suggestion IDs are loaded,
-	// so draft state (most recent user intent) takes priority.
-	var reconcileDraft *services.ReconcileDraftResult
-	if statementDateStr == "" || endingBalanceStr == "" {
-		if draft, _ := services.GetReconcileDraft(s.DB, companyID, accountID); draft != nil {
-			if statementDateStr == "" {
-				statementDateStr = draft.StatementDate
-				vm.StatementDate = statementDateStr
+	// Apply defaults when the user has not yet supplied URL params.
+	// ComputeReconcileDefaults is the single truth source for priority:
+	//   1. in-progress draft (highest)
+	//   2. inferred next month-end from last completed reconciliation
+	//   3. blank (first reconciliation for this account)
+	var selectedLineIDsFromDraft string
+	if statementDateStr == "" && endingBalanceStr == "" {
+		defaults, defErr := services.ComputeReconcileDefaults(s.DB, companyID, accountID)
+		if defErr == nil {
+			switch defaults.Source {
+			case services.ReconcileDefaultsDraft:
+				statementDateStr = defaults.StatementDate
+				endingBalanceStr = defaults.EndingBalance
+				selectedLineIDsFromDraft = defaults.SelectedLineIDs
+				vm.ResumingDraft = true
+			case services.ReconcileDefaultsInferred:
+				statementDateStr = defaults.StatementDate
+				// EndingBalance is intentionally left empty — user must enter it.
+			// ReconcileDefaultsBlank: leave both empty.
 			}
-			if endingBalanceStr == "" {
-				endingBalanceStr = draft.EndingBalance.StringFixed(2)
-				vm.EndingBalance = endingBalanceStr
-			}
-			reconcileDraft = &services.ReconcileDraftResult{SelectedLineIDs: draft.SelectedLineIDs}
+			vm.StatementDate = statementDateStr
+			vm.EndingBalance = endingBalanceStr
 		}
 	}
 
+	// statementDate is required to load candidates; default to today only as last resort
+	// when the user explicitly loaded the page with an account but no date.
 	if statementDateStr == "" {
 		statementDateStr = time.Now().Format("2006-01-02")
 		vm.StatementDate = statementDateStr
@@ -122,13 +131,11 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 	}
 	vm.StatementDateTime = statementDate
 
-	if endingBalanceStr == "" {
-		endingBalanceStr = "0.00"
-		vm.EndingBalance = endingBalanceStr
-	}
-	if _, err := services.ParseDecimalMoney(endingBalanceStr); err != nil {
-		vm.FormError = "Ending Balance must be a number."
-		return pages.BankReconcile(vm).Render(c.Context(), c)
+	if endingBalanceStr != "" {
+		if _, err := services.ParseDecimalMoney(endingBalanceStr); err != nil {
+			vm.FormError = "Ending Balance must be a number."
+			return pages.BankReconcile(vm).Render(c.Context(), c)
+		}
 	}
 
 	prev, err := services.ClearedBalance(s.DB, companyID, accountID, statementDate)
@@ -178,8 +185,8 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 
 	// Draft selected IDs override accepted suggestion IDs — the draft captures the
 	// user's most recent check state and already includes any suggestion-driven selections.
-	if reconcileDraft != nil && reconcileDraft.SelectedLineIDs != "" && reconcileDraft.SelectedLineIDs != "[]" {
-		vm.AcceptedLineIDsJSON = reconcileDraft.SelectedLineIDs
+	if selectedLineIDsFromDraft != "" && selectedLineIDsFromDraft != "[]" {
+		vm.AcceptedLineIDsJSON = selectedLineIDsFromDraft
 	}
 
 	return pages.BankReconcile(vm).Render(c.Context(), c)
