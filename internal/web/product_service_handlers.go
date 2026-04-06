@@ -130,6 +130,11 @@ func (s *Server) handleProductServiceCreate(c *fiber.Ctx) error {
 	// Inventory-type validation.
 	validateInventoryAccounts(&vm, psType, cogsID, invAcctID)
 
+	// Company-scope validation: reject any account/tax IDs not owned by this company.
+	if revenueID64 > 0 {
+		s.validateItemAccountsCompanyScope(companyID, uint(revenueID64), cogsID, invAcctID, taxCodeID, &vm)
+	}
+
 	if hasItemFormErrors(vm) {
 		s.loadItemsForVM(companyID, &vm)
 		return pages.ProductServices(vm).Render(c.Context(), c)
@@ -269,6 +274,17 @@ func (s *Server) handleProductServiceUpdate(c *fiber.Ctx) error {
 	revenueID64, _ := strconv.ParseUint(revenueIDRaw, 10, 64)
 
 	validateInventoryAccounts(&vm, psType, cogsID, invAcctID)
+
+	// Company-scope validation: reject any account/tax IDs not owned by this company.
+	if revenueID64 > 0 {
+		s.validateItemAccountsCompanyScope(companyID, uint(revenueID64), cogsID, invAcctID, taxCodeID, &vm)
+	}
+	// Early exit: if scope validation set any error (including vm.FormError for tax code),
+	// return before bundle validation so its vm.FormError = err.Error() cannot overwrite ours.
+	if hasItemFormErrors(vm) {
+		s.loadItemsForVM(companyID, &vm)
+		return pages.ProductServices(vm).Render(c.Context(), c)
+	}
 
 	// Validate bundle components.
 	isBundle := structureType == string(models.ItemStructureBundle)
@@ -586,10 +602,67 @@ func validateInventoryAccounts(vm *pages.ProductServicesVM, psType models.Produc
 	}
 }
 
+// validateItemAccountsCompanyScope checks that the submitted account and tax
+// IDs all belong to companyID. This is the server-side guard against forged
+// cross-company POST requests — the UI only shows company-owned options, but
+// we must not trust raw form values.
+func (s *Server) validateItemAccountsCompanyScope(
+	companyID uint,
+	revenueID uint,
+	cogsID, invAcctID, taxCodeID *uint,
+	vm *pages.ProductServicesVM,
+) {
+	// Revenue account: must be a revenue-type account owned by this company.
+	var revenueCount int64
+	if err := s.DB.Model(&models.Account{}).
+		Where("id = ? AND company_id = ? AND is_active = true AND root_account_type = ?",
+			revenueID, companyID, models.RootRevenue).
+		Count(&revenueCount).Error; err != nil || revenueCount == 0 {
+		vm.RevenueAccountIDError = "Revenue account is not valid for this company."
+	}
+
+	// COGS account: if provided, must be a cost-of-sales account owned by this company.
+	// Mirrors loadProductServicesDropdowns: root_account_type = RootCostOfSales.
+	if cogsID != nil {
+		var cogsCount int64
+		if err := s.DB.Model(&models.Account{}).
+			Where("id = ? AND company_id = ? AND is_active = true AND root_account_type = ?",
+				*cogsID, companyID, models.RootCostOfSales).
+			Count(&cogsCount).Error; err != nil || cogsCount == 0 {
+			vm.COGSAccountIDError = "Cost of goods sold account is not valid for this company."
+		}
+	}
+
+	// Inventory asset account: if provided, must be a Detail=Inventory account owned by this company.
+	// Mirrors loadProductServicesDropdowns: detail_account_type = DetailInventory.
+	if invAcctID != nil {
+		var invCount int64
+		if err := s.DB.Model(&models.Account{}).
+			Where("id = ? AND company_id = ? AND is_active = true AND detail_account_type = ?",
+				*invAcctID, companyID, models.DetailInventory).
+			Count(&invCount).Error; err != nil || invCount == 0 {
+			vm.InventoryAccountIDError = "Inventory asset account is not valid for this company."
+		}
+	}
+
+	// Default tax code: if provided, must belong to this company and be applicable to sales
+	// (scope = 'sales' or 'both'). Purchase-only codes cannot be used as a product default
+	// because products are used on sales invoices where purchase-only codes are invalid.
+	if taxCodeID != nil {
+		var taxCount int64
+		if err := s.DB.Model(&models.TaxCode{}).
+			Where("id = ? AND company_id = ? AND is_active = true AND scope != ?",
+				*taxCodeID, companyID, models.TaxScopePurchase).
+			Count(&taxCount).Error; err != nil || taxCount == 0 {
+			vm.FormError = "Default tax code is not valid for this company or does not apply to sales."
+		}
+	}
+}
+
 func hasItemFormErrors(vm pages.ProductServicesVM) bool {
 	return vm.NameError != "" || vm.TypeError != "" || vm.DefaultPriceError != "" ||
 		vm.RevenueAccountIDError != "" || vm.COGSAccountIDError != "" || vm.InventoryAccountIDError != "" ||
-		vm.ComponentError != ""
+		vm.ComponentError != "" || vm.FormError != ""
 }
 
 // parseBundleComponents converts form rows into model components.
@@ -662,8 +735,10 @@ func (s *Server) loadProductServicesDropdowns(companyID uint, vm *pages.ProductS
 		Find(&vm.InventoryAccounts).Error; err != nil {
 		return err
 	}
+	// Only show sales/both tax codes — products are used on sales invoices, so
+	// purchase-only codes are never valid choices. This matches the backend validation.
 	if err := s.DB.
-		Where("company_id = ? AND is_active = true", companyID).
+		Where("company_id = ? AND is_active = true AND scope != ?", companyID, models.TaxScopePurchase).
 		Order("name asc").
 		Find(&vm.TaxCodes).Error; err != nil {
 		return err

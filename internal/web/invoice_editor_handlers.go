@@ -705,8 +705,10 @@ func (s *Server) validateInvoiceDraftReferences(companyID, customerID uint, line
 		}
 		if line.TaxCodeID != nil {
 			var taxCodeCount int64
+			// Reject purchase-only codes on sales invoices — they are not valid for sales.
 			if err := s.DB.Model(&models.TaxCode{}).
-				Where("id = ? AND company_id = ? AND is_active = true", *line.TaxCodeID, companyID).
+				Where("id = ? AND company_id = ? AND is_active = true AND scope != ?",
+					*line.TaxCodeID, companyID, models.TaxScopePurchase).
 				Count(&taxCodeCount).Error; err != nil {
 				return fmt.Errorf("could not validate line %d tax code", i+1)
 			}
@@ -738,7 +740,9 @@ func (s *Server) loadEditorDropdowns(companyID uint, vm *pages.InvoiceEditorVM) 
 		Find(&vm.Products).Error; err != nil {
 		return err
 	}
-	if err := s.DB.Where("company_id = ? AND is_active = true", companyID).Order("name asc").
+	// Only expose sales/both tax codes — purchase-only codes are not valid on sales invoices.
+	if err := s.DB.Where("company_id = ? AND is_active = true AND scope != ?",
+		companyID, models.TaxScopePurchase).Order("name asc").
 		Find(&vm.TaxCodes).Error; err != nil {
 		return err
 	}
@@ -768,6 +772,10 @@ func (s *Server) loadEditorDropdowns(companyID uint, vm *pages.InvoiceEditorVM) 
 type productJSONItem struct {
 	ID               uint   `json:"id"`
 	Name             string `json:"name"`
+	// Description is the item's own description text (may be empty).
+	// onProductChange uses this as the auto-fill value for the line description;
+	// it falls back to Name when Description is blank.
+	Description      string `json:"description"`
 	DefaultPrice     string `json:"default_price"`
 	DefaultTaxCodeID *uint  `json:"default_tax_code_id"`
 }
@@ -785,6 +793,7 @@ func buildProductsJSON(products []models.ProductService) string {
 		items = append(items, productJSONItem{
 			ID:               p.ID,
 			Name:             p.Name,
+			Description:      p.Description,
 			DefaultPrice:     p.DefaultPrice.StringFixed(2),
 			DefaultTaxCodeID: p.DefaultTaxCodeID,
 		})

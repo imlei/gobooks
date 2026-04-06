@@ -278,3 +278,164 @@ func TestConvert_DoubleConvert_Blocked(t *testing.T) {
 		t.Fatal("Expected double-convert error")
 	}
 }
+
+// ── Tax scope strip tests ─────────────────────────────────────────────────────
+
+// TestConvert_PurchaseOnlyTax_StrippedFromLine verifies that when an item's
+// DefaultTaxCodeID points to a purchase-only tax code, the conversion strips it:
+// the resulting invoice line has TaxCodeID=nil and LineTax=0.
+func TestConvert_PurchaseOnlyTax_StrippedFromLine(t *testing.T) {
+	db := testConversionDB(t)
+	s := setupConversion(t, db)
+
+	// Create a purchase-only tax code.
+	taxAcct := models.Account{
+		CompanyID: s.companyID, Code: "2310", Name: "Tax Payable",
+		RootAccountType: models.RootLiability, DetailAccountType: models.DetailSalesTaxPayable, IsActive: true,
+	}
+	db.Create(&taxAcct)
+	purTax := models.TaxCode{
+		CompanyID:         s.companyID,
+		Name:              "GST Purchase Only",
+		Code:              "GST-P",
+		TaxType:           "taxable",
+		Rate:              decimal.NewFromFloat(0.05),
+		Scope:             models.TaxScopePurchase,
+		RecoveryMode:      models.TaxRecoveryNone,
+		RecoveryRate:      decimal.Zero,
+		SalesTaxAccountID: taxAcct.ID,
+		IsActive:          true,
+	}
+	db.Create(&purTax)
+
+	// Assign purchase-only tax as default on the widget item.
+	db.Model(&models.ProductService{}).Where("id = ?", s.widgetID).
+		Update("default_tax_code_id", purTax.ID)
+
+	orderID := createTestOrder(t, db, s, "AMZ-W1")
+	result, err := ConvertChannelOrderToDraftInvoice(db, ConvertOptions{
+		CompanyID: s.companyID, ChannelOrderID: orderID,
+		CustomerID: s.customerID, InvoiceNumber: "INV-TAX-PUR", InvoiceDate: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("conversion failed: %v", err)
+	}
+
+	var lines []models.InvoiceLine
+	db.Where("invoice_id = ?", result.InvoiceID).Find(&lines)
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 line, got %d", len(lines))
+	}
+	if lines[0].TaxCodeID != nil {
+		t.Errorf("TaxCodeID should be nil (stripped), got %v", *lines[0].TaxCodeID)
+	}
+	if !lines[0].LineTax.IsZero() {
+		t.Errorf("LineTax should be 0 (stripped), got %s", lines[0].LineTax.String())
+	}
+}
+
+// TestConvert_InactiveTax_StrippedFromLine verifies that when an item's
+// DefaultTaxCodeID points to an inactive tax code, the conversion strips it.
+func TestConvert_InactiveTax_StrippedFromLine(t *testing.T) {
+	db := testConversionDB(t)
+	s := setupConversion(t, db)
+
+	taxAcct := models.Account{
+		CompanyID: s.companyID, Code: "2311", Name: "Tax Payable 2",
+		RootAccountType: models.RootLiability, DetailAccountType: models.DetailSalesTaxPayable, IsActive: true,
+	}
+	db.Create(&taxAcct)
+	inactiveTax := models.TaxCode{
+		CompanyID:         s.companyID,
+		Name:              "Old GST",
+		Code:              "GST-OLD",
+		TaxType:           "taxable",
+		Rate:              decimal.NewFromFloat(0.05),
+		Scope:             models.TaxScopeSales,
+		RecoveryMode:      models.TaxRecoveryNone,
+		RecoveryRate:      decimal.Zero,
+		SalesTaxAccountID: taxAcct.ID,
+		IsActive:          true,
+	}
+	db.Create(&inactiveTax)
+	db.Model(&inactiveTax).Update("is_active", false)
+
+	db.Model(&models.ProductService{}).Where("id = ?", s.widgetID).
+		Update("default_tax_code_id", inactiveTax.ID)
+
+	orderID := createTestOrder(t, db, s, "AMZ-W1")
+	result, err := ConvertChannelOrderToDraftInvoice(db, ConvertOptions{
+		CompanyID: s.companyID, ChannelOrderID: orderID,
+		CustomerID: s.customerID, InvoiceNumber: "INV-TAX-INACT", InvoiceDate: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("conversion failed: %v", err)
+	}
+
+	var lines []models.InvoiceLine
+	db.Where("invoice_id = ?", result.InvoiceID).Find(&lines)
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 line, got %d", len(lines))
+	}
+	if lines[0].TaxCodeID != nil {
+		t.Errorf("TaxCodeID should be nil (stripped), got %v", *lines[0].TaxCodeID)
+	}
+	if !lines[0].LineTax.IsZero() {
+		t.Errorf("LineTax should be 0 (stripped), got %s", lines[0].LineTax.String())
+	}
+}
+
+// TestConvert_ValidSalesTax_CarriedThrough verifies that a valid sales-scoped
+// active tax code on an item is properly applied to the converted invoice line.
+func TestConvert_ValidSalesTax_CarriedThrough(t *testing.T) {
+	db := testConversionDB(t)
+	s := setupConversion(t, db)
+
+	taxAcct := models.Account{
+		CompanyID: s.companyID, Code: "2312", Name: "Tax Payable 3",
+		RootAccountType: models.RootLiability, DetailAccountType: models.DetailSalesTaxPayable, IsActive: true,
+	}
+	db.Create(&taxAcct)
+	salesTax := models.TaxCode{
+		CompanyID:         s.companyID,
+		Name:              "GST Sales",
+		Code:              "GST-S",
+		TaxType:           "taxable",
+		Rate:              decimal.NewFromFloat(0.05),
+		Scope:             models.TaxScopeSales,
+		RecoveryMode:      models.TaxRecoveryNone,
+		RecoveryRate:      decimal.Zero,
+		SalesTaxAccountID: taxAcct.ID,
+		IsActive:          true,
+	}
+	db.Create(&salesTax)
+
+	db.Model(&models.ProductService{}).Where("id = ?", s.widgetID).
+		Update("default_tax_code_id", salesTax.ID)
+
+	orderID := createTestOrder(t, db, s, "AMZ-W1")
+	result, err := ConvertChannelOrderToDraftInvoice(db, ConvertOptions{
+		CompanyID: s.companyID, ChannelOrderID: orderID,
+		CustomerID: s.customerID, InvoiceNumber: "INV-TAX-SALES", InvoiceDate: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("conversion failed: %v", err)
+	}
+
+	var lines []models.InvoiceLine
+	db.Where("invoice_id = ?", result.InvoiceID).Find(&lines)
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 line, got %d", len(lines))
+	}
+	if lines[0].TaxCodeID == nil {
+		t.Error("TaxCodeID should be set for valid sales tax code")
+	}
+	if lines[0].LineTax.IsZero() {
+		t.Error("LineTax should be non-zero for valid sales tax code")
+	}
+	// 2 units × $50 × 5% = $5.00
+	expected := decimal.NewFromFloat(5.00)
+	if !lines[0].LineTax.Equal(expected) {
+		t.Errorf("LineTax: want %s, got %s", expected, lines[0].LineTax)
+	}
+}

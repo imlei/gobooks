@@ -91,18 +91,21 @@ func BuildInvoiceFragments(inv models.Invoice, arAccountID uint) ([]PostingFragm
 			Memo:      l.Description,
 		})
 
-		// Tax credit: only for tax codes scoped for sales or both.
-		if l.TaxCodeID != nil && l.TaxCode != nil && l.TaxCode.Scope != models.TaxScopePurchase {
-			lt := ComputeLineTax(l.LineNet, *l.TaxCode)
-			if lt.TaxAmount.IsPositive() {
-				posting := SalesTaxPostingLine(lt.AsTaxResult(), *l.TaxCode)
-				frags = append(frags, PostingFragment{
-					AccountID: posting.AccountID,
-					Debit:     decimal.Zero,
-					Credit:    posting.Amount,
-					Memo:      "Tax on " + l.Description,
-				})
-			}
+		// Tax credit: use the stored LineTax (draft truth) — do NOT recompute from the current
+		// rate. The invoice Amount (AR debit) was set at draft-save time to Subtotal+TaxTotal,
+		// where TaxTotal = Σ LineTax (including any user adjustments). Using the stored LineTax
+		// keeps AR debit == Σ(revenue credits + tax credits) without needing a rate lookup.
+		// Only post when the code is scoped for sales (or both) and there is a posting account.
+		if l.TaxCodeID != nil && l.TaxCode != nil &&
+			l.TaxCode.Scope != models.TaxScopePurchase &&
+			l.TaxCode.SalesTaxAccountID != 0 &&
+			l.LineTax.IsPositive() {
+			frags = append(frags, PostingFragment{
+				AccountID: l.TaxCode.SalesTaxAccountID,
+				Debit:     decimal.Zero,
+				Credit:    l.LineTax,
+				Memo:      "Tax on " + l.Description,
+			})
 		}
 	}
 

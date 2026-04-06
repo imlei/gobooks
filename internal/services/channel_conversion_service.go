@@ -168,14 +168,23 @@ func ConvertChannelOrderToDraftInvoice(db *gorm.DB, opts ConvertOptions) (*Conve
 			}
 			lineNet := ol.Quantity.Mul(unitPrice).RoundBank(2)
 
-			// Tax: use item's default tax code; tax amount recalculated by invoice engine.
+			// Tax: use item's default tax code only when it is valid for sales.
+			// Purchase-only, inactive, or cross-company tax codes are stripped —
+			// the draft can be corrected in the invoice editor before issuing.
 			var lineTax decimal.Decimal
+			var lineTaxCodeID *uint
 			if item.DefaultTaxCodeID != nil {
 				var tc models.TaxCode
-				if err := tx.Where("id = ?", *item.DefaultTaxCodeID).First(&tc).Error; err == nil {
+				if err := tx.Where("id = ? AND company_id = ? AND is_active = true AND scope != ?",
+					*item.DefaultTaxCodeID, opts.CompanyID, models.TaxScopePurchase).
+					First(&tc).Error; err == nil {
 					taxResults := CalculateTax(lineNet, tc)
 					lineTax = SumTaxResults(taxResults)
+					lineTaxCodeID = item.DefaultTaxCodeID
 				}
+				// If the tax code is invalid (purchase-only / inactive / cross-company),
+				// lineTaxCodeID stays nil and lineTax stays 0 — the line is created
+				// without a tax code rather than carrying invalid tax truth into the draft.
 			}
 
 			invoiceLines = append(invoiceLines, models.InvoiceLine{
@@ -185,7 +194,7 @@ func ConvertChannelOrderToDraftInvoice(db *gorm.DB, opts ConvertOptions) (*Conve
 				Description:      item.Name,
 				Qty:              ol.Quantity,
 				UnitPrice:        unitPrice,
-				TaxCodeID:        item.DefaultTaxCodeID,
+				TaxCodeID:        lineTaxCodeID,
 				LineNet:          lineNet,
 				LineTax:          lineTax,
 				LineTotal:        lineNet.Add(lineTax),

@@ -48,6 +48,37 @@ func IssueInvoice(db *gorm.DB, companyID, invoiceID uint) (*models.Invoice, erro
 		return nil, fmt.Errorf("cannot issue invoice with zero amount")
 	}
 
+	// 4b. Productization pre-flight — must run BEFORE any metadata/snapshot writes.
+	// Mirrors the PostInvoice pre-flight so that all known productization reject
+	// conditions are caught here and never leave a written IssuedAt or snapshot
+	// behind on a draft invoice. Covers: free-form lines, inactive products,
+	// inactive tax codes, and purchase-only tax codes.
+	for i, l := range invoice.Lines {
+		// Free-form line: draft allows it, issuing does not.
+		if l.ProductServiceID == nil {
+			return nil, fmt.Errorf("line %d (%q) has no product/service — assign one before issuing", i+1, l.Description)
+		}
+		if l.ProductService == nil || l.ProductService.CompanyID != companyID {
+			return nil, fmt.Errorf("line %d (%q): product/service is not valid for this company", i+1, l.Description)
+		}
+		if !l.ProductService.IsActive {
+			return nil, fmt.Errorf("line %d (%q): product/service %q is inactive — update the line before issuing", i+1, l.Description, l.ProductService.Name)
+		}
+		// Tax checks (only when a tax code is set).
+		if l.TaxCodeID == nil {
+			continue
+		}
+		if l.TaxCode == nil || l.TaxCode.CompanyID != companyID {
+			return nil, fmt.Errorf("line %d (%q): tax code is not valid for this company", i+1, l.Description)
+		}
+		if !l.TaxCode.IsActive {
+			return nil, fmt.Errorf("line %d (%q): tax code %q is inactive — update the line before issuing", i+1, l.Description, l.TaxCode.Name)
+		}
+		if l.TaxCode.Scope == models.TaxScopePurchase {
+			return nil, fmt.Errorf("line %d (%q): tax code %q applies to purchases only and cannot be used on a sales invoice", i+1, l.Description, l.TaxCode.Name)
+		}
+	}
+
 	// 5. Refresh customer snapshots from current customer data
 	invoice.CustomerNameSnapshot = invoice.Customer.Name
 	invoice.CustomerEmailSnapshot = invoice.Customer.Email

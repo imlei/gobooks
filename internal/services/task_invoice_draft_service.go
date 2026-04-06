@@ -494,13 +494,20 @@ func buildBillLineDraftSources(tx *gorm.DB, companyID uint, item *models.Product
 func buildDraftInvoiceLine(tx *gorm.DB, companyID uint, item *models.ProductService, description string, qty, unitPrice decimal.Decimal, currency string) (models.InvoiceLine, decimal.Decimal, string, error) {
 	lineNet := qty.Mul(unitPrice).RoundBank(2)
 	lineTax := decimal.Zero
+	// Only carry a tax code that is valid for sales invoices: same company, active,
+	// and scope is sales or both. Purchase-only / inactive / cross-company tax codes
+	// are stripped silently — the draft editor can correct them before issuing.
+	var lineTaxCodeID *uint
 	if item.DefaultTaxCodeID != nil {
 		var taxCode models.TaxCode
-		if err := tx.Where("id = ? AND company_id = ? AND is_active = true", *item.DefaultTaxCodeID, companyID).First(&taxCode).Error; err != nil {
-			return models.InvoiceLine{}, decimal.Zero, "", fmt.Errorf("load default tax code for %s: %w", item.Name, err)
+		if err := tx.Where("id = ? AND company_id = ? AND is_active = true AND scope != ?",
+			*item.DefaultTaxCodeID, companyID, models.TaxScopePurchase).
+			First(&taxCode).Error; err == nil {
+			taxResults := CalculateTax(lineNet, taxCode)
+			lineTax = SumTaxResults(taxResults)
+			lineTaxCodeID = item.DefaultTaxCodeID
 		}
-		taxResults := CalculateTax(lineNet, taxCode)
-		lineTax = SumTaxResults(taxResults)
+		// If not found (purchase-only / inactive / cross-company): leave lineTaxCodeID nil.
 	}
 	psID := item.ID
 	return models.InvoiceLine{
@@ -508,7 +515,7 @@ func buildDraftInvoiceLine(tx *gorm.DB, companyID uint, item *models.ProductServ
 		Description:      description,
 		Qty:              qty,
 		UnitPrice:        unitPrice,
-		TaxCodeID:        item.DefaultTaxCodeID,
+		TaxCodeID:        lineTaxCodeID,
 		LineNet:          lineNet,
 		LineTax:          lineTax,
 		LineTotal:        lineNet.Add(lineTax),

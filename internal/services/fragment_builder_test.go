@@ -41,6 +41,9 @@ func ps(companyID, revenueAcctID uint) *models.ProductService {
 }
 
 // invLine builds an InvoiceLine with a preloaded ProductService and optional TaxCode.
+// When tc is provided, LineTax is computed as net × tc.Rate (banker's rounding, 2 dp),
+// matching what the draft-save handler stores.  BuildInvoiceFragments uses the stored
+// LineTax as the single tax truth (Method A), so tests must set it to get tax fragments.
 func invLine(svc *models.ProductService, net string, tc *models.TaxCode) models.InvoiceLine {
 	l := models.InvoiceLine{
 		ProductServiceID: &svc.ID,
@@ -51,6 +54,8 @@ func invLine(svc *models.ProductService, net string, tc *models.TaxCode) models.
 	if tc != nil {
 		l.TaxCodeID = &tc.ID
 		l.TaxCode = tc
+		// Simulate what handleInvoiceSaveDraft stores.
+		l.LineTax = d(net).Mul(tc.Rate).RoundBank(2)
 	}
 	return l
 }

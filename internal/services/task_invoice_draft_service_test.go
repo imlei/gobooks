@@ -651,6 +651,208 @@ func TestGenerateInvoiceDraft_VoidInvoiceRollsBackSourcesAndAllowsRegeneration(t
 	}
 }
 
+// ── Tax scope strip tests ─────────────────────────────────────────────────────
+
+// TestTaskDraft_PurchaseOnlyTax_StrippedFromLine verifies that when a system task
+// item has a purchase-only DefaultTaxCodeID, GenerateInvoiceDraft strips it:
+// the resulting invoice line gets TaxCodeID=nil and LineTax=0.
+func TestTaskDraft_PurchaseOnlyTax_StrippedFromLine(t *testing.T) {
+	db := testTaskInvoiceDraftDB(t)
+	fixture := seedTaskDraftFixture(t, db)
+
+	// Create a purchase-only tax code.
+	taxAcct := models.Account{
+		CompanyID: fixture.companyID, Code: "2310", Name: "Tax Payable",
+		RootAccountType: models.RootLiability, DetailAccountType: models.DetailSalesTaxPayable, IsActive: true,
+	}
+	if err := db.Create(&taxAcct).Error; err != nil {
+		t.Fatal(err)
+	}
+	purTax := models.TaxCode{
+		CompanyID:         fixture.companyID,
+		Name:              "GST Purchase",
+		Code:              "GST-P",
+		TaxType:           "taxable",
+		Rate:              decimal.NewFromFloat(0.05),
+		Scope:             models.TaxScopePurchase,
+		RecoveryMode:      models.TaxRecoveryNone,
+		RecoveryRate:      decimal.Zero,
+		SalesTaxAccountID: taxAcct.ID,
+		IsActive:          true,
+	}
+	if err := db.Create(&purTax).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Assign purchase-only tax as default on the TASK_LABOR system item.
+	if err := db.Model(&models.ProductService{}).
+		Where("id = ?", fixture.taskLaborItemID).
+		Update("default_tax_code_id", purTax.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	task := seedDraftTask(t, db, fixture.companyID, fixture.customerID, models.TaskStatusCompleted, "Tax strip task", true)
+	result, err := GenerateInvoiceDraft(db, GenerateInvoiceDraftInput{
+		CompanyID:  fixture.companyID,
+		CustomerID: fixture.customerID,
+		TaskIDs:    []uint{task.ID},
+		Actor:      "tester",
+	})
+	if err != nil {
+		t.Fatalf("generate draft: %v", err)
+	}
+
+	var lines []models.InvoiceLine
+	if err := db.Where("invoice_id = ?", result.InvoiceID).Find(&lines).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(lines) == 0 {
+		t.Fatal("expected at least one invoice line")
+	}
+	// The task labor line must have no tax code (stripped).
+	for _, l := range lines {
+		if l.ProductServiceID != nil && *l.ProductServiceID == fixture.taskLaborItemID {
+			if l.TaxCodeID != nil {
+				t.Errorf("TaxCodeID should be nil (stripped), got %v", *l.TaxCodeID)
+			}
+			if !l.LineTax.IsZero() {
+				t.Errorf("LineTax should be 0 (stripped), got %s", l.LineTax.String())
+			}
+			return
+		}
+	}
+	t.Error("no line found for TASK_LABOR item")
+}
+
+// TestTaskDraft_InactiveTax_StrippedFromLine verifies that when a system task item
+// has an inactive DefaultTaxCodeID, GenerateInvoiceDraft strips it.
+func TestTaskDraft_InactiveTax_StrippedFromLine(t *testing.T) {
+	db := testTaskInvoiceDraftDB(t)
+	fixture := seedTaskDraftFixture(t, db)
+
+	taxAcct := models.Account{
+		CompanyID: fixture.companyID, Code: "2311", Name: "Tax Payable 2",
+		RootAccountType: models.RootLiability, DetailAccountType: models.DetailSalesTaxPayable, IsActive: true,
+	}
+	if err := db.Create(&taxAcct).Error; err != nil {
+		t.Fatal(err)
+	}
+	inactiveTax := models.TaxCode{
+		CompanyID:         fixture.companyID,
+		Name:              "Old GST",
+		Code:              "GST-OLD",
+		TaxType:           "taxable",
+		Rate:              decimal.NewFromFloat(0.05),
+		Scope:             models.TaxScopeSales,
+		RecoveryMode:      models.TaxRecoveryNone,
+		RecoveryRate:      decimal.Zero,
+		SalesTaxAccountID: taxAcct.ID,
+		IsActive:          true,
+	}
+	if err := db.Create(&inactiveTax).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&inactiveTax).Update("is_active", false).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.Model(&models.ProductService{}).
+		Where("id = ?", fixture.taskLaborItemID).
+		Update("default_tax_code_id", inactiveTax.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	task := seedDraftTask(t, db, fixture.companyID, fixture.customerID, models.TaskStatusCompleted, "Inactive tax strip task", true)
+	result, err := GenerateInvoiceDraft(db, GenerateInvoiceDraftInput{
+		CompanyID:  fixture.companyID,
+		CustomerID: fixture.customerID,
+		TaskIDs:    []uint{task.ID},
+		Actor:      "tester",
+	})
+	if err != nil {
+		t.Fatalf("generate draft: %v", err)
+	}
+
+	var lines []models.InvoiceLine
+	db.Where("invoice_id = ?", result.InvoiceID).Find(&lines)
+	for _, l := range lines {
+		if l.ProductServiceID != nil && *l.ProductServiceID == fixture.taskLaborItemID {
+			if l.TaxCodeID != nil {
+				t.Errorf("TaxCodeID should be nil (stripped), got %v", *l.TaxCodeID)
+			}
+			if !l.LineTax.IsZero() {
+				t.Errorf("LineTax should be 0 (stripped), got %s", l.LineTax.String())
+			}
+			return
+		}
+	}
+	t.Error("no line found for TASK_LABOR item")
+}
+
+// TestTaskDraft_ValidSalesTax_CarriedThrough verifies that a valid sales-scoped
+// active tax code on the system task item is carried to the generated invoice line.
+func TestTaskDraft_ValidSalesTax_CarriedThrough(t *testing.T) {
+	db := testTaskInvoiceDraftDB(t)
+	fixture := seedTaskDraftFixture(t, db)
+
+	taxAcct := models.Account{
+		CompanyID: fixture.companyID, Code: "2312", Name: "Tax Payable 3",
+		RootAccountType: models.RootLiability, DetailAccountType: models.DetailSalesTaxPayable, IsActive: true,
+	}
+	if err := db.Create(&taxAcct).Error; err != nil {
+		t.Fatal(err)
+	}
+	salesTax := models.TaxCode{
+		CompanyID:         fixture.companyID,
+		Name:              "GST Sales",
+		Code:              "GST-S",
+		TaxType:           "taxable",
+		Rate:              decimal.NewFromFloat(0.05),
+		Scope:             models.TaxScopeSales,
+		RecoveryMode:      models.TaxRecoveryNone,
+		RecoveryRate:      decimal.Zero,
+		SalesTaxAccountID: taxAcct.ID,
+		IsActive:          true,
+	}
+	if err := db.Create(&salesTax).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.Model(&models.ProductService{}).
+		Where("id = ?", fixture.taskLaborItemID).
+		Update("default_tax_code_id", salesTax.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// 2h × $150/h = $300 net; 5% = $15 tax
+	task := seedDraftTask(t, db, fixture.companyID, fixture.customerID, models.TaskStatusCompleted, "Sales tax task", true)
+	result, err := GenerateInvoiceDraft(db, GenerateInvoiceDraftInput{
+		CompanyID:  fixture.companyID,
+		CustomerID: fixture.customerID,
+		TaskIDs:    []uint{task.ID},
+		Actor:      "tester",
+	})
+	if err != nil {
+		t.Fatalf("generate draft: %v", err)
+	}
+
+	var lines []models.InvoiceLine
+	db.Where("invoice_id = ?", result.InvoiceID).Find(&lines)
+	for _, l := range lines {
+		if l.ProductServiceID != nil && *l.ProductServiceID == fixture.taskLaborItemID {
+			if l.TaxCodeID == nil {
+				t.Error("TaxCodeID should be set for valid sales tax code")
+			}
+			expected := decimal.NewFromFloat(15.00)
+			if !l.LineTax.Equal(expected) {
+				t.Errorf("LineTax: want %s, got %s", expected, l.LineTax)
+			}
+			return
+		}
+	}
+	t.Error("no line found for TASK_LABOR item")
+}
+
 func assertReleasedTaskCostSources(t *testing.T, db *gorm.DB, companyID, taskID, expenseID, billLineID uint, expectClearedBridgeRefs bool) {
 	t.Helper()
 

@@ -102,8 +102,16 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		if l.ProductService.RevenueAccount.CompanyID != companyID {
 			return fmt.Errorf("line %d (%q): revenue account does not belong to this company", i+1, l.Description)
 		}
-		if l.TaxCodeID != nil && (l.TaxCode == nil || l.TaxCode.CompanyID != companyID) {
-			return fmt.Errorf("line %d (%q): tax code is not valid for this company", i+1, l.Description)
+		if l.TaxCodeID != nil {
+			if l.TaxCode == nil || l.TaxCode.CompanyID != companyID {
+				return fmt.Errorf("line %d (%q): tax code is not valid for this company", i+1, l.Description)
+			}
+			if !l.TaxCode.IsActive {
+				return fmt.Errorf("line %d (%q): tax code %q is inactive — update the line before posting", i+1, l.Description, l.TaxCode.Name)
+			}
+			if l.TaxCode.Scope == models.TaxScopePurchase {
+				return fmt.Errorf("line %d (%q): tax code %q applies to purchases only and cannot be used on a sales invoice", i+1, l.Description, l.TaxCode.Name)
+			}
 		}
 	}
 

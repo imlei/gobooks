@@ -61,7 +61,8 @@ function invoiceEditor() {
       const ps = this.products.find(p => String(p.id) === String(psId));
       if (!ps) return;
       const line = this.lines[idx];
-      if (!line.description) line.description = ps.name;
+      // Prefer the item's own description field; fall back to the item name when blank.
+      if (!line.description) line.description = ps.description || ps.name;
       line.unit_price = ps.default_price;
       if (ps.default_tax_code_id) {
         line.tax_code_id = String(ps.default_tax_code_id);
