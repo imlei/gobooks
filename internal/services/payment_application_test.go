@@ -35,6 +35,8 @@ func testPaymentApplicationDB(t *testing.T) *gorm.DB {
 		&models.LedgerEntry{},
 		&models.AuditLog{},
 		&models.ChannelOrder{},
+		&models.CustomerCredit{},
+		&models.CustomerCreditApplication{},
 	); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
@@ -43,6 +45,7 @@ func testPaymentApplicationDB(t *testing.T) *gorm.DB {
 
 type paSetup struct {
 	companyID  uint
+	customerID uint
 	gwID       uint
 	clearingID uint
 	arID       uint
@@ -90,7 +93,7 @@ func setupPayApp(t *testing.T, db *gorm.DB) paSetup {
 	}
 	CreatePaymentRequest(db, &req)
 
-	return paSetup{companyID: co.ID, gwID: gw.ID, clearingID: clearing.ID, arID: ar.ID, invoiceID: inv.ID, requestID: req.ID}
+	return paSetup{companyID: co.ID, customerID: cust.ID, gwID: gw.ID, clearingID: clearing.ID, arID: ar.ID, invoiceID: inv.ID, requestID: req.ID}
 }
 
 func postChargeTxn(t *testing.T, db *gorm.DB, s paSetup, amount int64) uint {
@@ -163,17 +166,64 @@ func TestApplyPayment_DoubleApply_Blocked(t *testing.T) {
 	}
 }
 
-func TestApplyPayment_AmountExceedsBalance_Blocked(t *testing.T) {
+// TestApplyPayment_Overpayment_CreatesCredit verifies that when a payment
+// exceeds the invoice BalanceDue, the invoice is capped at zero and the
+// excess creates a CustomerCredit record (Batch 16 behaviour).
+func TestApplyPayment_Overpayment_CreatesCredit(t *testing.T) {
 	db := testPaymentApplicationDB(t)
 	s := setupPayApp(t, db)
 
-	// Reduce BalanceDue to 500, but charge is 1000.
-	db.Model(&models.Invoice{}).Where("id = ?", s.invoiceID).Update("balance_due", "500")
+	// Invoice BalanceDue = 500; charge = 1000 → excess = 500.
+	db.Model(&models.Invoice{}).Where("id = ?", s.invoiceID).Updates(map[string]any{
+		"balance_due":      "500",
+		"balance_due_base": "500",
+	})
 	txnID := postChargeTxn(t, db, s, 1000)
 
-	err := ValidatePaymentTransactionApplicable(db, s.companyID, txnID)
-	if err == nil {
-		t.Fatal("Expected amount exceeds balance error")
+	// Overpayment should now be ALLOWED by the validator.
+	if err := ValidatePaymentTransactionApplicable(db, s.companyID, txnID); err != nil {
+		t.Fatalf("overpayment should be allowed by validator: %v", err)
+	}
+
+	// Apply should succeed and create credit.
+	if err := ApplyPaymentTransactionToInvoice(db, s.companyID, txnID, "test"); err != nil {
+		t.Fatalf("apply failed: %v", err)
+	}
+
+	// Invoice should be paid at BalanceDue = 0.
+	var inv models.Invoice
+	db.First(&inv, s.invoiceID)
+	if inv.Status != models.InvoiceStatusPaid {
+		t.Errorf("invoice status: want paid, got %s", inv.Status)
+	}
+	if !inv.BalanceDue.IsZero() {
+		t.Errorf("invoice BalanceDue: want 0, got %s", inv.BalanceDue)
+	}
+
+	// CustomerCredit for 500 should exist.
+	var credits []models.CustomerCredit
+	db.Where("company_id = ? AND customer_id = ?", s.companyID, s.customerID).Find(&credits)
+	if len(credits) != 1 {
+		t.Fatalf("expected 1 credit, got %d", len(credits))
+	}
+	c := credits[0]
+	if !c.OriginalAmount.Equal(decimal.NewFromInt(500)) {
+		t.Errorf("credit original_amount: want 500, got %s", c.OriginalAmount)
+	}
+	if !c.RemainingAmount.Equal(decimal.NewFromInt(500)) {
+		t.Errorf("credit remaining_amount: want 500, got %s", c.RemainingAmount)
+	}
+	if c.Status != models.CustomerCreditActive {
+		t.Errorf("credit status: want active, got %s", c.Status)
+	}
+	if c.SourceType != models.CreditSourceOverpayment {
+		t.Errorf("credit source_type: want overpayment, got %s", c.SourceType)
+	}
+	if c.SourcePaymentTxnID == nil || *c.SourcePaymentTxnID != txnID {
+		t.Errorf("credit source_payment_txn_id: want %d, got %v", txnID, c.SourcePaymentTxnID)
+	}
+	if c.SourceApplicationInvID == nil || *c.SourceApplicationInvID != s.invoiceID {
+		t.Errorf("credit source_application_inv_id: want %d, got %v", s.invoiceID, c.SourceApplicationInvID)
 	}
 }
 

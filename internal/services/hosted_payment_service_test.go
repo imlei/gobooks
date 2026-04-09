@@ -576,6 +576,245 @@ func TestCreateHostedPaymentIntent_ConcurrentDouble(t *testing.T) {
 
 // ── stripeAmountCents unit tests ─────────────────────────────────────────────
 
+// ── Batch 10.1: duplicate-collection guard ────────────────────────────────────
+
+// TestEvaluateHostedPayability_Gate6_BlocksAfterVerifiedCollection verifies that
+// EvaluateHostedPayability returns CanPay=false when a payment_succeeded attempt
+// already exists for the invoice, even if all other gates pass.
+func TestEvaluateHostedPayability_Gate6_BlocksAfterVerifiedCollection(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, _ := seedPaymentBase(t, db)
+	seedManualGateway(t, db, co.ID)
+
+	// Pre-seed a payment_succeeded attempt — simulates a confirmed webhook payment.
+	gw := models.PaymentGatewayAccount{
+		CompanyID: co.ID, ProviderType: models.ProviderStripe, DisplayName: "G", IsActive: true,
+		ExternalAccountRef: "sk_test_x",
+	}
+	db.Create(&gw)
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: 1,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderStripe,
+		Amount: decimal.NewFromFloat(100), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	result := EvaluateHostedPayability(db, inv, co.ID)
+	if result.CanPay {
+		t.Error("expected CanPay=false after verified collection, got true")
+	}
+	if !strings.Contains(result.Reason, "already been confirmed") {
+		t.Errorf("expected reason to mention confirmed payment; got: %q", result.Reason)
+	}
+}
+
+// TestCreateHostedPaymentIntent_BlocksAfterVerifiedCollection verifies that
+// CreateHostedPaymentIntent returns ErrVerifiedCollectionExists when a
+// payment_succeeded attempt already exists.
+func TestCreateHostedPaymentIntent_BlocksAfterVerifiedCollection(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, link := seedPaymentBase(t, db)
+	gw := seedManualGateway(t, db, co.ID)
+
+	// Seed a payment_succeeded attempt.
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: link.ID,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderManual,
+		Amount: decimal.NewFromFloat(100), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	_, err := CreateHostedPaymentIntent(db, &link, inv, "token", "https://example.com")
+	if !errors.Is(err, ErrVerifiedCollectionExists) {
+		t.Errorf("expected ErrVerifiedCollectionExists, got %v", err)
+	}
+}
+
+// ── Blocker 2: partial payment allows second attempt ─────────────────────────
+
+// TestHasVerifiedGatewayCollection_PartialPayment_AllowsSecond verifies that when
+// a partial payment_succeeded attempt ($40 on $100 invoice) exists, the guard
+// returns false — a second payment should be allowed for the remaining balance.
+func TestHasVerifiedGatewayCollection_PartialPayment_AllowsSecond(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, _ := seedPaymentBase(t, db) // inv.Amount=100, inv.BalanceDue=100
+	gw := seedManualGateway(t, db, co.ID)
+
+	// Partial payment_succeeded: $40 of a $100 invoice.
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: 1,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderManual,
+		Amount: decimal.NewFromFloat(40), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	if HasVerifiedGatewayCollectionForInvoice(db, inv.ID, co.ID) {
+		t.Error("expected false for partial collection ($40 < $100 balance), got true")
+	}
+}
+
+// TestHasVerifiedGatewayCollection_AfterPartialApply_AllowsSecond verifies the
+// scenario where a $40 payment was collected AND applied (invoice.BalanceDue = $60).
+// A second payment_succeeded for $40 still hasn't covered the $60 remaining, so
+// another attempt should be allowed.
+func TestHasVerifiedGatewayCollection_AfterPartialApply_AllowsSecond(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, _ := seedPaymentBase(t, db) // inv.Amount=100, inv.BalanceDue=100
+	gw := seedManualGateway(t, db, co.ID)
+
+	// Simulate that a $40 payment was applied: invoice.BalanceDue is now $60.
+	db.Model(&inv).Update("balance_due", decimal.NewFromFloat(60))
+
+	// A $40 payment_succeeded attempt exists (for the already-applied $40).
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: 1,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderManual,
+		Amount: decimal.NewFromFloat(40), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	// $40 < $60 remaining → allow a second attempt.
+	if HasVerifiedGatewayCollectionForInvoice(db, inv.ID, co.ID) {
+		t.Error("expected false ($40 collected < $60 balance remaining), got true")
+	}
+}
+
+// TestHasVerifiedGatewayCollection_FullyPaidBlocked verifies that a full
+// payment_succeeded ($100 on $100 invoice) still blocks a new attempt.
+func TestHasVerifiedGatewayCollection_FullyPaidBlocked(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, _ := seedPaymentBase(t, db) // inv.Amount=100, inv.BalanceDue=100
+	gw := seedManualGateway(t, db, co.ID)
+
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: 1,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderManual,
+		Amount: decimal.NewFromFloat(100), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	if !HasVerifiedGatewayCollectionForInvoice(db, inv.ID, co.ID) {
+		t.Error("expected true for full collection ($100 >= $100 balance), got false")
+	}
+}
+
+// TestEvaluateHostedPayability_PartialCollection_CanPay verifies that Gate 6 does
+// not block a partially-paid invoice that still has balance remaining and only a
+// partial collection on record.
+func TestEvaluateHostedPayability_PartialCollection_CanPay(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, _ := seedPaymentBase(t, db)
+	gw := seedManualGateway(t, db, co.ID)
+	_ = gw
+
+	// $40 payment_succeeded, but invoice still has $100 balance due → CanPay should be true.
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: 1,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderManual,
+		Amount: decimal.NewFromFloat(40), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	result := EvaluateHostedPayability(db, inv, co.ID)
+	if !result.CanPay {
+		t.Errorf("expected CanPay=true for partial collection, got false: %s", result.Reason)
+	}
+}
+
+// ── Blocker 2: hosted payment partial-payment amount calculation ──────────────
+
+// TestCreateHostedPaymentIntent_UnappliedCollection_CorrectAmount verifies that
+// when a $40 payment_succeeded attempt exists (not yet applied) on a $100 invoice,
+// the new hosted payment attempt amount is $60 (100 - 40), not $100.
+func TestCreateHostedPaymentIntent_UnappliedCollection_CorrectAmount(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, link := seedPaymentBase(t, db) // inv.Amount=100, balance=100
+	gw := seedManualGateway(t, db, co.ID)
+
+	// A $40 payment_succeeded exists but has NOT been applied (invoice balance still 100).
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: link.ID,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderManual,
+		Amount: decimal.NewFromFloat(40), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	// A new checkout session should be for the REMAINING $60, not the full $100.
+	attempt, err := CreateHostedPaymentIntent(db, &link, inv, "token", "https://example.com")
+	if err != nil {
+		t.Fatalf("CreateHostedPaymentIntent: %v", err)
+	}
+	if !attempt.Amount.Equal(decimal.NewFromFloat(60)) {
+		t.Errorf("attempt amount: want 60 (100 - 40 unconsumed), got %s", attempt.Amount)
+	}
+}
+
+// TestCreateHostedPaymentIntent_AfterTwoAppliedPartials_ThirdAllowed verifies
+// that already-consumed succeeded collections do not block a later installment.
+//
+// Scenario: invoice.Amount=100, two prior $40 collections have both been
+// applied, so BalanceDue=20. A new hosted payment intent for the last $20 must
+// still be allowed.
+func TestCreateHostedPaymentIntent_AfterTwoAppliedPartials_ThirdAllowed(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, link := seedPaymentBase(t, db) // inv.Amount=100, balance=100
+	gw := seedManualGateway(t, db, co.ID)
+
+	// Simulate that two prior $40 collections were already applied.
+	db.Model(&inv).Updates(map[string]any{
+		"status":      string(models.InvoiceStatusPartiallyPaid),
+		"balance_due": decimal.NewFromFloat(20),
+	})
+	db.First(&inv, inv.ID)
+
+	for i := 0; i < 2; i++ {
+		db.Create(&models.HostedPaymentAttempt{
+			CompanyID:        co.ID,
+			InvoiceID:        inv.ID,
+			HostedLinkID:     link.ID,
+			GatewayAccountID: gw.ID,
+			ProviderType:     models.ProviderManual,
+			Amount:           decimal.NewFromFloat(40),
+			CurrencyCode:     "CAD",
+			Status:           models.HostedPaymentAttemptPaymentSucceeded,
+		})
+	}
+
+	attempt, err := CreateHostedPaymentIntent(db, &link, inv, "token", "https://example.com")
+	if err != nil {
+		t.Fatalf("CreateHostedPaymentIntent after two applied partials: %v", err)
+	}
+	if !attempt.Amount.Equal(decimal.NewFromFloat(20)) {
+		t.Errorf("attempt amount: want 20, got %s", attempt.Amount)
+	}
+}
+
+// TestUnconsumedVerifiedCollectionAmount_AfterApplied_ReturnsZero verifies that
+// after a payment_succeeded attempt HAS been applied (invoice.BalanceDue reduced),
+// UnconsumedVerifiedCollectionAmount returns 0 — the collection is considered consumed.
+func TestUnconsumedVerifiedCollectionAmount_AfterApplied_ReturnsZero(t *testing.T) {
+	db := hostedPayTestDB(t)
+	co, _, inv, _ := seedPaymentBase(t, db) // balance=100
+	gw := seedManualGateway(t, db, co.ID)
+
+	// Seed $40 payment_succeeded.
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: co.ID, InvoiceID: inv.ID, HostedLinkID: 1,
+		GatewayAccountID: gw.ID, ProviderType: models.ProviderManual,
+		Amount: decimal.NewFromFloat(40), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	// Simulate that the $40 was applied: balance drops to 60.
+	db.Model(&inv).Update("balance_due", decimal.NewFromFloat(60))
+	db.First(&inv, inv.ID) // reload
+
+	unconsumed := UnconsumedVerifiedCollectionAmount(db, inv, co.ID)
+	if unconsumed.IsPositive() {
+		t.Errorf("unconsumed after apply: want 0, got %s", unconsumed)
+	}
+}
+
 func TestStripeAmountCents(t *testing.T) {
 	cases := []struct {
 		input   string

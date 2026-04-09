@@ -28,9 +28,11 @@ func testInvoicePaymentDB(t *testing.T) *gorm.DB {
 		&models.Customer{},
 		&models.Invoice{},
 		&models.InvoiceLine{},
+		&models.InvoiceHostedLink{},
 		&models.PaymentGatewayAccount{},
 		&models.PaymentRequest{},
 		&models.PaymentTransaction{},
+		&models.HostedPaymentAttempt{},
 	); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
@@ -306,5 +308,166 @@ func TestListPaymentRequestsForInvoice(t *testing.T) {
 	}
 	if reqs[0].GatewayAccount.DisplayName != "Stripe Prod" {
 		t.Error("Gateway account not preloaded")
+	}
+}
+
+// ── Blocker 2: sequential partial collection ─────────────────────────────────
+
+// TestCreatePaymentRequest_AfterPartialPaymentApplied_SecondRequestAllowed verifies
+// that after a partial payment is applied (invoice → partially_paid), the first
+// PaymentRequest is transitioned to paid (consumed), and a second request for the
+// remaining balance can be created without hitting the duplicate-active-request guard.
+func TestCreatePaymentRequest_AfterPartialPaymentApplied_SecondRequestAllowed(t *testing.T) {
+	db := testInvoicePaymentDB(t)
+	s := setupInvPay(t, db) // invoice.Amount = 500
+
+	// First request for 500.
+	req1, err := CreatePaymentRequestForInvoice(db, InvoicePaymentRequestInput{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, GatewayAccountID: s.gatewayID,
+	})
+	if err != nil {
+		t.Fatalf("first request: %v", err)
+	}
+
+	// Simulate partial payment applied: invoice → partially_paid (balance=300).
+	// We directly update the invoice and PaymentRequest to simulate what
+	// ApplyPaymentTransactionToInvoice does (marking req as paid).
+	db.Model(&models.Invoice{}).Where("id = ?", s.invoiceID).Updates(map[string]any{
+		"status": string(models.InvoiceStatusPartiallyPaid), "balance_due": "300",
+	})
+	db.Model(&models.PaymentRequest{}).Where("id = ?", req1.ID).Update("status", models.PaymentRequestPaid)
+
+	// Second request for remaining 300 — must NOT be blocked.
+	req2, err := CreatePaymentRequestForInvoice(db, InvoicePaymentRequestInput{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, GatewayAccountID: s.gatewayID,
+	})
+	if err != nil {
+		t.Fatalf("second request after partial payment: %v", err)
+	}
+	if !req2.Amount.Equal(decimal.NewFromInt(300)) {
+		t.Errorf("second request amount: want 300, got %s", req2.Amount)
+	}
+}
+
+// TestCreatePaymentRequest_AfterTwoAppliedPartials_ThirdRequestAllowed verifies
+// that previously CONSUMED partial collections do not block the final request.
+//
+// Scenario: invoice.Amount=500, two prior provider-confirmed collections of 200
+// each have already been applied (BalanceDue=100). A third request for the final
+// 100 must still be allowed. This guards against incorrectly comparing TOTAL
+// succeeded collections (400) to the current BalanceDue (100).
+func TestCreatePaymentRequest_AfterTwoAppliedPartials_ThirdRequestAllowed(t *testing.T) {
+	db := testInvoicePaymentDB(t)
+	s := setupInvPay(t, db) // invoice.Amount = 500
+
+	// Simulate two prior applied partial payments: invoice now has 100 remaining.
+	db.Model(&models.Invoice{}).Where("id = ?", s.invoiceID).Updates(map[string]any{
+		"status":      string(models.InvoiceStatusPartiallyPaid),
+		"balance_due": "100",
+	})
+
+	// Provider-confirmed collections for the two already-applied partials.
+	for i := 0; i < 2; i++ {
+		db.Create(&models.HostedPaymentAttempt{
+			CompanyID:        s.companyID,
+			InvoiceID:        s.invoiceID,
+			HostedLinkID:     1,
+			GatewayAccountID: s.gatewayID,
+			ProviderType:     models.ProviderStripe,
+			Amount:           decimal.NewFromInt(200),
+			CurrencyCode:     "CAD",
+			Status:           models.HostedPaymentAttemptPaymentSucceeded,
+		})
+	}
+
+	req, err := CreatePaymentRequestForInvoice(db, InvoicePaymentRequestInput{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, GatewayAccountID: s.gatewayID,
+	})
+	if err != nil {
+		t.Fatalf("third request after two applied partials: %v", err)
+	}
+	if !req.Amount.Equal(decimal.NewFromInt(100)) {
+		t.Errorf("third request amount: want 100, got %s", req.Amount)
+	}
+}
+
+// TestCreatePaymentRequest_Amount_SubtractsUnconsumedCollection verifies that
+// when a payment_succeeded attempt exists but hasn't been applied yet, the new
+// request amount is BalanceDue - sum(unapplied verified), not raw BalanceDue.
+func TestCreatePaymentRequest_Amount_SubtractsUnconsumedCollection(t *testing.T) {
+	db := testInvoicePaymentDB(t)
+	s := setupInvPay(t, db) // invoice.Amount=500, balance=500
+
+	// Simulate a $200 payment_succeeded attempt (not yet applied).
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, HostedLinkID: 1,
+		GatewayAccountID: s.gatewayID, ProviderType: models.ProviderStripe,
+		Amount: decimal.NewFromInt(200), CurrencyCode: "CAD",
+		Status: models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	// Invoice still shows balance=500 (not yet applied).
+	req, err := CreatePaymentRequestForInvoice(db, InvoicePaymentRequestInput{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, GatewayAccountID: s.gatewayID,
+	})
+	if err != nil {
+		t.Fatalf("create request with unconsumed collection: %v", err)
+	}
+	// Amount should be 500 - 200 = 300, not 500.
+	if !req.Amount.Equal(decimal.NewFromInt(300)) {
+		t.Errorf("request amount: want 300 (balance minus unapplied), got %s", req.Amount)
+	}
+}
+
+// TestCreatePaymentRequest_DuplicateGuard_StillBlocksTrueDuplicates verifies
+// that loosening the partial-payment guard does NOT allow true duplicates
+// (two requests when no payment has been made or consumed).
+func TestCreatePaymentRequest_DuplicateGuard_StillBlocksTrueDuplicates(t *testing.T) {
+	db := testInvoicePaymentDB(t)
+	s := setupInvPay(t, db)
+
+	// First request — no payment made.
+	CreatePaymentRequestForInvoice(db, InvoicePaymentRequestInput{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, GatewayAccountID: s.gatewayID,
+	})
+
+	// Second request — first is still active (not consumed). Must be blocked.
+	_, err := CreatePaymentRequestForInvoice(db, InvoicePaymentRequestInput{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, GatewayAccountID: s.gatewayID,
+	})
+	if err == nil {
+		t.Fatal("expected duplicate-active-request block, got nil")
+	}
+}
+
+// ── Batch 10.1: verified-collection block in CreatePaymentRequestForInvoice ──
+
+// TestCreatePaymentRequestForInvoice_BlocksAfterVerifiedCollection verifies that
+// creating a payment request fails with ErrVerifiedGatewayCollectionExists when a
+// payment_succeeded HostedPaymentAttempt already exists for the invoice.
+func TestCreatePaymentRequestForInvoice_BlocksAfterVerifiedCollection(t *testing.T) {
+	db := testInvoicePaymentDB(t)
+	s := setupInvPay(t, db)
+
+	// Seed a payment_succeeded attempt for this invoice.
+	db.Create(&models.HostedPaymentAttempt{
+		CompanyID:        s.companyID,
+		InvoiceID:        s.invoiceID,
+		HostedLinkID:     1,
+		GatewayAccountID: s.gatewayID,
+		ProviderType:     models.ProviderStripe,
+		Amount:           decimal.NewFromInt(500),
+		CurrencyCode:     "CAD",
+		Status:           models.HostedPaymentAttemptPaymentSucceeded,
+	})
+
+	_, err := CreatePaymentRequestForInvoice(db, InvoicePaymentRequestInput{
+		CompanyID: s.companyID, InvoiceID: s.invoiceID, GatewayAccountID: s.gatewayID,
+	})
+	if err == nil {
+		t.Fatal("expected error when verified collection exists, got nil")
+	}
+	if !strings.Contains(err.Error(), "already been confirmed") {
+		t.Errorf("expected error to mention confirmed payment; got: %v", err)
 	}
 }

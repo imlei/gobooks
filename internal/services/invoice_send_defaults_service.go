@@ -23,6 +23,13 @@ type InvoiceSendDefaults struct {
 	Subject string // after token substitution
 	Body    string // plain text, after token substitution
 
+	// When BodyUsesSystemDefault is true, the modal can safely swap between the
+	// attachment and no-attachment fallback copy if the user toggles the PDF
+	// checkbox without otherwise editing the body.
+	BodyUsesSystemDefault bool   `json:"-"`
+	DefaultBodyAttachPDF string `json:"-"`
+	DefaultBodyNoPDF     string `json:"-"`
+
 	// Template identity at resolution time
 	TemplateID     *uint  // nil when system fallback is used
 	TemplateName   string // empty when system fallback is used
@@ -35,6 +42,13 @@ type InvoiceSendDefaults struct {
 
 	// Invoice-level send summary
 	SendCount int // invoice.SendCount; > 0 means already sent at least once
+
+	// PDFAvailable is true when wkhtmltopdf is installed on the server.
+	// When true, the send modal shows the "Attach PDF" checkbox (default checked).
+	// When false, no attachment option is shown and email sends without PDF.
+	// Uses the same PDFGeneratorAvailable() truth as the internal detail page
+	// and the hosted invoice page.
+	PDFAvailable bool
 }
 
 // GetInvoiceSendDefaults resolves the default values for the send email modal.
@@ -99,11 +113,20 @@ func GetInvoiceSendDefaults(db *gorm.DB, companyID, invoiceID uint) (*InvoiceSen
 	}
 	subject, _ = RenderEmailTokens(subject, "", tokenData)
 
+	// Use PDFGeneratorAvailable() as the default send intent so the modal preview
+	// shows the same wording the user will see in the actual email.
+	pdfAvailable := PDFGeneratorAvailable()
+
 	body := ""
+	bodyUsesSystemDefault := tmplCfg.EmailDefaultBody == ""
+	defaultBodyAttachPDF := ""
+	defaultBodyNoPDF := ""
 	if tmplCfg.EmailDefaultBody != "" {
 		_, body = RenderEmailTokens("", tmplCfg.EmailDefaultBody, tokenData)
 	} else {
-		body = DefaultEmailBodyRendered(tokenData)
+		defaultBodyAttachPDF = DefaultEmailBodyRendered(tokenData, true)
+		defaultBodyNoPDF = DefaultEmailBodyRendered(tokenData, false)
+		body = DefaultEmailBodyRendered(tokenData, pdfAvailable)
 	}
 
 	return &InvoiceSendDefaults{
@@ -111,6 +134,9 @@ func GetInvoiceSendDefaults(db *gorm.DB, companyID, invoiceID uint) (*InvoiceSen
 		CCEmails:         "",
 		Subject:          subject,
 		Body:             body,
+		BodyUsesSystemDefault: bodyUsesSystemDefault,
+		DefaultBodyAttachPDF:  defaultBodyAttachPDF,
+		DefaultBodyNoPDF:      defaultBodyNoPDF,
 		TemplateID:       tmplID,
 		TemplateName:     tmplName,
 		TemplateSource:   tmplSource,
@@ -118,5 +144,6 @@ func GetInvoiceSendDefaults(db *gorm.DB, companyID, invoiceID uint) (*InvoiceSen
 		CanSend:          canSend,
 		EligibilityError: eligErrMsg,
 		SendCount:        inv.SendCount,
+		PDFAvailable:     pdfAvailable,
 	}, nil
 }

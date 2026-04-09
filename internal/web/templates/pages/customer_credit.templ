@@ -1,0 +1,165 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"fmt"
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+templ CustomerCredits(vm CustomerCreditsVM) {
+	@layout.Layout("GoBooks - Customer Credits", ui.SidebarVM{Active: "Customers", HasCompany: vm.HasCompany}, bodyCustomerCredits(vm))
+}
+
+templ bodyCustomerCredits(vm CustomerCreditsVM) {
+	<div class="max-w-[95%]">
+		<div class="mb-6 flex items-start justify-between">
+			<div>
+				<div class="mb-1 text-small text-text-muted2">
+					<a href="/customers" class="hover:underline">Customers</a>
+					{ " / " }
+					<a href={ templ.SafeURL(fmt.Sprintf("/customers/%d", vm.Customer.ID)) } class="hover:underline">{ vm.Customer.Name }</a>
+					{ " / Credits" }
+				</div>
+				<h1 class="text-title font-semibold">Customer Credits — { vm.Customer.Name }</h1>
+				<p class="mt-1 text-small text-text-muted2">
+					Credits arise from overpayments. Apply a credit to reduce an outstanding invoice balance.
+				</p>
+			</div>
+			<a
+				href={ templ.SafeURL(fmt.Sprintf("/customers/%d", vm.Customer.ID)) }
+				class="rounded-md border border-border-default px-4 py-2 text-body hover:bg-background-muted"
+			>
+				Back to Customer
+			</a>
+		</div>
+
+		if vm.JustApplied {
+			<div class="mt-2 mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Credit applied — invoice balance updated.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-2 mb-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error">
+				{ vm.FormError }
+			</div>
+		}
+
+		<div class="mb-2 text-body font-medium text-text-muted2">
+			Total available credit: <strong>{ vm.TotalRemaining.StringFixed(2) }</strong>
+		</div>
+
+		<!-- Credit list -->
+		if len(vm.Credits) == 0 {
+			<p class="text-body text-text-muted2 mt-4">No credits on file for this customer.</p>
+		} else {
+			<div class="mt-4 overflow-x-auto rounded-lg border border-border-default">
+				<table class="w-full text-body">
+					<thead class="border-b border-border-default bg-background-muted text-small font-semibold text-text-muted2">
+						<tr>
+							<th class="px-4 py-3 text-left">ID</th>
+							<th class="px-4 py-3 text-left">Source</th>
+							<th class="px-4 py-3 text-right">Original</th>
+							<th class="px-4 py-3 text-right">Remaining</th>
+							<th class="px-4 py-3 text-left">Status</th>
+							<th class="px-4 py-3 text-right">Actions</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-border-default">
+						for _, c := range vm.Credits {
+							<tr class="hover:bg-background-muted">
+								<td class="px-4 py-3 text-text-muted2">{ Uitoa(c.ID) }</td>
+								<td class="px-4 py-3">{ string(c.SourceType) }</td>
+								<td class="px-4 py-3 text-right font-mono">{ c.OriginalAmount.StringFixed(2) }</td>
+								<td class="px-4 py-3 text-right font-mono">{ c.RemainingAmount.StringFixed(2) }</td>
+								<td class="px-4 py-3">
+									@creditStatusBadge(c.Status)
+								</td>
+								<td class="px-4 py-3 text-right">
+									if c.Status == models.CustomerCreditActive && c.RemainingAmount.IsPositive() {
+										<a
+											href={ templ.SafeURL(fmt.Sprintf("/customers/%d/credits/%d/allocate", vm.Customer.ID, c.ID)) }
+											class="text-small font-medium text-primary hover:underline"
+										>
+											Allocate
+										</a>
+									} else {
+										<span class="text-small text-text-muted2">-</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+
+		<!-- Apply credit form — only shown when active credits and outstanding invoices exist -->
+		if len(vm.ActiveCredits) > 0 && len(vm.OutstandingInvoices) > 0 {
+			<div class="mt-8">
+				<h2 class="text-body font-semibold mb-3">Apply Credit to Invoice</h2>
+				<form
+					method="post"
+					action={ templ.SafeURL(fmt.Sprintf("/customers/%d/credits/apply", vm.Customer.ID)) }
+					class="rounded-lg border border-border-default bg-background-muted p-5 max-w-xl"
+				>
+					<div class="space-y-4">
+						<div>
+							<label class="block text-small font-medium text-text-muted2 mb-1">Credit</label>
+							<select name="credit_id" class="w-full rounded-md border border-border-default bg-white px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary" required>
+								<option value="">— select credit —</option>
+								for _, c := range vm.ActiveCredits {
+									<option value={ Uitoa(c.ID) } selected?={ vm.SelectedCreditID == c.ID }>
+										{ fmt.Sprintf("#%d — %s remaining", c.ID, c.RemainingAmount.StringFixed(2)) }
+									</option>
+								}
+							</select>
+						</div>
+						<div>
+							<label class="block text-small font-medium text-text-muted2 mb-1">Invoice</label>
+							<select name="invoice_id" class="w-full rounded-md border border-border-default bg-white px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary" required>
+								<option value="">— select invoice —</option>
+								for _, inv := range vm.OutstandingInvoices {
+									<option value={ Uitoa(inv.ID) } selected?={ vm.SelectedInvoiceID == inv.ID }>
+										{ fmt.Sprintf("%s — %s owing", inv.InvoiceNumber, inv.BalanceDue.StringFixed(2)) }
+									</option>
+								}
+							</select>
+						</div>
+						<div>
+							<label class="block text-small font-medium text-text-muted2 mb-1">Amount</label>
+							<input
+								type="number"
+								name="amount"
+								value={ vm.ApplyAmount }
+								step="0.01"
+								min="0.01"
+								placeholder="0.00"
+								class="w-full rounded-md border border-border-default px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary"
+								required
+							/>
+						</div>
+						<button
+							type="submit"
+							class="rounded-md bg-primary px-5 py-2 text-body font-medium text-white hover:bg-primary-hover"
+						>
+							Apply Credit
+						</button>
+					</div>
+				</form>
+			</div>
+		}
+	</div>
+}
+
+templ creditStatusBadge(status models.CustomerCreditStatus) {
+	switch status {
+		case models.CustomerCreditActive:
+			<span class="rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success-hover">Active</span>
+		case models.CustomerCreditExhausted:
+			<span class="rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted2">Exhausted</span>
+		default:
+			<span class="rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted2">{ string(status) }</span>
+	}
+}

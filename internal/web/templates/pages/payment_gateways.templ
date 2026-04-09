@@ -115,6 +115,7 @@ templ bodyPaymentMappings(vm PaymentMappingsVM) {
 					@pgMappingField(vm, gw.ID, "Fee Expense", "fee_expense_account_id")
 					@pgMappingField(vm, gw.ID, "Refund Account", "refund_account_id")
 					@pgMappingField(vm, gw.ID, "Payout Bank Account", "payout_bank_account_id")
+					@pgMappingField(vm, gw.ID, "Chargeback Account", "chargeback_account_id")
 				</div>
 				<div class="mt-4 flex justify-end">
 					@ui.ButtonPrimary("Save", "submit", false)
@@ -151,6 +152,8 @@ func isPGAcctSelected(mappings map[uint]*models.PaymentAccountingMapping, gwID u
 		val = m.RefundAccountID
 	case "payout_bank_account_id":
 		val = m.PayoutBankAccountID
+	case "chargeback_account_id":
+		val = m.ChargebackAccountID
 	}
 	return val != nil && *val == accountID
 }
@@ -255,8 +258,14 @@ templ bodyPaymentTransactions(vm PaymentTransactionsVM) {
 		if vm.JustRefundApplied {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Refund applied — invoice balance restored.</div>
 		}
+		if vm.JustChargebackApplied {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Chargeback applied — invoice balance restored.</div>
+		}
 		if vm.JustUnapplied {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payment unapplied — invoice balance restored.</div>
+		}
+		if vm.JustReverseAllocApplied {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Reverse allocation applied — invoice balances restored proportionally.</div>
 		}
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
@@ -345,10 +354,44 @@ templ bodyPaymentTransactions(vm PaymentTransactionsVM) {
 													<button type="submit" class="text-small font-medium text-success-hover hover:underline" onclick="return confirm('Apply?');">Apply</button>
 												</form>
 											}
+											if st.CanMultiAllocate || st.IsMultiAllocated {
+												<a href={ "/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/allocate" } class="inline ml-1 text-small font-medium text-primary hover:underline">
+													if st.IsMultiAllocated {
+														View Allocation
+													} else {
+														Allocate
+													}
+												</a>
+											}
 											if st.CanRefundApply {
 												<form method="post" action={ "/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-refund" } class="inline ml-1">
 													<button type="submit" class="text-small font-medium text-warning hover:underline" onclick="return confirm('Apply refund?');">Refund Apply</button>
 												</form>
+											}
+											if st.CanChargebackApply {
+												<form method="post" action={ "/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback" } class="inline ml-1">
+													<button type="submit" class="text-small font-medium text-error-hover hover:underline" onclick="return confirm('Apply chargeback and restore invoice balance?');">CB Apply</button>
+												</form>
+											}
+											if st.CanRefundReverseAllocate {
+												<form method="post" action={ "/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-refund-multialloc" } class="inline ml-1">
+													<button type="submit" class="text-small font-medium text-warning hover:underline" onclick="return confirm('Apply refund across all allocated invoices?');">Refund Alloc</button>
+												</form>
+											}
+											if st.CanChargebackReverseAllocate {
+												<form method="post" action={ "/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback-multialloc" } class="inline ml-1">
+													<button type="submit" class="text-small font-medium text-error-hover hover:underline" onclick="return confirm('Apply chargeback across all allocated invoices?');">CB Alloc</button>
+												</form>
+											}
+											if st.IsReverseAllocated {
+												<span class="inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-warning-soft text-warning-hover ml-1" title="Multi-alloc reverse applied">Rev-Alloc { st.ReverseAllocatedTotal }</span>
+											}
+											if st.HasOpenReverseException {
+												<a
+													href={ templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(st.ReverseExceptionID)) }
+													class="inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-danger-soft text-danger-hover ml-1"
+													title="Payment reverse exception — click to review"
+												>Rev-Exc</a>
 											}
 										}
 									}

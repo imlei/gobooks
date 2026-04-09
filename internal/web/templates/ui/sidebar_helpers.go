@@ -15,7 +15,8 @@ func SectionKeyForActivePage(active string) string {
 		return "expenses"
 	case "Bank Reconcile", "Reports", "Accounts":
 		return "accounting"
-	case "AI Connect Settings", "Members Settings", "Audit Log", "Products & Services":
+	case "AI Connect Settings", "Members Settings", "Audit Log", "Products & Services",
+		"Payment Gateways", "Gateway Settlement Review", "Gateway Payouts", "Recon Exceptions":
 		return "settings"
 	default:
 		if IsCompanySettingsNavActive(active) {

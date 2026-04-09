@@ -485,6 +485,73 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 			</div>
 		}
 
+		// ── Gateway Settlement Outcome section (Batch 12) ───────────────────
+		// Shown only when a verified gateway payment exists for this invoice.
+		// Displays the settlement outcome (applied / pending review / failed)
+		// without overstating invoice accounting status.
+		// A retry button is shown when settlement is pending_review or failed.
+		if vm.GatewayPaymentStatus == "payment_succeeded" {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Gateway Settlement</h2>
+				<p class="mt-1 text-small text-text-muted2">
+					A gateway payment has been verified by the provider webhook.
+				</p>
+				if vm.GatewaySettlementStatus == "applied" {
+					if vm.JustSettled {
+						<div class="mt-3 rounded-md border border-success-border bg-success-soft px-3 py-2 text-body text-success-hover font-medium">
+							Gateway settlement successfully applied.
+						</div>
+					}
+					<div class="mt-3 flex items-center gap-2 rounded-md border border-success-border bg-success-soft px-3 py-2 text-body text-success-hover">
+						<span class="font-medium">Settlement applied</span>
+						<span class="text-small text-text-muted2">— invoice balance has been reduced via the accounting bridge.</span>
+					</div>
+				} else if vm.GatewaySettlementStatus == "pending_review" {
+					<div class="mt-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-body text-warning-hover">
+						<p class="font-medium">Settlement pending manual review</p>
+						if vm.GatewaySettlementReason != "" {
+							<p class="mt-1 text-small">Reason: { vm.GatewaySettlementReason }</p>
+						}
+					</div>
+					<form method="post" action={ "/invoices/" + Uitoa(vm.Invoice.ID) + "/retry-gateway-settlement" } class="mt-3">
+						<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+							onclick="return confirm('Retry gateway settlement for this invoice? Settlement will only apply if all eligibility conditions are now met.');">
+							Retry Settlement
+						</button>
+					</form>
+					<p class="mt-2 text-[11px] text-text-muted3">
+						Fix the condition above (e.g. configure the clearing account mapping), then retry. Settlement is exact-once — retrying after success has no effect. ·
+						<a href="/settings/payment-gateways/settlement-review" class="hover:underline">View all pending settlements</a>
+					</p>
+				} else if vm.GatewaySettlementStatus == "failed" {
+					<div class="mt-3 rounded-md border border-error-border bg-error-soft px-3 py-2 text-body text-error-hover">
+						<p class="font-medium">Settlement failed — requires investigation</p>
+						if vm.GatewaySettlementReason != "" {
+							<p class="mt-1 text-small">Error: { vm.GatewaySettlementReason }</p>
+						}
+					</div>
+					<form method="post" action={ "/invoices/" + Uitoa(vm.Invoice.ID) + "/retry-gateway-settlement" } class="mt-3">
+						<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+							onclick="return confirm('Retry gateway settlement for this invoice?');">
+							Retry Settlement
+						</button>
+					</form>
+				} else {
+					// Settlement has not been attempted yet (SettlementStatus == "").
+					<div class="mt-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-body text-warning-hover">
+						<p class="font-medium">Settlement not yet attempted</p>
+						<p class="mt-1 text-small">Gateway payment is verified. Auto-settlement has not run or was skipped.</p>
+					</div>
+					<form method="post" action={ "/invoices/" + Uitoa(vm.Invoice.ID) + "/retry-gateway-settlement" } class="mt-3">
+						<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+							onclick="return confirm('Run gateway settlement for this invoice?');">
+							Run Settlement
+						</button>
+					</form>
+				}
+			</div>
+		}
+
 		// ── Email History panel ──────────────────────────────────────────────
 		// Shows all send attempts (newest first). Each row shows status, time,
 		// recipient, subject, and template. Failed rows show the error reason.
@@ -754,7 +821,11 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 						<div class="mb-5">
 							<label class="block text-small font-medium text-text mb-1" for="sendBody">
 								Message
-								<span class="ml-1 font-normal text-text-muted2 text-[11px]">Email body · PDF invoice is attached separately</span>
+								if vm.SendDefaults.PDFAvailable {
+									<span class="ml-1 font-normal text-text-muted2 text-[11px]">Email body</span>
+								} else {
+									<span class="ml-1 font-normal text-text-muted2 text-[11px]">Email body · PDF not available (wkhtmltopdf not installed)</span>
+								}
 							</label>
 							<textarea
 								id="sendBody"
@@ -762,7 +833,30 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 								rows="9"
 								class="w-full rounded-md border border-border-input bg-surface px-3 py-2 font-mono text-small text-text outline-none focus:ring-2 focus:ring-primary-focus"
 							>{ vm.SendDefaults.Body }</textarea>
+							if vm.SendDefaults.BodyUsesSystemDefault {
+								<textarea id="sendBodyDefaultAttachPDF" hidden>{ vm.SendDefaults.DefaultBodyAttachPDF }</textarea>
+								<textarea id="sendBodyDefaultNoPDF" hidden>{ vm.SendDefaults.DefaultBodyNoPDF }</textarea>
+							}
 						</div>
+
+						// ── PDF attachment option ─────────────────────────────
+						// Only shown when wkhtmltopdf is available. Checked by
+						// default so capable servers attach PDF unless user opts out.
+						if vm.SendDefaults.PDFAvailable {
+							<div class="mb-4 flex items-center gap-2">
+								<input
+									id="attachPDF"
+									type="checkbox"
+									name="attach_pdf"
+									value="1"
+									checked
+									class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+								/>
+								<label for="attachPDF" class="text-small text-text select-none">
+									Attach invoice as PDF
+								</label>
+							</div>
+						}
 
 						<div class="flex justify-end gap-3">
 							<button
@@ -795,6 +889,29 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 					</form>
 				</div>
 			</dialog>
+			if vm.SendDefaults.BodyUsesSystemDefault && vm.SendDefaults.PDFAvailable {
+				<script>
+					(() => {
+						const bodyField = document.getElementById("sendBody");
+						const attachField = document.getElementById("attachPDF");
+						const attachDefault = document.getElementById("sendBodyDefaultAttachPDF");
+						const noPDFDefault = document.getElementById("sendBodyDefaultNoPDF");
+						if (!bodyField || !attachField || !attachDefault || !noPDFDefault) return;
+						if (attachField.dataset.bodySyncBound === "1") return;
+						attachField.dataset.bodySyncBound = "1";
+
+						const syncBodyToAttachmentChoice = () => {
+							const current = bodyField.value;
+							if (current !== attachDefault.value && current !== noPDFDefault.value) {
+								return;
+							}
+							bodyField.value = attachField.checked ? attachDefault.value : noPDFDefault.value;
+						};
+
+						attachField.addEventListener("change", syncBodyToAttachmentChoice);
+					})();
+				</script>
+			}
 		}
 	</div>
 }

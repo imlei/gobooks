@@ -185,6 +185,67 @@ func TestUnapply_NoNewJE(t *testing.T) {
 	}
 }
 
+// ── Blocker 1: overpayment unapply ───────────────────────────────────────────
+
+// TestUnapply_Overpayment_RestoresCorrectAmount verifies that when a txn that
+// caused an overpayment (txn.Amount > invoice.BalanceDue) is unapplied, only the
+// actually-applied portion (AppliedAmount) is restored to the invoice — not the
+// full txn.Amount.
+//
+// Setup: invoice.Amount = 1000, txn.Amount = 1400 → applyAmount=1000, credit=400.
+// After unapply: invoice.BalanceDue should be 1000 again (not 1400).
+func TestUnapply_Overpayment_RestoresCorrectAmount(t *testing.T) {
+	db := testPaymentApplicationDB(t)
+	s := setupPayApp(t, db) // invoice.Amount = invoice.BalanceDue = 1000
+
+	txnID := postChargeTxn(t, db, s, 1400) // 400 excess → creates credit
+	if err := ApplyPaymentTransactionToInvoice(db, s.companyID, txnID, "test"); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	// Verify state after apply.
+	var txn models.PaymentTransaction
+	db.First(&txn, txnID)
+	if txn.AppliedAmount == nil {
+		t.Fatal("AppliedAmount must be set after apply")
+	}
+	if !txn.AppliedAmount.Equal(decimal.NewFromInt(1000)) {
+		t.Errorf("AppliedAmount: want 1000, got %s", txn.AppliedAmount)
+	}
+
+	// Unapply should be allowed (validate must pass).
+	if err := ValidatePaymentTransactionUnapplicable(db, s.companyID, txnID); err != nil {
+		t.Fatalf("validate unapply: %v", err)
+	}
+
+	if err := UnapplyPaymentTransaction(db, s.companyID, txnID, "test"); err != nil {
+		t.Fatalf("unapply: %v", err)
+	}
+
+	// Invoice should be back at 1000, not 1400.
+	var inv models.Invoice
+	db.First(&inv, s.invoiceID)
+	if !inv.BalanceDue.Equal(decimal.NewFromInt(1000)) {
+		t.Errorf("BalanceDue after unapply: want 1000, got %s", inv.BalanceDue)
+	}
+	if inv.Status != models.InvoiceStatusIssued {
+		t.Errorf("Status after unapply: want issued, got %s", inv.Status)
+	}
+
+	// AppliedAmount must be cleared.
+	// Use a fresh struct: GORM may not set a previously-non-nil *decimal.Decimal pointer
+	// to nil when scanning SQL NULL into a reused struct. A fresh zero struct always starts
+	// with nil, and stays nil if the column is NULL.
+	var txnAfter models.PaymentTransaction
+	db.First(&txnAfter, txnID)
+	if txnAfter.AppliedAmount != nil {
+		t.Errorf("AppliedAmount should be nil after unapply, got %s", txnAfter.AppliedAmount)
+	}
+	if txnAfter.AppliedInvoiceID != nil {
+		t.Errorf("AppliedInvoiceID should be nil after unapply")
+	}
+}
+
 // ── Full cycle: apply → unapply → re-apply ──────────────────────────────────
 
 func TestFullCycle_Apply_Unapply_Reapply(t *testing.T) {

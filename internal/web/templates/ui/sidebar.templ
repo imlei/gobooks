@@ -107,7 +107,11 @@ templ sidebarShell(vm SidebarVM) {
 					<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
 						@navItem("/settings/company", "Company", "company", IsCompanySettingsNavActive(vm.Active))
 						@navItem("/settings/channels", "Channels", "company", vm.Active == "Channels")
-					@navItem("/settings/payment-gateways", "Payments", "company", vm.Active == "Payment Gateways")
+						@navItem("/settings/payment-gateways", "Payments", "company", vm.Active == "Payment Gateways")
+						@navItem("/settings/payment-gateways/settlement-review", "Settlement Review", "invoice", vm.Active == "Gateway Settlement Review")
+						@navItem("/settings/payment-gateways/payouts", "Gateway Payouts", "invoice", vm.Active == "Gateway Payouts")
+						@navItem("/settings/payment-gateways/disputes", "Gateway Disputes", "invoice", vm.Active == "Gateway Disputes")
+						@navItem("/settings/payment-gateways/reconciliation-exceptions", "Recon Exceptions", "invoice", vm.Active == "Recon Exceptions")
 						@navItem("/settings/ai-connect", "AI Connect", "ai", vm.Active == "AI Connect Settings")
 						@navItem("/settings/members", "Members", "members", vm.Active == "Members Settings")
 						@navItem("/settings/audit-log", "Audit Log", "audit", vm.Active == "Audit Log")

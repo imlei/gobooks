@@ -85,39 +85,32 @@ func DefaultEmailSubject(invoiceNumber string) string {
 
 // DefaultEmailBody returns the standard fallback body when no template body is set.
 // Uses the same token placeholders so callers can pass it through RenderEmailTokens.
-func DefaultEmailBody() string {
-	return `Dear {{CustomerName}},
-
-Thank you for your business. Please find your invoice attached.
-
-Invoice #: {{InvoiceNumber}}
-Date: {{InvoiceDate}}
-Amount Due: {{Currency}} {{BalanceDue}}{{DueDateLine}}
-
-Please remit payment to the address listed on the invoice.
-
-Thank you!`
+// Pass attachPDF=true to include "Please find your invoice attached.";
+// pass false for neutral wording when no PDF is sent.
+func DefaultEmailBody(attachPDF bool) string {
+	intro := "Please review your invoice details below."
+	if attachPDF {
+		intro = "Please find your invoice attached."
+	}
+	return "Dear {{CustomerName}},\n\nThank you for your business. " + intro + "\n\nInvoice #: {{InvoiceNumber}}\nDate: {{InvoiceDate}}\nAmount Due: {{Currency}} {{BalanceDue}}{{DueDateLine}}\n\nPlease remit payment to the address listed on the invoice.\n\nThank you!"
 }
 
 // DefaultEmailBodyRendered returns the fully-rendered default body (no token placeholders).
 // DueDateLine is handled specially here since it's a conditional line.
-func DefaultEmailBodyRendered(data EmailTokenData) string {
-	body := `Dear {{CustomerName}},
+// Pass attachPDF=true to include "Please find your invoice attached.";
+// pass false for neutral wording when no PDF is sent.
+func DefaultEmailBodyRendered(data EmailTokenData, attachPDF bool) string {
+	intro := "Please review your invoice details below."
+	if attachPDF {
+		intro = "Please find your invoice attached."
+	}
 
-Thank you for your business. Please find your invoice attached.
-
-Invoice #: {{InvoiceNumber}}
-Date: {{InvoiceDate}}
-Amount Due: {{Currency}} {{BalanceDue}}`
+	body := "Dear {{CustomerName}},\n\nThank you for your business. " + intro + "\n\nInvoice #: {{InvoiceNumber}}\nDate: {{InvoiceDate}}\nAmount Due: {{Currency}} {{BalanceDue}}"
 
 	if data.DueDate != nil {
 		body += "\nDue Date: {{DueDate}}"
 	}
-	body += `
-
-Please remit payment to the address listed on the invoice.
-
-Thank you!`
+	body += "\n\nPlease remit payment to the address listed on the invoice.\n\nThank you!"
 
 	_, rendered := RenderEmailTokens("", body, data)
 	return rendered

@@ -41,15 +41,16 @@ func testPaymentPostingDB(t *testing.T) *gorm.DB {
 }
 
 type ppSetup struct {
-	companyID  uint
-	gwID       uint
-	clearingID uint
-	feeID      uint
-	refundID   uint
-	bankID     uint
-	arID       uint
-	invoiceID  uint
-	requestID  uint
+	companyID    uint
+	gwID         uint
+	clearingID   uint
+	feeID        uint
+	refundID     uint
+	chargebackID uint
+	bankID       uint
+	arID         uint
+	invoiceID    uint
+	requestID    uint
 }
 
 func setupPaymentPosting(t *testing.T, db *gorm.DB) ppSetup {
@@ -65,6 +66,8 @@ func setupPaymentPosting(t *testing.T, db *gorm.DB) ppSetup {
 	db.Create(&fee)
 	refund := models.Account{CompanyID: co.ID, Code: "6600", Name: "GW Refunds", RootAccountType: models.RootExpense, DetailAccountType: "operating_expense", IsActive: true}
 	db.Create(&refund)
+	chargeback := models.Account{CompanyID: co.ID, Code: "6700", Name: "GW Chargebacks", RootAccountType: models.RootExpense, DetailAccountType: "operating_expense", IsActive: true}
+	db.Create(&chargeback)
 	bank := models.Account{CompanyID: co.ID, Code: "1000", Name: "Bank", RootAccountType: models.RootAsset, DetailAccountType: models.DetailBank, IsActive: true}
 	db.Create(&bank)
 	ar := models.Account{CompanyID: co.ID, Code: "1100", Name: "AR", RootAccountType: models.RootAsset, DetailAccountType: models.DetailAccountsReceivable, IsActive: true}
@@ -75,8 +78,11 @@ func setupPaymentPosting(t *testing.T, db *gorm.DB) ppSetup {
 
 	SavePaymentAccountingMapping(db, &models.PaymentAccountingMapping{
 		CompanyID: co.ID, GatewayAccountID: gw.ID,
-		ClearingAccountID: &clearing.ID, FeeExpenseAccountID: &fee.ID,
-		RefundAccountID: &refund.ID, PayoutBankAccountID: &bank.ID,
+		ClearingAccountID:   &clearing.ID,
+		FeeExpenseAccountID: &fee.ID,
+		RefundAccountID:     &refund.ID,
+		PayoutBankAccountID: &bank.ID,
+		ChargebackAccountID: &chargeback.ID,
 	})
 
 	inv := models.Invoice{
@@ -94,9 +100,16 @@ func setupPaymentPosting(t *testing.T, db *gorm.DB) ppSetup {
 	CreatePaymentRequest(db, &req)
 
 	return ppSetup{
-		companyID: co.ID, gwID: gw.ID,
-		clearingID: clearing.ID, feeID: fee.ID, refundID: refund.ID,
-		bankID: bank.ID, arID: ar.ID, invoiceID: inv.ID, requestID: req.ID,
+		companyID:    co.ID,
+		gwID:         gw.ID,
+		clearingID:   clearing.ID,
+		feeID:        fee.ID,
+		refundID:     refund.ID,
+		chargebackID: chargeback.ID,
+		bankID:       bank.ID,
+		arID:         ar.ID,
+		invoiceID:    inv.ID,
+		requestID:    req.ID,
 	}
 }
 
@@ -330,5 +343,95 @@ func TestPostPaymentTxn_SavesPostedState(t *testing.T) {
 	}
 	if txn.PostedAt == nil {
 		t.Error("PostedAt not saved")
+	}
+}
+
+// ── Chargeback posting ────────────────────────────────────────────────────────
+
+// TestPostPaymentTxn_Chargeback_DrChargebackCrClearing verifies the JE direction
+// for a chargeback transaction: Dr ChargebackAccount (loss), Cr GW Clearing.
+//
+// This is the accounting entry that records the card-network-forced reversal:
+// the clearing account balance decreases and the chargeback loss account increases.
+func TestPostPaymentTxn_Chargeback_DrChargebackCrClearing(t *testing.T) {
+	db := testPaymentPostingDB(t)
+	s := setupPaymentPosting(t, db)
+	txnID := createTxn(t, db, s, models.TxnTypeChargeback, 150, nil)
+
+	je, err := PostPaymentTransactionToJournalEntry(db, s.companyID, txnID, "test")
+	if err != nil {
+		t.Fatalf("chargeback post failed: %v", err)
+	}
+	if je == nil {
+		t.Fatal("expected non-nil JournalEntry")
+	}
+
+	var lines []models.JournalLine
+	db.Where("journal_entry_id = ?", je.ID).Find(&lines)
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 JE lines, got %d", len(lines))
+	}
+
+	var chargebackDebit, clearingCredit decimal.Decimal
+	for _, l := range lines {
+		if l.AccountID == s.chargebackID {
+			chargebackDebit = l.Debit
+		}
+		if l.AccountID == s.clearingID {
+			clearingCredit = l.Credit
+		}
+	}
+
+	// Dr ChargebackAccount 150
+	if !chargebackDebit.Equal(decimal.NewFromInt(150)) {
+		t.Errorf("chargeback debit: want 150, got %s", chargebackDebit)
+	}
+	// Cr GW Clearing 150
+	if !clearingCredit.Equal(decimal.NewFromInt(150)) {
+		t.Errorf("clearing credit: want 150, got %s", clearingCredit)
+	}
+
+	// Ensure no debit on clearing and no credit on chargeback account.
+	for _, l := range lines {
+		if l.AccountID == s.clearingID && l.Debit.IsPositive() {
+			t.Errorf("clearing should not be debited in a chargeback JE, got debit=%s", l.Debit)
+		}
+		if l.AccountID == s.chargebackID && l.Credit.IsPositive() {
+			t.Errorf("chargeback account should not be credited, got credit=%s", l.Credit)
+		}
+	}
+
+	// Verify PostedJournalEntryID written back to the transaction.
+	var txnRow models.PaymentTransaction
+	db.First(&txnRow, txnID)
+	if txnRow.PostedJournalEntryID == nil || *txnRow.PostedJournalEntryID != je.ID {
+		t.Error("PostedJournalEntryID not persisted on chargeback transaction")
+	}
+	if txnRow.PostedAt == nil {
+		t.Error("PostedAt not persisted on chargeback transaction")
+	}
+}
+
+// TestPostPaymentTxn_Chargeback_MissingMapping_Blocked verifies that posting a
+// chargeback transaction fails when ChargebackAccountID is not configured.
+func TestPostPaymentTxn_Chargeback_MissingMapping_Blocked(t *testing.T) {
+	db := testPaymentPostingDB(t)
+	s := setupPaymentPosting(t, db)
+
+	// Remove ChargebackAccountID from the mapping.
+	SavePaymentAccountingMapping(db, &models.PaymentAccountingMapping{
+		CompanyID:           s.companyID,
+		GatewayAccountID:    s.gwID,
+		ClearingAccountID:   &s.clearingID,
+		FeeExpenseAccountID: &s.feeID,
+		RefundAccountID:     &s.refundID,
+		PayoutBankAccountID: &s.bankID,
+		// ChargebackAccountID intentionally nil
+	})
+
+	txnID := createTxn(t, db, s, models.TxnTypeChargeback, 50, nil)
+	err := ValidatePaymentTransactionPostable(db, s.companyID, txnID)
+	if err == nil {
+		t.Fatal("expected error when ChargebackAccountID is nil")
 	}
 }

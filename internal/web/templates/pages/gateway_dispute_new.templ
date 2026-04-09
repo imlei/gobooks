@@ -1,0 +1,121 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// GatewayDisputeNewVM is the view-model for the open-dispute form.
+type GatewayDisputeNewVM struct {
+	HasCompany bool
+	OpenedDate string // "YYYY-MM-DD" pre-filled with today
+	ErrorMsg   string
+}
+
+templ GatewayDisputeNew(vm GatewayDisputeNewVM) {
+	@layout.Layout("GoBooks - Open Dispute", ui.SidebarVM{Active: "Gateway Disputes", HasCompany: vm.HasCompany}, bodyGatewayDisputeNew(vm))
+}
+
+templ bodyGatewayDisputeNew(vm GatewayDisputeNewVM) {
+	<div class="max-w-2xl">
+		<div class="mb-6">
+			<a href="/settings/payment-gateways/disputes" class="text-small text-primary hover:underline">← Back to Disputes</a>
+			<h1 class="mt-2 text-title font-semibold">Open Dispute</h1>
+			<p class="mt-1 text-small text-text-muted2">
+				Register a cardholder dispute against an existing posted charge transaction.
+				The system validates the charge belongs to this company and is posted.
+			</p>
+		</div>
+
+		if vm.ErrorMsg != "" {
+			<div class="mb-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error-hover">
+				{ vm.ErrorMsg }
+			</div>
+		}
+
+		<form method="POST" action="/settings/payment-gateways/disputes">
+			<div class="space-y-6 rounded-lg border border-border-subtle bg-surface p-6">
+
+				<div>
+					<label class="block text-body font-medium text-text">Gateway Account ID *</label>
+					<input
+						type="number"
+						name="gateway_account_id"
+						min="1"
+						class="mt-2 block w-48 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+					<p class="mt-1 text-small text-text-muted2">The gateway account this charge belongs to.</p>
+				</div>
+
+				<div>
+					<label class="block text-body font-medium text-text">Original Charge Transaction ID *</label>
+					<input
+						type="number"
+						name="payment_transaction_id"
+						min="1"
+						class="mt-2 block w-48 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+					<p class="mt-1 text-small text-text-muted2">The posted charge transaction being disputed.</p>
+				</div>
+
+				<div>
+					<label class="block text-body font-medium text-text">Provider Dispute ID *</label>
+					<input
+						type="text"
+						name="provider_dispute_id"
+						placeholder="e.g. dp_3Rk6t2..."
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body font-mono outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+					<p class="mt-1 text-small text-text-muted2">The dispute reference from your payment processor.</p>
+				</div>
+
+				<div>
+					<label class="block text-body font-medium text-text">Disputed Amount *</label>
+					<input
+						type="number"
+						name="amount"
+						step="0.01"
+						min="0.01"
+						class="mt-2 block w-48 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				</div>
+
+				<div>
+					<label class="block text-body font-medium text-text">Currency Code</label>
+					<input
+						type="text"
+						name="currency_code"
+						placeholder="CAD"
+						maxlength="3"
+						class="mt-2 block w-32 rounded-md border border-border-input bg-surface px-3 py-2 text-body font-mono outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+					<p class="mt-1 text-small text-text-muted2">Leave blank to inherit from the charge transaction.</p>
+				</div>
+
+				<div>
+					<label class="block text-body font-medium text-text">Dispute Opened Date</label>
+					<input
+						type="date"
+						name="opened_date"
+						value={ vm.OpenedDate }
+						class="mt-2 block w-48 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				</div>
+
+			</div>
+
+			<div class="mt-6 flex items-center gap-4">
+				<button
+					type="submit"
+					class="rounded-md bg-primary px-6 py-2 text-body font-medium text-white hover:bg-primary-hover"
+				>
+					Open Dispute
+				</button>
+				<a href="/settings/payment-gateways/disputes" class="text-body text-text-muted2 hover:underline">
+					Cancel
+				</a>
+			</div>
+		</form>
+	</div>
+}

@@ -37,11 +37,12 @@ import (
 )
 
 var (
-	ErrActivePaymentRequestExists  = errors.New("an active payment request already exists for this invoice and gateway")
-	ErrDuplicateExternalTxnRef     = errors.New("a transaction with this external reference already exists for this gateway")
-	ErrInvoiceNotPayable           = errors.New("invoice is not in a payable state (must be issued, sent, overdue, or partially paid)")
-	ErrChannelInvoiceGatewayBlock  = errors.New("channel-origin invoices cannot use the payment gateway — collect via channel settlement instead")
-	ErrFXInvoiceGatewayBlock       = errors.New("foreign-currency invoices cannot use the payment gateway in this version")
+	ErrActivePaymentRequestExists      = errors.New("an active payment request already exists for this invoice and gateway")
+	ErrDuplicateExternalTxnRef         = errors.New("a transaction with this external reference already exists for this gateway")
+	ErrInvoiceNotPayable               = errors.New("invoice is not in a payable state (must be issued, sent, overdue, or partially paid)")
+	ErrChannelInvoiceGatewayBlock      = errors.New("channel-origin invoices cannot use the payment gateway — collect via channel settlement instead")
+	ErrFXInvoiceGatewayBlock           = errors.New("foreign-currency invoices cannot use the payment gateway in this version")
+	ErrVerifiedGatewayCollectionExists = errors.New("a payment has already been confirmed by the payment provider for this invoice — apply the existing payment before creating a new request")
 )
 
 // activePaymentRequestStatuses defines statuses that count as "in-flight"
@@ -119,7 +120,14 @@ func CreatePaymentRequestForInvoice(db *gorm.DB, input InvoicePaymentRequestInpu
 		return nil, fmt.Errorf("gateway account not found or inactive")
 	}
 
-	// 6. Duplicate guard: block if an active request exists for same invoice+gateway.
+	// 6. Block if a verified gateway collection already exists for this invoice.
+	// A payment_succeeded attempt means the provider has confirmed a payment; the
+	// operator must apply/settle it before a new request is raised.
+	if HasVerifiedGatewayCollectionForInvoice(db, input.InvoiceID, input.CompanyID) {
+		return nil, ErrVerifiedGatewayCollectionExists
+	}
+
+	// 7. Duplicate guard: block if an active request exists for same invoice+gateway.
 	var activeCount int64
 	db.Model(&models.PaymentRequest{}).
 		Where("company_id = ? AND invoice_id = ? AND gateway_account_id = ? AND status IN ?",
@@ -129,11 +137,20 @@ func CreatePaymentRequestForInvoice(db *gorm.DB, input InvoicePaymentRequestInpu
 		return nil, ErrActivePaymentRequestExists
 	}
 
-	// 7. Derive defaults from invoice.
+	// 8. Derive defaults from invoice.
+	// Subtract any unconsumed verified collections so the request amount reflects
+	// the true remaining collectible balance, not a stale BalanceDue that ignores
+	// provider-confirmed but not-yet-applied payments.
 	amount := input.Amount
 	if amount.IsZero() {
-		if inv.BalanceDue.IsPositive() {
-			amount = inv.BalanceDue
+		effectiveBalance := inv.BalanceDue
+		if effectiveBalance.IsPositive() {
+			if unconsumed := UnconsumedVerifiedCollectionAmount(db, inv, input.CompanyID); unconsumed.IsPositive() {
+				effectiveBalance = effectiveBalance.Sub(unconsumed)
+			}
+		}
+		if effectiveBalance.IsPositive() {
+			amount = effectiveBalance
 		} else {
 			amount = inv.Amount
 		}
@@ -147,7 +164,7 @@ func CreatePaymentRequestForInvoice(db *gorm.DB, input InvoicePaymentRequestInpu
 		description = "Payment for Invoice " + inv.InvoiceNumber
 	}
 
-// 8. Create payment request. Initial status is always pending regardless of
+// 9. Create payment request. Initial status is always pending regardless of
 // creation entry point; "created" remains only as a legacy stored value.
 	req := models.PaymentRequest{
 		CompanyID:        input.CompanyID,

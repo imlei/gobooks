@@ -230,5 +230,30 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 				</div>
 			}
 		</div>
+
+		<!-- Batch 16: Customer credit balance summary -->
+		if vm.CreditCount > 0 {
+			<div class="mt-8">
+				<div class="flex items-center justify-between mb-3">
+					<h2 class="text-section font-semibold text-text">Customer Credits</h2>
+					<a
+						href={ templ.SafeURL("/customers/" + Uitoa(vm.Customer.ID) + "/credits") }
+						class="text-small text-primary hover:text-primary-hover hover:underline"
+					>
+						View all credits →
+					</a>
+				</div>
+				<div class="rounded-lg border border-border-default bg-background-muted px-5 py-4 inline-flex gap-8">
+					<div>
+						<p class="text-small uppercase tracking-wider text-text-muted">Active Credits</p>
+						<p class="mt-2 text-section font-semibold text-text">{ Itoa(vm.CreditCount) }</p>
+					</div>
+					<div>
+						<p class="text-small uppercase tracking-wider text-text-muted">Available Balance</p>
+						<p class="mt-2 text-section font-semibold text-text">{ vm.CreditRemaining.StringFixed(2) }</p>
+					</div>
+				</div>
+			</div>
+		}
 	</div>
 }

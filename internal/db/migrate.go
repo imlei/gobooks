@@ -152,6 +152,8 @@ func Migrate(db *gorm.DB) error {
 		&models.PaymentAccountingMapping{},
 		&models.PaymentRequest{},
 		&models.PaymentTransaction{},
+		// Batch 17: multi-invoice payment allocation
+		&models.PaymentAllocation{},
 		// Task + Billable Expense module (Batch 1: data foundation)
 		&models.Task{},
 		&models.Expense{},
@@ -163,13 +165,88 @@ func Migrate(db *gorm.DB) error {
 		&models.InvoiceHostedLink{},
 		// Batch 7: Hosted payment attempt trace (immutable; no accounting entries)
 		&models.HostedPaymentAttempt{},
+		// Batch 10: Webhook event deduplication and traceability
+		&models.WebhookEvent{},
+		// Batch 11: Payment settlement bridge — gateway-side verified payment → accounting-side truth
+		&models.GatewaySettlement{},
+		// Batch 14: Gateway payout bridge — clearing → bank + fee expense
+		&models.GatewayPayout{},
+		&models.GatewayPayoutSettlement{},
+		// Batch 15: Dispute state tracking
+		&models.GatewayDispute{},
+		// Batch 16: Customer credit balance (overpayment + credit apply)
+		&models.CustomerCredit{},
+		&models.CustomerCreditApplication{},
+		// Batch 18: Payout ↔ bank entry reconciliation
+		&models.BankEntry{},
+		&models.PayoutReconciliation{},
+		// Batch 19: Payout component / composition truth (reconciliation-side)
+		&models.GatewayPayoutComponent{},
+		// Batch 20: Reconciliation exception truth
+		&models.ReconciliationException{},
+		// Batch 21: Resolution hook attempt trace
+		&models.ReconciliationResolutionAttempt{},
+		// Batch 22: Multi-allocated payment reverse allocation truth
+		&models.PaymentReverseAllocation{},
+		// Batch 23: Payment-side reverse exception truth
+		&models.PaymentReverseException{},
 	); err != nil {
+		return err
+	}
+	// Batch 10: add webhook_secret column to existing payment_gateway_accounts rows.
+	// Safe on fresh installs (AutoMigrate will have added the column already).
+	if err := migratePaymentGatewayWebhookSecret(db); err != nil {
+		return err
+	}
+	// Batch 15: add chargeback_account_id to payment_accounting_mappings and
+	// original_transaction_id to payment_transactions for existing live databases.
+	// AutoMigrate handles fresh installs; these guards protect live DBs.
+	if err := migrateBatch15Columns(db); err != nil {
 		return err
 	}
 	if err := ensureCompanyAccountCodeDefaults(db); err != nil {
 		return err
 	}
 	return ensureDocumentNumberIndexes(db)
+}
+
+// migrateBatch15Columns adds Batch 15 columns to existing live databases.
+// AutoMigrate handles fresh installs; this guard protects pre-Batch-15 DBs.
+func migrateBatch15Columns(db *gorm.DB) error {
+	type safeCol struct{ table, col, def string }
+	cols := []safeCol{
+		{"payment_accounting_mappings", "chargeback_account_id", "NULL"},
+		{"payment_transactions", "original_transaction_id", "NULL"},
+	}
+	for _, c := range cols {
+		sql := fmt.Sprintf(
+			`ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s BIGINT DEFAULT %s`,
+			c.table, c.col, c.def,
+		)
+		if err := db.Exec(sql).Error; err != nil {
+			if !strings.Contains(err.Error(), "duplicate column") &&
+				!strings.Contains(err.Error(), "already exists") {
+				return fmt.Errorf("migrateBatch15Columns %s.%s: %w", c.table, c.col, err)
+			}
+		}
+	}
+	return nil
+}
+
+// migratePaymentGatewayWebhookSecret adds the webhook_secret column to
+// payment_gateway_accounts for existing databases that predate Batch 10.
+// AutoMigrate will have already handled fresh installs; this is a guard for live DBs.
+func migratePaymentGatewayWebhookSecret(db *gorm.DB) error {
+	sql := `ALTER TABLE payment_gateway_accounts ADD COLUMN IF NOT EXISTS webhook_secret TEXT NOT NULL DEFAULT ''`
+	if err := db.Exec(sql).Error; err != nil {
+		// SQLite used in tests does not support ADD COLUMN IF NOT EXISTS.
+		// Ignore the error if the column already exists (SQLite: "duplicate column name").
+		if !strings.Contains(err.Error(), "duplicate column") &&
+			!strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("migratePaymentGatewayWebhookSecret: %w", err)
+		}
+	}
+	return nil
 }
 
 // clearOptionalForeignKeyOrphans removes stale nullable references left behind by

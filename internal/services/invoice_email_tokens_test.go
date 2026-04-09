@@ -122,7 +122,7 @@ func TestRenderEmailTokens_SubjectAndBody(t *testing.T) {
 
 func TestDefaultEmailBodyRendered_WithDueDate(t *testing.T) {
 	data := makeTokenData(true)
-	body := DefaultEmailBodyRendered(data)
+	body := DefaultEmailBodyRendered(data, true)
 
 	if !strings.Contains(body, "Jane Doe") {
 		t.Errorf("body missing CustomerName: %s", body)
@@ -144,7 +144,7 @@ func TestDefaultEmailBodyRendered_WithDueDate(t *testing.T) {
 
 func TestDefaultEmailBodyRendered_NoDueDate(t *testing.T) {
 	data := makeTokenData(false)
-	body := DefaultEmailBodyRendered(data)
+	body := DefaultEmailBodyRendered(data, true)
 
 	// Due date line should not appear at all.
 	if strings.Contains(body, "Due Date:") {
@@ -153,6 +153,18 @@ func TestDefaultEmailBodyRendered_NoDueDate(t *testing.T) {
 	// No unreplaced tokens.
 	if strings.Contains(body, "{{") {
 		t.Errorf("unreplaced token in body: %s", body)
+	}
+}
+
+func TestDefaultEmailBodyRendered_NoAttachmentWording(t *testing.T) {
+	data := makeTokenData(true)
+	body := DefaultEmailBodyRendered(data, false)
+
+	if !strings.Contains(body, "Please review your invoice details below.") {
+		t.Errorf("no-attachment body missing neutral wording: %s", body)
+	}
+	if strings.Contains(body, "Please find your invoice attached.") {
+		t.Errorf("no-attachment body must not mention attachment: %s", body)
 	}
 }
 

@@ -104,6 +104,17 @@ func GenerateInvoicePDF(htmlContent string) ([]byte, error) {
 	return pdfBytes, nil
 }
 
+// PDFGeneratorAvailable returns true when wkhtmltopdf is installed and usable.
+//
+// This is the single source of truth for PDF capability across all paths:
+// internal detail page, hosted invoice page, and email attachment.
+// All three paths call this function rather than each running their own LookPath.
+// An inexpensive OS call (~0.1 ms); safe to call per-request.
+func PDFGeneratorAvailable() bool {
+	_, err := exec.LookPath("wkhtmltopdf")
+	return err == nil
+}
+
 // InvoicePDFSafeFilename returns the Content-Disposition filename for an invoice PDF.
 //
 // Safety contract:

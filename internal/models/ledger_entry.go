@@ -40,6 +40,9 @@ const (
 	LedgerSourcePayout LedgerSourceType = "payout"
 	// LedgerSourcePaymentGateway is used by payment transaction posting.
 	LedgerSourcePaymentGateway LedgerSourceType = "payment_gateway"
+	// LedgerSourceGatewayPayout is used by gateway payout bridge (Dr Bank / Dr Fee / Cr Clearing).
+	// Distinct from LedgerSourcePayout (channel) so queries can isolate gateway payout JEs.
+	LedgerSourceGatewayPayout LedgerSourceType = "gateway_payout"
 	// LedgerSourceBankCharge is used by bank service charge entries auto-created during reconciliation setup.
 	LedgerSourceBankCharge LedgerSourceType = "bank_charge"
 	// LedgerSourceBankInterest is used by bank interest earned entries auto-created during reconciliation setup.

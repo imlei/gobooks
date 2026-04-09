@@ -61,6 +61,27 @@ type InvoiceDetailVM struct {
 	GatewayAccounts    []models.PaymentGatewayAccount
 	JustPaymentCreated bool // ?paymentcreated=1
 
+	// GatewayPaymentStatus reflects the latest HostedPaymentAttempt status for
+	// this invoice. Empty string means no attempt exists. Set to
+	// "payment_succeeded" when a verified webhook has confirmed a payment so the
+	// detail page can show an operator-facing collection warning.
+	GatewayPaymentStatus string
+
+	// JustSettled is true when the page is loaded after a successful manual retry
+	// (via ?settled=1 redirect). Used to show a one-time success banner.
+	JustSettled bool
+
+	// GatewaySettlementStatus is the settlement outcome from the latest
+	// payment_succeeded attempt (Batch 12). Values: "" | "applied" |
+	// "pending_review" | "failed". Empty means no settlement has been attempted.
+	// Distinct from GatewayPaymentStatus (payment-side truth) and invoice Status
+	// (accounting-side truth).
+	GatewaySettlementStatus string
+
+	// GatewaySettlementReason is the human-readable reason for a non-applied
+	// settlement outcome. Empty when GatewaySettlementStatus is "" or "applied".
+	GatewaySettlementReason string
+
 	// IsChannelOrigin is true when this invoice was created from a channel order.
 	// Payment gateway request buttons are hidden for channel-origin invoices.
 	IsChannelOrigin bool

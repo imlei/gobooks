@@ -1,8 +1,11 @@
 // 遵循project_guide.md
 package pages
 
-import "gobooks/internal/services"
-import "gobooks/internal/models"
+import (
+	"github.com/shopspring/decimal"
+	"gobooks/internal/models"
+	"gobooks/internal/services"
+)
 
 type CustomersVM struct {
 	HasCompany bool
@@ -63,6 +66,10 @@ type CustomerDetailVM struct {
 	OutstandingInvoices     []models.Invoice
 	RecentInvoices          []models.Invoice
 	MostRecentInvoice       *models.Invoice
+
+	// Batch 16: credit balance visibility
+	CreditCount     int
+	CreditRemaining decimal.Decimal
 }
 
 type VendorsVM struct {

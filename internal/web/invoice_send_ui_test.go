@@ -527,6 +527,33 @@ func TestHandleInvoiceDetail_SendModalShownForIssued(t *testing.T) {
 	}
 }
 
+func TestHandleInvoiceDetail_SendModalIncludesDefaultBodySyncMarkup(t *testing.T) {
+	db := testSendUIDB(t)
+	user := seedSendUIUser(t, db)
+	co := seedSendUICompany(t, db, "Body Sync Co")
+	seedSendUIMembership(t, db, user.ID, co.ID)
+	inv := seedSendUIInvoice(t, db, co.ID, models.InvoiceStatusIssued)
+
+	server := &Server{DB: db}
+	app := sendUIApp(server, user, co.ID)
+
+	resp := performRequest(t, app, fmt.Sprintf("/invoices/%d", inv.ID), "")
+	body := readResponseBody(t, resp)
+
+	if !strings.Contains(body, "sendBodyDefaultAttachPDF") {
+		t.Error("default attach-PDF body source not found in send modal")
+	}
+	if !strings.Contains(body, "sendBodyDefaultNoPDF") {
+		t.Error("default no-PDF body source not found in send modal")
+	}
+	if !strings.Contains(body, "Please find your invoice attached.") {
+		t.Error("attach-PDF default wording not found in send modal markup")
+	}
+	if !strings.Contains(body, "Please review your invoice details below.") {
+		t.Error("no-PDF default wording not found in send modal markup")
+	}
+}
+
 func TestHandleInvoiceDetail_SendModalNotShownForDraft(t *testing.T) {
 	db := testSendUIDB(t)
 	user := seedSendUIUser(t, db)

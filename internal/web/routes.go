@@ -90,6 +90,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	// ── 设置：支付网关 ──────────────────────────────────────────────────────────
 	app.Get("/settings/payment-gateways", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePaymentGateways)
 	app.Post("/settings/payment-gateways", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentGatewayCreate)
+	app.Post("/settings/payment-gateways/:id/update-webhook", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentGatewayUpdateWebhook)
 	app.Get("/settings/payment-gateways/mappings", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePaymentMappings)
 	app.Post("/settings/payment-gateways/mappings", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handlePaymentMappingSave)
 	app.Get("/settings/payment-gateways/requests", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePaymentRequests)
@@ -99,7 +100,22 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/settings/payment-gateways/transactions/:id/post", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handlePaymentTransactionPost)
 	app.Post("/settings/payment-gateways/transactions/:id/apply", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentTransactionApply)
 	app.Post("/settings/payment-gateways/transactions/:id/apply-refund", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentTransactionApplyRefund)
+	app.Post("/settings/payment-gateways/transactions/:id/apply-chargeback", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentTransactionApplyChargeback)
 	app.Post("/settings/payment-gateways/transactions/:id/unapply", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentTransactionUnapply)
+	// Batch 22: multi-alloc reverse allocation apply
+	app.Post("/settings/payment-gateways/transactions/:id/apply-refund-multialloc", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentTransactionApplyRefundMultiAlloc)
+	app.Post("/settings/payment-gateways/transactions/:id/apply-chargeback-multialloc", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentTransactionApplyChargebackMultiAlloc)
+	// Batch 17: multi-invoice payment allocation
+	app.Get("/settings/payment-gateways/transactions/:id/allocate", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePaymentMultiAllocateForm)
+	app.Post("/settings/payment-gateways/transactions/:id/allocate", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentMultiAllocateSubmit)
+
+	// Batch 15: Dispute lifecycle
+	app.Get("/settings/payment-gateways/disputes", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewayDisputeList)
+	app.Get("/settings/payment-gateways/disputes/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewayDisputeNew)
+	app.Post("/settings/payment-gateways/disputes", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleGatewayDisputeCreate)
+	app.Get("/settings/payment-gateways/disputes/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewayDisputeDetail)
+	app.Post("/settings/payment-gateways/disputes/:id/win", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleGatewayDisputeWin)
+	app.Post("/settings/payment-gateways/disputes/:id/lose", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleGatewayDisputeLose)
 
 	// 向后兼容：旧编号 URL（POST 转发；GET 重定向到新路径）
 	app.Post("/settings/numbering", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleNumberingSettingsPost)
@@ -177,6 +193,41 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/invoices/:id/post", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceApprove), s.handleInvoicePost)
 	app.Post("/invoices/:id/void", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceApprove), s.handleInvoiceVoid)
 	app.Post("/invoices/:id/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceDelete), s.handleInvoiceDelete)
+	// Batch 12: manual gateway settlement retry (requires journal-create permission — same as posting)
+	app.Post("/invoices/:id/retry-gateway-settlement", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleRetryGatewaySettlement)
+
+	// Batch 13: settlement review list + row-level retry
+	app.Get("/settings/payment-gateways/settlement-review", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewaySettlementReview)
+	app.Post("/settings/payment-gateways/settlement-review/:invoiceID/retry", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleGatewaySettlementRetry)
+	// Batch 14: Gateway payout bridge — /new must be before /:id to avoid param collision.
+	app.Get("/settings/payment-gateways/payouts", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewayPayoutList)
+	app.Get("/settings/payment-gateways/payouts/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewayPayoutNew)
+	app.Post("/settings/payment-gateways/payouts", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleGatewayPayoutCreate)
+	app.Get("/settings/payment-gateways/payouts/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewayPayoutDetail)
+	// Batch 18: Payout ↔ bank entry reconciliation — /reconcile must be before /:id
+	app.Get("/settings/payment-gateways/payout-reconciliation", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePayoutReconciliationOverview)
+	app.Post("/settings/payment-gateways/payout-reconciliation/bank-entries", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleBankEntryCreate)
+	app.Get("/settings/payment-gateways/payouts/:id/reconcile", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePayoutMatchForm)
+	app.Post("/settings/payment-gateways/payouts/:id/reconcile", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePayoutMatchSubmit)
+	// Batch 19: Payout component management
+	app.Post("/settings/payment-gateways/payouts/:id/components", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePayoutComponentAdd)
+	app.Post("/settings/payment-gateways/payouts/:id/components/:cid/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePayoutComponentDelete)
+	// Batch 20: Reconciliation exceptions — /new must be before /:id to avoid param collision.
+	app.Get("/settings/payment-gateways/reconciliation-exceptions", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleReconciliationExceptionList)
+	app.Get("/settings/payment-gateways/reconciliation-exceptions/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleReconciliationExceptionNew)
+	app.Post("/settings/payment-gateways/reconciliation-exceptions", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleReconciliationExceptionCreate)
+	app.Get("/settings/payment-gateways/reconciliation-exceptions/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleReconciliationExceptionDetail)
+	app.Post("/settings/payment-gateways/reconciliation-exceptions/:id/review", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleReconciliationExceptionReview)
+	app.Post("/settings/payment-gateways/reconciliation-exceptions/:id/dismiss", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleReconciliationExceptionDismiss)
+	app.Post("/settings/payment-gateways/reconciliation-exceptions/:id/resolve", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleReconciliationExceptionResolve)
+	app.Post("/settings/payment-gateways/reconciliation-exceptions/:id/hooks/:hook_type", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleExceptionHookExecute)
+
+	// Batch 23: Payment reverse exceptions
+	app.Get("/settings/payment-gateways/reverse-exceptions", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePaymentReverseExceptionList)
+	app.Get("/settings/payment-gateways/reverse-exceptions/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePaymentReverseExceptionDetail)
+	app.Post("/settings/payment-gateways/reverse-exceptions/:id/review", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentReverseExceptionReview)
+	app.Post("/settings/payment-gateways/reverse-exceptions/:id/dismiss", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentReverseExceptionDismiss)
+	app.Post("/settings/payment-gateways/reverse-exceptions/:id/resolve", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentReverseExceptionResolve)
 
 	// Invoice templates (settings)
 	app.Get("/settings/invoice-templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoiceTemplatesList)
@@ -240,6 +291,12 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/customers", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCustomers)
 	app.Get("/customers/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleCustomerNew)
 	app.Get("/customers/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCustomerDetail)
+	// Batch 16: customer credit balance
+	app.Get("/customers/:id/credits", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCustomerCredits)
+	app.Post("/customers/:id/credits/apply", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleCustomerCreditApply)
+	// Batch 17: credit multi-invoice allocation
+	app.Get("/customers/:id/credits/:creditID/allocate", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCreditMultiAllocateForm)
+	app.Post("/customers/:id/credits/:creditID/allocate", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleCreditMultiAllocateSubmit)
 	app.Post("/customers", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleCustomerCreate)
 	app.Post("/customers/update", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleCustomerUpdate)
 	app.Get("/tasks", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleTasks)
@@ -301,4 +358,11 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/i/:token/pay/cancel", s.handleHostedPayCancel)
 	// Batch 8: server-side PDF download (token-gated, no auth required)
 	app.Get("/i/:token/download", s.handleHostedInvoiceDownload)
+
+	// ── Payment provider webhooks (NO auth — authenticated by HMAC signature) ──
+	// Each route includes the gateway_id so the handler can look up the correct
+	// webhook signing secret. The gateway_id is opaque to the provider; only the
+	// HMAC signature provides authentication.
+	// Batch 10: Stripe webhook ingestion
+	app.Post("/webhooks/stripe/:gateway_id", s.handleStripeWebhook)
 }

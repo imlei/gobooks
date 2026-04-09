@@ -50,7 +50,7 @@ func UpdateGatewayAccount(db *gorm.DB, companyID uint, acct *models.PaymentGatew
 func GetPaymentAccountingMapping(db *gorm.DB, companyID, gatewayAccountID uint) (*models.PaymentAccountingMapping, error) {
 	var m models.PaymentAccountingMapping
 	err := db.Preload("ClearingAccount").Preload("FeeExpenseAccount").
-		Preload("RefundAccount").Preload("PayoutBankAccount").
+		Preload("RefundAccount").Preload("PayoutBankAccount").Preload("ChargebackAccount").
 		Where("company_id = ? AND gateway_account_id = ?", companyID, gatewayAccountID).
 		First(&m).Error
 	if err == gorm.ErrRecordNotFound {

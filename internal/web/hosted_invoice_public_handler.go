@@ -3,7 +3,6 @@ package web
 
 import (
 	"errors"
-	"os/exec"
 
 	"github.com/gofiber/fiber/v2"
 	"gobooks/internal/logging"
@@ -77,16 +76,11 @@ func (s *Server) handleHostedInvoice(c *fiber.Ctx) error {
 	// Evaluate payment eligibility (five-gate check — Batch 7).
 	eligibility := services.EvaluateHostedPayability(s.DB, *invoice, link.CompanyID)
 
-	// CanDownload: true when wkhtmltopdf is available on the server (Batch 8).
-	// Checked per-request so that install/uninstall of wkhtmltopdf takes effect
-	// without a server restart. LookPath is an inexpensive OS call.
-	_, wkErr := exec.LookPath("wkhtmltopdf")
-
 	meta := services.HostedPageMeta{
 		EffectiveStatus: effectiveStatus,
 		BalanceDue:      visibility.BalanceDue,
 		Currency:        currency,
-		CanDownload:     wkErr == nil,
+		CanDownload:     services.PDFGeneratorAvailable(),
 		CanPay:          eligibility.CanPay,
 		Token:           token,
 	}

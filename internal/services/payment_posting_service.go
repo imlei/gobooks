@@ -19,7 +19,14 @@ package services
 //   payout → Dr Bank, Cr GW Clearing
 //     Gateway paid out to the company bank account.
 //
-//   dispute → NOT SUPPORTED this round. Blocked by ValidatePaymentTransactionPostable.
+//   chargeback → Dr Chargeback Account, Cr GW Clearing
+//     Card network forcibly reverses a prior payment. Semantically different
+//     from a voluntary refund — typically represents a loss/expense to the company.
+//     Requires ChargebackAccountID in the gateway accounting mapping.
+//
+//   dispute → NOT SUPPORTED for financial posting. Disputes are tracked via the
+//     GatewayDispute model; only when a dispute is lost does a chargeback
+//     PaymentTransaction get created (which can then be posted).
 //
 // Posting does NOT automatically mark the invoice as paid.
 // Future: a payment application service will update invoice.BalanceDue.
@@ -44,11 +51,12 @@ var (
 
 // postablePaymentTxnTypes defines which transaction types can be posted.
 var postablePaymentTxnTypes = map[models.PaymentTransactionType]bool{
-	models.TxnTypeCharge:  true,
-	models.TxnTypeCapture: true,
-	models.TxnTypeFee:     true,
-	models.TxnTypeRefund:  true,
-	models.TxnTypePayout:  true,
+	models.TxnTypeCharge:     true,
+	models.TxnTypeCapture:    true,
+	models.TxnTypeFee:        true,
+	models.TxnTypeRefund:     true,
+	models.TxnTypePayout:     true,
+	models.TxnTypeChargeback: true,
 }
 
 // ── Validation ───────────────────────────────────────────────────────────────
@@ -119,6 +127,10 @@ func ValidatePaymentTransactionPostable(db *gorm.DB, companyID, txnID uint) erro
 		if mapping.PayoutBankAccountID == nil {
 			return fmt.Errorf("%w: payout bank account not configured", ErrPaymentTxnNotPostable)
 		}
+	case models.TxnTypeChargeback:
+		if mapping.ChargebackAccountID == nil {
+			return fmt.Errorf("%w: chargeback account not configured", ErrPaymentTxnNotPostable)
+		}
 	}
 
 	return nil
@@ -170,6 +182,14 @@ func PostPaymentTransactionToJournalEntry(db *gorm.DB, companyID, txnID uint, ac
 		debitAcctID = *mapping.PayoutBankAccountID
 		creditAcctID = clearingAcctID
 		memo = "Gateway payout"
+
+	case models.TxnTypeChargeback:
+		// Dr Chargeback Account (loss/expense), Cr GW Clearing.
+		// The card network has forcibly reversed the payment; the clearing account
+		// is reduced and the loss is recognised in the chargeback expense account.
+		debitAcctID = *mapping.ChargebackAccountID
+		creditAcctID = clearingAcctID
+		memo = "Chargeback"
 	}
 
 	amount := txn.Amount.Abs()

@@ -78,6 +78,13 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		return redirectErr(c, "/customers", err.Error())
 	}
 
+	// Batch 16: load credit summary for customer detail page.
+	creditCount := 0
+	creditRemaining, _ := services.CustomerCreditTotalRemaining(s.DB, companyID, uint(customerID64))
+	if activeCredits, err := services.ListActiveCustomerCredits(s.DB, companyID, uint(customerID64)); err == nil {
+		creditCount = len(activeCredits)
+	}
+
 	return pages.CustomerDetail(pages.CustomerDetailVM{
 		HasCompany:              true,
 		Customer:                workspace.Customer,
@@ -87,6 +94,8 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		OutstandingInvoices:     workspace.OutstandingInvoices,
 		RecentInvoices:          workspace.RecentInvoices,
 		MostRecentInvoice:       workspace.MostRecentInvoice,
+		CreditCount:             creditCount,
+		CreditRemaining:         creditRemaining,
 	}).Render(c.Context(), c)
 }
 

@@ -1,0 +1,284 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// ── Exception list page ───────────────────────────────────────────────────────
+
+templ PaymentReverseExceptionList(vm PaymentReverseExceptionListVM) {
+	@layout.Layout("GoBooks - Payment Reverse Exceptions", ui.SidebarVM{Active: "Payment Gateways", HasCompany: vm.HasCompany}, bodyPaymentReverseExceptionList(vm))
+}
+
+templ bodyPaymentReverseExceptionList(vm PaymentReverseExceptionListVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-center justify-between">
+			<div>
+				<h1 class="text-title font-semibold">Payment Reverse Exceptions</h1>
+				<p class="mt-1 text-small text-text-muted2">
+					Structural anomalies detected during payment reversal allocation. Review and resolve each exception.
+				</p>
+			</div>
+			<a href="/settings/payment-gateways/transactions" class="text-body text-primary hover:underline">← Transactions</a>
+		</div>
+
+		if vm.JustActioned {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Exception status updated.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+				{ vm.FormError }
+			</div>
+		}
+
+		<div class="mt-6 overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+			<table class="w-full text-body">
+				<thead>
+					<tr class="border-b border-border-subtle bg-background text-left text-small font-medium text-text-muted2">
+						<th class="px-4 py-3">Created</th>
+						<th class="px-4 py-3">Type</th>
+						<th class="px-4 py-3">Status</th>
+						<th class="px-4 py-3">Summary</th>
+						<th class="px-4 py-3">Rev Txn</th>
+						<th class="px-4 py-3"></th>
+					</tr>
+				</thead>
+				<tbody>
+					if len(vm.Exceptions) == 0 {
+						<tr>
+							<td colspan="6" class="px-4 py-8 text-center text-text-muted2">No payment reverse exceptions found.</td>
+						</tr>
+					}
+					for _, ex := range vm.Exceptions {
+						<tr class="border-b border-border-subtle hover:bg-background">
+							<td class="px-4 py-3 text-nowrap text-small">{ ex.CreatedAt.Format("2006-01-02") }</td>
+							<td class="px-4 py-3">
+								@prExceptionTypeBadge(ex.ExceptionType)
+							</td>
+							<td class="px-4 py-3">
+								@prExceptionStatusBadge(ex.Status)
+							</td>
+							<td class="px-4 py-3 text-small text-text-muted">{ ex.Summary }</td>
+							<td class="px-4 py-3 text-small text-text-muted2">
+								if ex.ReverseTxnID != nil {
+									{ Uitoa(*ex.ReverseTxnID) }
+								} else {
+									—
+								}
+							</td>
+							<td class="px-4 py-3">
+								<a
+									href={ templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(ex.ID)) }
+									class="text-small text-primary hover:underline"
+								>View</a>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+// ── Exception detail page ─────────────────────────────────────────────────────
+
+templ PaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
+	@layout.Layout("GoBooks - Reverse Exception Detail", ui.SidebarVM{Active: "Payment Gateways", HasCompany: vm.HasCompany}, bodyPaymentReverseExceptionDetail(vm))
+}
+
+templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
+	<div class="max-w-3xl">
+		<div class="mb-4">
+			<a href="/settings/payment-gateways/reverse-exceptions" class="text-small text-primary hover:underline">← Reverse Exceptions</a>
+		</div>
+
+		<div class="flex items-start justify-between">
+			<div>
+				<h1 class="text-title font-semibold">Reverse Exception #{ Uitoa(vm.Exception.ID) }</h1>
+				<p class="mt-1 text-small text-text-muted2">Filed { vm.Exception.CreatedAt.Format("2006-01-02 15:04") } by { vm.Exception.CreatedByActor }</p>
+			</div>
+			@prExceptionStatusBadge(vm.Exception.Status)
+		</div>
+
+		if vm.JustActioned {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Exception status updated.
+			</div>
+		}
+		if vm.ActionError != "" {
+			<div class="mt-4 rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+				{ vm.ActionError }
+			</div>
+		}
+
+		// Exception details card
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Exception Details</h2>
+			<dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-body">
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Type</dt>
+					<dd class="mt-1">@prExceptionTypeBadge(vm.Exception.ExceptionType)</dd>
+				</div>
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Status</dt>
+					<dd class="mt-1">@prExceptionStatusBadge(vm.Exception.Status)</dd>
+				</div>
+				<div class="col-span-2">
+					<dt class="text-small font-medium text-text-muted2">Summary</dt>
+					<dd class="mt-1 text-text">{ vm.Exception.Summary }</dd>
+				</div>
+				if vm.Exception.Detail != "" {
+					<div class="col-span-2">
+						<dt class="text-small font-medium text-text-muted2">Detail</dt>
+						<dd class="mt-1 font-mono text-small text-text-muted">{ vm.Exception.Detail }</dd>
+					</div>
+				}
+			</dl>
+		</div>
+
+		// Linked transactions card
+		<div class="mt-4 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Linked Transactions</h2>
+			<dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-body">
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Reverse Transaction</dt>
+					<dd class="mt-1">
+						if vm.Exception.ReverseTxnID != nil {
+							if vm.ReverseTxn != nil {
+								<span class="font-mono text-small">
+									#{ Uitoa(*vm.Exception.ReverseTxnID) } — { string(vm.ReverseTxn.TransactionType) } { vm.ReverseTxn.Amount.StringFixed(2) }
+								</span>
+							} else {
+								<span class="font-mono text-small text-text-muted2">#{ Uitoa(*vm.Exception.ReverseTxnID) }</span>
+							}
+						} else {
+							<span class="text-text-muted2">—</span>
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Original Charge</dt>
+					<dd class="mt-1">
+						if vm.Exception.OriginalTxnID != nil {
+							if vm.OriginalTxn != nil {
+								<span class="font-mono text-small">
+									#{ Uitoa(*vm.Exception.OriginalTxnID) } — { string(vm.OriginalTxn.TransactionType) } { vm.OriginalTxn.Amount.StringFixed(2) }
+								</span>
+							} else {
+								<span class="font-mono text-small text-text-muted2">#{ Uitoa(*vm.Exception.OriginalTxnID) }</span>
+							}
+						} else {
+							<span class="text-text-muted2">—</span>
+						}
+					</dd>
+				</div>
+			</dl>
+			if vm.Exception.ReverseTxnID != nil {
+				<div class="mt-4">
+					<a
+						href="/settings/payment-gateways/transactions"
+						class="text-small text-primary hover:underline"
+					>View all transactions →</a>
+				</div>
+			}
+		</div>
+
+		// Resolution info (terminal states)
+		if models.IsTerminalPRExceptionStatus(vm.Exception.Status) {
+			<div class="mt-4 rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Resolution</h2>
+				<dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-body">
+					<div>
+						<dt class="text-small font-medium text-text-muted2">Resolved By</dt>
+						<dd class="mt-1 text-text">{ vm.Exception.ResolvedByActor }</dd>
+					</div>
+					if vm.Exception.ResolvedAt != nil {
+						<div>
+							<dt class="text-small font-medium text-text-muted2">Resolved At</dt>
+							<dd class="mt-1 text-text">{ vm.Exception.ResolvedAt.Format("2006-01-02 15:04") }</dd>
+						</div>
+					}
+					if vm.Exception.ResolutionNote != "" {
+						<div class="col-span-2">
+							<dt class="text-small font-medium text-text-muted2">Note</dt>
+							<dd class="mt-1 text-text">{ vm.Exception.ResolutionNote }</dd>
+						</div>
+					}
+				</dl>
+			</div>
+		}
+
+		// Status action forms (non-terminal states only)
+		if !models.IsTerminalPRExceptionStatus(vm.Exception.Status) {
+			<div class="mt-4 rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Actions</h2>
+				<div class="mt-4 flex flex-wrap gap-3">
+					if vm.Exception.Status == models.PRExceptionStatusOpen {
+						<form method="post" action={ templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(vm.Exception.ID) + "/review") }>
+							@ui.ButtonSecondary("Mark Reviewed", "submit", false)
+						</form>
+					}
+					<form method="post" action={ templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(vm.Exception.ID) + "/resolve") } class="flex items-center gap-2">
+						<input
+							type="text"
+							name="note"
+							placeholder="Resolution note (optional)"
+							class="rounded-md border border-border-input px-3 py-2 text-small outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+						@ui.ButtonPrimary("Mark Resolved", "submit", false)
+					</form>
+					<form method="post" action={ templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(vm.Exception.ID) + "/dismiss") } class="flex items-center gap-2">
+						<input
+							type="text"
+							name="note"
+							placeholder="Dismissal note (required)"
+							class="rounded-md border border-border-input px-3 py-2 text-small outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+						@ui.ButtonDanger("Dismiss", "submit", false)
+					</form>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// ── Badge helpers ─────────────────────────────────────────────────────────────
+
+templ prExceptionTypeBadge(t models.PaymentReverseExceptionType) {
+	switch t {
+	case models.PRExceptionReverseAllocationAmbiguous:
+		<span class="inline-flex rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning-hover">Ambiguous Charge</span>
+	case models.PRExceptionAmountExceedsStrategy:
+		<span class="inline-flex rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger-hover">Exceeds Capacity</span>
+	case models.PRExceptionOverCreditBoundary:
+		<span class="inline-flex rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger-hover">Over-Credit</span>
+	case models.PRExceptionRequiresManualSplit:
+		<span class="inline-flex rounded-full bg-info-soft px-2 py-0.5 text-small font-medium text-info-hover">Manual Split Required</span>
+	case models.PRExceptionChainConflict:
+		<span class="inline-flex rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger-hover">Chain Conflict</span>
+	case models.PRExceptionUnsupportedMultiLayerReversal:
+		<span class="inline-flex rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning-hover">Multi-Layer Reversal</span>
+	default:
+		<span class="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-small font-medium text-text-muted">{ string(t) }</span>
+	}
+}
+
+templ prExceptionStatusBadge(s models.PaymentReverseExceptionStatus) {
+	switch s {
+	case models.PRExceptionStatusOpen:
+		<span class="inline-flex rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger-hover">Open</span>
+	case models.PRExceptionStatusReviewed:
+		<span class="inline-flex rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning-hover">Reviewed</span>
+	case models.PRExceptionStatusDismissed:
+		<span class="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-small font-medium text-text-muted">Dismissed</span>
+	case models.PRExceptionStatusResolved:
+		<span class="inline-flex rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success-hover">Resolved</span>
+	default:
+		<span class="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-small font-medium text-text-muted">{ string(s) }</span>
+	}
+}

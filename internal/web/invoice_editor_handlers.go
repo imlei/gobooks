@@ -4,7 +4,6 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -84,10 +83,17 @@ func (s *Server) handleInvoiceDetail(c *fiber.Ctx) error {
 		}
 	}
 
-	// PDFAvailable: true when wkhtmltopdf is installed. Checked per-request so
-	// install/uninstall takes effect without a server restart. LookPath is a
-	// lightweight OS call. Mirrors the CanDownload logic in handleHostedInvoice.
-	_, wkErr := exec.LookPath("wkhtmltopdf")
+	// GatewayPaymentStatus: surface the latest hosted attempt status for the
+	// operator-facing detail page so they can see if a webhook-confirmed payment
+	// is waiting to be applied.
+	// GatewaySettlementStatus/Reason: Batch 12 — persisted outcome of the last
+	// auto-settle or manual retry so operators can act without reading logs.
+	var gatewayPaymentStatus, gatewaySettlementStatus, gatewaySettlementReason string
+	if latestAttempt := services.LatestAttemptForInvoice(s.DB, inv.ID, companyID); latestAttempt != nil {
+		gatewayPaymentStatus = string(latestAttempt.Status)
+		gatewaySettlementStatus = latestAttempt.SettlementStatus
+		gatewaySettlementReason = latestAttempt.SettlementReason
+	}
 
 	vm := pages.InvoiceDetailVM{
 		HasCompany:         true,
@@ -108,8 +114,12 @@ func (s *Server) handleInvoiceDetail(c *fiber.Ctx) error {
 		PaymentRequests:    paymentReqs,
 		GatewayAccounts:    gatewayAccts,
 		JustPaymentCreated: c.Query("paymentcreated") == "1",
-		IsChannelOrigin:    inv.ChannelOrderID != nil,
-		PDFAvailable:       wkErr == nil,
+		IsChannelOrigin:      inv.ChannelOrderID != nil,
+		PDFAvailable:         services.PDFGeneratorAvailable(),
+		GatewayPaymentStatus:    gatewayPaymentStatus,
+		GatewaySettlementStatus: gatewaySettlementStatus,
+		GatewaySettlementReason: gatewaySettlementReason,
+		JustSettled:             c.Query("settled") == "1",
 	}
 	if inv.JournalEntry != nil {
 		vm.JournalNo = inv.JournalEntry.JournalNo

@@ -2,6 +2,7 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -78,15 +79,23 @@ func (s *Server) handleInvoiceSendEmail(c *fiber.Ctx) error {
 	// Set to nil; the audit log (written by SendInvoiceByEmail) captures actor context.
 	var userIDPtr *uint
 
+	// attach_pdf=1 means the user checked "Attach PDF invoice" in the send modal.
+	// The modal only shows the checkbox when the server reports PDFAvailable=true,
+	// so attach_pdf will only be "1" when the generator is genuinely available.
+	// If somehow "1" is submitted without the generator present, SendInvoiceByEmail
+	// rejects with a clear error rather than silently sending without attachment.
+	attachPDF := c.FormValue("attach_pdf") == "1"
+
 	req := services.SendInvoiceEmailRequest{
 		CompanyID:         companyID,
 		InvoiceID:         uint(invoiceID),
 		ToEmail:           toEmail,
 		CCEmails:          ccEmails,
 		TemplateType:      templateType,
-		Subject:           subject,   // user override; empty → server resolves
-		UserBody:          userBody,  // user override; empty → server resolves
+		Subject:           subject,    // user override; empty → server resolves
+		UserBody:          userBody,   // user override; empty → server resolves
 		TriggeredByUserID: userIDPtr,
+		AttachPDF:         attachPDF,
 	}
 
 	_, err = services.SendInvoiceByEmail(s.DB, req)
@@ -134,29 +143,48 @@ func (s *Server) handleGetInvoiceEmailHistory(c *fiber.Ctx) error {
 
 	// Build response
 	type EmailLogResponse struct {
-		ID           uint       `json:"id"`
-		ToEmail      string     `json:"to_email"`
-		CCEmails     string     `json:"cc_emails"`
-		SendStatus   string     `json:"send_status"`
-		TemplateType string     `json:"template_type"`
-		Subject      string     `json:"subject"`
-		ErrorMessage string     `json:"error_message,omitempty"`
-		CreatedAt    *time.Time `json:"created_at"`
-		SentAt       *time.Time `json:"sent_at,omitempty"`
+		ID                 uint       `json:"id"`
+		ToEmail            string     `json:"to_email"`
+		CCEmails           string     `json:"cc_emails"`
+		SendStatus         string     `json:"send_status"`
+		TemplateType       string     `json:"template_type"`
+		Subject            string     `json:"subject"`
+		ErrorMessage       string     `json:"error_message,omitempty"`
+		CreatedAt          *time.Time `json:"created_at"`
+		SentAt             *time.Time `json:"sent_at,omitempty"`
+		AttachmentIncluded bool       `json:"attachment_included"`
+		AttachmentFilename string     `json:"attachment_filename,omitempty"`
 	}
 
 	var responses []EmailLogResponse
 	for _, log := range logs {
+		// Parse lightweight attachment metadata from MetadataJSON.
+		var attachIncluded bool
+		var attachFilename string
+		if len(log.MetadataJSON) > 0 {
+			var meta map[string]any
+			if err := json.Unmarshal(log.MetadataJSON, &meta); err == nil {
+				if v, ok := meta["attachment_included"].(bool); ok {
+					attachIncluded = v
+				}
+				if v, ok := meta["attachment_filename"].(string); ok {
+					attachFilename = v
+				}
+			}
+		}
+
 		responses = append(responses, EmailLogResponse{
-			ID:           log.ID,
-			ToEmail:      log.ToEmail,
-			CCEmails:     log.CCEmails,
-			SendStatus:   string(log.SendStatus),
-			TemplateType: log.TemplateType,
-			Subject:      log.Subject,
-			ErrorMessage: log.ErrorMessage,
-			CreatedAt:    &log.CreatedAt,
-			SentAt:       log.SentAt,
+			ID:                 log.ID,
+			ToEmail:            log.ToEmail,
+			CCEmails:           log.CCEmails,
+			SendStatus:         string(log.SendStatus),
+			TemplateType:       log.TemplateType,
+			Subject:            log.Subject,
+			ErrorMessage:       log.ErrorMessage,
+			CreatedAt:          &log.CreatedAt,
+			SentAt:             log.SentAt,
+			AttachmentIncluded: attachIncluded,
+			AttachmentFilename: attachFilename,
 		})
 	}
 

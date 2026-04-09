@@ -1,0 +1,461 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// ── Exception list page ───────────────────────────────────────────────────────
+
+templ ReconciliationExceptionList(vm ReconciliationExceptionListVM) {
+	@layout.Layout("GoBooks - Reconciliation Exceptions", ui.SidebarVM{Active: "Recon Exceptions", HasCompany: vm.HasCompany}, bodyReconciliationExceptionList(vm))
+}
+
+templ bodyReconciliationExceptionList(vm ReconciliationExceptionListVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-center justify-between">
+			<div>
+				<h1 class="text-title font-semibold">Reconciliation Exceptions</h1>
+				<p class="mt-1 text-small text-text-muted2">
+					Anomalies detected during payout ↔ bank entry matching. Review and resolve each exception before closing the reconciliation period.
+				</p>
+			</div>
+			<a
+				href="/settings/payment-gateways/reconciliation-exceptions/new"
+				class="rounded-md bg-primary px-4 py-2 text-body font-medium text-white hover:bg-primary-hover"
+			>
+				File Exception
+			</a>
+		</div>
+
+		if vm.JustFiled {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Exception filed successfully.
+			</div>
+		}
+		if vm.JustActioned {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Exception status updated.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+				{ vm.FormError }
+			</div>
+		}
+
+		<div class="mt-6 overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+			<table class="w-full text-body">
+				<thead>
+					<tr class="border-b border-border-subtle bg-background text-left text-small font-medium text-text-muted2">
+						<th class="px-4 py-3">Created</th>
+						<th class="px-4 py-3">Type</th>
+						<th class="px-4 py-3">Status</th>
+						<th class="px-4 py-3">Summary</th>
+						<th class="px-4 py-3">Created By</th>
+						<th class="px-4 py-3"></th>
+					</tr>
+				</thead>
+				<tbody>
+					if len(vm.Exceptions) == 0 {
+						<tr>
+							<td colspan="6" class="px-4 py-8 text-center text-text-muted2">No exceptions found.</td>
+						</tr>
+					}
+					for _, ex := range vm.Exceptions {
+						<tr class="border-b border-border-subtle hover:bg-background">
+							<td class="px-4 py-3 text-nowrap text-small">{ ex.CreatedAt.Format("2006-01-02") }</td>
+							<td class="px-4 py-3">
+								@exceptionTypeBadge(ex.ExceptionType)
+							</td>
+							<td class="px-4 py-3">
+								@exceptionStatusBadge(ex.Status)
+							</td>
+							<td class="px-4 py-3 text-small text-text-muted">{ ex.Summary }</td>
+							<td class="px-4 py-3 text-small text-text-muted2">{ ex.CreatedByActor }</td>
+							<td class="px-4 py-3">
+								<a
+									href={ templ.SafeURL("/settings/payment-gateways/reconciliation-exceptions/" + Uitoa(ex.ID)) }
+									class="text-small text-primary hover:underline"
+								>View</a>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+// ── Exception detail page ─────────────────────────────────────────────────────
+
+templ ReconciliationExceptionDetail(vm ReconciliationExceptionDetailVM) {
+	@layout.Layout("GoBooks - Exception Detail", ui.SidebarVM{Active: "Recon Exceptions", HasCompany: vm.HasCompany}, bodyReconciliationExceptionDetail(vm))
+}
+
+templ bodyReconciliationExceptionDetail(vm ReconciliationExceptionDetailVM) {
+	<div class="max-w-2xl">
+		<div class="mb-6">
+			<a href="/settings/payment-gateways/reconciliation-exceptions" class="text-small text-primary hover:underline">← Back to Exceptions</a>
+			<h1 class="mt-2 text-title font-semibold">Reconciliation Exception</h1>
+		</div>
+
+		if vm.JustActioned {
+			<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Exception status updated.
+			</div>
+		}
+		if vm.ActionError != "" {
+			<div class="mb-4 rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+				{ vm.ActionError }
+			</div>
+		}
+
+		// ── Summary card ──────────────────────────────────────────────────────────
+		<div class="rounded-lg border border-border-subtle bg-surface p-6">
+			<dl class="grid grid-cols-2 gap-x-8 gap-y-4">
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Status</dt>
+					<dd class="mt-1">@exceptionStatusBadge(vm.Exception.Status)</dd>
+				</div>
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Type</dt>
+					<dd class="mt-1">@exceptionTypeBadge(vm.Exception.ExceptionType)</dd>
+				</div>
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Created</dt>
+					<dd class="mt-1 text-body">{ vm.Exception.CreatedAt.Format("2006-01-02 15:04") }</dd>
+				</div>
+				<div>
+					<dt class="text-small font-medium text-text-muted2">Created By</dt>
+					<dd class="mt-1 text-body">{ vm.Exception.CreatedByActor }</dd>
+				</div>
+				if vm.Exception.GatewayPayoutID != nil {
+					<div>
+						<dt class="text-small font-medium text-text-muted2">Gateway Payout</dt>
+						<dd class="mt-1">
+							<a
+								href={ templ.SafeURL("/settings/payment-gateways/payouts/" + Uitoa(*vm.Exception.GatewayPayoutID)) }
+								class="text-small text-primary hover:underline"
+							>
+								Payout #{ Uitoa(*vm.Exception.GatewayPayoutID) }
+							</a>
+						</dd>
+					</div>
+				}
+				if vm.Exception.BankEntryID != nil {
+					<div>
+						<dt class="text-small font-medium text-text-muted2">Bank Entry</dt>
+						<dd class="mt-1 text-body">Entry #{ Uitoa(*vm.Exception.BankEntryID) }</dd>
+					</div>
+				}
+				<div class="col-span-2">
+					<dt class="text-small font-medium text-text-muted2">Summary</dt>
+					<dd class="mt-1 text-body">{ vm.Exception.Summary }</dd>
+				</div>
+				if vm.Exception.Detail != "" {
+					<div class="col-span-2">
+						<dt class="text-small font-medium text-text-muted2">Detail</dt>
+						<dd class="mt-1 rounded bg-background px-3 py-2 font-mono text-small text-text-muted">{ vm.Exception.Detail }</dd>
+					</div>
+				}
+				if models.IsTerminalExceptionStatus(vm.Exception.Status) {
+					<div>
+						<dt class="text-small font-medium text-text-muted2">Resolved</dt>
+						<dd class="mt-1 text-body">
+							if vm.Exception.ResolvedAt != nil {
+								{ vm.Exception.ResolvedAt.Format("2006-01-02 15:04") }
+							}
+						</dd>
+					</div>
+					<div>
+						<dt class="text-small font-medium text-text-muted2">Resolved By</dt>
+						<dd class="mt-1 text-body">{ vm.Exception.ResolvedByActor }</dd>
+					</div>
+					if vm.Exception.ResolutionNote != "" {
+						<div class="col-span-2">
+							<dt class="text-small font-medium text-text-muted2">Resolution Note</dt>
+							<dd class="mt-1 text-body">{ vm.Exception.ResolutionNote }</dd>
+						</div>
+					}
+				}
+			</dl>
+		</div>
+
+		// ── Resolution hooks ──────────────────────────────────────────────────────
+		if len(vm.AvailableHooks) > 0 {
+			<div class="mt-6">
+				<h2 class="mb-3 text-body font-semibold text-text-default">Resolution Actions</h2>
+				if vm.HookSuccess {
+					<div class="mb-3 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+						Hook executed successfully. Exception auto-resolved.
+					</div>
+				}
+				if vm.HookError != "" {
+					<div class="mb-3 rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+						{ vm.HookError }
+					</div>
+				}
+				<div class="space-y-3">
+					for _, hook := range vm.AvailableHooks {
+						<div class="rounded-lg border border-border-subtle bg-surface p-4">
+							<p class="text-body font-medium text-text-default">{ hook.Label }</p>
+							<p class="mt-0.5 text-small text-text-muted2">{ hook.Description }</p>
+							if hook.Available {
+								if hook.NavigateURL != "" {
+									<a
+										href={ templ.SafeURL(hook.NavigateURL) }
+										class="mt-3 inline-flex items-center rounded-md border border-border-subtle bg-background px-4 py-2 text-body font-medium text-text-default hover:bg-surface"
+									>
+										{ hook.Label } →
+									</a>
+								} else {
+									<form
+										method="POST"
+										action={ templ.SafeURL("/settings/payment-gateways/reconciliation-exceptions/" + Uitoa(vm.Exception.ID) + "/hooks/" + string(hook.Type)) }
+										class="mt-3"
+									>
+										<button
+											type="submit"
+											class="rounded-md bg-primary px-4 py-2 text-body font-medium text-white hover:bg-primary-hover"
+										>
+											{ hook.Label }
+										</button>
+									</form>
+								}
+							} else {
+								<p class="mt-2 text-small text-text-muted2 italic">Unavailable: { hook.UnavailableReason }</p>
+							}
+						</div>
+					}
+				</div>
+			</div>
+		}
+
+		// ── Actions ───────────────────────────────────────────────────────────────
+		if !models.IsTerminalExceptionStatus(vm.Exception.Status) {
+			<div class="mt-6 space-y-4">
+				if vm.Exception.Status == models.ExceptionStatusOpen {
+					<form method="POST" action={ templ.SafeURL("/settings/payment-gateways/reconciliation-exceptions/" + Uitoa(vm.Exception.ID) + "/review") }>
+						<button
+							type="submit"
+							class="rounded-md border border-border-subtle bg-surface px-4 py-2 text-body font-medium text-text-default hover:bg-background"
+						>
+							Mark Reviewed
+						</button>
+					</form>
+				}
+				<div class="rounded-lg border border-border-subtle bg-surface p-4">
+					<p class="mb-3 text-small font-medium text-text-muted2">Dismiss — no further action required</p>
+					<form method="POST" action={ templ.SafeURL("/settings/payment-gateways/reconciliation-exceptions/" + Uitoa(vm.Exception.ID) + "/dismiss") } class="flex gap-3">
+						<input
+							type="text"
+							name="note"
+							placeholder="Reason (required)"
+							required
+							class="flex-1 rounded-md border border-border-subtle bg-background px-3 py-2 text-body text-text-default focus:outline-none focus:ring-1 focus:ring-primary"
+						/>
+						<button
+							type="submit"
+							class="rounded-md bg-warning px-4 py-2 text-body font-medium text-white hover:bg-warning-hover"
+						>
+							Dismiss
+						</button>
+					</form>
+				</div>
+				<div class="rounded-lg border border-border-subtle bg-surface p-4">
+					<p class="mb-3 text-small font-medium text-text-muted2">Resolve — issue has been addressed</p>
+					<form method="POST" action={ templ.SafeURL("/settings/payment-gateways/reconciliation-exceptions/" + Uitoa(vm.Exception.ID) + "/resolve") } class="flex gap-3">
+						<input
+							type="text"
+							name="note"
+							placeholder="Resolution note (optional)"
+							class="flex-1 rounded-md border border-border-subtle bg-background px-3 py-2 text-body text-text-default focus:outline-none focus:ring-1 focus:ring-primary"
+						/>
+						<button
+							type="submit"
+							class="rounded-md bg-success px-4 py-2 text-body font-medium text-white hover:bg-success-hover"
+						>
+							Resolve
+						</button>
+					</form>
+				</div>
+			</div>
+		}
+
+		// ── Recent resolution attempts ────────────────────────────────────────────
+		if len(vm.RecentAttempts) > 0 {
+			<div class="mt-8">
+				<h2 class="mb-3 text-body font-semibold text-text-default">Recent Resolution Attempts</h2>
+				<div class="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+					<table class="w-full text-body">
+						<thead>
+							<tr class="border-b border-border-subtle bg-background text-left text-small font-medium text-text-muted2">
+								<th class="px-4 py-3">When</th>
+								<th class="px-4 py-3">Hook</th>
+								<th class="px-4 py-3">Status</th>
+								<th class="px-4 py-3">Summary</th>
+								<th class="px-4 py-3">Actor</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, att := range vm.RecentAttempts {
+								<tr class="border-b border-border-subtle last:border-0">
+									<td class="px-4 py-3 text-nowrap text-small text-text-muted2">{ att.CreatedAt.Format("2006-01-02 15:04") }</td>
+									<td class="px-4 py-3 text-small font-mono text-text-muted">{ string(att.HookType) }</td>
+									<td class="px-4 py-3">
+										@attemptStatusBadge(att.Status)
+									</td>
+									<td class="px-4 py-3 text-small text-text-muted">
+										<div>{ att.Summary }</div>
+										if att.Detail != "" {
+											<div class="mt-1 rounded bg-background px-2 py-1 font-mono text-xs text-text-muted2">{ att.Detail }</div>
+										}
+									</td>
+									<td class="px-4 py-3 text-small text-text-muted2">{ att.Actor }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// ── Manual file form ──────────────────────────────────────────────────────────
+
+// ReconciliationExceptionNewVM is the view model for the manual exception filing form.
+type ReconciliationExceptionNewVM struct {
+	HasCompany bool
+	FormError  string
+}
+
+templ ReconciliationExceptionNew(vm ReconciliationExceptionNewVM) {
+	@layout.Layout("GoBooks - File Exception", ui.SidebarVM{Active: "Recon Exceptions", HasCompany: vm.HasCompany}, bodyReconciliationExceptionNew(vm))
+}
+
+templ bodyReconciliationExceptionNew(vm ReconciliationExceptionNewVM) {
+	<div class="max-w-lg">
+		<div class="mb-6">
+			<a href="/settings/payment-gateways/reconciliation-exceptions" class="text-small text-primary hover:underline">← Back to Exceptions</a>
+			<h1 class="mt-2 text-title font-semibold">File Exception</h1>
+			<p class="mt-1 text-small text-text-muted2">
+				Manually record a reconciliation scenario the engine cannot handle automatically. Link at least one payout or bank entry so the exception stays anchored to real source truth.
+			</p>
+		</div>
+
+		if vm.FormError != "" {
+			<div class="mb-4 rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+				{ vm.FormError }
+			</div>
+		}
+
+		<form method="POST" action="/settings/payment-gateways/reconciliation-exceptions" class="space-y-4">
+			<div>
+				<label class="block text-small font-medium text-text-muted2">Exception Type</label>
+				<select
+					name="exception_type"
+					required
+					class="mt-1 w-full rounded-md border border-border-subtle bg-background px-3 py-2 text-body text-text-default focus:outline-none focus:ring-1 focus:ring-primary"
+				>
+					<option value="">— select type —</option>
+					<option value="unsupported_many_to_many">Unsupported: Many-to-Many</option>
+					<option value="unsupported_one_to_many">Unsupported: One-to-Many</option>
+					<option value="unsupported_many_to_one">Unsupported: Many-to-One</option>
+					<option value="unknown_component_pattern">Unknown Component Pattern</option>
+				</select>
+			</div>
+			<div>
+				<label class="block text-small font-medium text-text-muted2">Gateway Payout ID <span class="text-text-muted">(required if Bank Entry ID is blank)</span></label>
+				<input
+					type="number"
+					name="gateway_payout_id"
+					min="1"
+					placeholder="e.g. 42"
+					class="mt-1 w-full rounded-md border border-border-subtle bg-background px-3 py-2 text-body text-text-default focus:outline-none focus:ring-1 focus:ring-primary"
+				/>
+			</div>
+			<div>
+				<label class="block text-small font-medium text-text-muted2">Bank Entry ID <span class="text-text-muted">(required if Gateway Payout ID is blank)</span></label>
+				<input
+					type="number"
+					name="bank_entry_id"
+					min="1"
+					placeholder="e.g. 17"
+					class="mt-1 w-full rounded-md border border-border-subtle bg-background px-3 py-2 text-body text-text-default focus:outline-none focus:ring-1 focus:ring-primary"
+				/>
+			</div>
+			<div>
+				<label class="block text-small font-medium text-text-muted2">Summary <span class="text-danger">*</span></label>
+				<input
+					type="text"
+					name="summary"
+					required
+					maxlength="255"
+					placeholder="One-line description of the issue"
+					class="mt-1 w-full rounded-md border border-border-subtle bg-background px-3 py-2 text-body text-text-default focus:outline-none focus:ring-1 focus:ring-primary"
+				/>
+			</div>
+			<div>
+				<label class="block text-small font-medium text-text-muted2">Detail <span class="text-text-muted">(optional)</span></label>
+				<textarea
+					name="detail"
+					rows="3"
+					placeholder="Additional context, amounts, IDs, etc."
+					class="mt-1 w-full rounded-md border border-border-subtle bg-background px-3 py-2 text-body text-text-default focus:outline-none focus:ring-1 focus:ring-primary"
+				></textarea>
+			</div>
+			<div class="flex gap-3">
+				<button
+					type="submit"
+					class="rounded-md bg-primary px-4 py-2 text-body font-medium text-white hover:bg-primary-hover"
+				>
+					File Exception
+				</button>
+				<a
+					href="/settings/payment-gateways/reconciliation-exceptions"
+					class="rounded-md border border-border-subtle bg-surface px-4 py-2 text-body font-medium text-text-default hover:bg-background"
+				>
+					Cancel
+				</a>
+			</div>
+		</form>
+	</div>
+}
+
+// ── Badge components ──────────────────────────────────────────────────────────
+
+templ exceptionStatusBadge(status models.ReconciliationExceptionStatus) {
+	switch status {
+	case models.ExceptionStatusOpen:
+		<span class="inline-flex items-center rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning-hover">Open</span>
+	case models.ExceptionStatusReviewed:
+		<span class="inline-flex items-center rounded-full bg-info-soft px-2 py-0.5 text-small font-medium text-info-hover">Reviewed</span>
+	case models.ExceptionStatusDismissed:
+		<span class="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted2">Dismissed</span>
+	case models.ExceptionStatusResolved:
+		<span class="inline-flex items-center rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success-hover">Resolved</span>
+	default:
+		<span class="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted2">{ string(status) }</span>
+	}
+}
+
+templ exceptionTypeBadge(exType models.ReconciliationExceptionType) {
+	<span class="inline-flex items-center rounded px-2 py-0.5 text-small font-medium bg-background text-text-muted">
+		{ models.ReconciliationExceptionTypeLabel(exType) }
+	</span>
+}
+
+templ attemptStatusBadge(status models.ResolutionAttemptStatus) {
+	switch status {
+	case models.AttemptStatusSucceeded:
+		<span class="inline-flex items-center rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success-hover">Succeeded</span>
+	case models.AttemptStatusRejected:
+		<span class="inline-flex items-center rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger">Rejected</span>
+	default:
+		<span class="inline-flex items-center rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted2">{ string(status) }</span>
+	}
+}

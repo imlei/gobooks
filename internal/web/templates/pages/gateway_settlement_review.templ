@@ -1,0 +1,181 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"gobooks/internal/services"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// GatewaySettlementReviewVM is the view-model for the settlement review list page.
+type GatewaySettlementReviewVM struct {
+	HasCompany bool
+
+	// Rows contains the settlement review rows from persisted settlement outcome truth.
+	Rows []services.SettlementReviewRow
+
+	// Filter is the active filter: "pending" (default) or "all".
+	Filter string
+
+	// PendingCount is the number of pending_review + failed rows (for the tab badge).
+	PendingCount int
+
+	// Feedback query params set on redirect after retry.
+	JustRetried         bool   // ?retried=1
+	RetryStillIneligible bool   // ?stillineligible=1
+	RetryError          string // ?error=...
+}
+
+templ GatewaySettlementReview(vm GatewaySettlementReviewVM) {
+	@layout.Layout("GoBooks - Gateway Settlement Review", ui.SidebarVM{Active: "Gateway Settlement Review", HasCompany: vm.HasCompany}, bodyGatewaySettlementReview(vm))
+}
+
+templ bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Gateway Settlement Review</h1>
+		<p class="mt-1 text-small text-text-muted2">
+			Verified gateway payments whose automatic settlement did not complete.
+			Fix the noted condition and retry — settlement is exact-once safe.
+		</p>
+
+		// ── Feedback banners ─────────────────────────────────────────────────
+		if vm.JustRetried {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Settlement successfully applied.
+			</div>
+		}
+		if vm.RetryStillIneligible {
+			<div class="mt-4 rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-body text-warning-hover">
+				Settlement is still ineligible after retry. The reason has been updated — fix the condition and retry again.
+			</div>
+		}
+		if vm.RetryError != "" {
+			<div class="mt-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error-hover">
+				{ vm.RetryError }
+			</div>
+		}
+
+		// ── Filter tabs ──────────────────────────────────────────────────────
+		<div class="mt-5 flex items-center gap-2">
+			if vm.Filter == "all" {
+				<a href="/settings/payment-gateways/settlement-review"
+					class="rounded-md px-3 py-1.5 text-body font-medium text-text-muted3 hover:bg-background hover:text-text">
+					Pending &amp; Failed
+					if vm.PendingCount > 0 {
+						<span class="ml-1 rounded-full bg-warning-soft px-2 py-0.5 text-[11px] font-semibold text-warning-hover">{ Itoa(vm.PendingCount) }</span>
+					}
+				</a>
+				<a href="/settings/payment-gateways/settlement-review?filter=all"
+					class="rounded-md bg-primary-soft px-3 py-1.5 text-body font-medium text-primary">
+					All with outcome
+				</a>
+			} else {
+				<a href="/settings/payment-gateways/settlement-review"
+					class="rounded-md bg-primary-soft px-3 py-1.5 text-body font-medium text-primary">
+					Pending &amp; Failed
+					if vm.PendingCount > 0 {
+						<span class="ml-1 rounded-full bg-warning-soft px-2 py-0.5 text-[11px] font-semibold text-warning-hover">{ Itoa(vm.PendingCount) }</span>
+					}
+				</a>
+				<a href="/settings/payment-gateways/settlement-review?filter=all"
+					class="rounded-md px-3 py-1.5 text-body font-medium text-text-muted3 hover:bg-background hover:text-text">
+					All with outcome
+				</a>
+			}
+		</div>
+
+		// ── Table ────────────────────────────────────────────────────────────
+		if len(vm.Rows) == 0 {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-10 text-center text-body text-text-muted2">
+				if vm.Filter == "all" {
+					No settlement outcome records found.
+				} else {
+					No pending or failed settlement items. All verified payments have been settled.
+				}
+			</div>
+		} else {
+			<div class="mt-4 overflow-x-auto rounded-lg border border-border bg-surface">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted border-b border-border">
+						<tr>
+							<th class="px-4 py-3">Invoice</th>
+							<th class="px-4 py-3">Customer</th>
+							<th class="px-4 py-3 text-right">Amount</th>
+							<th class="px-4 py-3">Verified</th>
+							<th class="px-4 py-3">Last Tried</th>
+							<th class="px-4 py-3">Status</th>
+							<th class="px-4 py-3">Reason</th>
+							<th class="px-4 py-3">Actions</th>
+						</tr>
+					</thead>
+					<tbody class="text-text divide-y divide-border-subtle">
+						for _, row := range vm.Rows {
+							<tr class="align-top hover:bg-background">
+								<td class="px-4 py-3 font-medium text-primary whitespace-nowrap">
+									<a href={ "/invoices/" + Uitoa(row.InvoiceID) } class="hover:underline">
+										{ row.InvoiceNumber }
+									</a>
+								</td>
+								<td class="px-4 py-3 text-small text-text-muted2 whitespace-nowrap">{ row.CustomerName }</td>
+								<td class="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+									{ row.Amount.StringFixed(2) } { row.CurrencyCode }
+								</td>
+								<td class="px-4 py-3 text-small text-text-muted2 whitespace-nowrap">
+									{ row.PaymentVerifiedAt.Format("2006-01-02") }
+								</td>
+								<td class="px-4 py-3 text-small text-text-muted2 whitespace-nowrap">
+									if row.SettlementLastAttemptedAt != nil {
+										{ row.SettlementLastAttemptedAt.Format("2006-01-02 15:04") }
+									} else {
+										—
+									}
+								</td>
+								<td class="px-4 py-3 whitespace-nowrap">
+									@settlementStatusBadge(row.SettlementStatus)
+								</td>
+								<td class="px-4 py-3 text-small text-text-muted2 max-w-xs break-words">
+									{ row.SettlementReason }
+								</td>
+								<td class="px-4 py-3 whitespace-nowrap">
+									<div class="flex items-center gap-2">
+										<a href={ "/invoices/" + Uitoa(row.InvoiceID) }
+											class="text-small text-primary hover:underline">
+											Open
+										</a>
+										if row.SettlementStatus == "pending_review" || row.SettlementStatus == "failed" {
+											<form method="post"
+												action={ "/settings/payment-gateways/settlement-review/" + Uitoa(row.InvoiceID) + "/retry" }
+												class="inline">
+												<button type="submit"
+													class="rounded bg-primary px-2 py-1 text-small font-semibold text-onPrimary hover:bg-primary-hover"
+													onclick="return confirm('Retry gateway settlement for invoice { row.InvoiceNumber }?');">
+													Retry
+												</button>
+											</form>
+										}
+									</div>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			<p class="mt-2 text-[11px] text-text-muted3">
+				Showing at most 200 rows · sorted by last attempted date descending ·
+				<a href="/settings/payment-gateways" class="hover:underline">Payment gateway settings</a>
+			</p>
+		}
+	</div>
+}
+
+templ settlementStatusBadge(status string) {
+	if status == "applied" {
+		<span class="inline-flex items-center rounded-full border border-success-border bg-success-soft px-2 py-0.5 text-[11px] font-semibold text-success-hover">applied</span>
+	} else if status == "pending_review" {
+		<span class="inline-flex items-center rounded-full border border-warning-border bg-warning-soft px-2 py-0.5 text-[11px] font-semibold text-warning-hover">pending review</span>
+	} else if status == "failed" {
+		<span class="inline-flex items-center rounded-full border border-error-border bg-error-soft px-2 py-0.5 text-[11px] font-semibold text-error-hover">failed</span>
+	} else {
+		<span class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted2">{ status }</span>
+	}
+}

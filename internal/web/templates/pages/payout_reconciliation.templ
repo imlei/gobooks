@@ -1,0 +1,331 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"fmt"
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// ── Payout reconciliation overview ───────────────────────────────────────────
+
+templ PayoutReconciliationOverview(vm PayoutReconciliationOverviewVM) {
+	@layout.Layout("GoBooks - Payout Reconciliation", ui.SidebarVM{Active: "Gateway Payouts", HasCompany: vm.HasCompany}, bodyPayoutReconciliationOverview(vm))
+}
+
+templ bodyPayoutReconciliationOverview(vm PayoutReconciliationOverviewVM) {
+	<div class="max-w-[95%]">
+		<h1 class="text-title font-semibold">Payout Reconciliation</h1>
+		<p class="mt-1 text-body text-text-muted2">Match gateway payouts to bank deposits. Only 1:1 exact-amount matching is supported.</p>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+		if vm.JustMatched {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payout matched to bank entry successfully.</div>
+		}
+		if vm.JustCreated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Bank entry recorded.</div>
+		}
+
+		<!-- Unmatched payouts -->
+		<div class="mt-6 rounded-lg border border-border bg-surface p-5">
+			<h2 class="text-section font-semibold text-text">Unmatched Payouts ({ fmt.Sprintf("%d", len(vm.UnmatchedPayouts)) })</h2>
+			if len(vm.UnmatchedPayouts) == 0 {
+				<p class="mt-3 text-body text-text-muted2">All payouts have been matched.</p>
+			} else {
+				<div class="mt-3 overflow-x-auto">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border">
+								<th class="py-2 pr-4">ID</th>
+								<th class="py-2 pr-4">Payout Date</th>
+								<th class="py-2 pr-4">Provider Ref</th>
+								<th class="py-2 pr-4 text-right">Net Amount</th>
+								<th class="py-2 pr-0">Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, p := range vm.UnmatchedPayouts {
+								<tr class="border-b border-border-subtle">
+									<td class="py-2 pr-4 text-text-muted2">{ fmt.Sprintf("#%d", p.ID) }</td>
+									<td class="py-2 pr-4">{ p.PayoutDate.Format("2006-01-02") }</td>
+									<td class="py-2 pr-4 font-mono text-small">{ p.ProviderPayoutID }</td>
+									<td class="py-2 pr-4 text-right tabular-nums font-medium">{ p.NetAmount.StringFixed(2) }</td>
+									<td class="py-2 pr-0">
+										<a href={ templ.SafeURL(fmt.Sprintf("/settings/payment-gateways/payouts/%d/reconcile", p.ID)) }
+											class="rounded px-2 py-1 text-small text-primary hover:underline">Match</a>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</div>
+
+		<!-- Unmatched bank entries -->
+		<div class="mt-6 rounded-lg border border-border bg-surface p-5">
+			<h2 class="text-section font-semibold text-text">Unmatched Bank Entries ({ fmt.Sprintf("%d", len(vm.UnmatchedEntries)) })</h2>
+			if len(vm.UnmatchedEntries) == 0 {
+				<p class="mt-3 text-body text-text-muted2">No unmatched bank entries.</p>
+			} else {
+				<div class="mt-3 overflow-x-auto">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border">
+								<th class="py-2 pr-4">ID</th>
+								<th class="py-2 pr-4">Entry Date</th>
+								<th class="py-2 pr-4">Description</th>
+								<th class="py-2 pr-0 text-right">Amount</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, e := range vm.UnmatchedEntries {
+								<tr class="border-b border-border-subtle">
+									<td class="py-2 pr-4 text-text-muted2">{ fmt.Sprintf("#%d", e.ID) }</td>
+									<td class="py-2 pr-4">{ e.EntryDate.Format("2006-01-02") }</td>
+									<td class="py-2 pr-4 text-text-muted2">{ e.Description }</td>
+									<td class="py-2 pr-0 text-right tabular-nums font-medium">{ e.Amount.StringFixed(2) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</div>
+
+		<!-- Add bank entry form -->
+		<div class="mt-6 rounded-lg border border-border bg-surface p-5">
+			<h2 class="text-section font-semibold text-text">Record Bank Entry</h2>
+			<p class="mt-1 text-small text-text-muted2">Manually record a deposit as seen on your bank statement.</p>
+			@bankEntryForm()
+		</div>
+
+		<!-- Matched records -->
+		if len(vm.MatchedRecords) > 0 {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-5">
+				<h2 class="text-section font-semibold text-text">Matched ({ fmt.Sprintf("%d", len(vm.MatchedRecords)) })</h2>
+				<div class="mt-3 overflow-x-auto">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border">
+								<th class="py-2 pr-4">Payout</th>
+								<th class="py-2 pr-4">Bank Entry</th>
+								<th class="py-2 pr-4">Matched At</th>
+								<th class="py-2 pr-0">By</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, r := range vm.MatchedRecords {
+								<tr class="border-b border-border-subtle">
+									<td class="py-2 pr-4">
+										<a href={ templ.SafeURL(fmt.Sprintf("/settings/payment-gateways/payouts/%d", r.GatewayPayoutID)) }
+											class="text-primary hover:underline">Payout #{ fmt.Sprintf("%d", r.GatewayPayoutID) }</a>
+									</td>
+									<td class="py-2 pr-4 text-text-muted2">Entry #{ fmt.Sprintf("%d", r.BankEntryID) }</td>
+									<td class="py-2 pr-4 text-text-muted2">{ r.MatchedAt.Format("2006-01-02 15:04") }</td>
+									<td class="py-2 pr-0 text-text-muted2 text-small">{ r.Actor }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// bankEntryForm is the inline form to create a bank entry.
+templ bankEntryForm() {
+	<form method="post" action="/settings/payment-gateways/payout-reconciliation/bank-entries" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
+		<div>
+			<label class="block text-body font-medium text-text">Bank Account *</label>
+			<input type="number" name="bank_account_id" placeholder="Account ID"
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Date *</label>
+			<input type="date" name="entry_date"
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Amount *</label>
+			<input type="text" name="amount" placeholder="0.00"
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body tabular-nums outline-none focus:ring-2 focus:ring-primary-focus"/>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Description</label>
+			<input type="text" name="description" placeholder="Wire ref / bank memo"
+				class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+		</div>
+		<div class="flex items-end">
+			@ui.ButtonPrimary("Save Entry", "submit", false)
+		</div>
+	</form>
+}
+
+// ── Per-payout match form ─────────────────────────────────────────────────────
+
+templ PayoutMatchForm(vm PayoutMatchFormVM) {
+	@layout.Layout("GoBooks - Match Payout", ui.SidebarVM{Active: "Gateway Payouts", HasCompany: vm.HasCompany}, bodyPayoutMatchForm(vm))
+}
+
+templ bodyPayoutMatchForm(vm PayoutMatchFormVM) {
+	<div class="max-w-2xl">
+		<div class="mb-4">
+			<a href="/settings/payment-gateways/payout-reconciliation" class="text-body text-primary hover:underline">&larr; Back to Reconciliation</a>
+		</div>
+		<h1 class="text-title font-semibold">Match Payout to Bank Entry</h1>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		<!-- Payout summary -->
+		if vm.Payout != nil {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-5">
+				<h2 class="text-section font-semibold text-text">Gateway Payout</h2>
+				<dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-body sm:grid-cols-3">
+					<div>
+						<dt class="text-small text-text-muted2">Payout ID</dt>
+						<dd class="font-medium">{ fmt.Sprintf("#%d", vm.Payout.ID) }</dd>
+					</div>
+					<div>
+						<dt class="text-small text-text-muted2">Date</dt>
+						<dd>{ vm.Payout.PayoutDate.Format("2006-01-02") }</dd>
+					</div>
+					<div>
+						<dt class="text-small text-text-muted2">Provider Ref</dt>
+						<dd class="font-mono text-small">{ vm.Payout.ProviderPayoutID }</dd>
+					</div>
+					<div>
+						<dt class="text-small text-text-muted2">Gross</dt>
+						<dd class="tabular-nums">{ vm.Payout.GrossAmount.StringFixed(2) }</dd>
+					</div>
+					<div>
+						<dt class="text-small text-text-muted2">Fee</dt>
+						<dd class="tabular-nums">{ vm.Payout.FeeAmount.StringFixed(2) }</dd>
+					</div>
+					<div>
+						<dt class="text-small text-text-muted2">Net (base)</dt>
+						<dd class="tabular-nums">{ vm.Payout.NetAmount.StringFixed(2) }</dd>
+					</div>
+				</dl>
+				<!-- Components and expected net -->
+				if len(vm.Components) > 0 {
+					<div class="mt-4 border-t border-border pt-4">
+						<p class="text-small font-medium text-text-muted2 uppercase tracking-wider">Components</p>
+						<table class="mt-2 w-full text-small">
+							<thead>
+								<tr class="border-b border-border text-left text-text-muted2">
+									<th class="pb-1 pr-4">Type</th>
+									<th class="pb-1 pr-4">Direction</th>
+									<th class="pb-1 pr-4">Description</th>
+									<th class="pb-1 text-right">Amount</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, comp := range vm.Components {
+									<tr class="border-b border-border-subtle">
+										<td class="py-1 pr-4">{ models.PayoutComponentTypeLabel(comp.ComponentType) }</td>
+										<td class="py-1 pr-4">
+											if comp.Direction == models.PayoutComponentDebit {
+												<span class="text-danger-hover">− debit</span>
+											} else {
+												<span class="text-success-hover">+ credit</span>
+											}
+										</td>
+										<td class="py-1 pr-4 text-text-muted2">{ comp.Description }</td>
+										<td class="py-1 text-right tabular-nums">{ comp.Amount.StringFixed(2) }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+				<div class="mt-3 flex items-center justify-between border-t border-border pt-3">
+					<span class="text-small font-medium text-text-muted2">Expected Bank Deposit (to match)</span>
+					<span class="text-body font-bold tabular-nums text-primary">{ vm.ExpectedNet.StringFixed(2) }</span>
+				</div>
+				<div class="mt-2">
+					<a href={ templ.SafeURL(fmt.Sprintf("/settings/payment-gateways/payouts/%d", vm.Payout.ID)) }
+						class="text-small text-primary hover:underline">Manage components on payout detail &rarr;</a>
+				</div>
+			</div>
+		}
+
+		<!-- Already matched state -->
+		if vm.Reconciliation != nil {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				This payout is already matched to bank entry #{ fmt.Sprintf("%d", vm.Reconciliation.BankEntryID) }
+				(matched { vm.Reconciliation.MatchedAt.Format("2006-01-02 15:04") } by { vm.Reconciliation.Actor }).
+			</div>
+		} else if len(vm.CandidateEntries) > 0 {
+			<!-- Match form -->
+			<form method="post" class="mt-6 rounded-lg border border-border bg-surface p-5">
+				<h2 class="text-section font-semibold text-text">Select Matching Bank Entry</h2>
+				<p class="mt-1 text-small text-text-muted2">Only entries with the same bank account, amount, and currency are shown.</p>
+				<div class="mt-4 overflow-x-auto">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border">
+								<th class="py-2 pr-2">Select</th>
+								<th class="py-2 pr-4">Entry #</th>
+								<th class="py-2 pr-4">Date</th>
+								<th class="py-2 pr-4">Description</th>
+								<th class="py-2 pr-0 text-right">Amount</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, e := range vm.CandidateEntries {
+								<tr class="border-b border-border-subtle">
+									<td class="py-2 pr-2">
+										<input type="radio" name="bank_entry_id" value={ fmt.Sprintf("%d", e.ID) }
+											class="accent-primary"/>
+									</td>
+									<td class="py-2 pr-4 text-text-muted2">{ fmt.Sprintf("#%d", e.ID) }</td>
+									<td class="py-2 pr-4">{ e.EntryDate.Format("2006-01-02") }</td>
+									<td class="py-2 pr-4 text-text-muted2">{ e.Description }</td>
+									<td class="py-2 pr-0 text-right tabular-nums font-medium">{ e.Amount.StringFixed(2) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				<div class="mt-4 flex justify-end gap-3">
+					<a href="/settings/payment-gateways/payout-reconciliation"
+						class="rounded-md border border-border px-4 py-2 text-body text-text hover:bg-surface-hover">Cancel</a>
+					@ui.ButtonPrimary("Confirm Match", "submit", false)
+				</div>
+			</form>
+		} else {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-6 text-center text-text-muted2">
+				No unmatched bank entries found with matching amount, bank account, and currency.
+				<a href="/settings/payment-gateways/payout-reconciliation" class="ml-2 text-primary hover:underline">Record a bank entry first.</a>
+			</div>
+		}
+
+		<!-- Payout link -->
+		if vm.Payout != nil {
+			<div class="mt-4">
+				<a href={ templ.SafeURL(fmt.Sprintf("/settings/payment-gateways/payouts/%d", vm.Payout.ID)) }
+					class="text-small text-text-muted2 hover:underline">View payout detail &rarr;</a>
+			</div>
+		}
+	</div>
+}
+
+// payoutReconStatusBadge renders a small matched / unmatched badge.
+// Exported as a helper for other templates that show payout status.
+templ PayoutReconStatusBadge(isMatched bool) {
+	if isMatched {
+		<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-success-soft text-success-hover">Matched</span>
+	} else {
+		<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-warning-soft text-warning">Unmatched</span>
+	}
+}
+
+// Helper used only within this file — suppress unused import warning.
+var _ = models.GatewayPayout{}

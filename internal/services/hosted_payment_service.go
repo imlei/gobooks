@@ -56,6 +56,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gobooks/internal/models"
 	"gorm.io/gorm"
 )
@@ -70,10 +71,71 @@ var (
 	ErrHostedPayProviderFailed = errors.New("payment provider could not create a checkout session")
 	// ErrNoReadyGateway is returned when no gateway is ready for hosted pay.
 	ErrNoReadyGateway = errors.New("no ready payment gateway found for this company")
+	// ErrVerifiedCollectionExists is returned when a verified gateway payment already
+	// exists for this invoice. New pay attempts are blocked until the existing
+	// payment is applied/settled or explicitly cancelled by an operator.
+	ErrVerifiedCollectionExists = errors.New("a payment has already been confirmed by the payment provider for this invoice — apply the existing payment before initiating a new one")
 )
 
 // idempotencyWindow is the lookback period for duplicate attempt detection.
 const idempotencyWindow = 30 * time.Minute
+
+// HasVerifiedGatewayCollectionForInvoice returns true when verified (webhook-confirmed)
+// but UNCONSUMED gateway collections already cover the invoice's remaining balance
+// — i.e. no additional collection is needed.
+//
+// "Verified" means the status was set exclusively by webhook ingestion after
+// HMAC signature verification — it cannot be set by browser return alone.
+//
+// Partial-payment logic: only the not-yet-applied portion of payment_succeeded
+// attempts counts toward this guard. If prior succeeded collections have already
+// been consumed by invoice application, they must not block a later installment.
+//
+// This is the shared guard used by EvaluateHostedPayability and
+// CreateHostedPaymentIntent.
+func HasVerifiedGatewayCollectionForInvoice(db *gorm.DB, invoiceID, companyID uint) bool {
+	// Load current invoice balance.
+	var inv models.Invoice
+	if err := db.Select("id, amount, balance_due").
+		Where("id = ? AND company_id = ?", invoiceID, companyID).
+		First(&inv).Error; err != nil {
+		return false
+	}
+
+	unconsumed := UnconsumedVerifiedCollectionAmount(db, inv, companyID)
+
+	// Block only if the provider has already confirmed enough unapplied money to
+	// fully cover the current remaining balance.
+	return unconsumed.IsPositive() && unconsumed.GreaterThanOrEqual(inv.BalanceDue)
+}
+
+// UnconsumedVerifiedCollectionAmount returns the portion of verified
+// (payment_succeeded) gateway collections that has NOT yet been applied to the
+// invoice.  This represents "money the provider confirmed but the operator hasn't
+// processed yet" — it should be subtracted from BalanceDue when computing the
+// amount for a new checkout session or payment request.
+//
+// Formula:
+//
+//	unconsumed = max(0, SUM(payment_succeeded amounts) − (inv.Amount − inv.BalanceDue))
+//
+// Where (inv.Amount − inv.BalanceDue) is the total already applied to the invoice.
+// If all succeeded amounts have been applied the result is zero.
+func UnconsumedVerifiedCollectionAmount(db *gorm.DB, inv models.Invoice, companyID uint) decimal.Decimal {
+	var row struct{ Total decimal.Decimal }
+	db.Model(&models.HostedPaymentAttempt{}).
+		Select("COALESCE(SUM(amount), 0) as total").
+		Where("invoice_id = ? AND company_id = ? AND status = ?",
+			inv.ID, companyID, models.HostedPaymentAttemptPaymentSucceeded).
+		Scan(&row)
+
+	alreadyApplied := inv.Amount.Sub(inv.BalanceDue)
+	unconsumed := row.Total.Sub(alreadyApplied)
+	if unconsumed.IsNegative() {
+		return decimal.Zero
+	}
+	return unconsumed
+}
 
 // HostedPayabilityResult carries the outcome of EvaluateHostedPayability.
 type HostedPayabilityResult struct {
@@ -86,7 +148,7 @@ type HostedPayabilityResult struct {
 //
 // "Ready" means the gateway can be given a checkout amount right now without a
 // guaranteed-to-fail provider call:
-//   - Stripe:  is_active=true AND external_account_ref != '' (non-empty secret key)
+//   - Stripe:  is_active=true AND external_account_ref != ” (non-empty secret key)
 //   - Manual:  is_active=true (no credential required)
 //   - PayPal, Other: excluded — not supported in the current hosted pay implementation
 //
@@ -165,6 +227,13 @@ func EvaluateHostedPayability(db *gorm.DB, inv models.Invoice, companyID uint) H
 		return HostedPayabilityResult{Reason: "no ready payment gateway configured for this company"}
 	}
 
+	// Gate 6: block if a verified gateway collection already exists.
+	// payment_succeeded can only be set by verified webhook ingestion; this
+	// prevents a second checkout session being created against an already-paid invoice.
+	if HasVerifiedGatewayCollectionForInvoice(db, inv.ID, companyID) {
+		return HostedPayabilityResult{Reason: "a payment has already been confirmed by the payment provider for this invoice"}
+	}
+
 	return HostedPayabilityResult{CanPay: true}
 }
 
@@ -185,6 +254,13 @@ func CreateHostedPaymentIntent(
 	token string,
 	publicBaseURL string,
 ) (*models.HostedPaymentAttempt, error) {
+	// Pre-flight: block if a verified collection already exists for this invoice.
+	// This prevents a second checkout session after a payment has been confirmed
+	// by a webhook but the invoice has not yet been applied/settled by an operator.
+	if HasVerifiedGatewayCollectionForInvoice(db, inv.ID, link.CompanyID) {
+		return nil, ErrVerifiedCollectionExists
+	}
+
 	// Phase 1: inside a transaction — idempotency check + row creation.
 	// Network calls (provider) happen outside the transaction.
 	var attempt models.HostedPaymentAttempt
@@ -233,6 +309,19 @@ func CreateHostedPaymentIntent(
 			currency = co.BaseCurrencyCode
 		}
 
+		// Compute the amount for this checkout session.
+		// Subtract any unconsumed verified collections so we don't double-collect
+		// when a prior payment_succeeded attempt hasn't been applied yet.
+		payableAmount := visibility.BalanceDue
+		if unconsumed := UnconsumedVerifiedCollectionAmount(tx, inv, link.CompanyID); unconsumed.IsPositive() {
+			payableAmount = payableAmount.Sub(unconsumed)
+			if !payableAmount.IsPositive() {
+				// Guard: should never reach here because HasVerifiedGatewayCollectionForInvoice
+				// blocks when sum ≥ BalanceDue, but defend anyway.
+				payableAmount = visibility.BalanceDue
+			}
+		}
+
 		// Create the attempt row in 'created' state BEFORE calling the provider.
 		// This is the trace anchor: if the process crashes after this line but
 		// before the provider responds, the row exists in 'created' state and
@@ -243,7 +332,7 @@ func CreateHostedPaymentIntent(
 			HostedLinkID:     link.ID,
 			GatewayAccountID: gw.ID,
 			ProviderType:     gw.ProviderType,
-			Amount:           visibility.BalanceDue,
+			Amount:           payableAmount,
 			CurrencyCode:     currency,
 			Status:           models.HostedPaymentAttemptCreated,
 		}
@@ -297,6 +386,21 @@ func CreateHostedPaymentIntent(
 	attempt.Status = models.HostedPaymentAttemptRedirected
 
 	return &attempt, nil
+}
+
+// LatestAttemptForInvoice returns the most recent HostedPaymentAttempt for the
+// invoice (by ID descending), or nil if no attempt exists.
+// Used by the payment status page to show provider-side truth without trusting
+// browser query parameters.
+// companyID is required for company isolation.
+func LatestAttemptForInvoice(db *gorm.DB, invoiceID, companyID uint) *models.HostedPaymentAttempt {
+	var attempt models.HostedPaymentAttempt
+	if err := db.Where("invoice_id = ? AND company_id = ?", invoiceID, companyID).
+		Order("id DESC").
+		First(&attempt).Error; err != nil {
+		return nil
+	}
+	return &attempt
 }
 
 // CancelActiveHostedPayAttempt marks all in-flight attempts for the given invoice

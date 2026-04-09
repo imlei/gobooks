@@ -240,3 +240,87 @@ func TestPaymentTransaction_LinkedRequest(t *testing.T) {
 		t.Error("Transaction should link to request")
 	}
 }
+
+// ── ChargebackAccountID mapping round-trip ───────────────────────────────────
+
+// TestPaymentAccountingMapping_ChargebackAccountID_Persists verifies that
+// ChargebackAccountID is written and read back correctly on first save.
+func TestPaymentAccountingMapping_ChargebackAccountID_Persists(t *testing.T) {
+	db := testPaymentGatewayDB(t)
+	companyID := seedPGCompany(t, db)
+
+	cbAcct := models.Account{CompanyID: companyID, Code: "6100", Name: "Chargeback Expense", RootAccountType: models.RootExpense, DetailAccountType: "other_expense", IsActive: true}
+	db.Create(&cbAcct)
+
+	gw := models.PaymentGatewayAccount{CompanyID: companyID, ProviderType: models.ProviderStripe, DisplayName: "S", AuthStatus: "ok", IsActive: true}
+	CreateGatewayAccount(db, &gw)
+
+	m := models.PaymentAccountingMapping{
+		CompanyID:           companyID,
+		GatewayAccountID:    gw.ID,
+		ChargebackAccountID: &cbAcct.ID,
+	}
+	if err := SavePaymentAccountingMapping(db, &m); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := GetPaymentAccountingMapping(db, companyID, gw.ID)
+	if err != nil || loaded == nil {
+		t.Fatal("mapping not found after save")
+	}
+	if loaded.ChargebackAccountID == nil {
+		t.Fatal("ChargebackAccountID is nil after save — field not persisted")
+	}
+	if *loaded.ChargebackAccountID != cbAcct.ID {
+		t.Errorf("want ChargebackAccountID=%d, got %d", cbAcct.ID, *loaded.ChargebackAccountID)
+	}
+}
+
+// TestPaymentAccountingMapping_ChargebackAccountID_NotWipedOnResave verifies
+// that an existing ChargebackAccountID is not overwritten to nil when the
+// mapping is re-saved with the field explicitly set (simulates a full form
+// submission that includes chargeback_account_id).
+func TestPaymentAccountingMapping_ChargebackAccountID_NotWipedOnResave(t *testing.T) {
+	db := testPaymentGatewayDB(t)
+	companyID := seedPGCompany(t, db)
+
+	clearing := models.Account{CompanyID: companyID, Code: "1500", Name: "GW Clearing", RootAccountType: models.RootAsset, DetailAccountType: "other_current_asset", IsActive: true}
+	cbAcct := models.Account{CompanyID: companyID, Code: "6100", Name: "Chargeback Expense", RootAccountType: models.RootExpense, DetailAccountType: "other_expense", IsActive: true}
+	db.Create(&clearing)
+	db.Create(&cbAcct)
+
+	gw := models.PaymentGatewayAccount{CompanyID: companyID, ProviderType: models.ProviderStripe, DisplayName: "S", AuthStatus: "ok", IsActive: true}
+	CreateGatewayAccount(db, &gw)
+
+	// First save: both clearing and chargeback.
+	if err := SavePaymentAccountingMapping(db, &models.PaymentAccountingMapping{
+		CompanyID: companyID, GatewayAccountID: gw.ID,
+		ClearingAccountID:   &clearing.ID,
+		ChargebackAccountID: &cbAcct.ID,
+	}); err != nil {
+		t.Fatal("first save:", err)
+	}
+
+	// Second save: same data (simulates re-submit of the full form).
+	if err := SavePaymentAccountingMapping(db, &models.PaymentAccountingMapping{
+		CompanyID: companyID, GatewayAccountID: gw.ID,
+		ClearingAccountID:   &clearing.ID,
+		ChargebackAccountID: &cbAcct.ID,
+	}); err != nil {
+		t.Fatal("second save:", err)
+	}
+
+	loaded, err := GetPaymentAccountingMapping(db, companyID, gw.ID)
+	if err != nil || loaded == nil {
+		t.Fatal("mapping not found after resave")
+	}
+	if loaded.ChargebackAccountID == nil {
+		t.Fatal("ChargebackAccountID wiped to nil on resave")
+	}
+	if *loaded.ChargebackAccountID != cbAcct.ID {
+		t.Errorf("want ChargebackAccountID=%d after resave, got %d", cbAcct.ID, *loaded.ChargebackAccountID)
+	}
+	if loaded.ClearingAccountID == nil || *loaded.ClearingAccountID != clearing.ID {
+		t.Error("ClearingAccountID lost on resave")
+	}
+}

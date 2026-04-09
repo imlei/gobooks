@@ -2,6 +2,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/mail"
 	"strings"
@@ -22,6 +23,19 @@ type SendInvoiceEmailRequest struct {
 	UserBody     string // if non-empty, overrides template-resolved body (user-edited in send modal)
 	TemplateType string // "invoice", "reminder", "reminder2"
 	TriggeredByUserID *uint // if user-triggered; nil for system/automatic
+
+	// AttachPDF controls whether a PDF attachment is generated and included.
+	//
+	// Behaviour:
+	//   false (default) — send email only, no PDF attached.
+	//   true            — generate PDF and attach it. If the PDF generator is
+	//                     unavailable, the send is rejected with a clear error
+	//                     rather than silently sending without the attachment.
+	//
+	// The send handler sets this from the "attach_pdf" form field.
+	// The send modal pre-checks the field when PDFAvailable=true so that
+	// the default experience on a capable server is to include the PDF.
+	AttachPDF bool
 }
 
 // SendInvoiceByEmail generates PDF, sends email, and logs the attempt.
@@ -93,15 +107,59 @@ func SendInvoiceByEmail(db *gorm.DB, req SendInvoiceEmailRequest) (*models.Invoi
 	// 7. Generate HTML.
 	htmlContent := RenderInvoiceToHTML(*renderData)
 
-	// 8. Generate PDF.
-	pdfBytes, err := GenerateInvoicePDF(htmlContent)
-	if err != nil {
-		// PDF failure: no body/template identity resolved yet — pass empty values.
-		logEntry, logErr := createFailedEmailLog(db, req, "PDF generation failed: "+err.Error(), "", nil, "")
-		if logErr != nil {
-			return nil, fmt.Errorf("PDF generation failed: %w (log creation also failed: %v)", err, logErr)
+	// 8. Optional PDF generation.
+	//
+	// When AttachPDF=true:
+	//   - Generator unavailable → reject with clear error (no misleading send).
+	//   - Generator available but fails → log failure, return error.
+	//   - Success → attach to email.
+	// When AttachPDF=false:
+	//   - Skip PDF entirely; send plain email; log attachment_included=false.
+	var pdfBytes []byte
+	var attachment *EmailAttachment
+	var attachFilename string
+
+	if req.AttachPDF {
+		if !PDFGeneratorAvailable() {
+			// User explicitly requested attachment but generator is not installed.
+			// Reject the send rather than silently omitting the requested attachment.
+			logEntry, logErr := createFailedEmailLog(db, req,
+				"PDF attachment requested but wkhtmltopdf is not installed on this server",
+				"", nil, "",
+				map[string]any{
+					"attachment_included": false,
+					"attachment_error":    "wkhtmltopdf not installed",
+				},
+			)
+			if logErr != nil {
+				return nil, fmt.Errorf("PDF generator unavailable; log also failed: %v", logErr)
+			}
+			return logEntry, fmt.Errorf("PDF attachment requested but wkhtmltopdf is not installed on this server")
 		}
-		return logEntry, fmt.Errorf("PDF generation failed: %w", err)
+
+		pdfBytes, err = GenerateInvoicePDF(htmlContent)
+		if err != nil {
+			logEntry, logErr := createFailedEmailLog(db, req,
+				"PDF generation failed: "+err.Error(),
+				"", nil, "",
+				map[string]any{
+					"attachment_included": false,
+					"attachment_error":    "PDF generation failed: " + err.Error(),
+				},
+			)
+			if logErr != nil {
+				return nil, fmt.Errorf("PDF generation failed: %w (log creation also failed: %v)", err, logErr)
+			}
+			return logEntry, fmt.Errorf("PDF generation failed: %w", err)
+		}
+
+		// Reuse the shared safe filename — same rule as internal/hosted PDF download.
+		attachFilename = InvoicePDFSafeFilename(invoice.InvoiceNumber)
+		attachment = &EmailAttachment{
+			Filename:    attachFilename,
+			ContentType: "application/pdf",
+			Data:        pdfBytes,
+		}
 	}
 
 	// 9. Resolve email subject and body from template config (with token substitution).
@@ -143,7 +201,7 @@ func SendInvoiceByEmail(db *gorm.DB, req SendInvoiceEmailRequest) (*models.Invoi
 		} else if tmplBody != "" {
 			_, body = RenderEmailTokens("", tmplBody, tokenData)
 		} else {
-			body = DefaultEmailBodyRendered(tokenData)
+			body = DefaultEmailBodyRendered(tokenData, req.AttachPDF)
 		}
 
 		// Apply token substitution to subject as well.
@@ -151,31 +209,36 @@ func SendInvoiceByEmail(db *gorm.DB, req SendInvoiceEmailRequest) (*models.Invoi
 	}
 
 	// 10. Resolve template identity for send-time snapshot.
-	// This captures which template ID/name was used so the email log is traceable
-	// even after the template is later renamed or deactivated.
 	tmplIDSnap, tmplNameSnap := resolveTemplateIdentity(db, &invoice, req.CompanyID)
 
-	// 11. Build PDF attachment.
-	safeNumber := strings.ReplaceAll(invoice.InvoiceNumber, "/", "-")
-	safeNumber = strings.ReplaceAll(safeNumber, "\\", "-")
-	attachment := &EmailAttachment{
-		Filename:    "Invoice-" + safeNumber + ".pdf",
-		ContentType: "application/pdf",
-		Data:        pdfBytes,
-	}
-
-	// 12. Send email with PDF attachment.
+	// 11. Send email (with or without attachment).
+	// SendEmailWithAttachment handles nil attachment by sending plain text.
 	err = SendEmailWithAttachment(smtpCfg, req.ToEmail, subject, body, attachment)
 	if err != nil {
-		logEntry, logErr := createFailedEmailLog(db, req, fmt.Sprintf("SMTP send failed: %v", err), body, tmplIDSnap, tmplNameSnap)
+		meta := map[string]any{
+			"attachment_included": attachment != nil,
+		}
+		if attachment != nil {
+			meta["attachment_filename"] = attachFilename
+		}
+		logEntry, logErr := createFailedEmailLog(db, req,
+			fmt.Sprintf("SMTP send failed: %v", err), body, tmplIDSnap, tmplNameSnap, meta)
 		if logErr != nil {
 			return nil, fmt.Errorf("email send failed: %w (log creation also failed: %v)", err, logErr)
 		}
 		return logEntry, fmt.Errorf("email send failed: %w", err)
 	}
 
+	// 12. Build send-log attachment metadata.
+	successMeta := map[string]any{
+		"attachment_included": attachment != nil,
+	}
+	if attachment != nil {
+		successMeta["attachment_filename"] = attachFilename
+	}
+
 	// 13. Create successful email log.
-	logEntry, err := createSuccessfulEmailLog(db, req, subject, body, tmplIDSnap, tmplNameSnap)
+	logEntry, err := createSuccessfulEmailLog(db, req, subject, body, tmplIDSnap, tmplNameSnap, successMeta)
 	if err != nil {
 		return nil, fmt.Errorf("email log creation failed: %w", err)
 	}
@@ -191,13 +254,18 @@ func SendInvoiceByEmail(db *gorm.DB, req SendInvoiceEmailRequest) (*models.Invoi
 		})
 
 	// 15. Audit log.
+	attachmentSize := 0
+	if pdfBytes != nil {
+		attachmentSize = len(pdfBytes)
+	}
 	TryWriteAuditLogWithContext(
 		db, "invoice.email_sent", "Invoice", req.InvoiceID, "system",
 		map[string]any{
-			"to_email":        req.ToEmail,
-			"template_type":   req.TemplateType,
-			"status":          "sent",
-			"attachment_size": len(pdfBytes),
+			"to_email":            req.ToEmail,
+			"template_type":       req.TemplateType,
+			"status":              "sent",
+			"attachment_included": attachment != nil,
+			"attachment_size":     attachmentSize,
 		},
 		&req.CompanyID, nil,
 	)
@@ -207,9 +275,11 @@ func SendInvoiceByEmail(db *gorm.DB, req SendInvoiceEmailRequest) (*models.Invoi
 
 // createSuccessfulEmailLog creates an InvoiceEmailLog with sent status.
 // bodyResolved, tmplIDSnap, tmplNameSnap capture the send-time presentation snapshot.
-func createSuccessfulEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, subject, bodyResolved string, tmplIDSnap *uint, tmplNameSnap string) (*models.InvoiceEmailLog, error) {
+// meta holds lightweight attachment metadata (attachment_included, attachment_filename).
+func createSuccessfulEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, subject, bodyResolved string, tmplIDSnap *uint, tmplNameSnap string, meta map[string]any) (*models.InvoiceEmailLog, error) {
 	now := time.Now()
 
+	metaJSON := marshalEmailMeta(meta)
 	log := models.InvoiceEmailLog{
 		CompanyID:            req.CompanyID,
 		InvoiceID:            req.InvoiceID,
@@ -222,9 +292,9 @@ func createSuccessfulEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, subject,
 		TemplateNameSnapshot: tmplNameSnap,
 		TemplateType:         req.TemplateType,
 		TriggeredByUserID:    req.TriggeredByUserID,
-		CreatedAt:        now,
-		SentAt:           &now,
-		MetadataJSON:     datatypes.JSON("{}"),
+		CreatedAt:            now,
+		SentAt:               &now,
+		MetadataJSON:         metaJSON,
 	}
 
 	if err := db.Create(&log).Error; err != nil {
@@ -237,7 +307,9 @@ func createSuccessfulEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, subject,
 // createFailedEmailLog creates an InvoiceEmailLog with failed status.
 // bodyResolved, tmplIDSnap, tmplNameSnap capture the send-time presentation state
 // (what was attempted, even though delivery failed).
-func createFailedEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, errorMsg, bodyResolved string, tmplIDSnap *uint, tmplNameSnap string) (*models.InvoiceEmailLog, error) {
+// meta holds lightweight attachment metadata (attachment_included, attachment_error).
+func createFailedEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, errorMsg, bodyResolved string, tmplIDSnap *uint, tmplNameSnap string, meta map[string]any) (*models.InvoiceEmailLog, error) {
+	metaJSON := marshalEmailMeta(meta)
 	log := models.InvoiceEmailLog{
 		CompanyID:            req.CompanyID,
 		InvoiceID:            req.InvoiceID,
@@ -250,8 +322,8 @@ func createFailedEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, errorMsg, bo
 		TemplateNameSnapshot: tmplNameSnap,
 		TemplateType:         req.TemplateType,
 		TriggeredByUserID:    req.TriggeredByUserID,
-		CreatedAt:        time.Now(),
-		MetadataJSON:     datatypes.JSON("{}"),
+		CreatedAt:            time.Now(),
+		MetadataJSON:         metaJSON,
 	}
 
 	if err := db.Create(&log).Error; err != nil {
@@ -259,6 +331,19 @@ func createFailedEmailLog(db *gorm.DB, req SendInvoiceEmailRequest, errorMsg, bo
 	}
 
 	return &log, nil
+}
+
+// marshalEmailMeta serializes a metadata map to datatypes.JSON.
+// Falls back to "{}" on marshal failure (should never happen with simple maps).
+func marshalEmailMeta(meta map[string]any) datatypes.JSON {
+	if meta == nil {
+		return datatypes.JSON("{}")
+	}
+	b, err := json.Marshal(meta)
+	if err != nil {
+		return datatypes.JSON("{}")
+	}
+	return datatypes.JSON(b)
 }
 
 // buildInvoiceEmailBody creates plain-text email body.
@@ -307,11 +392,12 @@ func buildInvoiceEmailBody(invoice *models.Invoice, templateType string) string 
 		}
 		body.WriteString("\nImmediate payment is required to avoid further action.\n\n")
 
-	default: // "invoice"
+	default: // "invoice" — this path is not reached from SendInvoiceByEmail (which uses
+		// DefaultEmailBodyRendered instead), but kept consistent for direct callers.
 		body.WriteString("Dear ")
 		body.WriteString(invoice.CustomerNameSnapshot)
 		body.WriteString(",\n\n")
-		body.WriteString("Thank you for your business. Please find your invoice attached.\n\n")
+		body.WriteString("Thank you for your business. Please review your invoice details below.\n\n")
 		body.WriteString("Invoice #: ")
 		body.WriteString(invoice.InvoiceNumber)
 		body.WriteString("\n")

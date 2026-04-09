@@ -346,6 +346,47 @@ func (s *Server) handleInvoiceReceivePaymentSubmit(c *fiber.Ctx) error {
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?received=1", invoiceID))
 }
 
+// handleRetryGatewaySettlement re-runs the settlement bridge for the invoice.
+// POST /invoices/:id/retry-gateway-settlement
+//
+// Finds the latest payment_succeeded HostedPaymentAttempt for the invoice and
+// calls RetryGatewaySettlement. The settlement outcome fields on the attempt are
+// updated regardless of outcome. Idempotent: repeated calls after successful
+// settlement redirect with ?settled=1 without any mutation.
+//
+// Auth: RequirePermission(ActionJournalCreate) — same level as posting a transaction.
+func (s *Server) handleRetryGatewaySettlement(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return redirectErr(c, "/invoices", "company context required")
+	}
+
+	invoiceID, err := parseInvoiceID(c)
+	if err != nil {
+		return redirectErr(c, "/invoices", "invalid invoice ID")
+	}
+
+	result, err := services.RetryGatewaySettlement(s.DB, companyID, invoiceID)
+	if err != nil {
+		if err == services.ErrNoSucceededAttempt {
+			return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID),
+				"No verified gateway payment found for this invoice.")
+		}
+		if err == services.ErrSettlementAlreadyDone {
+			return redirectTo(c, fmt.Sprintf("/invoices/%d?settled=1", invoiceID))
+		}
+		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID),
+			"Settlement failed: "+err.Error())
+	}
+
+	if !result.Eligibility.Eligible {
+		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID),
+			"Settlement still ineligible: "+result.Eligibility.Reason)
+	}
+
+	return redirectTo(c, fmt.Sprintf("/invoices/%d?settled=1", invoiceID))
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 func parseInvoiceID(c *fiber.Ctx) (uint, error) {

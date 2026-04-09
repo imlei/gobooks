@@ -1,0 +1,96 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// GatewayDisputeListVM is the view-model for the dispute list page.
+type GatewayDisputeListVM struct {
+	HasCompany  bool
+	Disputes    []models.GatewayDispute
+	JustCreated bool
+}
+
+templ GatewayDisputeList(vm GatewayDisputeListVM) {
+	@layout.Layout("GoBooks - Disputes", ui.SidebarVM{Active: "Gateway Disputes", HasCompany: vm.HasCompany}, bodyGatewayDisputeList(vm))
+}
+
+templ bodyGatewayDisputeList(vm GatewayDisputeListVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-center justify-between">
+			<div>
+				<h1 class="text-title font-semibold">Payment Disputes</h1>
+				<p class="mt-1 text-small text-text-muted2">
+					Track cardholder disputes. Mark won (no financial effect) or lost (creates chargeback transaction).
+				</p>
+			</div>
+			<a
+				href="/settings/payment-gateways/disputes/new"
+				class="rounded-md bg-primary px-4 py-2 text-body font-medium text-white hover:bg-primary-hover"
+			>
+				Open Dispute
+			</a>
+		</div>
+
+		if vm.JustCreated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Dispute opened successfully.
+			</div>
+		}
+
+		<div class="mt-6 overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+			<table class="w-full text-body">
+				<thead>
+					<tr class="border-b border-border-subtle bg-background text-left text-small font-medium text-text-muted2">
+						<th class="px-4 py-3">Opened</th>
+						<th class="px-4 py-3">Provider Dispute ID</th>
+						<th class="px-4 py-3">Status</th>
+						<th class="px-4 py-3 text-right">Amount</th>
+						<th class="px-4 py-3">Currency</th>
+						<th class="px-4 py-3">Charge Txn</th>
+						<th class="px-4 py-3"></th>
+					</tr>
+				</thead>
+				<tbody>
+					if len(vm.Disputes) == 0 {
+						<tr>
+							<td colspan="7" class="px-4 py-8 text-center text-text-muted2">No disputes found.</td>
+						</tr>
+					}
+					for _, d := range vm.Disputes {
+						<tr class="border-b border-border-subtle hover:bg-background">
+							<td class="px-4 py-3 text-nowrap">{ d.OpenedAt.Format("2006-01-02") }</td>
+							<td class="px-4 py-3 font-mono text-small">{ d.ProviderDisputeID }</td>
+							<td class="px-4 py-3">
+								@disputeStatusBadge(d.Status)
+							</td>
+							<td class="px-4 py-3 text-right font-medium">{ Money(d.Amount) }</td>
+							<td class="px-4 py-3">{ d.CurrencyCode }</td>
+							<td class="px-4 py-3 font-mono text-small">{ Uitoa(d.PaymentTransactionID) }</td>
+							<td class="px-4 py-3">
+								<a href={ templ.SafeURL("/settings/payment-gateways/disputes/" + Uitoa(d.ID)) }
+									class="text-primary hover:underline text-small">View</a>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+templ disputeStatusBadge(status models.GatewayDisputeStatus) {
+	switch status {
+	case models.DisputeStatusOpened:
+		<span class="rounded bg-warning-soft px-2 py-0.5 text-small text-warning border border-warning-soft">Open</span>
+	case models.DisputeStatusWon:
+		<span class="rounded bg-success-soft px-2 py-0.5 text-small text-success-hover border border-success-border">Won</span>
+	case models.DisputeStatusLost:
+		<span class="rounded bg-error-soft px-2 py-0.5 text-small text-error-hover border border-error-border">Lost</span>
+	default:
+		<span class="rounded bg-surface px-2 py-0.5 text-small text-text-muted2 border border-border-subtle">{ string(status) }</span>
+	}
+}
