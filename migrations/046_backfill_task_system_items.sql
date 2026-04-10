@@ -71,7 +71,9 @@ BEGIN
             true, true, 'TASK_LABOR',
             now(), now()
         )
-        ON CONFLICT (company_id, system_code) DO NOTHING;
+        ON CONFLICT (company_id, system_code)
+            WHERE system_code IS NOT NULL AND system_code <> ''
+        DO NOTHING;
 
         -- TASK_REIM: non_inventory type, sold and purchased.
         INSERT INTO product_services (
@@ -91,7 +93,9 @@ BEGIN
             true, true, 'TASK_REIM',
             now(), now()
         )
-        ON CONFLICT (company_id, system_code) DO NOTHING;
+        ON CONFLICT (company_id, system_code)
+            WHERE system_code IS NOT NULL AND system_code <> ''
+        DO NOTHING;
 
     END LOOP;
 END $$;
