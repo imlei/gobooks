@@ -85,7 +85,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 32, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 32, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -108,7 +108,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(it.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 53, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 53, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -121,7 +121,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(it.EntryDate)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 54, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 54, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -134,7 +134,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(it.JournalNo)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 55, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 55, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -147,7 +147,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(it.LineCount)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 56, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 56, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -160,7 +160,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(it.TotalDebit)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 57, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 57, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -173,7 +173,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(it.TotalCredit)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 58, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 58, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -186,7 +186,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 			var templ_7745c5c3_Var10 templ.SafeURL
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs("/journal-entry/" + Uitoa(it.ID) + "/reverse")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 60, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 60, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -224,7 +224,7 @@ func bodyJournalList(vm JournalEntryListVM) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(it.ReverseHint)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/journal_entry_list.templ`, Line: 65, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/journal_entry_list.templ`, Line: 65, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {

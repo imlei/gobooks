@@ -79,7 +79,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 27, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 27, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -102,7 +102,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 43, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 43, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -115,7 +115,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(vm.NameError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 49, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 49, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -133,7 +133,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 54, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 54, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -151,7 +151,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Email)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 68, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 68, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -169,7 +169,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(pt.Code)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 84, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 84, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -192,7 +192,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(pt.DropdownLabel())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 84, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 84, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -210,7 +210,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AddrStreet1)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 101, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 101, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -223,7 +223,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AddrStreet2)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 113, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 113, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -236,7 +236,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AddrCity)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 125, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 125, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -249,7 +249,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AddrProvince)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 137, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 137, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -262,7 +262,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AddrPostalCode)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 149, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 149, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -275,7 +275,7 @@ func bodyCustomerNew(vm CustomerNewVM) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AddrCountry)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/customer_new.templ`, Line: 163, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/customer_new.templ`, Line: 163, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {

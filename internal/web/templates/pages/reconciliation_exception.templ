@@ -133,22 +133,91 @@ templ bodyReconciliationExceptionDetail(vm ReconciliationExceptionDetailVM) {
 					<dd class="mt-1 text-body">{ vm.Exception.CreatedByActor }</dd>
 				</div>
 				if vm.Exception.GatewayPayoutID != nil {
-					<div>
+					<div class="col-span-2 rounded-md border border-border-subtle bg-background px-4 py-3">
 						<dt class="text-small font-medium text-text-muted2">Gateway Payout</dt>
-						<dd class="mt-1">
-							<a
-								href={ templ.SafeURL("/settings/payment-gateways/payouts/" + Uitoa(*vm.Exception.GatewayPayoutID)) }
-								class="text-small text-primary hover:underline"
-							>
-								Payout #{ Uitoa(*vm.Exception.GatewayPayoutID) }
-							</a>
-						</dd>
+						if vm.LinkedPayout != nil {
+							<dd class="mt-2 flex flex-wrap items-center gap-3">
+								<a
+									href={ templ.SafeURL("/settings/payment-gateways/payouts/" + Uitoa(vm.LinkedPayout.ID)) }
+									class="text-small font-medium text-primary hover:underline"
+								>
+									Payout #{ Uitoa(vm.LinkedPayout.ID) }
+								</a>
+								<span class="font-mono text-small text-text-muted2">{ vm.LinkedPayout.ProviderPayoutID }</span>
+							</dd>
+							<div class="mt-3 grid grid-cols-2 gap-3 text-small">
+								<div>
+									<div class="text-text-muted2">Payout Date</div>
+									<div class="mt-1 text-body">{ vm.LinkedPayout.PayoutDate.Format("2006-01-02") }</div>
+								</div>
+								<div>
+									<div class="text-text-muted2">Currency</div>
+									<div class="mt-1 text-body">{ vm.LinkedPayout.CurrencyCode }</div>
+								</div>
+								<div>
+									<div class="text-text-muted2">Net to Bank</div>
+									<div class="mt-1 font-mono text-body">{ vm.LinkedPayout.NetAmount.StringFixed(2) }</div>
+								</div>
+								<div>
+									<div class="text-text-muted2">Expected Deposit</div>
+									<div class="mt-1 font-mono text-body">
+										if vm.LinkedPayoutExpectedNet != "" {
+											{ vm.LinkedPayoutExpectedNet }
+										} else {
+											—
+										}
+									</div>
+								</div>
+							</div>
+							if vm.LinkedPayoutReconciliation != nil {
+								<p class="mt-3 text-small text-success-hover">
+									Current state: matched to bank entry #{ Uitoa(vm.LinkedPayoutReconciliation.BankEntryID) }.
+								</p>
+							} else {
+								<p class="mt-3 text-small text-text-muted2">Current state: unmatched.</p>
+							}
+						} else {
+							<dd class="mt-2 text-body">Payout #{ Uitoa(*vm.Exception.GatewayPayoutID) }</dd>
+							<p class="mt-1 text-small text-text-muted2">Linked payout record unavailable.</p>
+						}
 					</div>
 				}
 				if vm.Exception.BankEntryID != nil {
-					<div>
+					<div class="col-span-2 rounded-md border border-border-subtle bg-background px-4 py-3">
 						<dt class="text-small font-medium text-text-muted2">Bank Entry</dt>
-						<dd class="mt-1 text-body">Entry #{ Uitoa(*vm.Exception.BankEntryID) }</dd>
+						if vm.LinkedBankEntry != nil {
+							<dd class="mt-2 text-body font-medium">Entry #{ Uitoa(vm.LinkedBankEntry.ID) }</dd>
+							<div class="mt-3 grid grid-cols-2 gap-3 text-small">
+								<div>
+									<div class="text-text-muted2">Entry Date</div>
+									<div class="mt-1 text-body">{ vm.LinkedBankEntry.EntryDate.Format("2006-01-02") }</div>
+								</div>
+								<div>
+									<div class="text-text-muted2">Amount</div>
+									<div class="mt-1 font-mono text-body">{ vm.LinkedBankEntry.Amount.StringFixed(2) }</div>
+								</div>
+								<div>
+									<div class="text-text-muted2">Currency</div>
+									<div class="mt-1 text-body">{ vm.LinkedBankEntry.CurrencyCode }</div>
+								</div>
+								if vm.LinkedBankEntry.Description != "" {
+									<div>
+										<div class="text-text-muted2">Description</div>
+										<div class="mt-1 text-body">{ vm.LinkedBankEntry.Description }</div>
+									</div>
+								}
+							</div>
+							if vm.LinkedBankEntryMatch != nil {
+								<p class="mt-3 text-small text-success-hover">
+									Current state: matched to payout #{ Uitoa(vm.LinkedBankEntryMatch.GatewayPayoutID) }.
+								</p>
+							} else {
+								<p class="mt-3 text-small text-text-muted2">Current state: unmatched.</p>
+							}
+						} else {
+							<dd class="mt-2 text-body">Entry #{ Uitoa(*vm.Exception.BankEntryID) }</dd>
+							<p class="mt-1 text-small text-text-muted2">Linked bank entry record unavailable.</p>
+						}
 					</div>
 				}
 				<div class="col-span-2">

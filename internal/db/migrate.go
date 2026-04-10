@@ -190,6 +190,8 @@ func Migrate(db *gorm.DB) error {
 		&models.PaymentReverseAllocation{},
 		// Batch 23: Payment-side reverse exception truth
 		&models.PaymentReverseException{},
+		// Batch 26: Payment reverse hook execution trace
+		&models.PaymentReverseResolutionAttempt{},
 	); err != nil {
 		return err
 	}

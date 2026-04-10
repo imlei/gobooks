@@ -228,6 +228,11 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/settings/payment-gateways/reverse-exceptions/:id/review", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentReverseExceptionReview)
 	app.Post("/settings/payment-gateways/reverse-exceptions/:id/dismiss", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentReverseExceptionDismiss)
 	app.Post("/settings/payment-gateways/reverse-exceptions/:id/resolve", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentReverseExceptionResolve)
+	// Batch 26: Execution hooks
+	app.Post("/settings/payment-gateways/reverse-exceptions/:id/hooks/:hookType", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handlePaymentReverseExceptionHook)
+
+	// Batch 24: Investigation workspace — unified exception triage view (read-only)
+	app.Get("/settings/payment-gateways/investigation", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvestigationWorkspace)
 
 	// Invoice templates (settings)
 	app.Get("/settings/invoice-templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoiceTemplatesList)

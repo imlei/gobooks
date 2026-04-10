@@ -24,6 +24,19 @@ type PaymentReverseExceptionDetailVM struct {
 	// Linked transaction summaries (nil if not found).
 	ReverseTxn  *models.PaymentTransaction
 	OriginalTxn *models.PaymentTransaction
+
+	// Rollup is the Batch 25 structured allocation summary.  Nil when the
+	// rollup service was unable to load the data (degrades gracefully).
+	Rollup *services.PaymentReverseDetailRollup
+
+	// Batch 26: Hook policy and recent attempt history.
+	Hooks    []services.PRHook
+	Attempts []models.PaymentReverseResolutionAttempt
+
+	// HookActioned is true when a hook was just executed (POST redirect).
+	HookActioned bool
+	// HookError is non-empty when a hook execution returned a user-facing error.
+	HookError string
 }
 
 type PaymentGatewaysVM struct {

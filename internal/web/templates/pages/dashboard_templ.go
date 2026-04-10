@@ -127,7 +127,7 @@ func cardPnL(vm DashboardVM) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.RangeLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 41, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 41, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -166,7 +166,7 @@ func cardPnL(vm DashboardVM) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 58, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 58, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -184,7 +184,7 @@ func cardPnL(vm DashboardVM) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(p.Revenue.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 60, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 60, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -202,7 +202,7 @@ func cardPnL(vm DashboardVM) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.Revenue.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 62, Col: 86}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 62, Col: 86}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -264,7 +264,7 @@ func cardExpenses(vm DashboardVM) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Expenses.Total.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 80, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 80, Col: 86}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -282,7 +282,7 @@ func cardExpenses(vm DashboardVM) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Expenses.Total.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 82, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 82, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -310,7 +310,7 @@ func cardExpenses(vm DashboardVM) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(l.Account)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 97, Col: 40}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 97, Col: 40}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -328,7 +328,7 @@ func cardExpenses(vm DashboardVM) templ.Component {
 					var templ_7745c5c3_Var12 string
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(l.Amount.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 99, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 99, Col: 90}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -346,7 +346,7 @@ func cardExpenses(vm DashboardVM) templ.Component {
 					var templ_7745c5c3_Var13 string
 					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(l.Amount.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 101, Col: 89}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 101, Col: 89}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 					if templ_7745c5c3_Err != nil {
@@ -408,7 +408,7 @@ func cardBanks(vm DashboardVM) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(uint(len(vm.BankAccounts))))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 120, Col: 79}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 120, Col: 79}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -431,7 +431,7 @@ func cardBanks(vm DashboardVM) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(a.Code)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 134, Col: 51}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 134, Col: 51}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -444,7 +444,7 @@ func cardBanks(vm DashboardVM) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(a.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 135, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 135, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -530,7 +530,7 @@ func keyStat(m MoneyVM, label string) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 159, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 159, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -548,7 +548,7 @@ func keyStat(m MoneyVM, label string) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(m.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 161, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 161, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -566,7 +566,7 @@ func keyStat(m MoneyVM, label string) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(m.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/dashboard.templ`, Line: 163, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/dashboard.templ`, Line: 163, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {

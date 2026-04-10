@@ -80,6 +80,7 @@ var (
 	ErrPRExceptionSourceInvalid     = errors.New("payment reverse exception source transaction is invalid")
 	ErrPRExceptionSourceMismatch    = errors.New("payment reverse exception source linkage is inconsistent")
 	ErrPRExceptionDismissNote       = errors.New("dismissal note is required")
+	ErrPRExceptionResolveNote       = errors.New("resolution note is required")
 )
 
 // ── Input types ───────────────────────────────────────────────────────────────
@@ -323,6 +324,9 @@ func updatePRExceptionStatus(
 		}
 		if newStatus == models.PRExceptionStatusDismissed && strings.TrimSpace(note) == "" {
 			return ErrPRExceptionDismissNote
+		}
+		if newStatus == models.PRExceptionStatusResolved && strings.TrimSpace(note) == "" {
+			return ErrPRExceptionResolveNote
 		}
 		if err := validatePRExceptionTransition(ex.Status, newStatus); err != nil {
 			return err

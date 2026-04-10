@@ -88,7 +88,7 @@ func bodyBalanceSheet(vm BalanceSheetVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/balance_sheet.templ`, Line: 26, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/balance_sheet.templ`, Line: 26, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -126,7 +126,7 @@ func bodyBalanceSheet(vm BalanceSheetVM) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(Money(vm.Report.TotalLiabilities.Add(vm.Report.TotalEquity)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/balance_sheet.templ`, Line: 41, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/balance_sheet.templ`, Line: 41, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -168,7 +168,7 @@ func bsSection(title string, lines []services.BalanceSheetLine, total string) te
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/balance_sheet.templ`, Line: 52, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/balance_sheet.templ`, Line: 52, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -181,7 +181,7 @@ func bsSection(title string, lines []services.BalanceSheetLine, total string) te
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(total)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/balance_sheet.templ`, Line: 53, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/balance_sheet.templ`, Line: 53, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -199,7 +199,7 @@ func bsSection(title string, lines []services.BalanceSheetLine, total string) te
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(l.Code)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/balance_sheet.templ`, Line: 68, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/balance_sheet.templ`, Line: 68, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -212,7 +212,7 @@ func bsSection(title string, lines []services.BalanceSheetLine, total string) te
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(l.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/balance_sheet.templ`, Line: 69, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/balance_sheet.templ`, Line: 69, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -225,7 +225,7 @@ func bsSection(title string, lines []services.BalanceSheetLine, total string) te
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(Money(l.Amount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/balance_sheet.templ`, Line: 70, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/balance_sheet.templ`, Line: 70, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {

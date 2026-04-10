@@ -39,6 +39,13 @@ type ReconciliationExceptionDetailVM struct {
 	HasCompany bool
 	Exception  *models.ReconciliationException
 
+	// Linked source summaries loaded read-only for investigation context.
+	LinkedPayout               *models.GatewayPayout
+	LinkedPayoutExpectedNet    string
+	LinkedPayoutReconciliation *models.PayoutReconciliation
+	LinkedBankEntry            *models.BankEntry
+	LinkedBankEntryMatch       *models.PayoutReconciliation
+
 	// Resolution hooks — computed by the service layer and converted in the handler.
 	AvailableHooks []ExceptionResolutionHookVM
 	// RecentAttempts is the last N execution-hook attempt records, newest first.

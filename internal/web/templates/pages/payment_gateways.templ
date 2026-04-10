@@ -319,7 +319,7 @@ templ bodyPaymentTransactions(vm PaymentTransactionsVM) {
 							<tr><td colspan="7" class="py-6 text-center text-text-muted2">No transactions yet.</td></tr>
 						}
 						for _, t := range vm.Transactions {
-							<tr class="border-b border-border-subtle">
+							<tr id={ "txn-" + Uitoa(t.ID) } class="border-b border-border-subtle">
 								<td class="py-3 pr-4">{ t.GatewayAccount.DisplayName }</td>
 								<td class="py-3 pr-4"><span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-primary-soft text-primary">{ models.PaymentTransactionTypeLabel(t.TransactionType) }</span></td>
 								<td class="py-3 pr-4 text-right tabular-nums">{ t.Amount.StringFixed(2) }</td>

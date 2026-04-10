@@ -109,7 +109,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.RetryError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 54, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 54, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -137,7 +137,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(Itoa(vm.PendingCount))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 65, Col: 134}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 65, Col: 134}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -165,7 +165,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(Itoa(vm.PendingCount))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 77, Col: 134}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 77, Col: 134}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -218,7 +218,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var6 templ.SafeURL
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs("/invoices/" + Uitoa(row.InvoiceID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 115, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 115, Col: 54}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -231,7 +231,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(row.InvoiceNumber)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 116, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 116, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -244,7 +244,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(row.CustomerName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 119, Col: 94}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 119, Col: 94}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -257,7 +257,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(row.Amount.StringFixed(2))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 121, Col: 36}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 121, Col: 36}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -270,7 +270,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(row.CurrencyCode)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 121, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 121, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -283,7 +283,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(row.PaymentVerifiedAt.Format("2006-01-02"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 124, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 124, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -297,7 +297,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 					var templ_7745c5c3_Var12 string
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(row.SettlementLastAttemptedAt.Format("2006-01-02 15:04"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 128, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 128, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -324,7 +324,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(row.SettlementReason)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 137, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 137, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -337,7 +337,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 				var templ_7745c5c3_Var14 templ.SafeURL
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs("/invoices/" + Uitoa(row.InvoiceID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 141, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 141, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -355,7 +355,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 					var templ_7745c5c3_Var15 templ.SafeURL
 					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/settlement-review/" + Uitoa(row.InvoiceID) + "/retry")
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 147, Col: 102}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 147, Col: 102}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {
@@ -428,7 +428,7 @@ func settlementStatusBadge(status string) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_settlement_review.templ`, Line: 179, Col: 124}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_settlement_review.templ`, Line: 179, Col: 124}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {

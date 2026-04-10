@@ -90,7 +90,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterQ)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 37, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 37, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -133,7 +133,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterFrom)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 53, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 53, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -146,7 +146,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterTo)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 57, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 57, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -168,7 +168,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var6).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -181,7 +181,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(adminInt(vm.Page))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 69, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 69, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -194,7 +194,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(adminInt(vm.TotalCount))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 69, Col: 113}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 69, Col: 113}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -223,7 +223,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var10).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -236,7 +236,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(item.CreatedAt.Format("2006-01-02 15:04:05"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 94, Col: 128}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 94, Col: 128}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -264,7 +264,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(item.Level)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 101, Col: 145}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 101, Col: 145}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -282,7 +282,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(item.Method)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 104, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 104, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(item.Path)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 105, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 105, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -308,7 +308,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(item.RequestID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 106, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 106, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -321,7 +321,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(item.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 108, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 108, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -348,7 +348,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var18).String())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
@@ -361,7 +361,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(item.Stack)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 112, Col: 174}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 112, Col: 174}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -384,7 +384,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterQ)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 123, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 123, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -397,7 +397,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterLevel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 124, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 124, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -410,7 +410,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterFrom)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 125, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 125, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -423,7 +423,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterTo)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 126, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 126, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -436,7 +436,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(adminInt(vm.PrevPage))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 127, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 127, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -458,7 +458,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var26).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -481,7 +481,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterQ)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 131, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 131, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -494,7 +494,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterLevel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 132, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 132, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -507,7 +507,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterFrom)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 133, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 133, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -520,7 +520,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FilterTo)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 134, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 134, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -533,7 +533,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(adminInt(vm.NextPage))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 135, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 135, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -555,7 +555,7 @@ func bodyAdminRuntimeLogs(vm AdminRuntimeLogsVM) templ.Component {
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var33).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `admintmpl/runtime_logs.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {

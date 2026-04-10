@@ -3,6 +3,7 @@ package pages
 
 import (
 	"gobooks/internal/models"
+	"gobooks/internal/services"
 	"gobooks/internal/web/templates/layout"
 	"gobooks/internal/web/templates/ui"
 )
@@ -115,6 +116,16 @@ templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
 				{ vm.ActionError }
 			</div>
 		}
+		if vm.HookActioned {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Hook executed successfully.
+			</div>
+		}
+		if vm.HookError != "" {
+			<div class="mt-4 rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+				{ vm.HookError }
+			</div>
+		}
 
 		// Exception details card
 		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
@@ -150,9 +161,9 @@ templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
 					<dd class="mt-1">
 						if vm.Exception.ReverseTxnID != nil {
 							if vm.ReverseTxn != nil {
-								<span class="font-mono text-small">
+								<a href={ templ.SafeURL(prTransactionAnchorURL(*vm.Exception.ReverseTxnID)) } class="font-mono text-small text-primary hover:underline">
 									#{ Uitoa(*vm.Exception.ReverseTxnID) } — { string(vm.ReverseTxn.TransactionType) } { vm.ReverseTxn.Amount.StringFixed(2) }
-								</span>
+								</a>
 							} else {
 								<span class="font-mono text-small text-text-muted2">#{ Uitoa(*vm.Exception.ReverseTxnID) }</span>
 							}
@@ -166,9 +177,9 @@ templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
 					<dd class="mt-1">
 						if vm.Exception.OriginalTxnID != nil {
 							if vm.OriginalTxn != nil {
-								<span class="font-mono text-small">
+								<a href={ templ.SafeURL(prTransactionAnchorURL(*vm.Exception.OriginalTxnID)) } class="font-mono text-small text-primary hover:underline">
 									#{ Uitoa(*vm.Exception.OriginalTxnID) } — { string(vm.OriginalTxn.TransactionType) } { vm.OriginalTxn.Amount.StringFixed(2) }
-								</span>
+								</a>
 							} else {
 								<span class="font-mono text-small text-text-muted2">#{ Uitoa(*vm.Exception.OriginalTxnID) }</span>
 							}
@@ -187,6 +198,12 @@ templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
 				</div>
 			}
 		</div>
+
+		// ── Batch 25: Allocation rollup ──────────────────────────────────────────
+		if vm.Rollup != nil {
+			@prAllocationRollup(vm.Rollup)
+			@prNextStepGuidance(vm.Rollup)
+		}
 
 		// Resolution info (terminal states)
 		if models.IsTerminalPRExceptionStatus(vm.Exception.Status) {
@@ -213,6 +230,16 @@ templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
 			</div>
 		}
 
+		// ── Batch 26: Resolution hooks ───────────────────────────────────────────
+		if len(vm.Hooks) > 0 {
+			@prHooksCard(vm)
+		}
+
+		// ── Batch 26: Recent attempts ────────────────────────────────────────────
+		if len(vm.Attempts) > 0 {
+			@prAttemptsCard(vm.Attempts)
+		}
+
 		// Status action forms (non-terminal states only)
 		if !models.IsTerminalPRExceptionStatus(vm.Exception.Status) {
 			<div class="mt-4 rounded-lg border border-border bg-surface p-6">
@@ -227,7 +254,7 @@ templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
 						<input
 							type="text"
 							name="note"
-							placeholder="Resolution note (optional)"
+							placeholder="Resolution note (required)"
 							class="rounded-md border border-border-input px-3 py-2 text-small outline-none focus:ring-2 focus:ring-primary-focus"
 						/>
 						@ui.ButtonPrimary("Mark Resolved", "submit", false)
@@ -245,6 +272,211 @@ templ bodyPaymentReverseExceptionDetail(vm PaymentReverseExceptionDetailVM) {
 			</div>
 		}
 	</div>
+}
+
+// ── Batch 25: Rollup components ───────────────────────────────────────────────
+
+templ prAllocationRollup(r *services.PaymentReverseDetailRollup) {
+	<div class="mt-4 rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text">Allocation Summary</h2>
+		<p class="mt-1 text-small text-text-muted2">
+			Strategy: <span class="font-medium text-text">{ prStrategyLabel(r.AllocationStrategy) }</span>
+		</p>
+
+		// Forward allocation
+		if len(r.ForwardAllocLines) > 0 {
+			<div class="mt-4">
+				<h3 class="text-small font-semibold text-text-muted2 uppercase tracking-wide">Forward Allocation (Original Charge)</h3>
+				<table class="mt-2 w-full text-small">
+					<thead>
+						<tr class="border-b border-border-subtle text-left text-text-muted2">
+							<th class="py-1.5 pr-4">Invoice</th>
+							<th class="py-1.5 text-right">Amount</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, line := range r.ForwardAllocLines {
+							<tr class="border-b border-border-subtle">
+								<td class="py-1.5 pr-4 font-mono">
+									if line.InvoiceNumber != "" {
+										<a href={ templ.SafeURL(prInvoiceDetailURL(line.InvoiceID)) } class="text-primary hover:underline">{ line.InvoiceNumber }</a>
+									} else {
+										<span class="text-text-muted2">#{ Uitoa(line.InvoiceID) }</span>
+									}
+								</td>
+								<td class="py-1.5 text-right font-medium">{ line.Amount.StringFixed(2) }</td>
+							</tr>
+						}
+					</tbody>
+					<tfoot>
+						<tr>
+							<td class="pt-2 pr-4 text-small font-semibold text-text-muted2">Total</td>
+							<td class="pt-2 text-right font-semibold">{ r.ForwardTotal.StringFixed(2) }</td>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		}
+
+		// Reverse allocation
+		<div class="mt-4">
+			<h3 class="text-small font-semibold text-text-muted2 uppercase tracking-wide">
+				Reverse Allocation (Refund / Chargeback)
+			</h3>
+			if r.IsReverseApplied && len(r.ReverseAllocLines) > 0 {
+				<table class="mt-2 w-full text-small">
+					<thead>
+						<tr class="border-b border-border-subtle text-left text-text-muted2">
+							<th class="py-1.5 pr-4">Invoice</th>
+							<th class="py-1.5 text-right">Restored</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, line := range r.ReverseAllocLines {
+							<tr class="border-b border-border-subtle">
+								<td class="py-1.5 pr-4 font-mono">
+									if line.InvoiceNumber != "" {
+										<a href={ templ.SafeURL(prInvoiceDetailURL(line.InvoiceID)) } class="text-primary hover:underline">{ line.InvoiceNumber }</a>
+									} else {
+										<span class="text-text-muted2">#{ Uitoa(line.InvoiceID) }</span>
+									}
+								</td>
+								<td class="py-1.5 text-right font-medium">{ line.Amount.StringFixed(2) }</td>
+							</tr>
+						}
+					</tbody>
+					<tfoot>
+						<tr>
+							<td class="pt-2 pr-4 text-small font-semibold text-text-muted2">Total Restored</td>
+							<td class="pt-2 text-right font-semibold">{ r.ReverseTotal.StringFixed(2) }</td>
+						</tr>
+					</tfoot>
+				</table>
+			} else {
+				<p class="mt-2 text-small text-text-muted2">Reverse allocation not yet applied.</p>
+			}
+		</div>
+	</div>
+}
+
+templ prNextStepGuidance(r *services.PaymentReverseDetailRollup) {
+	if r.NextStepGuidance != "" {
+		<div class="mt-4 rounded-lg border border-info-border bg-info-soft p-5">
+			<h2 class="text-section font-semibold text-info-hover">Recommended Next Step</h2>
+			<p class="mt-2 text-small text-text">{ r.NextStepGuidance }</p>
+		</div>
+	}
+}
+
+// prStrategyLabel returns a human-readable label for an allocation strategy code.
+func prStrategyLabel(strategy string) string {
+	switch strategy {
+	case "multi":
+		return "Multi-Invoice Allocation"
+	case "single":
+		return "Single-Invoice Allocation"
+	default:
+		return "No Allocation Found"
+	}
+}
+
+func prInvoiceDetailURL(invoiceID uint) string {
+	return "/invoices/" + Uitoa(invoiceID)
+}
+
+func prTransactionAnchorURL(txnID uint) string {
+	return "/settings/payment-gateways/transactions#txn-" + Uitoa(txnID)
+}
+
+// ── Batch 26: Hooks card ──────────────────────────────────────────────────────
+
+templ prHooksCard(vm PaymentReverseExceptionDetailVM) {
+	<div class="mt-4 rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text">Resolution Hooks</h2>
+		<p class="mt-1 text-small text-text-muted2">Available guided actions for this exception.</p>
+		<div class="mt-4 divide-y divide-border-subtle">
+			for _, h := range vm.Hooks {
+				<div class="flex items-start justify-between gap-4 py-3">
+					<div class="min-w-0">
+						<p class="text-body font-medium text-text">{ h.Label }</p>
+						<p class="mt-0.5 text-small text-text-muted2">{ h.Description }</p>
+						if !h.Available && h.UnavailableReason != "" {
+							<p class="mt-1 text-small text-text-muted italic">{ h.UnavailableReason }</p>
+						}
+					</div>
+					<div class="shrink-0">
+						if h.NavigateURL != "" && h.Available {
+							<a
+								href={ templ.SafeURL(h.NavigateURL) }
+								class="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-small font-medium text-primary hover:bg-background"
+							>Go →</a>
+						} else if h.NavigateURL == "" && h.Available {
+							<form method="post" action={ templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(vm.Exception.ID) + "/hooks/" + string(h.Type)) }>
+								<button
+									type="submit"
+									class="inline-flex items-center rounded-md border border-primary bg-primary px-3 py-1.5 text-small font-medium text-white hover:opacity-90"
+								>Run</button>
+							</form>
+						} else {
+							<span class="inline-flex items-center rounded-md border border-border-subtle px-3 py-1.5 text-small font-medium text-text-muted2 cursor-not-allowed">
+								Unavailable
+							</span>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+// ── Batch 26: Attempts card ───────────────────────────────────────────────────
+
+templ prAttemptsCard(attempts []models.PaymentReverseResolutionAttempt) {
+	<div class="mt-4 rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text">Recent Resolution Attempts</h2>
+		<div class="mt-4 overflow-x-auto">
+			<table class="w-full text-small">
+				<thead>
+					<tr class="border-b border-border-subtle text-left text-text-muted2">
+						<th class="py-2 pr-4">When</th>
+						<th class="py-2 pr-4">Hook</th>
+						<th class="py-2 pr-4">Status</th>
+						<th class="py-2 pr-4">Summary</th>
+						<th class="py-2">Actor</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, a := range attempts {
+						<tr class="border-b border-border-subtle">
+							<td class="py-2 pr-4 text-nowrap text-text-muted2">{ a.CreatedAt.Format("2006-01-02 15:04") }</td>
+							<td class="py-2 pr-4 font-mono text-text-muted">{ string(a.HookType) }</td>
+							<td class="py-2 pr-4">
+								@prAttemptStatusBadge(a.Status)
+							</td>
+							<td class="py-2 pr-4 text-text-muted">{ a.Summary }</td>
+							<td class="py-2 text-text-muted2">{ a.Actor }</td>
+						</tr>
+						if a.Detail != "" {
+							<tr class="border-b border-border-subtle bg-background">
+								<td colspan="5" class="pb-2 pl-4 pr-4 font-mono text-small text-text-muted2">{ a.Detail }</td>
+							</tr>
+						}
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+templ prAttemptStatusBadge(s models.PRAttemptStatus) {
+	switch s {
+	case models.PRAttemptSucceeded:
+		<span class="inline-flex rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success-hover">Succeeded</span>
+	case models.PRAttemptRejected:
+		<span class="inline-flex rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning-hover">Rejected</span>
+	default:
+		<span class="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-small font-medium text-text-muted">{ string(s) }</span>
+	}
 }
 
 // ── Badge helpers ─────────────────────────────────────────────────────────────

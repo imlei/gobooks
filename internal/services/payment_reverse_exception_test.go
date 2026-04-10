@@ -360,6 +360,16 @@ func TestPRException_Resolve(t *testing.T) {
 	}
 }
 
+func TestPRException_Resolve_RequiresNote(t *testing.T) {
+	db := reverseExceptionTestDB(t)
+	ex := createTestPRException(t, db, 5041)
+
+	err := ResolvePaymentReverseException(db, 1, ex.ID, "operator@example.com", "")
+	if !errors.Is(err, ErrPRExceptionResolveNote) {
+		t.Fatalf("expected ErrPRExceptionResolveNote, got %v", err)
+	}
+}
+
 func TestPRException_TerminalGuard_DismissedCannotTransition(t *testing.T) {
 	db := reverseExceptionTestDB(t)
 	ex := createTestPRException(t, db, 505)

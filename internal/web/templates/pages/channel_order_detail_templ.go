@@ -75,7 +75,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Order.ExternalOrderID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 22, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 22, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -93,7 +93,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Order.ChannelAccount.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 24, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 24, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -117,7 +117,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs("/invoices/" + Uitoa(*vm.ConvertedInvoiceID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 35, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 35, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -141,7 +141,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 43, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 43, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -159,7 +159,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(models.ChannelTypeLabel(vm.Order.ChannelAccount.ChannelType))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 52, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 52, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -172,7 +172,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Order.ExternalOrderID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 56, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 56, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -186,7 +186,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Order.OrderDate.Format("2006-01-02"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 62, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 62, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -205,7 +205,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Order.OrderStatus)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 70, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 70, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -223,7 +223,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(l.ExternalSKU)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 92, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 92, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -236,7 +236,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(l.Quantity.String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 93, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 93, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -250,7 +250,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(l.ItemPrice.StringFixed(2))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 96, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 96, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -270,7 +270,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(l.MappedItem.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 103, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 103, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -308,7 +308,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var15).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -321,7 +321,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(models.ChannelMappingStatusLabel(l.MappingStatus))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 113, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 113, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -344,7 +344,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var18 templ.SafeURL
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs("/invoices/" + Uitoa(*vm.ConvertedInvoiceID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 130, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 130, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -362,7 +362,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var19 templ.SafeURL
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/channels/orders/" + Uitoa(vm.Order.ID) + "/convert")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 139, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 139, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -380,7 +380,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(cust.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 146, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 146, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -403,7 +403,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(cust.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 146, Col: 107}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 146, Col: 107}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -421,7 +421,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(vm.InvoiceNumber)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 152, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 152, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -439,7 +439,7 @@ func bodyChannelOrderDetail(vm ChannelOrderDetailVM) templ.Component {
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(vm.ConvertibleError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_order_detail.templ`, Line: 165, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_order_detail.templ`, Line: 165, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {

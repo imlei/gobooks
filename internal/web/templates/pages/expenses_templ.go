@@ -109,7 +109,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 40, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 40, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -138,7 +138,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(exp.ExpenseDate.Format("2006-01-02"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 68, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 68, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -151,7 +151,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(exp.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 69, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 69, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -169,7 +169,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 				var templ_7745c5c3_Var6 templ.SafeURL
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs("/tasks/" + Uitoa(exp.Task.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 72, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 72, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -182,7 +182,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(expenseTaskLabel(*exp.Task))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 72, Col: 144}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 72, Col: 144}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -226,7 +226,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(exp.ExpenseAccount.Code)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 88, Col: 35}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 88, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -239,7 +239,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(exp.ExpenseAccount.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 88, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 88, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -259,7 +259,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(exp.Vendor.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 95, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 95, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -278,7 +278,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(taskMoney(exp.Amount, exp.CurrencyCode))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 100, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 100, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -296,7 +296,7 @@ func bodyExpenses(vm ExpenseListVM) templ.Component {
 				var templ_7745c5c3_Var12 templ.SafeURL
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs("/expenses/" + Uitoa(exp.ID) + "/edit")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/expenses.templ`, Line: 103, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/expenses.templ`, Line: 103, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {

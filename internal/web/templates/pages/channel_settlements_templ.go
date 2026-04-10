@@ -97,7 +97,7 @@ func bodySettlements(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(a.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 47, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 47, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -110,7 +110,7 @@ func bodySettlements(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(a.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 47, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 47, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -133,7 +133,7 @@ func bodySettlements(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(string(lt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 81, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 81, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -146,7 +146,7 @@ func bodySettlements(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(models.SettlementLineTypeLabel(lt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 81, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 81, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -216,7 +216,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(s.Settlement.ChannelAccount.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 136, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 136, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -229,7 +229,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var9 templ.SafeURL
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/channels/settlements/" + Uitoa(s.Settlement.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 138, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 138, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -242,7 +242,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(s.Settlement.ExternalSettlementID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 139, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 139, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -256,7 +256,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(s.Settlement.SettlementDate.Format("2006-01-02"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 144, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 144, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -270,7 +270,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(s.Settlement.GrossAmount.StringFixed(2))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 147, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 147, Col: 101}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -283,7 +283,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(s.Settlement.FeeAmount.StringFixed(2))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 148, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 148, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -296,7 +296,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(s.Settlement.NetAmount.StringFixed(2))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 149, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 149, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -314,7 +314,7 @@ func settlementRows(vm SettlementsVM) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d unmapped", s.UnmappedCount))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 152, Col: 155}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 152, Col: 155}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -416,7 +416,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Settlement.PostedJournalEntryID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 178, Col: 82}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 178, Col: 82}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -439,7 +439,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Settlement.ExternalSettlementID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 187, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 187, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -457,7 +457,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Settlement.ChannelAccount.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 189, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 189, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -471,7 +471,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Settlement.GrossAmount.StringFixed(2))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 201, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 201, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -484,7 +484,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Settlement.FeeAmount.StringFixed(2))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 205, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 205, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -497,7 +497,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Settlement.NetAmount.StringFixed(2))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 209, Col: 88}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 209, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -515,7 +515,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var24 string
 			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", vm.UnmappedCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 215, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 215, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 			if templ_7745c5c3_Err != nil {
@@ -552,7 +552,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var25).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -565,7 +565,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(models.SettlementLineTypeLabel(l.LineType))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 245, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 245, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -578,7 +578,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(l.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 248, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 248, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -591,7 +591,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(l.Amount.StringFixed(2))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 249, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 249, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -605,7 +605,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(l.MappedAccount.Code + " · " + l.MappedAccount.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 252, Col: 64}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 252, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {
@@ -640,7 +640,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Settlement.PostedJournalEntryID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 280, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 280, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -653,7 +653,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Settlement.PostedReversalJEID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 280, Col: 165}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 280, Col: 165}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -671,7 +671,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Settlement.PostedJournalEntryID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 285, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 285, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -689,7 +689,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 				var templ_7745c5c3_Var34 templ.SafeURL
 				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/reverse-fee")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 287, Col: 111}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 287, Col: 111}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
@@ -712,7 +712,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var35 templ.SafeURL
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/post")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 296, Col: 102}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 296, Col: 102}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -730,7 +730,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(vm.PostableError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 308, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 308, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -765,7 +765,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(vm.PayoutSubmitError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 327, Col: 130}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 327, Col: 130}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
@@ -784,7 +784,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var38 string
 			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Settlement.PayoutJournalEntryID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 334, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 334, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
@@ -797,7 +797,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Settlement.PayoutReversalJEID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 334, Col: 165}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 334, Col: 165}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -815,7 +815,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Settlement.PayoutJournalEntryID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 339, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 339, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
@@ -833,7 +833,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 				var templ_7745c5c3_Var41 templ.SafeURL
 				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/reverse-payout")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 341, Col: 114}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 341, Col: 114}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 				if templ_7745c5c3_Err != nil {
@@ -851,7 +851,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 				var templ_7745c5c3_Var42 string
 				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(vm.PayoutReverseError)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 348, Col: 77}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 348, Col: 77}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 				if templ_7745c5c3_Err != nil {
@@ -874,7 +874,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var43 templ.SafeURL
 			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/channels/settlements/" + Uitoa(vm.Settlement.ID) + "/record-payout")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 352, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 352, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
@@ -892,7 +892,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 				var templ_7745c5c3_Var44 string
 				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(a.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 359, Col: 36}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 359, Col: 36}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 				if templ_7745c5c3_Err != nil {
@@ -905,7 +905,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 				var templ_7745c5c3_Var45 string
 				templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(a.Code + " · " + a.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 359, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 359, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 				if templ_7745c5c3_Err != nil {
@@ -928,7 +928,7 @@ func bodySettlementDetail(vm SettlementDetailVM) templ.Component {
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(vm.PayoutError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/channel_settlements.templ`, Line: 373, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/channel_settlements.templ`, Line: 373, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {

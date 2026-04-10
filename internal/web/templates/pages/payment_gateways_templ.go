@@ -83,7 +83,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 22, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 22, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -106,7 +106,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(string(pt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 33, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 33, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -119,7 +119,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(models.PaymentProviderLabel(pt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 33, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 33, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -156,7 +156,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(models.PaymentProviderLabel(s.Account.ProviderType))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 70, Col: 182}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 70, Col: 182}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -169,7 +169,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(s.Account.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 71, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 71, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -182,7 +182,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(s.Account.AuthStatus)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 72, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 72, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -195,7 +195,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.RequestCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 73, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 73, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -208,7 +208,7 @@ func bodyPaymentGateways(vm PaymentGatewaysVM) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.TxnCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 74, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 74, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func bodyPaymentMappings(vm PaymentMappingsVM) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 107, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 107, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -314,7 +314,7 @@ func bodyPaymentMappings(vm PaymentMappingsVM) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(gw.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 111, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 111, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -327,7 +327,7 @@ func bodyPaymentMappings(vm PaymentMappingsVM) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(gw.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 112, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 112, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -340,7 +340,7 @@ func bodyPaymentMappings(vm PaymentMappingsVM) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(models.PaymentProviderLabel(gw.ProviderType))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 112, Col: 165}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 112, Col: 165}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -419,7 +419,7 @@ func pgMappingField(vm PaymentMappingsVM, gwID uint, label, fieldName string) te
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 130, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 130, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -432,7 +432,7 @@ func pgMappingField(vm PaymentMappingsVM, gwID uint, label, fieldName string) te
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fieldName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 131, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 131, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -450,7 +450,7 @@ func pgMappingField(vm PaymentMappingsVM, gwID uint, label, fieldName string) te
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(a.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 134, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 134, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -473,7 +473,7 @@ func pgMappingField(vm PaymentMappingsVM, gwID uint, label, fieldName string) te
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(a.Code + " · " + a.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 134, Col: 127}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 134, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -581,7 +581,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var24 string
 			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 178, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 178, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 			if templ_7745c5c3_Err != nil {
@@ -604,7 +604,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(a.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 188, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 188, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -617,7 +617,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(a.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 188, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 188, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -654,7 +654,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(r.GatewayAccount.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 222, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 222, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -667,7 +667,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(r.Amount.StringFixed(2))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 223, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 223, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -680,7 +680,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(r.CurrencyCode)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 224, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 224, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -693,7 +693,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(paymentRequestDisplayLabel(r.Status))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 225, Col: 168}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 225, Col: 168}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -706,7 +706,7 @@ func bodyPaymentRequests(vm PaymentRequestsVM) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(r.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 226, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 226, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -829,7 +829,7 @@ func bodyPaymentTransactions(vm PaymentTransactionsVM) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FormError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 271, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 271, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -852,7 +852,7 @@ func bodyPaymentTransactions(vm PaymentTransactionsVM) templ.Component {
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(a.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 281, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 281, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -865,7 +865,7 @@ func bodyPaymentTransactions(vm PaymentTransactionsVM) templ.Component {
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(a.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 281, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 281, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -888,7 +888,7 @@ func bodyPaymentTransactions(vm PaymentTransactionsVM) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(string(tt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 289, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 289, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
@@ -901,7 +901,7 @@ func bodyPaymentTransactions(vm PaymentTransactionsVM) templ.Component {
 			var templ_7745c5c3_Var38 string
 			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(models.PaymentTransactionTypeLabel(tt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 289, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 289, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
@@ -931,53 +931,53 @@ func bodyPaymentTransactions(vm PaymentTransactionsVM) templ.Component {
 			}
 		}
 		for _, t := range vm.Transactions {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<tr class=\"border-b border-border-subtle\"><td class=\"py-3 pr-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<tr id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var39 string
-			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(t.GatewayAccount.DisplayName)
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs("txn-" + Uitoa(t.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 323, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 322, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "</td><td class=\"py-3 pr-4\"><span class=\"inline-block rounded px-2 py-0.5 text-small font-medium bg-primary-soft text-primary\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\" class=\"border-b border-border-subtle\"><td class=\"py-3 pr-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 string
-			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(models.PaymentTransactionTypeLabel(t.TransactionType))
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(t.GatewayAccount.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 324, Col: 184}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 323, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "</span></td><td class=\"py-3 pr-4 text-right tabular-nums\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "</td><td class=\"py-3 pr-4\"><span class=\"inline-block rounded px-2 py-0.5 text-small font-medium bg-primary-soft text-primary\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(t.Amount.StringFixed(2))
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(models.PaymentTransactionTypeLabel(t.TransactionType))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 325, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 324, Col: 184}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</td><td class=\"py-3 pr-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</span></td><td class=\"py-3 pr-4 text-right tabular-nums\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var42 string
-			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(t.CurrencyCode)
+			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(t.Amount.StringFixed(2))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 326, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 325, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
@@ -987,300 +987,313 @@ func bodyPaymentTransactions(vm PaymentTransactionsVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if t.PostedJournalEntryID != nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<span class=\"inline-block rounded px-2 py-0.5 text-small font-medium bg-success-soft text-success-hover\">Posted</span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<span class=\"text-small text-text-muted3\">Not posted</span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "</td><td class=\"py-3 pr-4 text-small font-mono text-text-muted2\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			var templ_7745c5c3_Var43 string
-			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(t.ExternalTxnRef)
+			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(t.CurrencyCode)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 334, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 326, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</td><td class=\"py-3 pr-0 text-right whitespace-nowrap\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "</td><td class=\"py-3 pr-4\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if t.PostedJournalEntryID != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<span class=\"inline-block rounded px-2 py-0.5 text-small font-medium bg-success-soft text-success-hover\">Posted</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<span class=\"text-small text-text-muted3\">Not posted</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</td><td class=\"py-3 pr-4 text-small font-mono text-text-muted2\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var44 string
+			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(t.ExternalTxnRef)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 334, Col: 86}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</td><td class=\"py-3 pr-0 text-right whitespace-nowrap\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if st, ok := vm.TxnStates[t.ID]; ok {
 				if !st.IsPosted {
 					if st.CanPost {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<form method=\"post\" action=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var44 templ.SafeURL
-						templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/post")
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 339, Col: 107}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "\" class=\"inline\"><button type=\"submit\" class=\"text-small font-medium text-primary hover:text-primary-hover\" onclick=\"return confirm('Post?');\">Post</button></form>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-				} else if st.IsApplied {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<span class=\"inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-success-soft text-success-hover\">Applied</span> ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if st.CanUnapply {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<form method=\"post\" action=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<form method=\"post\" action=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var45 templ.SafeURL
-						templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/unapply")
+						templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/post")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 346, Col: 110}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 339, Col: 107}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-[10px] text-text-muted3 hover:text-danger\" onclick=\"return confirm('Unapply?');\">Unapply</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" class=\"inline\"><button type=\"submit\" class=\"text-small font-medium text-primary hover:text-primary-hover\" onclick=\"return confirm('Post?');\">Post</button></form>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+				} else if st.IsApplied {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<span class=\"inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-success-soft text-success-hover\">Applied</span> ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if st.CanUnapply {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<form method=\"post\" action=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var46 templ.SafeURL
+						templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/unapply")
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 346, Col: 110}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-[10px] text-text-muted3 hover:text-danger\" onclick=\"return confirm('Unapply?');\">Unapply</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<span class=\"text-small text-text-muted2 mr-1\">JE #")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<span class=\"text-small text-text-muted2 mr-1\">JE #")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var46 string
-					templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(st.PostedJEID))
+					var templ_7745c5c3_Var47 string
+					templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(st.PostedJEID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 351, Col: 84}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 351, Col: 84}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "</span> ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</span> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if st.CanApply {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<form method=\"post\" action=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var47 templ.SafeURL
-						templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply")
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 353, Col: 108}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "\" class=\"inline\"><button type=\"submit\" class=\"text-small font-medium text-success-hover hover:underline\" onclick=\"return confirm('Apply?');\">Apply</button></form>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, " ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if st.CanMultiAllocate || st.IsMultiAllocated {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "<a href=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<form method=\"post\" action=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var48 templ.SafeURL
-						templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/allocate")
+						templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 358, Col: 92}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 353, Col: 108}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" class=\"inline ml-1 text-small font-medium text-primary hover:underline\">")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						if st.IsMultiAllocated {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "View Allocation")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "Allocate")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "</a>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\" class=\"inline\"><button type=\"submit\" class=\"text-small font-medium text-success-hover hover:underline\" onclick=\"return confirm('Apply?');\">Apply</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, " ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if st.CanRefundApply {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "<form method=\"post\" action=\"")
+					if st.CanMultiAllocate || st.IsMultiAllocated {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "<a href=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var49 templ.SafeURL
-						templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-refund")
+						templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/allocate")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 367, Col: 115}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 358, Col: 92}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-warning hover:underline\" onclick=\"return confirm('Apply refund?');\">Refund Apply</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "\" class=\"inline ml-1 text-small font-medium text-primary hover:underline\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						if st.IsMultiAllocated {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "View Allocation")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						} else {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "Allocate")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "</a>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, " ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if st.CanChargebackApply {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "<form method=\"post\" action=\"")
+					if st.CanRefundApply {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "<form method=\"post\" action=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var50 templ.SafeURL
-						templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback")
+						templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-refund")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 372, Col: 119}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 367, Col: 115}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-error-hover hover:underline\" onclick=\"return confirm('Apply chargeback and restore invoice balance?');\">CB Apply</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-warning hover:underline\" onclick=\"return confirm('Apply refund?');\">Refund Apply</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, " ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if st.CanRefundReverseAllocate {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "<form method=\"post\" action=\"")
+					if st.CanChargebackApply {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "<form method=\"post\" action=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var51 templ.SafeURL
-						templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-refund-multialloc")
+						templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 377, Col: 126}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 372, Col: 119}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-warning hover:underline\" onclick=\"return confirm('Apply refund across all allocated invoices?');\">Refund Alloc</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-error-hover hover:underline\" onclick=\"return confirm('Apply chargeback and restore invoice balance?');\">CB Apply</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, " ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if st.CanChargebackReverseAllocate {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<form method=\"post\" action=\"")
+					if st.CanRefundReverseAllocate {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "<form method=\"post\" action=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var52 templ.SafeURL
-						templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback-multialloc")
+						templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-refund-multialloc")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 382, Col: 130}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 377, Col: 126}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-error-hover hover:underline\" onclick=\"return confirm('Apply chargeback across all allocated invoices?');\">CB Alloc</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-warning hover:underline\" onclick=\"return confirm('Apply refund across all allocated invoices?');\">Refund Alloc</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, " ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if st.IsReverseAllocated {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "<span class=\"inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-warning-soft text-warning-hover ml-1\" title=\"Multi-alloc reverse applied\">Rev-Alloc ")
+					if st.CanChargebackReverseAllocate {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "<form method=\"post\" action=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var53 string
-						templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(st.ReverseAllocatedTotal)
+						var templ_7745c5c3_Var53 templ.SafeURL
+						templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinURLErrs("/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback-multialloc")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 387, Col: 195}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 382, Col: 130}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\" class=\"inline ml-1\"><button type=\"submit\" class=\"text-small font-medium text-error-hover hover:underline\" onclick=\"return confirm('Apply chargeback across all allocated invoices?');\">CB Alloc</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, " ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if st.HasOpenReverseException {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "<a href=\"")
+					if st.IsReverseAllocated {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "<span class=\"inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-warning-soft text-warning-hover ml-1\" title=\"Multi-alloc reverse applied\">Rev-Alloc ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var54 templ.SafeURL
-						templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(st.ReverseExceptionID)))
+						var templ_7745c5c3_Var54 string
+						templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(st.ReverseAllocatedTotal)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/payment_gateways.templ`, Line: 391, Col: 114}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 387, Col: 195}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "\" class=\"inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-danger-soft text-danger-hover ml-1\" title=\"Payment reverse exception — click to review\">Rev-Exc</a>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "</span>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, " ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if st.HasOpenReverseException {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "<a href=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var55 templ.SafeURL
+						templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/payment-gateways/reverse-exceptions/" + Uitoa(st.ReverseExceptionID)))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/payment_gateways.templ`, Line: 391, Col: 114}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "\" class=\"inline-block rounded px-2 py-0.5 text-[10px] font-medium bg-danger-soft text-danger-hover ml-1\" title=\"Payment reverse exception — click to review\">Rev-Exc</a>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "</td></tr>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "</td></tr>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "</tbody></table></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "</tbody></table></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

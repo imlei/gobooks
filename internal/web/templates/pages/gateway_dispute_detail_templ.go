@@ -80,7 +80,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Dispute.ProviderDisputeID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 26, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 26, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +111,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Dispute.OpenedAt.Format("2006-01-02"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 44, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 44, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -129,7 +129,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Dispute.ResolvedAt.Format("2006-01-02"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 49, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 49, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -147,7 +147,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(Money(vm.Dispute.Amount))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 54, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 54, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -160,7 +160,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Dispute.CurrencyCode)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 54, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 54, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -173,7 +173,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 		var templ_7745c5c3_Var8 templ.SafeURL
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/payment-gateways/transactions"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 59, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 59, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -186,7 +186,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(vm.Dispute.PaymentTransactionID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 61, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 61, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -204,7 +204,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 			var templ_7745c5c3_Var10 templ.SafeURL
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/payment-gateways/transactions"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 69, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 69, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -217,7 +217,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Dispute.ChargebackTransactionID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 71, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 71, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -240,7 +240,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 			var templ_7745c5c3_Var12 templ.SafeURL
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/payment-gateways/disputes/" + Uitoa(vm.Dispute.ID) + "/win"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 89, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 89, Col: 119}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -253,7 +253,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 			var templ_7745c5c3_Var13 templ.SafeURL
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/payment-gateways/disputes/" + Uitoa(vm.Dispute.ID) + "/lose"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 98, Col: 120}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 98, Col: 120}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -272,7 +272,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(*vm.Dispute.ChargebackTransactionID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/gateway_dispute_detail.templ`, Line: 115, Col: 109}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/gateway_dispute_detail.templ`, Line: 115, Col: 109}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {

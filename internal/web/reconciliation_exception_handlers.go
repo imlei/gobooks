@@ -174,6 +174,30 @@ func (s *Server) handleReconciliationExceptionDetail(c *fiber.Ctx) error {
 		HookSuccess:    c.Query("hook") == "ok",
 		HookError:      strings.TrimSpace(c.Query("hook_error")),
 	}
+
+	if ex.GatewayPayoutID != nil {
+		var payout models.GatewayPayout
+		if err := s.DB.Where("id = ? AND company_id = ?", *ex.GatewayPayoutID, companyID).First(&payout).Error; err == nil {
+			vm.LinkedPayout = &payout
+			if expectedNet, err := services.ComputeGatewayPayoutExpectedNet(s.DB, companyID, &payout); err == nil {
+				vm.LinkedPayoutExpectedNet = expectedNet.StringFixed(2)
+			}
+			var payoutMatch models.PayoutReconciliation
+			if err := s.DB.Where("company_id = ? AND gateway_payout_id = ?", companyID, payout.ID).First(&payoutMatch).Error; err == nil {
+				vm.LinkedPayoutReconciliation = &payoutMatch
+			}
+		}
+	}
+	if ex.BankEntryID != nil {
+		var bankEntry models.BankEntry
+		if err := s.DB.Where("id = ? AND company_id = ?", *ex.BankEntryID, companyID).First(&bankEntry).Error; err == nil {
+			vm.LinkedBankEntry = &bankEntry
+			var bankMatch models.PayoutReconciliation
+			if err := s.DB.Where("company_id = ? AND bank_entry_id = ?", companyID, bankEntry.ID).First(&bankMatch).Error; err == nil {
+				vm.LinkedBankEntryMatch = &bankMatch
+			}
+		}
+	}
 	return pages.ReconciliationExceptionDetail(vm).Render(c.Context(), c)
 }
 

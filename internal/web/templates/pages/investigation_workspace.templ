@@ -1,0 +1,346 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"net/url"
+
+	"gobooks/internal/services"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// ── Investigation workspace page ─────────────────────────────────────────────
+
+templ InvestigationWorkspace(vm InvestigationWorkspaceVM) {
+	@layout.Layout("GoBooks - Investigation Workspace", ui.SidebarVM{Active: "Investigation Workspace", HasCompany: vm.HasCompany}, bodyInvestigationWorkspace(vm))
+}
+
+templ bodyInvestigationWorkspace(vm InvestigationWorkspaceVM) {
+	<div class="max-w-[95%]">
+
+		// ── Header ────────────────────────────────────────────────────────────
+		<div class="flex items-start justify-between">
+			<div>
+				<h1 class="text-title font-semibold">Investigation Workspace</h1>
+				<p class="mt-1 text-small text-text-muted2">
+					Unified view of open reconciliation and payment-reverse exceptions.
+					Use this workspace to triage, investigate, and navigate to the correct
+					resolution path. This view is read-only — actions are taken on each
+					exception's detail page.
+				</p>
+			</div>
+		</div>
+
+		// ── Operational buckets (summary counts) ──────────────────────────────
+		<div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+			@workspaceBucket("Open", Itoa(vm.Buckets.OpenCount), "bg-danger-soft text-danger-hover")
+			@workspaceBucket("Reviewed", Itoa(vm.Buckets.ReviewedCount), "bg-warning-soft text-warning-hover")
+			@workspaceBucket("Dismissed", Itoa(vm.Buckets.DismissedCount), "bg-surface-muted text-text-muted")
+			@workspaceBucket("Resolved", Itoa(vm.Buckets.ResolvedCount), "bg-surface-muted text-text-muted")
+			@workspaceBucket("Unresolved / No Attempts", Itoa(vm.Buckets.UnresolvedNoAttemptsCount), "bg-info-soft text-info-hover")
+			@workspaceBucket("With Available Hooks", Itoa(vm.Buckets.UnresolvedWithHooksCount), "bg-success-soft text-success-hover")
+		</div>
+
+		// ── Filter bar ────────────────────────────────────────────────────────
+		<form method="get" action="/settings/payment-gateways/investigation" class="mt-6 flex flex-wrap items-end gap-3">
+
+			// Domain
+			<div class="flex flex-col gap-1">
+				<label class="text-small font-medium text-text-muted2">Domain</label>
+				<select name="domain" class="rounded-md border border-border-input px-3 py-2 text-small bg-surface outline-none focus:ring-2 focus:ring-primary-focus">
+					<option value="" selected?={ vm.Filter.Domain == "" }>All Domains</option>
+					<option value="reconciliation" selected?={ vm.Filter.Domain == services.DomainReconciliation }>Reconciliation</option>
+					<option value="payment_reverse" selected?={ vm.Filter.Domain == services.DomainPaymentReverse }>Payment Reverse</option>
+				</select>
+			</div>
+
+			// Status
+			<div class="flex flex-col gap-1">
+				<label class="text-small font-medium text-text-muted2">Status</label>
+				<select name="status" class="rounded-md border border-border-input px-3 py-2 text-small bg-surface outline-none focus:ring-2 focus:ring-primary-focus">
+					<option value="" selected?={ vm.Filter.Status == "" }>All Statuses</option>
+					<option value="open" selected?={ vm.Filter.Status == "open" }>Open</option>
+					<option value="reviewed" selected?={ vm.Filter.Status == "reviewed" }>Reviewed</option>
+					<option value="dismissed" selected?={ vm.Filter.Status == "dismissed" }>Dismissed</option>
+					<option value="resolved" selected?={ vm.Filter.Status == "resolved" }>Resolved</option>
+				</select>
+			</div>
+
+			// Available hooks
+			<div class="flex flex-col gap-1">
+				<label class="text-small font-medium text-text-muted2">Hooks</label>
+				<select name="hooks" class="rounded-md border border-border-input px-3 py-2 text-small bg-surface outline-none focus:ring-2 focus:ring-primary-focus">
+					<option value="" selected?={ !vm.Filter.HasAvailableHooks }>Any</option>
+					<option value="1" selected?={ vm.Filter.HasAvailableHooks }>Has Available Hooks</option>
+				</select>
+			</div>
+
+			// No attempts
+			<div class="flex flex-col gap-1">
+				<label class="text-small font-medium text-text-muted2">Attempts</label>
+				<select name="no_attempts" class="rounded-md border border-border-input px-3 py-2 text-small bg-surface outline-none focus:ring-2 focus:ring-primary-focus">
+					<option value="" selected?={ !vm.Filter.NoAttempts }>Any</option>
+					<option value="1" selected?={ vm.Filter.NoAttempts }>No Attempts Yet</option>
+				</select>
+			</div>
+
+			// Type
+			<div class="flex flex-col gap-1">
+				<label class="text-small font-medium text-text-muted2">Type</label>
+				<select name="type" class="rounded-md border border-border-input px-3 py-2 text-small bg-surface outline-none focus:ring-2 focus:ring-primary-focus">
+					<option value="" selected?={ vm.Filter.TypeStr == "" }>All Types</option>
+					for _, opt := range vm.TypeOptions {
+						<option value={ opt.Value } selected?={ vm.Filter.TypeStr == opt.Value }>{ opt.Label }</option>
+					}
+				</select>
+			</div>
+
+			// Linked payout
+			<div class="flex flex-col gap-1">
+				<label class="text-small font-medium text-text-muted2">Payout Link</label>
+				<select name="has_payout" class="rounded-md border border-border-input px-3 py-2 text-small bg-surface outline-none focus:ring-2 focus:ring-primary-focus">
+					<option value="" selected?={ !vm.Filter.HasLinkedPayout }>Any</option>
+					<option value="1" selected?={ vm.Filter.HasLinkedPayout }>Has Linked Payout</option>
+				</select>
+			</div>
+
+			<button
+				type="submit"
+				class="rounded-md bg-primary px-4 py-2 text-small font-medium text-white hover:bg-primary-hover"
+			>Apply</button>
+
+			if workspaceFilterIsActive(vm.Filter) {
+				<a
+					href="/settings/payment-gateways/investigation"
+					class="rounded-md border border-border-input px-4 py-2 text-small font-medium text-text-muted hover:bg-background"
+				>Clear</a>
+			}
+		</form>
+
+		// ── Workspace table ───────────────────────────────────────────────────
+		<div class="mt-6 overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+			<table class="w-full text-body">
+				<thead>
+					<tr class="border-b border-border-subtle bg-background text-left text-small font-medium text-text-muted2">
+						<th class="px-4 py-3">Created</th>
+						<th class="px-4 py-3">Domain</th>
+						<th class="px-4 py-3">Type</th>
+						<th class="px-4 py-3">Status</th>
+						<th class="px-4 py-3">Summary</th>
+						<th class="px-4 py-3">Links</th>
+						<th class="px-4 py-3">Hooks</th>
+						<th class="px-4 py-3">Attempts</th>
+						<th class="px-4 py-3"></th>
+					</tr>
+				</thead>
+				<tbody>
+					if len(vm.Rows) == 0 {
+						<tr>
+							<td colspan="9" class="px-4 py-8 text-center text-text-muted2">
+								No exceptions match the current filter.
+							</td>
+						</tr>
+					}
+					for _, row := range vm.Rows {
+						<tr class="border-b border-border-subtle hover:bg-background">
+
+							// Created
+							<td class="px-4 py-3 text-nowrap text-small text-text-muted">
+								{ row.CreatedAt.Format("2006-01-02") }
+							</td>
+
+							// Domain
+							<td class="px-4 py-3">
+								@workspaceDomainBadge(row.Domain)
+							</td>
+
+							// Type
+							<td class="px-4 py-3 text-small">
+								{ row.TypeLabel }
+							</td>
+
+							// Status
+							<td class="px-4 py-3">
+								@workspaceStatusBadge(row.StatusStr)
+							</td>
+
+							// Summary
+							<td class="px-4 py-3 text-small text-text-muted max-w-[280px] truncate">
+								{ row.Summary }
+							</td>
+
+							// Linked objects presence
+							<td class="px-4 py-3">
+								@workspaceLinkPresence(row)
+							</td>
+
+							// Hook availability signal
+							<td class="px-4 py-3 text-small">
+								if row.HasAvailableHooks {
+									<span class="inline-flex rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success-hover">Available</span>
+								} else {
+									<span class="text-text-muted2">—</span>
+								}
+							</td>
+
+							// Attempt count
+							<td class="px-4 py-3 text-small">
+								if row.AttemptCount == 0 {
+									<span class="text-text-muted2">0</span>
+								} else {
+									<span class="font-medium text-text">{ Itoa(row.AttemptCount) }</span>
+								}
+							</td>
+
+							// Detail link
+							<td class="px-4 py-3">
+								<a
+									href={ templ.SafeURL(row.DetailURL) }
+									class="text-small text-primary hover:underline"
+								>Investigate →</a>
+							</td>
+
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+
+		// ── Pagination ────────────────────────────────────────────────────────
+		if vm.TotalPages > 1 || vm.HasMore {
+			@workspacePagination(vm)
+		}
+		if vm.TotalCount > 0 {
+			<p class="mt-2 text-small text-text-muted2">
+				{ Itoa(vm.TotalCount) } total exception(s) matching filter
+			</p>
+		}
+
+		// ── Navigation links ──────────────────────────────────────────────────
+		<div class="mt-6 flex gap-6 text-small text-text-muted2">
+			<a href="/settings/payment-gateways/reconciliation-exceptions" class="text-primary hover:underline">
+				Reconciliation Exceptions →
+			</a>
+			<a href="/settings/payment-gateways/reverse-exceptions" class="text-primary hover:underline">
+				Payment Reverse Exceptions →
+			</a>
+			<a href="/settings/payment-gateways/payout-reconciliation" class="text-primary hover:underline">
+				Payout Reconciliation →
+			</a>
+		</div>
+
+	</div>
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+templ workspaceBucket(label string, count string, colorClass string) {
+	<div class={ "rounded-lg border border-border-subtle bg-surface p-4", colorClass }>
+		<div class="text-2xl font-bold">{ count }</div>
+		<div class="mt-1 text-small font-medium">{ label }</div>
+	</div>
+}
+
+templ workspaceDomainBadge(domain services.OperationalExceptionDomain) {
+	switch domain {
+	case services.DomainReconciliation:
+		<span class="inline-flex rounded-full bg-info-soft px-2 py-0.5 text-small font-medium text-info-hover">Recon</span>
+	case services.DomainPaymentReverse:
+		<span class="inline-flex rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning-hover">Pay Reverse</span>
+	default:
+		<span class="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-small font-medium text-text-muted">{ string(domain) }</span>
+	}
+}
+
+templ workspaceStatusBadge(status string) {
+	switch status {
+	case "open":
+		<span class="inline-flex rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger-hover">Open</span>
+	case "reviewed":
+		<span class="inline-flex rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning-hover">Reviewed</span>
+	case "dismissed":
+		<span class="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-small font-medium text-text-muted">Dismissed</span>
+	case "resolved":
+		<span class="inline-flex rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success-hover">Resolved</span>
+	default:
+		<span class="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-small font-medium text-text-muted">{ status }</span>
+	}
+}
+
+templ workspaceLinkPresence(row services.WorkspaceRow) {
+	<div class="flex gap-1.5 flex-wrap">
+		if row.HasLinkedPayout {
+			<span class="inline-flex rounded bg-surface-muted px-1.5 py-0.5 text-small text-text-muted" title="Has linked payout">Payout</span>
+		}
+		if row.HasLinkedBankEntry {
+			<span class="inline-flex rounded bg-surface-muted px-1.5 py-0.5 text-small text-text-muted" title="Has linked bank entry">Bank</span>
+		}
+		if row.HasLinkedReverseTxn {
+			<span class="inline-flex rounded bg-surface-muted px-1.5 py-0.5 text-small text-text-muted" title="Has linked reverse transaction">Rev Txn</span>
+		}
+		if !row.HasLinkedPayout && !row.HasLinkedBankEntry && !row.HasLinkedReverseTxn {
+			<span class="text-text-muted2">—</span>
+		}
+	</div>
+}
+
+// ── Pagination component ──────────────────────────────────────────────────────
+
+templ workspacePagination(vm InvestigationWorkspaceVM) {
+	<div class="mt-4 flex items-center gap-2 text-small">
+		if vm.CurrentPage > 1 {
+			<a
+				href={ templ.SafeURL(workspacePageURL(vm, vm.CurrentPage-1)) }
+				class="rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted hover:bg-background"
+			>← Prev</a>
+		}
+		<span class="text-text-muted2">Page { Itoa(vm.CurrentPage) } of { Itoa(vm.TotalPages) }</span>
+		if vm.HasMore {
+			<a
+				href={ templ.SafeURL(workspaceNextPageURL(vm)) }
+				class="rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted hover:bg-background"
+			>Next →</a>
+		}
+	</div>
+}
+
+// ── Template helpers ──────────────────────────────────────────────────────────
+
+// workspaceFilterIsActive returns true when at least one filter dimension is set.
+func workspaceFilterIsActive(f services.WorkspaceFilter) bool {
+	return f.Domain != "" || f.Status != "" || f.TypeStr != "" ||
+		f.HasAvailableHooks || f.NoAttempts || f.HasLinkedPayout
+}
+
+// workspacePageURL builds a pagination URL preserving the current filter params.
+func workspacePageURL(vm InvestigationWorkspaceVM, page int) string {
+	base := "/settings/payment-gateways/investigation?page=" + Itoa(page)
+	f := vm.Filter
+	if f.Domain != "" {
+		base += "&domain=" + string(f.Domain)
+	}
+	if f.Status != "" {
+		base += "&status=" + f.Status
+	}
+	if f.TypeStr != "" {
+		base += "&type=" + f.TypeStr
+	}
+	if f.HasAvailableHooks {
+		base += "&hooks=1"
+	}
+	if f.NoAttempts {
+		base += "&no_attempts=1"
+	}
+	if f.HasLinkedPayout {
+		base += "&has_payout=1"
+	}
+	return base
+}
+
+func workspaceNextPageURL(vm InvestigationWorkspaceVM) string {
+	base := workspacePageURL(vm, vm.CurrentPage+1)
+	if vm.NextCursor != "" {
+		base += "&cursor=" + url.QueryEscape(vm.NextCursor)
+	}
+	return base
+}
