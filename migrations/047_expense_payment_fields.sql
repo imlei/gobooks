@@ -8,7 +8,7 @@
 -- at the service layer, not the DB schema.
 
 ALTER TABLE expenses
-    ADD COLUMN IF NOT EXISTS payment_account_id BIGINT UNSIGNED REFERENCES accounts(id),
+    ADD COLUMN IF NOT EXISTS payment_account_id BIGINT REFERENCES accounts(id),
     ADD COLUMN IF NOT EXISTS payment_method     TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS payment_reference  TEXT NOT NULL DEFAULT '';
 
