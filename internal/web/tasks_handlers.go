@@ -429,6 +429,25 @@ func taskServiceItemSmartPickerContext(companyID uint) SmartPickerContext {
 	return SmartPickerContext{CompanyID: companyID, Context: "task_form_service_item"}
 }
 
+func taskCustomerSmartPickerContext(companyID uint) SmartPickerContext {
+	return SmartPickerContext{CompanyID: companyID, Context: "task_form_customer"}
+}
+
+func (s *Server) rehydrateTaskCustomerLabel(companyID uint, idStr string) string {
+	if idStr == "" {
+		return ""
+	}
+	p, ok := defaultSmartPickerRegistry.get("customer")
+	if !ok {
+		return ""
+	}
+	item, err := p.GetByID(s.DB, taskCustomerSmartPickerContext(companyID), idStr)
+	if err != nil || item == nil {
+		return ""
+	}
+	return item.Primary
+}
+
 func (s *Server) rehydrateTaskServiceItemLabel(companyID uint, idStr string) string {
 	if idStr == "" {
 		return ""
@@ -479,6 +498,10 @@ func (s *Server) taskFormVMFromTask(companyID uint, task *models.Task) (pages.Ta
 		CurrencyCode: task.CurrencyCode,
 		IsBillable:   task.IsBillable,
 		Notes:        task.Notes,
+	}
+	if label := s.rehydrateTaskCustomerLabel(companyID, vm.CustomerID); label == "" {
+		vm.CustomerID = ""
+		vm.CustomerError = "Previously selected customer is no longer available. Please choose a new customer."
 	}
 	if task.ProductServiceID != nil {
 		idStr := strconv.FormatUint(uint64(*task.ProductServiceID), 10)
@@ -600,7 +623,13 @@ func (s *Server) buildTaskFormVMFromRequest(c *fiber.Ctx, companyID uint, existi
 		}
 	}
 	if id64, err := services.ParseUint(vm.CustomerID); err == nil && id64 > 0 {
-		input.CustomerID = uint(id64)
+		if label := s.rehydrateTaskCustomerLabel(companyID, vm.CustomerID); label != "" {
+			input.CustomerID = uint(id64)
+		} else {
+			vm.CustomerID = ""
+			vm.CustomerError = services.ErrTaskCustomerInvalid.Error()
+			hasErr = true
+		}
 	} else {
 		vm.CustomerError = "Customer is required."
 		hasErr = true

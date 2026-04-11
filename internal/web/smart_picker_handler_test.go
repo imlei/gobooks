@@ -44,15 +44,12 @@ func TestExpenseAccountProvider_Search_ReturnsOnlyExpenseAccounts(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	ids := collectIDs(result.Items)
+	ids := collectIDs(result.Candidates)
 	if !ids[fmt.Sprintf("%d", expID1)] || !ids[fmt.Sprintf("%d", expID2)] {
-		t.Fatalf("expected both expense accounts, got %+v", result.Items)
+		t.Fatalf("expected both expense accounts, got %+v", result.Candidates)
 	}
-	if len(result.Items) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(result.Items))
-	}
-	if result.CanCreate {
-		t.Fatal("expected CanCreate=false for expense accounts")
+	if len(result.Candidates) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(result.Candidates))
 	}
 }
 
@@ -70,11 +67,11 @@ func TestExpenseAccountProvider_Search_FiltersOnQuery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 1 {
-		t.Fatalf("expected 1 match for 'office', got %d: %+v", len(result.Items), result.Items)
+	if len(result.Candidates) != 1 {
+		t.Fatalf("expected 1 match for 'office', got %d: %+v", len(result.Candidates), result.Candidates)
 	}
-	if result.Items[0].Primary != "Office Supplies" {
-		t.Fatalf("expected 'Office Supplies', got %q", result.Items[0].Primary)
+	if result.Candidates[0].Primary != "Office Supplies" {
+		t.Fatalf("expected 'Office Supplies', got %q", result.Candidates[0].Primary)
 	}
 }
 
@@ -89,10 +86,10 @@ func TestExpenseAccountProvider_Search_ItemShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 1 {
-		t.Fatalf("expected 1 item, got %d", len(result.Items))
+	if len(result.Candidates) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(result.Candidates))
 	}
-	item := result.Items[0]
+	item := result.Candidates[0]
 	if item.ID != fmt.Sprintf("%d", id) {
 		t.Fatalf("expected ID=%d, got %q", id, item.ID)
 	}
@@ -184,11 +181,11 @@ func TestCustomerProvider_SearchAndGetByIDScopesToCompany(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 1 || result.Items[0].ID != fmt.Sprintf("%d", alphaID) {
-		t.Fatalf("expected only own alpha customer, got %+v", result.Items)
+	if len(result.Candidates) != 1 || result.Candidates[0].ID != fmt.Sprintf("%d", alphaID) {
+		t.Fatalf("expected only own alpha customer, got %+v", result.Candidates)
 	}
-	if result.Items[0].Primary != "Alpha Studio" || result.Items[0].Secondary != "alpha@example.com" {
-		t.Fatalf("unexpected customer item shape: %+v", result.Items[0])
+	if result.Candidates[0].Primary != "Alpha Studio" || result.Candidates[0].Secondary != "alpha@example.com" {
+		t.Fatalf("unexpected customer item shape: %+v", result.Candidates[0])
 	}
 
 	item, err := p.GetByID(db, ctx, fmt.Sprintf("%d", alphaID))
@@ -221,11 +218,11 @@ func TestVendorProvider_SearchAndGetByIDScopesToCompany(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 1 || result.Items[0].ID != fmt.Sprintf("%d", vendorID) {
-		t.Fatalf("expected only own north vendor, got %+v", result.Items)
+	if len(result.Candidates) != 1 || result.Candidates[0].ID != fmt.Sprintf("%d", vendorID) {
+		t.Fatalf("expected only own north vendor, got %+v", result.Candidates)
 	}
-	if result.Items[0].Primary != "North Supplies" || result.Items[0].Secondary != "north@example.com" {
-		t.Fatalf("unexpected vendor item shape: %+v", result.Items[0])
+	if result.Candidates[0].Primary != "North Supplies" || result.Candidates[0].Secondary != "north@example.com" {
+		t.Fatalf("unexpected vendor item shape: %+v", result.Candidates[0])
 	}
 
 	item, err := p.GetByID(db, ctx, fmt.Sprintf("%d", vendorID))
@@ -262,25 +259,25 @@ func TestProductServiceProvider_TaskContextGuardsSearchAndGetByID(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	ids := collectIDs(result.Items)
+	ids := collectIDs(result.Candidates)
 	if !ids[fmt.Sprintf("%d", serviceID)] {
-		t.Fatalf("expected active service item, got %+v", result.Items)
+		t.Fatalf("expected active service item, got %+v", result.Candidates)
 	}
 	for _, notWant := range []uint{inactiveID, nonServiceID, otherServiceID} {
 		if ids[fmt.Sprintf("%d", notWant)] {
-			t.Fatalf("expected task context to exclude item %d, got %+v", notWant, result.Items)
+			t.Fatalf("expected task context to exclude item %d, got %+v", notWant, result.Candidates)
 		}
 	}
-	if len(result.Items) != 1 {
-		t.Fatalf("expected only one active same-company service, got %+v", result.Items)
+	if len(result.Candidates) != 1 {
+		t.Fatalf("expected only one active same-company service, got %+v", result.Candidates)
 	}
 
 	result, err = p.Search(db, ctx, "impl")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 1 || result.Items[0].ID != fmt.Sprintf("%d", serviceID) {
-		t.Fatalf("expected query to match service by name/SKU, got %+v", result.Items)
+	if len(result.Candidates) != 1 || result.Candidates[0].ID != fmt.Sprintf("%d", serviceID) {
+		t.Fatalf("expected query to match service by name/SKU, got %+v", result.Candidates)
 	}
 
 	item, err := p.GetByID(db, ctx, fmt.Sprintf("%d", serviceID))
@@ -407,11 +404,38 @@ func TestSmartPickerHandler_AccountSearchReturnsJSON(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 2 {
-		t.Fatalf("expected 2 items, got %d: %+v", len(result.Items), result.Items)
+	if len(result.Candidates) != 2 {
+		t.Fatalf("expected 2 items, got %d: %+v", len(result.Candidates), result.Candidates)
 	}
-	if result.Items[0].Secondary == "" {
+	if result.Candidates[0].Secondary == "" {
 		t.Fatal("expected Secondary (code) to be populated")
+	}
+	if !result.RequiresBackendValidation {
+		t.Fatal("expected requires_backend_validation to stay true in search response")
+	}
+}
+
+func TestSmartPickerHandler_EchoesClientRequestID(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "SP Handler Request Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	seedSPAccount(t, db, companyID, "6100", "Office Supplies", models.RootExpense, true)
+	app := testRouteApp(t, db)
+
+	const requestID = "sp-client-req-001"
+	resp := performRequest(t, app, "/api/smart-picker/search?entity=account&context=expense_form_category&request_id="+requestID, rawToken)
+	if resp.StatusCode != http.StatusOK {
+		body := readResponseBody(t, resp)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, body)
+	}
+
+	var result SmartPickerResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.RequestID != requestID {
+		t.Fatalf("expected request_id %q, got %q", requestID, result.RequestID)
 	}
 }
 
@@ -433,8 +457,8 @@ func TestSmartPickerHandler_AccountSearchQuery(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 1 || result.Items[0].Primary != "Utilities" {
-		t.Fatalf("expected 1 match for 'util', got %+v", result.Items)
+	if len(result.Candidates) != 1 || result.Candidates[0].Primary != "Utilities" {
+		t.Fatalf("expected 1 match for 'util', got %+v", result.Candidates)
 	}
 }
 
@@ -457,8 +481,8 @@ func TestSmartPickerHandler_CrossCompanyIsolation(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 0 {
-		t.Fatalf("expected 0 items (cross-company isolation), got %d: %+v", len(result.Items), result.Items)
+	if len(result.Candidates) != 0 {
+		t.Fatalf("expected 0 items (cross-company isolation), got %d: %+v", len(result.Candidates), result.Candidates)
 	}
 }
 

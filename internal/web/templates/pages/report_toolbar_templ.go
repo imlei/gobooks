@@ -133,81 +133,185 @@ func ReportToolbar(vm ReportToolbarVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"><!-- Print-only header (hidden in browser, shown when printing) --><div class=\"report-print-header\"><p class=\"report-print-company\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" data-report-source=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(vm.CompanyName)
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Source)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 30, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 27, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><p class=\"report-print-title\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" data-report-freshness=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(vm.ReportTitle)
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FreshnessLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 31, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 28, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</p><p class=\"report-print-period\" x-text=\"printPeriodLabel()\"></p></div><!-- Toolbar (visible in browser, hidden when printing) --><form method=\"get\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\"><!-- Print-only header (hidden in browser, shown when printing) --><div class=\"report-print-header\"><p class=\"report-print-company\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var11 templ.SafeURL
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(vm.FormAction))
+		var templ_7745c5c3_Var11 string
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(vm.CompanyName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 36, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 32, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" class=\"report-toolbar-form mt-4 rounded-lg border border-border bg-surface px-5 py-4\"><!-- Period preset is submitted so the server can echo it back --><input type=\"hidden\" name=\"period\" :value=\"preset\"><div class=\"flex flex-wrap items-end gap-3\"><!-- Report Period selector --><div><label class=\"block text-small font-medium text-text-muted\">Report Period</label> <select x-model=\"preset\" @change=\"onPresetChange()\" class=\"mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"last_month\">Last Month</option> <option value=\"year_to_date\">Year to Date</option> <option value=\"last_fiscal_year\">Last Fiscal Year</option> <option value=\"custom\">Custom</option></select> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</p><p class=\"report-print-title\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var12 string
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(vm.ReportTitle)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 33, Col: 49}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"report-print-period\" x-text=\"printPeriodLabel()\"></p></div><!-- Toolbar (visible in browser, hidden when printing) --><form method=\"get\" action=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var13 templ.SafeURL
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(vm.FormAction))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 38, Col: 58}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"report-toolbar-form mt-4 rounded-lg border border-border bg-surface px-5 py-4\"><!-- Period preset is submitted so the server can echo it back --><input type=\"hidden\" name=\"period\" :value=\"preset\"><div class=\"flex flex-wrap items-end gap-3\"><!-- Report Period selector --><div><label class=\"block text-small font-medium text-text-muted\">Report Period</label> <select x-model=\"preset\" @change=\"onPresetChange()\" class=\"mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"last_month\">Last Month</option> <option value=\"year_to_date\">Year to Date</option> <option value=\"last_fiscal_year\">Last Fiscal Year</option> <option value=\"custom\">Custom</option></select> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if vm.Mode == "asof" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"mt-1 text-small text-text-muted2\">For as-of reports, presets choose the report date.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"mt-1 text-small text-text-muted2\">For as-of reports, presets choose the report date.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if vm.Mode == "asof" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<!-- Balance Sheet: single As Of date --> <div><label class=\"block text-small font-medium text-text-muted\">As of</label> <input type=\"date\" name=\"as_of\" x-model=\"asOf\" @change=\"onAsOfChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<!-- Balance Sheet: single As Of date --> <div><label class=\"block text-small font-medium text-text-muted\">As of</label> <input type=\"date\" name=\"as_of\" x-model=\"asOf\" @change=\"onAsOfChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<!-- Period reports: From + To --> <div><label class=\"block text-small font-medium text-text-muted\">From</label> <input type=\"date\" name=\"from\" x-model=\"from\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div><label class=\"block text-small font-medium text-text-muted\">To</label> <input type=\"date\" name=\"to\" x-model=\"to\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<!-- Period reports: From + To --> <div><label class=\"block text-small font-medium text-text-muted\">From</label> <input type=\"date\" name=\"from\" x-model=\"from\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div><label class=\"block text-small font-medium text-text-muted\">To</label> <input type=\"date\" name=\"to\" x-model=\"to\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<!-- Run Report --><div><button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\">Run Report</button></div><!-- Secondary actions: Print + Export CSV --><div class=\"ml-auto flex items-center gap-2\"><button type=\"button\" @click=\"window.print()\" class=\"rounded-md border border-border px-3 py-2 text-body font-semibold text-text hover:bg-background\">Print</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<!-- Run Report --><div><button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\">Run Report</button></div><!-- Secondary actions: Print + Export CSV --><div class=\"ml-auto flex items-center gap-2\"><button type=\"button\" @click=\"window.print()\" class=\"rounded-md border border-border px-3 py-2 text-body font-semibold text-text hover:bg-background\">Print</button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if vm.CSVExportURL != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<a :href=\"csvHref()\" class=\"rounded-md border border-border px-3 py-2 text-body font-semibold text-text hover:bg-background\">Export CSV</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<a :href=\"csvHref()\" class=\"rounded-md border border-border px-3 py-2 text-body font-semibold text-text hover:bg-background\">Export CSV</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></div></form></div><style>\r\n\t\t/* ── Print styles for report pages ───────────────────────────────────────── */\r\n\t\t@media print {\r\n\t\t\t/* Hide chrome: top nav, sidebar, footer, toolbar form, report nav tabs */\r\n\t\t\theader, footer,\r\n\t\t\t.report-toolbar-form,\r\n\t\t\t.report-nav-tabs,\r\n\t\t\t.report-nav-area {\r\n\t\t\t\tdisplay: none !important;\r\n\t\t\t}\r\n\t\t\t/* Hide desktop sidebar wrapper (layout.templ: <div class=\"hidden md:block\"> wrapping Sidebar) */\r\n\t\t\t.sidebar-wrapper {\r\n\t\t\t\tdisplay: none !important;\r\n\t\t\t}\r\n\t\t\t/* Show print-only header */\r\n\t\t\t.report-print-header {\r\n\t\t\t\tdisplay: block !important;\r\n\t\t\t\tmargin-bottom: 1.5rem;\r\n\t\t\t\tborder-bottom: 1px solid #e5e7eb;\r\n\t\t\t\tpadding-bottom: 0.75rem;\r\n\t\t\t}\r\n\t\t\t.report-print-company {\r\n\t\t\t\tfont-size: 1.125rem;\r\n\t\t\t\tfont-weight: 700;\r\n\t\t\t}\r\n\t\t\t.report-print-title {\r\n\t\t\t\tfont-size: 1rem;\r\n\t\t\t\tfont-weight: 600;\r\n\t\t\t\tmargin-top: 0.25rem;\r\n\t\t\t}\r\n\t\t\t.report-print-period {\r\n\t\t\t\tfont-size: 0.875rem;\r\n\t\t\t\tcolor: #6b7280;\r\n\t\t\t\tmargin-top: 0.25rem;\r\n\t\t\t}\r\n\t\t\t/* Remove card borders/shadows in print */\r\n\t\t\t.rounded-lg { border-radius: 0 !important; }\r\n\t\t\tbody { background: white !important; }\r\n\t\t}\r\n\t\t/* ── Screen: print header is invisible ───────────────────────────────────── */\r\n\t\t.report-print-header { display: none; }\r\n\t</style><script>\r\n\t\tfunction reportToolbar() {\r\n\t\t\treturn {\r\n\t\t\t\tpreset: 'last_month',\r\n\t\t\t\tfrom: '',\r\n\t\t\t\tto: '',\r\n\t\t\t\tasOf: '',\r\n\t\t\t\tfyEnd: '12-31',\r\n\t\t\t\tmode: 'period',\r\n\t\t\t\tcsvBase: '',\r\n\r\n\t\t\t\tinit(el) {\r\n\t\t\t\t\tthis.preset  = el.dataset.preset  || 'last_month';\r\n\t\t\t\t\tthis.from    = el.dataset.from    || '';\r\n\t\t\t\t\tthis.to      = el.dataset.to      || '';\r\n\t\t\t\t\tthis.asOf    = el.dataset.asOf    || '';\r\n\t\t\t\t\tthis.fyEnd   = el.dataset.fyEnd   || '12-31';\r\n\t\t\t\t\tthis.mode    = el.dataset.mode    || 'period';\r\n\t\t\t\t\tthis.csvBase = el.dataset.csvBase || '';\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Called when the preset select changes.\r\n\t\t\t\tonPresetChange() {\r\n\t\t\t\t\tif (this.preset === 'custom') return;\r\n\t\t\t\t\tconst d = this.computeDates(this.preset);\r\n\t\t\t\t\tthis.from = d.from;\r\n\t\t\t\t\tthis.to   = d.to;\r\n\t\t\t\t\tif (this.mode === 'asof') this.asOf = d.to;\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Called when From or To inputs change manually.\r\n\t\t\t\tonFromToChange() {\r\n\t\t\t\t\tthis.preset = 'custom';\r\n\t\t\t\t\tfor (const p of ['last_month', 'year_to_date', 'last_fiscal_year']) {\r\n\t\t\t\t\t\tconst d = this.computeDates(p);\r\n\t\t\t\t\t\tif (this.from === d.from && this.to === d.to) {\r\n\t\t\t\t\t\t\tthis.preset = p;\r\n\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Called when As Of input changes manually.\r\n\t\t\t\tonAsOfChange() {\r\n\t\t\t\t\tthis.preset = 'custom';\r\n\t\t\t\t\tfor (const p of ['last_month', 'year_to_date', 'last_fiscal_year']) {\r\n\t\t\t\t\t\tconst d = this.computeDates(p);\r\n\t\t\t\t\t\tif (this.asOf === d.to) {\r\n\t\t\t\t\t\t\tthis.preset = p;\r\n\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Compute From/To dates for a named preset.\r\n\t\t\t\tcomputeDates(p) {\r\n\t\t\t\t\tconst today = new Date();\r\n\t\t\t\t\tconst fmt = dt => {\r\n\t\t\t\t\t\tconst y  = dt.getFullYear();\r\n\t\t\t\t\t\tconst m  = String(dt.getMonth() + 1).padStart(2, '0');\r\n\t\t\t\t\t\tconst d  = String(dt.getDate()).padStart(2, '0');\r\n\t\t\t\t\t\treturn `${y}-${m}-${d}`;\r\n\t\t\t\t\t};\r\n\r\n\t\t\t\t\tif (p === 'last_month') {\r\n\t\t\t\t\t\tconst firstThis = new Date(today.getFullYear(), today.getMonth(), 1);\r\n\t\t\t\t\t\tconst to = new Date(firstThis);\r\n\t\t\t\t\t\tto.setDate(to.getDate() - 1);\r\n\t\t\t\t\t\tconst from = new Date(to.getFullYear(), to.getMonth(), 1);\r\n\t\t\t\t\t\treturn { from: fmt(from), to: fmt(to) };\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tif (p === 'year_to_date') {\r\n\t\t\t\t\t\tconst start = this.fyStart(today);\r\n\t\t\t\t\t\treturn { from: fmt(start), to: fmt(today) };\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tif (p === 'last_fiscal_year') {\r\n\t\t\t\t\t\tconst curStart = this.fyStart(today);\r\n\t\t\t\t\t\tconst lastEnd = new Date(curStart);\r\n\t\t\t\t\t\tlastEnd.setDate(lastEnd.getDate() - 1);\r\n\t\t\t\t\t\tconst lastStart = this.fyStart(lastEnd);\r\n\t\t\t\t\t\treturn { from: fmt(lastStart), to: fmt(lastEnd) };\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\treturn { from: this.from, to: this.to };\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Return the first day of the fiscal year containing the given date.\r\n\t\t\t\tfyStart(refDate) {\r\n\t\t\t\t\tconst parts = (this.fyEnd || '12-31').split('-');\r\n\t\t\t\t\tconst fyM   = parseInt(parts[0], 10) - 1; // 0-indexed\r\n\t\t\t\t\tconst fyD   = parseInt(parts[1], 10);\r\n\t\t\t\t\tconst fyEndThis = new Date(refDate.getFullYear(), fyM, fyD);\r\n\t\t\t\t\tif (refDate <= fyEndThis) {\r\n\t\t\t\t\t\t// Still inside current FY: started last year.\r\n\t\t\t\t\t\tconst fyEndPrev = new Date(refDate.getFullYear() - 1, fyM, fyD);\r\n\t\t\t\t\t\tconst start = new Date(fyEndPrev);\r\n\t\t\t\t\t\tstart.setDate(start.getDate() + 1);\r\n\t\t\t\t\t\treturn start;\r\n\t\t\t\t\t}\r\n\t\t\t\t\t// After this year's FY end: new FY started.\r\n\t\t\t\t\tconst start = new Date(fyEndThis);\r\n\t\t\t\t\tstart.setDate(start.getDate() + 1);\r\n\t\t\t\t\treturn start;\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Build the CSV export href with current date params.\r\n\t\t\t\tcsvHref() {\r\n\t\t\t\t\tif (!this.csvBase) return '#';\r\n\t\t\t\t\treturn this.mode === 'asof'\r\n\t\t\t\t\t\t? `${this.csvBase}?as_of=${this.asOf}`\r\n\t\t\t\t\t\t: `${this.csvBase}?from=${this.from}&to=${this.to}`;\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Label shown in the print-only header.\r\n\t\t\t\tprintPeriodLabel() {\r\n\t\t\t\t\treturn this.mode === 'asof'\r\n\t\t\t\t\t\t? `As of ${this.asOf}`\r\n\t\t\t\t\t\t: `${this.from} to ${this.to}`;\r\n\t\t\t\t},\r\n\t\t\t};\r\n\t\t}\r\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if vm.Source != "" || vm.FreshnessLabel != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"mt-3 flex flex-wrap items-center gap-3 text-small text-text-muted2\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if vm.Source != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<span class=\"font-medium text-text-muted\" data-report-source=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var14 string
+				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Source)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 129, Col: 78}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var15 string
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(reportSourceLabel(vm.Source))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 129, Col: 111}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if vm.FreshnessLabel != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<span data-report-freshness=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var16 string
+				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FreshnessLabel)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 132, Col: 53}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var17 string
+				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FreshnessLabel)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/report_toolbar.templ`, Line: 132, Col: 75}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</form></div><style>\r\n\t\t/* ── Print styles for report pages ───────────────────────────────────────── */\r\n\t\t@media print {\r\n\t\t\t/* Hide chrome: top nav, sidebar, footer, toolbar form, report nav tabs */\r\n\t\t\theader, footer,\r\n\t\t\t.report-toolbar-form,\r\n\t\t\t.report-nav-tabs,\r\n\t\t\t.report-nav-area {\r\n\t\t\t\tdisplay: none !important;\r\n\t\t\t}\r\n\t\t\t/* Hide desktop sidebar wrapper (layout.templ: <div class=\"hidden md:block\"> wrapping Sidebar) */\r\n\t\t\t.sidebar-wrapper {\r\n\t\t\t\tdisplay: none !important;\r\n\t\t\t}\r\n\t\t\t/* Show print-only header */\r\n\t\t\t.report-print-header {\r\n\t\t\t\tdisplay: block !important;\r\n\t\t\t\tmargin-bottom: 1.5rem;\r\n\t\t\t\tborder-bottom: 1px solid #e5e7eb;\r\n\t\t\t\tpadding-bottom: 0.75rem;\r\n\t\t\t}\r\n\t\t\t.report-print-company {\r\n\t\t\t\tfont-size: 1.125rem;\r\n\t\t\t\tfont-weight: 700;\r\n\t\t\t}\r\n\t\t\t.report-print-title {\r\n\t\t\t\tfont-size: 1rem;\r\n\t\t\t\tfont-weight: 600;\r\n\t\t\t\tmargin-top: 0.25rem;\r\n\t\t\t}\r\n\t\t\t.report-print-period {\r\n\t\t\t\tfont-size: 0.875rem;\r\n\t\t\t\tcolor: #6b7280;\r\n\t\t\t\tmargin-top: 0.25rem;\r\n\t\t\t}\r\n\t\t\t/* Remove card borders/shadows in print */\r\n\t\t\t.rounded-lg { border-radius: 0 !important; }\r\n\t\t\tbody { background: white !important; }\r\n\t\t}\r\n\t\t/* ── Screen: print header is invisible ───────────────────────────────────── */\r\n\t\t.report-print-header { display: none; }\r\n\t</style><script>\r\n\t\tfunction reportToolbar() {\r\n\t\t\treturn {\r\n\t\t\t\tpreset: 'last_month',\r\n\t\t\t\tfrom: '',\r\n\t\t\t\tto: '',\r\n\t\t\t\tasOf: '',\r\n\t\t\t\tfyEnd: '12-31',\r\n\t\t\t\tmode: 'period',\r\n\t\t\t\tcsvBase: '',\r\n\r\n\t\t\t\tinit(el) {\r\n\t\t\t\t\tthis.preset  = el.dataset.preset  || 'last_month';\r\n\t\t\t\t\tthis.from    = el.dataset.from    || '';\r\n\t\t\t\t\tthis.to      = el.dataset.to      || '';\r\n\t\t\t\t\tthis.asOf    = el.dataset.asOf    || '';\r\n\t\t\t\t\tthis.fyEnd   = el.dataset.fyEnd   || '12-31';\r\n\t\t\t\t\tthis.mode    = el.dataset.mode    || 'period';\r\n\t\t\t\t\tthis.csvBase = el.dataset.csvBase || '';\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Called when the preset select changes.\r\n\t\t\t\tonPresetChange() {\r\n\t\t\t\t\tif (this.preset === 'custom') return;\r\n\t\t\t\t\tconst d = this.computeDates(this.preset);\r\n\t\t\t\t\tthis.from = d.from;\r\n\t\t\t\t\tthis.to   = d.to;\r\n\t\t\t\t\tif (this.mode === 'asof') this.asOf = d.to;\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Called when From or To inputs change manually.\r\n\t\t\t\tonFromToChange() {\r\n\t\t\t\t\tthis.preset = 'custom';\r\n\t\t\t\t\tfor (const p of ['last_month', 'year_to_date', 'last_fiscal_year']) {\r\n\t\t\t\t\t\tconst d = this.computeDates(p);\r\n\t\t\t\t\t\tif (this.from === d.from && this.to === d.to) {\r\n\t\t\t\t\t\t\tthis.preset = p;\r\n\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Called when As Of input changes manually.\r\n\t\t\t\tonAsOfChange() {\r\n\t\t\t\t\tthis.preset = 'custom';\r\n\t\t\t\t\tfor (const p of ['last_month', 'year_to_date', 'last_fiscal_year']) {\r\n\t\t\t\t\t\tconst d = this.computeDates(p);\r\n\t\t\t\t\t\tif (this.asOf === d.to) {\r\n\t\t\t\t\t\t\tthis.preset = p;\r\n\t\t\t\t\t\t\tbreak;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Compute From/To dates for a named preset.\r\n\t\t\t\tcomputeDates(p) {\r\n\t\t\t\t\tconst today = new Date();\r\n\t\t\t\t\tconst fmt = dt => {\r\n\t\t\t\t\t\tconst y  = dt.getFullYear();\r\n\t\t\t\t\t\tconst m  = String(dt.getMonth() + 1).padStart(2, '0');\r\n\t\t\t\t\t\tconst d  = String(dt.getDate()).padStart(2, '0');\r\n\t\t\t\t\t\treturn `${y}-${m}-${d}`;\r\n\t\t\t\t\t};\r\n\r\n\t\t\t\t\tif (p === 'last_month') {\r\n\t\t\t\t\t\tconst firstThis = new Date(today.getFullYear(), today.getMonth(), 1);\r\n\t\t\t\t\t\tconst to = new Date(firstThis);\r\n\t\t\t\t\t\tto.setDate(to.getDate() - 1);\r\n\t\t\t\t\t\tconst from = new Date(to.getFullYear(), to.getMonth(), 1);\r\n\t\t\t\t\t\treturn { from: fmt(from), to: fmt(to) };\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tif (p === 'year_to_date') {\r\n\t\t\t\t\t\tconst start = this.fyStart(today);\r\n\t\t\t\t\t\treturn { from: fmt(start), to: fmt(today) };\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\tif (p === 'last_fiscal_year') {\r\n\t\t\t\t\t\tconst curStart = this.fyStart(today);\r\n\t\t\t\t\t\tconst lastEnd = new Date(curStart);\r\n\t\t\t\t\t\tlastEnd.setDate(lastEnd.getDate() - 1);\r\n\t\t\t\t\t\tconst lastStart = this.fyStart(lastEnd);\r\n\t\t\t\t\t\treturn { from: fmt(lastStart), to: fmt(lastEnd) };\r\n\t\t\t\t\t}\r\n\r\n\t\t\t\t\treturn { from: this.from, to: this.to };\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Return the first day of the fiscal year containing the given date.\r\n\t\t\t\tfyStart(refDate) {\r\n\t\t\t\t\tconst parts = (this.fyEnd || '12-31').split('-');\r\n\t\t\t\t\tconst fyM   = parseInt(parts[0], 10) - 1; // 0-indexed\r\n\t\t\t\t\tconst fyD   = parseInt(parts[1], 10);\r\n\t\t\t\t\tconst fyEndThis = new Date(refDate.getFullYear(), fyM, fyD);\r\n\t\t\t\t\tif (refDate <= fyEndThis) {\r\n\t\t\t\t\t\t// Still inside current FY: started last year.\r\n\t\t\t\t\t\tconst fyEndPrev = new Date(refDate.getFullYear() - 1, fyM, fyD);\r\n\t\t\t\t\t\tconst start = new Date(fyEndPrev);\r\n\t\t\t\t\t\tstart.setDate(start.getDate() + 1);\r\n\t\t\t\t\t\treturn start;\r\n\t\t\t\t\t}\r\n\t\t\t\t\t// After this year's FY end: new FY started.\r\n\t\t\t\t\tconst start = new Date(fyEndThis);\r\n\t\t\t\t\tstart.setDate(start.getDate() + 1);\r\n\t\t\t\t\treturn start;\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Build the CSV export href with current date params.\r\n\t\t\t\tcsvHref() {\r\n\t\t\t\t\tif (!this.csvBase) return '#';\r\n\t\t\t\t\treturn this.mode === 'asof'\r\n\t\t\t\t\t\t? `${this.csvBase}?as_of=${this.asOf}`\r\n\t\t\t\t\t\t: `${this.csvBase}?from=${this.from}&to=${this.to}`;\r\n\t\t\t\t},\r\n\r\n\t\t\t\t// Label shown in the print-only header.\r\n\t\t\t\tprintPeriodLabel() {\r\n\t\t\t\t\treturn this.mode === 'asof'\r\n\t\t\t\t\t\t? `As of ${this.asOf}`\r\n\t\t\t\t\t\t: `${this.from} to ${this.to}`;\r\n\t\t\t\t},\r\n\t\t\t};\r\n\t\t}\r\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

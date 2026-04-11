@@ -15,8 +15,9 @@ import (
 // Secondary: supplementary info shown below/beside primary (e.g. account code).
 // Meta: key-value pairs rendered visually in the dropdown (e.g. type label, tags).
 // Payload: machine-readable data passed to JS select events but never rendered in UI.
-//          Use this for auto-fill values (e.g. default_price) that downstream Alpine
-//          components can act on without polluting the visual display.
+//
+//	Use this for auto-fill values (e.g. default_price) that downstream Alpine
+//	components can act on without polluting the visual display.
 type SmartPickerItem struct {
 	ID        string            `json:"id"`
 	Primary   string            `json:"primary"`
@@ -27,10 +28,18 @@ type SmartPickerItem struct {
 
 // SmartPickerResult is the top-level JSON response from the search endpoint.
 type SmartPickerResult struct {
-	Items       []SmartPickerItem `json:"items"`
-	CanCreate   bool              `json:"can_create"`
-	CreateLabel string            `json:"create_label,omitempty"`
-	CreateURL   string            `json:"create_url,omitempty"`
+	// Candidates is the ranked list of matching items.
+	// JS reads data.candidates (not data.items — renamed in Batch 30).
+	Candidates []SmartPickerItem `json:"candidates"`
+	// Source identifies whether the returned ordering came directly from the
+	// provider, from the short-TTL cache, or from persisted usage ranking.
+	Source string `json:"source,omitempty"`
+	// RequiresBackendValidation makes the authority boundary explicit:
+	// picker results accelerate UI search only; form submit still revalidates.
+	RequiresBackendValidation bool `json:"requires_backend_validation"`
+	// RequestID is a per-request UUID echoed back to the frontend so the JS
+	// can discard stale out-of-order responses (last-write-wins by sequence).
+	RequestID string `json:"request_id,omitempty"`
 }
 
 // SmartPickerContext carries per-request scope that providers receive.
@@ -140,10 +149,7 @@ func (p *ExpenseAccountProvider) Search(db *gorm.DB, ctx SmartPickerContext, que
 	}
 
 	return &SmartPickerResult{
-		Items:       items,
-		CanCreate:   false, // Accounts are created via the full Chart of Accounts flow.
-		CreateLabel: "",
-		CreateURL:   "",
+		Candidates: items,
 	}, nil
 }
 
@@ -196,7 +202,7 @@ func (p *CustomerProvider) Search(db *gorm.DB, ctx SmartPickerContext, query str
 			Secondary: c.Email,
 		})
 	}
-	return &SmartPickerResult{Items: items, CanCreate: false}, nil
+	return &SmartPickerResult{Candidates: items}, nil
 }
 
 func (p *CustomerProvider) GetByID(db *gorm.DB, ctx SmartPickerContext, id string) (*SmartPickerItem, error) {
@@ -247,7 +253,7 @@ func (p *VendorProvider) Search(db *gorm.DB, ctx SmartPickerContext, query strin
 			Secondary: vendorSmartPickerSecondary(v),
 		})
 	}
-	return &SmartPickerResult{Items: items, CanCreate: false}, nil
+	return &SmartPickerResult{Candidates: items}, nil
 }
 
 func (p *VendorProvider) GetByID(db *gorm.DB, ctx SmartPickerContext, id string) (*SmartPickerItem, error) {
@@ -302,7 +308,7 @@ func (p *ProductServiceProvider) Search(db *gorm.DB, ctx SmartPickerContext, que
 	for _, item := range items {
 		out = append(out, productServiceSmartPickerItem(item))
 	}
-	return &SmartPickerResult{Items: out, CanCreate: false}, nil
+	return &SmartPickerResult{Candidates: out}, nil
 }
 
 func (p *ProductServiceProvider) GetByID(db *gorm.DB, ctx SmartPickerContext, id string) (*SmartPickerItem, error) {

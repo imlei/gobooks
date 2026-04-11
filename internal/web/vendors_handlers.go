@@ -134,6 +134,7 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 		"name":       name,
 		"company_id": companyID,
 	}, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	if c.Get("HX-Request") == "true" {
 		c.Set("HX-Redirect", "/vendors?created=1")

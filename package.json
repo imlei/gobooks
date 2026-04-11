@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev:css": "tailwindcss -i ./internal/web/assets/input.css -o ./internal/web/static/app.css --watch",
-    "build:css": "tailwindcss -i ./internal/web/assets/input.css -o ./internal/web/static/app.css --minify"
+    "build:css": "tailwindcss -i ./internal/web/assets/input.css -o ./internal/web/static/app.css --minify",
+    "test:runtime-js": "node internal/web/static/runtime.test.js"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.13",
@@ -13,4 +14,3 @@
     "autoprefixer": "^10.4.20"
   }
 }
-

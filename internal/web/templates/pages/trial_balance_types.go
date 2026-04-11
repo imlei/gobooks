@@ -32,6 +32,11 @@ type ReportToolbarVM struct {
 	FormAction string
 	// Mode is "period" (shows From + To) or "asof" (shows As Of only).
 	Mode string
+	// Source is "cache", "recomputed", or "mixed" when the rendered page can
+	// tell the user where the current result came from.
+	Source string
+	// FreshnessLabel gives the user a human-readable freshness hint.
+	FreshnessLabel string
 }
 
 // ── Report page VMs ───────────────────────────────────────────────────────────
@@ -98,4 +103,17 @@ type ARAgingVM struct {
 	FormError string
 
 	Toolbar ReportToolbarVM
+}
+
+func reportSourceLabel(source string) string {
+	switch source {
+	case "cache":
+		return "Source: cache"
+	case "recomputed":
+		return "Source: recomputed"
+	case "mixed":
+		return "Source: mixed"
+	default:
+		return ""
+	}
 }

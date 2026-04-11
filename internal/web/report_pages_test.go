@@ -120,9 +120,87 @@ func TestReportPages_UseToolbarAndPrintHideReportNavArea(t *testing.T) {
 	}
 }
 
+func TestIncomeStatementPageShowsReportSourceMetadata(t *testing.T) {
+	db := testErrorFeedbackDB(t)
+	server := &Server{DB: db, ReportCache: NewReportAcceleration()}
+	t.Cleanup(server.ReportCache.plCache.Close)
+	t.Cleanup(server.ReportCache.arCache.Close)
+	user := seedErrorFeedbackUser(t, db)
+	companyID := seedValidationCompany(t, db, "Income Source Co")
+	revenueID := seedValidationAccount(t, db, companyID, "4000", models.RootRevenue, models.DetailServiceRevenue)
+	expenseID := seedValidationAccount(t, db, companyID, "6100", models.RootExpense, models.DetailOfficeExpense)
+	je := models.JournalEntry{
+		CompanyID:  companyID,
+		EntryDate:  time.Date(2026, 4, 2, 0, 0, 0, 0, time.UTC),
+		JournalNo:  "JE-REPORT-SOURCE",
+		Status:     models.JournalEntryStatusPosted,
+		SourceType: models.LedgerSourceManual,
+	}
+	if err := db.Create(&je).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.LedgerEntry{
+		CompanyID:      companyID,
+		JournalEntryID: je.ID,
+		SourceType:     models.LedgerSourceManual,
+		AccountID:      revenueID,
+		PostingDate:    time.Date(2026, 4, 2, 0, 0, 0, 0, time.UTC),
+		DebitAmount:    decimal.Zero,
+		CreditAmount:   decimal.RequireFromString("250.00"),
+		Status:         models.LedgerEntryStatusActive,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.LedgerEntry{
+		CompanyID:      companyID,
+		JournalEntryID: je.ID,
+		SourceType:     models.LedgerSourceManual,
+		AccountID:      expenseID,
+		PostingDate:    time.Date(2026, 4, 2, 0, 0, 0, 0, time.UTC),
+		DebitAmount:    decimal.RequireFromString("40.00"),
+		CreditAmount:   decimal.Zero,
+		Status:         models.LedgerEntryStatusActive,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := errorFeedbackApp(server, user, companyID)
+	app.Get("/reports/income-statement", server.handleIncomeStatement)
+
+	firstResp := performRequest(t, app, "/reports/income-statement?from=2026-04-01&to=2026-04-30", "")
+	if firstResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, firstResp.StatusCode)
+	}
+	firstBody := readResponseBody(t, firstResp)
+	for _, want := range []string{
+		`data-report-source="recomputed"`,
+		"Freshness: recomputed just now",
+	} {
+		if !strings.Contains(firstBody, want) {
+			t.Fatalf("expected first income statement page to contain %q", want)
+		}
+	}
+
+	secondResp := performRequest(t, app, "/reports/income-statement?from=2026-04-01&to=2026-04-30", "")
+	if secondResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, secondResp.StatusCode)
+	}
+	secondBody := readResponseBody(t, secondResp)
+	for _, want := range []string{
+		`data-report-source="cache"`,
+		"Freshness: cached for up to 5 minutes",
+	} {
+		if !strings.Contains(secondBody, want) {
+			t.Fatalf("expected cached income statement page to contain %q", want)
+		}
+	}
+}
+
 func TestARAgingReportPageAndCSVHappyPath(t *testing.T) {
 	db := testErrorFeedbackDB(t)
-	server := &Server{DB: db}
+	server := &Server{DB: db, ReportCache: NewReportAcceleration()}
+	t.Cleanup(server.ReportCache.plCache.Close)
+	t.Cleanup(server.ReportCache.arCache.Close)
 	user := seedErrorFeedbackUser(t, db)
 	companyID := seedValidationCompany(t, db, "AR Aging Co")
 	if err := db.Model(&models.Company{}).Where("id = ?", companyID).Updates(map[string]any{
@@ -207,7 +285,9 @@ func TestARAgingReportPageAndCSVHappyPath(t *testing.T) {
 		"A/R Aging",
 		`data-mode="asof"`,
 		`data-as-of="2026-04-05"`,
+		`data-report-source="recomputed"`,
 		"Export CSV",
+		"Freshness: recomputed just now",
 		"Current",
 		"1-30",
 		"91+",
@@ -230,6 +310,20 @@ func TestARAgingReportPageAndCSVHappyPath(t *testing.T) {
 	}
 	if strings.Contains(pageBody, "AR-DRAFT-001") {
 		t.Fatalf("expected draft invoice to stay out of AR aging page")
+	}
+
+	cachedResp := performRequest(t, app, "/reports/ar-aging?as_of=2026-04-05", "")
+	if cachedResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected cached page request %d, got %d", http.StatusOK, cachedResp.StatusCode)
+	}
+	cachedBody := readResponseBody(t, cachedResp)
+	for _, want := range []string{
+		`data-report-source="cache"`,
+		"Freshness: cached for up to 5 minutes",
+	} {
+		if !strings.Contains(cachedBody, want) {
+			t.Fatalf("expected cached AR aging page to contain %q", want)
+		}
 	}
 
 	csvResp := performRequest(t, app, "/reports/ar-aging/export.csv?as_of=2026-04-05", "")

@@ -2,6 +2,7 @@
 package web
 
 import (
+	"gobooks/internal/ai"
 	"gobooks/internal/config"
 	"gobooks/internal/web/admin"
 
@@ -13,11 +14,32 @@ import (
 type Server struct {
 	Cfg config.Config
 	DB  *gorm.DB
+
+	// SPAcceleration is the SmartPicker cache + usage-tracking layer.
+	// Initialised by NewServer; never nil.
+	SPAcceleration *SmartPickerAcceleration
+
+	// ReportCache accelerates expensive P&L and AR Aging report queries.
+	// TTL-backed; call InvalidateCompany after journal entry posts/voids.
+	// Initialised by NewServer; never nil.
+	ReportCache *ReportAcceleration
+
+	// AIAssist is the application-level AI platform.
+	// All AI completions in handlers must go through this — never call
+	// services.OpenAICompatibleChatCompletion directly from a handler.
+	// Initialised by NewServer; never nil.
+	AIAssist *ai.Platform
 }
 
 // NewServer creates a Fiber app with basic middleware and routes.
 func NewServer(cfg config.Config, db *gorm.DB) *fiber.App {
-	s := &Server{Cfg: cfg, DB: db}
+	s := &Server{
+		Cfg:            cfg,
+		DB:             db,
+		SPAcceleration: NewSmartPickerAcceleration(),
+		ReportCache:    NewReportAcceleration(),
+		AIAssist:       ai.New(db),
+	}
 
 	app := fiber.New(fiber.Config{
 		AppName:      "GoBooks",
@@ -34,4 +56,3 @@ func NewServer(cfg config.Config, db *gorm.DB) *fiber.App {
 
 	return app
 }
-

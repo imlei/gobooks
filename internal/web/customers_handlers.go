@@ -183,6 +183,7 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 		"name":       name,
 		"company_id": companyID,
 	}, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	if c.Get("HX-Request") == "true" {
 		c.Set("HX-Redirect", "/customers?created=1")
@@ -284,6 +285,7 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 		"name":       name,
 		"company_id": companyID,
 	}, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	return c.Redirect("/customers?updated=1", fiber.StatusSeeOther)
 }

@@ -724,6 +724,7 @@ func (s *Server) handleBillPost(c *fiber.Ctx) error {
 	if err := services.PostBill(s.DB, companyID, billID, actor, uid); err != nil {
 		return redirectErr(c, fmt.Sprintf("/bills/%d/edit?locked=1", billID), "Could not submit bill.")
 	}
+	s.ReportCache.InvalidateCompany(companyID)
 
 	return redirectTo(c, "/bills?posted=1")
 }
@@ -920,6 +921,7 @@ func (s *Server) handleBillVoid(c *fiber.Ctx) error {
 	if err := services.VoidBill(s.DB, companyID, billID, actor, userID); err != nil {
 		return c.Redirect("/bills?voiderror=1", fiber.StatusSeeOther)
 	}
+	s.ReportCache.InvalidateCompany(companyID)
 
 	return c.Redirect("/bills?voided=1", fiber.StatusSeeOther)
 }

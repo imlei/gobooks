@@ -112,3 +112,15 @@ func InvoiceEditorTitle(vm InvoiceEditorVM) string {
 	}
 	return "New Invoice"
 }
+
+// InvoiceEditorCustomerLabel returns the display name for the currently selected
+// customer, used to pre-populate the SmartPicker visible input on edit pages.
+// Returns an empty string (placeholder) when no matching customer is found.
+func InvoiceEditorCustomerLabel(vm InvoiceEditorVM) string {
+	for _, c := range vm.Customers {
+		if Uitoa(c.ID) == vm.CustomerID {
+			return c.Name
+		}
+	}
+	return ""
+}

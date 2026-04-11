@@ -2,6 +2,7 @@
 package web
 
 import (
+	"log/slog"
 	"strings"
 	"time"
 
@@ -304,7 +305,9 @@ func (s *Server) handleIncomeStatement(c *fiber.Ctx) error {
 		}).Render(c.Context(), c)
 	}
 
-	report, err := services.IncomeStatementReport(s.DB, companyID, fromDate, toDate)
+	report, source, err := s.ReportCache.GetIncomeStatement(companyID, fromDate, toDate, func() (services.IncomeStatement, error) {
+		return services.IncomeStatementReport(s.DB, companyID, fromDate, toDate)
+	})
 	if err != nil {
 		return pages.IncomeStatement(pages.IncomeStatementVM{
 			HasCompany: true,
@@ -316,6 +319,15 @@ func (s *Server) handleIncomeStatement(c *fiber.Ctx) error {
 			Toolbar:    toolbar,
 		}).Render(c.Context(), c)
 	}
+	toolbar.Source = source
+	toolbar.FreshnessLabel = reportFreshnessLabel(source)
+	slog.Info("report.render",
+		"type", "income_statement",
+		"company_id", companyID,
+		"from", fromStr,
+		"to", toStr,
+		"source", source,
+	)
 
 	return pages.IncomeStatement(pages.IncomeStatementVM{
 		HasCompany: true,
@@ -415,7 +427,9 @@ func (s *Server) handleARAgingReport(c *fiber.Ctx) error {
 		}).Render(c.Context(), c)
 	}
 
-	report, err := services.BuildARAgingReport(s.DB, companyID, asOf)
+	report, source, err := s.ReportCache.GetARAgingReport(companyID, asOf, func() (services.ARAgingReport, error) {
+		return services.BuildARAgingReport(s.DB, companyID, asOf)
+	})
 	if err != nil {
 		return pages.ARAging(pages.ARAgingVM{
 			HasCompany: true,
@@ -426,6 +440,14 @@ func (s *Server) handleARAgingReport(c *fiber.Ctx) error {
 			Toolbar:    toolbar,
 		}).Render(c.Context(), c)
 	}
+	toolbar.Source = source
+	toolbar.FreshnessLabel = reportFreshnessLabel(source)
+	slog.Info("report.render",
+		"type", "ar_aging",
+		"company_id", companyID,
+		"as_of", asOfStr,
+		"source", source,
+	)
 
 	return pages.ARAging(pages.ARAgingVM{
 		HasCompany: true,
@@ -434,6 +456,19 @@ func (s *Server) handleARAgingReport(c *fiber.Ctx) error {
 		Report:     report,
 		Toolbar:    toolbar,
 	}).Render(c.Context(), c)
+}
+
+func reportFreshnessLabel(source string) string {
+	switch source {
+	case "cache":
+		return "Freshness: cached for up to 5 minutes"
+	case "recomputed":
+		return "Freshness: recomputed just now"
+	case "mixed":
+		return "Freshness: mixed result"
+	default:
+		return ""
+	}
 }
 
 func (s *Server) handleJournalEntryReport(c *fiber.Ctx) error {

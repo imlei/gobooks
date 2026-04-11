@@ -50,12 +50,30 @@ templ bodyTaskForm(vm TaskFormVM) {
 						if vm.ReadOnlyCore {
 							<div class="mt-2 rounded-md border border-border bg-background px-3 py-2 text-body text-text">{ taskSelectedCustomerName(vm) }</div>
 						} else {
-							<select name="customer_id" class={ taskInputClass(vm.CustomerError != "") }>
-								<option value="">-- Select customer --</option>
-								for _, customer := range vm.Customers {
-									<option value={ Uitoa(customer.ID) } selected?={ Uitoa(customer.ID) == vm.CustomerID }>{ customer.Name }</option>
-								}
-							</select>
+							<!-- No-JS fallback: Alpine disables this select and removes its name
+							     on init, so only the SmartPicker hidden input submits when JS is
+							     active. Without JS the select retains name="customer_id"
+							     and is the sole submitter. -->
+							<div x-data="{}" x-init="var s=$el.querySelector('select');if(s){s.removeAttribute('name');s.disabled=true;}$el.style.display='none';">
+								<select name="customer_id" class={ taskInputClass(vm.CustomerError != "") }>
+									<option value="">-- Select customer --</option>
+									for _, customer := range vm.Customers {
+										<option value={ Uitoa(customer.ID) } selected?={ Uitoa(customer.ID) == vm.CustomerID }>{ customer.Name }</option>
+									}
+								</select>
+							</div>
+							@ui.SmartPicker(ui.SmartPickerVM{
+								Label:         "",
+								FieldName:     "customer_id",
+								Entity:        "customer",
+								Context:       "task_form_customer",
+								Value:         vm.CustomerID,
+								SelectedLabel: taskCustomerPickerLabel(vm),
+								Placeholder:   "Search customers...",
+								Required:      true,
+								Error:         vm.CustomerError,
+								Limit:         20,
+							})
 						}
 						if vm.CustomerError != "" {
 							<div class="mt-1 text-body text-danger">{ vm.CustomerError }</div>
@@ -259,6 +277,15 @@ func taskSelectedCustomerName(vm TaskFormVM) string {
 		}
 	}
 	return "—"
+}
+
+func taskCustomerPickerLabel(vm TaskFormVM) string {
+	for _, customer := range vm.Customers {
+		if Uitoa(customer.ID) == vm.CustomerID {
+			return customer.Name
+		}
+	}
+	return ""
 }
 
 func taskSelectedServiceItemName(vm TaskFormVM) string {

@@ -69,7 +69,7 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 			</script>
 			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-			<script src="/static/smart_picker.js?v=2" defer></script>
+			<script src="/static/smart_picker.js?v=8" defer></script>
 			<script>
 				(function () {
 					function readCookie(name) {
@@ -109,6 +109,21 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 							event.detail.headers["X-CSRF-Token"] = token;
 						}
 					});
+
+					// gobooksFetch — CSRF-safe wrapper around window.fetch.
+					// All Alpine / JS code must use this for non-GET requests so that
+					// the X-CSRF-Token header is automatically injected from the cookie.
+					// Usage: gobooksFetch("/api/some-endpoint", { method: "POST", body: ... })
+					window.gobooksFetch = function (url, options) {
+						const opts = Object.assign({ credentials: "same-origin" }, options);
+						opts.headers = Object.assign({}, opts.headers || {});
+						const method = (opts.method || "GET").toUpperCase();
+						if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+							const tok = csrfToken();
+							if (tok) opts.headers["X-CSRF-Token"] = tok;
+						}
+						return fetch(url, opts);
+					};
 				})();
 			</script>
 		</head>
@@ -291,7 +306,7 @@ templ LayoutAuth(title string, content templ.Component) {
 			</script>
 			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-			<script src="/static/smart_picker.js?v=2" defer></script>
+			<script src="/static/smart_picker.js?v=8" defer></script>
 			<script>
 				(function () {
 					function readCookie(name) {
@@ -317,6 +332,16 @@ templ LayoutAuth(title string, content templ.Component) {
 						}
 						input.value = token;
 					});
+					window.gobooksFetch = function (url, options) {
+						const opts = Object.assign({ credentials: "same-origin" }, options);
+						opts.headers = Object.assign({}, opts.headers || {});
+						const method = (opts.method || "GET").toUpperCase();
+						if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+							const tok = readCookie("gobooks_csrf");
+							if (tok) opts.headers["X-CSRF-Token"] = tok;
+						}
+						return fetch(url, opts);
+					};
 				})();
 			</script>
 		</head>

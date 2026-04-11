@@ -178,6 +178,9 @@ func TestExpenseNew_SmartPickerAttrs(t *testing.T) {
 		`data-context="expense_form_category"`,
 		`data-required="true"`,
 		`data-field-name="expense_account_id"`,
+		`data-entity="vendor"`,
+		`data-context="expense_form_vendor"`,
+		`data-field-name="vendor_id"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing SmartPicker attr %q in new form", want)
@@ -385,7 +388,7 @@ func TestExpense_ErrorRerenderPreservesSmartPickerState(t *testing.T) {
 	csrf := newCSRFToken(t)
 	form := url.Values{
 		"expense_date":       {"2026-04-10"},
-		"description":        {""},           // empty — will trigger validation error
+		"description":        {""}, // empty — will trigger validation error
 		"amount":             {"25.00"},
 		"currency_code":      {"CAD"},
 		"expense_account_id": {fmt.Sprintf("%d", accID)},

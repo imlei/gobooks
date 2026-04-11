@@ -90,16 +90,18 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 					</div>
 
 					<div>
-						<label class="block text-body font-medium text-text">Vendor</label>
-						<select name="vendor_id" class={ taskInputClass(vm.VendorError != "") }>
-							<option value="">-- Optional --</option>
-							for _, vendor := range vm.Vendors {
-								<option value={ Uitoa(vendor.ID) } selected?={ Uitoa(vendor.ID) == vm.VendorID }>{ vendor.Name }</option>
-							}
-						</select>
-						if vm.VendorError != "" {
-							<div class="mt-1 text-body text-danger">{ vm.VendorError }</div>
-						}
+						@ui.SmartPicker(ui.SmartPickerVM{
+							Label:         "Vendor",
+							FieldName:     "vendor_id",
+							Entity:        "vendor",
+							Context:       "expense_form_vendor",
+							Value:         vm.VendorID,
+							SelectedLabel: ExpenseFormVendorLabel(vm),
+							Placeholder:   "Search vendors… (optional)",
+							Required:      false,
+							Error:         vm.VendorError,
+							Limit:         20,
+						})
 					</div>
 
 					<div>

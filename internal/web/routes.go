@@ -151,6 +151,12 @@ func (s *Server) registerRoutes(app *fiber.App) {
 
 	// SmartPicker 通用实体搜索 API（只读，仅需成员资格）
 	app.Get("/api/smart-picker/search", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSmartPickerSearch)
+	// SmartPicker 使用事件（fire-and-forget，用于未来的排名信号）
+	app.Post("/api/smart-picker/usage", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSmartPickerUsage)
+
+	// AI 辅助端点（仅建议，非业务数据权威）
+	app.Post("/api/ai/invoice-memo-assist", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleAIMemoAssist)
+	app.Post("/api/ai/invoice-email-assist", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleAIEmailAssist)
 
 	// ── 日记账 ──────────────────────────────────────────────────────────────────
 	// 新建 / 冲销属于 AR 操作，bookkeeper 及以上可执行（ar_access）

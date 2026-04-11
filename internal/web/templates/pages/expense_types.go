@@ -1,3 +1,4 @@
+// 遵循project_guide.md
 package pages
 
 import "gobooks/internal/models"
@@ -13,6 +14,17 @@ type ExpenseListVM struct {
 	CanUpdate bool
 
 	Expenses []models.Expense
+}
+
+// ExpenseFormVendorLabel returns the display name for the currently selected vendor,
+// used to pre-populate the SmartPicker visible input on edit pages.
+func ExpenseFormVendorLabel(vm ExpenseFormVM) string {
+	for _, v := range vm.Vendors {
+		if Uitoa(v.ID) == vm.VendorID {
+			return v.Name
+		}
+	}
+	return ""
 }
 
 type ExpenseFormVM struct {

@@ -4,6 +4,7 @@ package web
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -241,22 +242,22 @@ func (s *Server) handleBankReconcileSetup(c *fiber.Ctx) error {
 		expAccounts, _ := s.expenseAccountsForCompany(companyID)
 		incAccounts, _ := s.incomeAccountsForCompany(companyID)
 		vm := pages.BankReconcileVM{
-			HasCompany:      true,
-			Accounts:        accounts,
-			AccountID:       accountIDStr,
-			AccountName:     accRow.Code + " - " + accRow.Name,
-			StatementDate:   statementDateStr,
-			EndingBalance:   endingBalanceStr,
-			Active:          "Bank Reconcile",
-			EntryMode:       "setup",
-			FormError:       msg,
-			ExpenseAccounts: expAccounts,
-			IncomeAccounts:  incAccounts,
-			CandidatesJSON:  "[]",
+			HasCompany:          true,
+			Accounts:            accounts,
+			AccountID:           accountIDStr,
+			AccountName:         accRow.Code + " - " + accRow.Name,
+			StatementDate:       statementDateStr,
+			EndingBalance:       endingBalanceStr,
+			Active:              "Bank Reconcile",
+			EntryMode:           "setup",
+			FormError:           msg,
+			ExpenseAccounts:     expAccounts,
+			IncomeAccounts:      incAccounts,
+			CandidatesJSON:      "[]",
 			AcceptedLineIDsJSON: "[]",
-			BeginningBalance:   "0.00",
-			PreviouslyCleared:  "0.00",
-			Candidates:         nil,
+			BeginningBalance:    "0.00",
+			PreviouslyCleared:   "0.00",
+			Candidates:          nil,
 		}
 		return pages.BankReconcile(vm).Render(c.Context(), c)
 	}
@@ -652,6 +653,12 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 		"entry_date":     entryDateRaw,
 		"company_id":     companyID,
 	}, &cid, &uid)
+	s.ReportCache.InvalidateCompany(companyID)
+	slog.Info("report.invalidate",
+		"company_id", companyID,
+		"reason", "receive_payment",
+		"journal_entry_id", jeID,
+	)
 
 	return c.Redirect("/banking/receive-payment?saved=1", fiber.StatusSeeOther)
 }
@@ -832,6 +839,12 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 		"entry_date": entryDateRaw,
 		"company_id": companyID,
 	}, &cid, &uid)
+	s.ReportCache.InvalidateCompany(companyID)
+	slog.Info("report.invalidate",
+		"company_id", companyID,
+		"reason", "pay_bills",
+		"journal_entry_id", jeID,
+	)
 
 	return c.Redirect("/banking/pay-bills?saved=1", fiber.StatusSeeOther)
 }

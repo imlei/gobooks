@@ -1,5 +1,5 @@
 // invoice_editor.js — Alpine component for the invoice line-items editor.
-// v=7
+// v=8
 function invoiceEditor() {
   return {
     lines: [],
@@ -17,6 +17,11 @@ function invoiceEditor() {
     // adds via addLine() are always locked=false.
     taskReadOnly: false,
 
+    // ── AI Memo Assist ──
+    invoiceId: 0,       // 0 on new drafts; set from data-invoice-id on edit pages
+    memoAssist: { loading: false, visible: false, suggestion: "", error: "", empty: false },
+    _memoAssistSeq: 0,
+
     init() {
       const el = this.$el;
       this.products     = JSON.parse(el.dataset.products     || "[]");
@@ -28,6 +33,7 @@ function invoiceEditor() {
       this.dueDate      = el.dataset.initialDueDate || "";
       this.dueDateEditable = this._isEditable(this.terms);
       this.taskReadOnly = el.dataset.taskReadonly === "true";
+      this.invoiceId    = parseInt(el.dataset.invoiceId, 10) || 0;
 
       const initial = JSON.parse(el.dataset.initialLines || "[]");
       if (initial.length > 0) {
@@ -296,6 +302,57 @@ function invoiceEditor() {
       if (isNaN(d.getTime())) return "";
       d.setDate(d.getDate() + netDays);
       return d.toISOString().slice(0, 10);
+    },
+
+    // ── AI Memo Assist ───────────────────────────────────────────────────────
+
+    // aiMemoAssist calls the memo-assist API and surfaces the suggestion.
+    // Only available when invoiceId > 0 (i.e. editing a saved draft).
+    async aiMemoAssist() {
+      if (!this.invoiceId || this.memoAssist.loading || this.memoAssist.visible) return;
+      const seq = ++this._memoAssistSeq;
+      this.memoAssist.loading    = true;
+      this.memoAssist.visible    = true;
+      this.memoAssist.suggestion = "";
+      this.memoAssist.error      = "";
+      this.memoAssist.empty      = false;
+
+      const fetchFn = window.gobooksFetch || fetch;
+      try {
+        const resp = await fetchFn("/api/ai/invoice-memo-assist", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ invoice_id: this.invoiceId }),
+        });
+        const data = await resp.json();
+        if (seq !== this._memoAssistSeq) return;
+        if (!resp.ok) {
+          this.memoAssist.error = data.error || "AI assist unavailable.";
+        } else {
+          this.memoAssist.suggestion = (data.suggestion || "").trim();
+          this.memoAssist.empty = this.memoAssist.suggestion === "";
+        }
+      } catch (_) {
+        if (seq !== this._memoAssistSeq) return;
+        this.memoAssist.error = "Request failed. Please try again.";
+      } finally {
+        if (seq === this._memoAssistSeq) this.memoAssist.loading = false;
+      }
+    },
+
+    // applyMemoSuggestion writes the AI suggestion into the memo input.
+    applyMemoSuggestion() {
+      const input = this.$refs.memoInput;
+      if (input) input.value = this.memoAssist.suggestion;
+      this.memoAssist.visible = false;
+      this.memoAssist.empty = false;
+    },
+
+    dismissMemoAssist() {
+      this.memoAssist.visible    = false;
+      this.memoAssist.suggestion = "";
+      this.memoAssist.error      = "";
+      this.memoAssist.empty      = false;
     },
   };
 }

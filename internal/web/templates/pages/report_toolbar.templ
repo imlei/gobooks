@@ -24,6 +24,8 @@ templ ReportToolbar(vm ReportToolbarVM) {
 		data-fy-end={ vm.FiscalYearEnd }
 		data-mode={ vm.Mode }
 		data-csv-base={ vm.CSVExportURL }
+		data-report-source={ vm.Source }
+		data-report-freshness={ vm.FreshnessLabel }
 	>
 		<!-- Print-only header (hidden in browser, shown when printing) -->
 		<div class="report-print-header">
@@ -121,6 +123,16 @@ templ ReportToolbar(vm ReportToolbarVM) {
 					}
 				</div>
 			</div>
+			if vm.Source != "" || vm.FreshnessLabel != "" {
+				<div class="mt-3 flex flex-wrap items-center gap-3 text-small text-text-muted2">
+					if vm.Source != "" {
+						<span class="font-medium text-text-muted" data-report-source={ vm.Source }>{ reportSourceLabel(vm.Source) }</span>
+					}
+					if vm.FreshnessLabel != "" {
+						<span data-report-freshness={ vm.FreshnessLabel }>{ vm.FreshnessLabel }</span>
+					}
+				</div>
+			}
 		</form>
 	</div>
 

@@ -1673,164 +1673,171 @@ func bodyInvoiceDetail(vm InvoiceDetailVM) templ.Component {
 			var templ_7745c5c3_Var87 templ.SafeURL
 			templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinURLErrs("/invoices/" + Uitoa(vm.Invoice.ID) + "/send-email")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 784, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 786, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, "\"><input type=\"hidden\" name=\"template_type\" value=\"invoice\"><div class=\"mb-4\"><label class=\"block text-small font-medium text-text mb-1\" for=\"sendTo\">To</label> <input id=\"sendTo\" type=\"email\" name=\"to_email\" required value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, "\" x-data=\"gobooksEmailAssist()\" data-invoice-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var88 string
-			templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.ToEmail)
+			templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(vm.Invoice.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 794, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 788, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div class=\"mb-4\"><label class=\"block text-small font-medium text-text mb-1\" for=\"sendCC\">CC <span class=\"font-normal text-text-muted2\">(optional, comma-separated)</span></label> <input id=\"sendCC\" type=\"text\" name=\"cc_emails\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div class=\"mb-4\"><label class=\"block text-small font-medium text-text mb-1\" for=\"sendSubject\">Subject</label> <input id=\"sendSubject\" type=\"text\" name=\"subject\" required value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "\"><input type=\"hidden\" name=\"template_type\" value=\"invoice\"><div class=\"mb-4\"><label class=\"block text-small font-medium text-text mb-1\" for=\"sendTo\">To</label> <input id=\"sendTo\" type=\"email\" name=\"to_email\" required value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var89 string
-			templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.Subject)
+			templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.ToEmail)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 816, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 799, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, "\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div class=\"mb-5\"><label class=\"block text-small font-medium text-text mb-1\" for=\"sendBody\">Message ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if vm.SendDefaults.PDFAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, "<span class=\"ml-1 font-normal text-text-muted2 text-[11px]\">Email body</span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, "<span class=\"ml-1 font-normal text-text-muted2 text-[11px]\">Email body · PDF not available (wkhtmltopdf not installed)</span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, "</label> <textarea id=\"sendBody\" name=\"body\" rows=\"9\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 font-mono text-small text-text outline-none focus:ring-2 focus:ring-primary-focus\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, "\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div class=\"mb-4\"><label class=\"block text-small font-medium text-text mb-1\" for=\"sendCC\">CC <span class=\"font-normal text-text-muted2\">(optional, comma-separated)</span></label> <input id=\"sendCC\" type=\"text\" name=\"cc_emails\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div class=\"mb-4\"><label class=\"block text-small font-medium text-text mb-1\" for=\"sendSubject\">Subject</label> <input id=\"sendSubject\" type=\"text\" name=\"subject\" required value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var90 string
-			templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.Body)
+			templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.Subject)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 835, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 821, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "</textarea> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, "\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div class=\"mb-5\"><div class=\"flex items-center justify-between mb-1\"><label class=\"block text-small font-medium text-text\" for=\"sendBody\">Message ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if vm.SendDefaults.PDFAvailable {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, "<span class=\"ml-1 font-normal text-text-muted2 text-[11px]\">Email body</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, "<span class=\"ml-1 font-normal text-text-muted2 text-[11px]\">Email body · PDF not available (wkhtmltopdf not installed)</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "</label> <button type=\"button\" @click=\"aiEmailAssist()\" :disabled=\"emailAssist.loading || emailAssist.visible\" class=\"flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed\"><span>✦ AI Draft</span> <span x-show=\"emailAssist.loading\" x-cloak class=\"text-text-muted2\">…</span></button></div><textarea id=\"sendBody\" name=\"body\" rows=\"9\" x-ref=\"emailBody\" @input=\"onBodyEdited()\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 font-mono text-small text-text outline-none focus:ring-2 focus:ring-primary-focus\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var91 string
+			templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.Body)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 853, Col: 30}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, "</textarea><div x-show=\"emailAssist.visible && !emailAssist.loading\" x-cloak class=\"mt-2 rounded-md border border-border bg-surface p-3 text-body\" style=\"display:none\"><div x-show=\"emailAssist.error\" x-cloak class=\"text-small text-danger\" x-text=\"emailAssist.error\"></div><div x-show=\"!emailAssist.error && emailAssist.empty\" x-cloak class=\"text-small text-text-muted2\">No draft available right now.</div><div x-show=\"!emailAssist.error && emailAssist.suggestion\" x-cloak><p class=\"text-text-muted2 text-[11px] mb-1\">AI-drafted email body:</p><pre class=\"whitespace-pre-wrap font-mono text-small text-text\" x-text=\"emailAssist.suggestion\"></pre><div class=\"mt-2 flex gap-2\"><button type=\"button\" @click=\"applyEmailSuggestion()\" class=\"rounded-md bg-primary px-3 py-1 text-small font-medium text-white hover:bg-primary-hover\">Apply</button> <button type=\"button\" @click=\"dismissEmailAssist()\" class=\"rounded-md border border-border px-3 py-1 text-small text-text hover:bg-surface-hover\">Dismiss</button></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if vm.SendDefaults.BodyUsesSystemDefault {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, "<textarea id=\"sendBodyDefaultAttachPDF\" hidden>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var91 string
-				templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.DefaultBodyAttachPDF)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 837, Col: 93}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "</textarea> <textarea id=\"sendBodyDefaultNoPDF\" hidden>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "<textarea id=\"sendBodyDefaultAttachPDF\" x-ref=\"bodyDefaultAttachPDF\" hidden>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var92 string
-				templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.DefaultBodyNoPDF)
+				templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.DefaultBodyAttachPDF)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 838, Col: 85}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 881, Col: 122}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "</textarea>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "</div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if vm.SendDefaults.PDFAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "<div class=\"mb-4 flex items-center gap-2\"><input id=\"attachPDF\" type=\"checkbox\" name=\"attach_pdf\" value=\"1\" checked class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"> <label for=\"attachPDF\" class=\"text-small text-text select-none\">Attach invoice as PDF</label></div>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "<div class=\"flex justify-end gap-3\"><button type=\"button\" onclick=\"document.getElementById('sendModal').close()\" class=\"rounded-md border border-border px-4 py-2 text-body text-text hover:bg-background\">Cancel</button> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if vm.SendDefaults.CanSend {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "<button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				if vm.SendDefaults.SendCount > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "Resend")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "Send Email")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "</button>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, "<span class=\"inline-block cursor-not-allowed rounded-md bg-disabled-bg px-4 py-2 text-body text-disabled-text\" title=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "</textarea> <textarea id=\"sendBodyDefaultNoPDF\" x-ref=\"bodyDefaultNoPDF\" hidden>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var93 string
-				templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.EligibilityError)
+				templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.DefaultBodyNoPDF)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 883, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 882, Col: 110}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "\">Send Email</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "</textarea>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "</div></form></div></dialog> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if vm.SendDefaults.BodyUsesSystemDefault && vm.SendDefaults.PDFAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "<script>\r\n\t\t\t\t\t(() => {\r\n\t\t\t\t\t\tconst bodyField = document.getElementById(\"sendBody\");\r\n\t\t\t\t\t\tconst attachField = document.getElementById(\"attachPDF\");\r\n\t\t\t\t\t\tconst attachDefault = document.getElementById(\"sendBodyDefaultAttachPDF\");\r\n\t\t\t\t\t\tconst noPDFDefault = document.getElementById(\"sendBodyDefaultNoPDF\");\r\n\t\t\t\t\t\tif (!bodyField || !attachField || !attachDefault || !noPDFDefault) return;\r\n\t\t\t\t\t\tif (attachField.dataset.bodySyncBound === \"1\") return;\r\n\t\t\t\t\t\tattachField.dataset.bodySyncBound = \"1\";\r\n\r\n\t\t\t\t\t\tconst syncBodyToAttachmentChoice = () => {\r\n\t\t\t\t\t\t\tconst current = bodyField.value;\r\n\t\t\t\t\t\t\tif (current !== attachDefault.value && current !== noPDFDefault.value) {\r\n\t\t\t\t\t\t\t\treturn;\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\tbodyField.value = attachField.checked ? attachDefault.value : noPDFDefault.value;\r\n\t\t\t\t\t\t};\r\n\r\n\t\t\t\t\t\tattachField.addEventListener(\"change\", syncBodyToAttachmentChoice);\r\n\t\t\t\t\t})();\r\n\t\t\t\t</script>")
+			if vm.SendDefaults.PDFAvailable {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "<div class=\"mb-4 flex items-center gap-2\"><input id=\"attachPDF\" type=\"checkbox\" name=\"attach_pdf\" value=\"1\" checked x-ref=\"attachPDF\" @change=\"onAttachPDFToggle()\" class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"> <label for=\"attachPDF\" class=\"text-small text-text select-none\">Attach invoice as PDF</label></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "<div class=\"flex justify-end gap-3\"><button type=\"button\" onclick=\"document.getElementById('sendModal').close()\" class=\"rounded-md border border-border px-4 py-2 text-body text-text hover:bg-background\">Cancel</button> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if vm.SendDefaults.CanSend {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if vm.SendDefaults.SendCount > 0 {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "Resend")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "Send Email")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, "</button>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "<span class=\"inline-block cursor-not-allowed rounded-md bg-disabled-bg px-4 py-2 text-body text-disabled-text\" title=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var94 string
+				templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SendDefaults.EligibilityError)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `pages/invoice_detail.templ`, Line: 929, Col: 49}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "\">Send Email</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "</div></form></div></dialog><script src=\"/static/invoice_email_assist.js?v=1\"></script>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
 			}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, "</div>")

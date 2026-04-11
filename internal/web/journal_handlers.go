@@ -185,6 +185,7 @@ func (s *Server) handleJournalEntryPost(c *fiber.Ctx) error {
 		"entry_date": entryDateRaw,
 		"company_id": companyID,
 	}, &cid, &uid)
+	s.ReportCache.InvalidateCompany(companyID)
 
 	return c.Redirect("/journal-entry?saved=1", fiber.StatusSeeOther)
 }
@@ -300,6 +301,7 @@ func (s *Server) handleJournalEntryReverse(c *fiber.Ctx) error {
 		"reverse_date": reverseDate.Format("2006-01-02"),
 		"company_id":   companyID,
 	}, &cid, &uid)
+	s.ReportCache.InvalidateCompany(companyID)
 
 	return c.Redirect("/journal-entry/list?reversed=1", fiber.StatusSeeOther)
 }

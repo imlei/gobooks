@@ -214,6 +214,7 @@ func (s *Server) handleAccountCreate(c *fiber.Ctx) error {
 		createdMeta["field_recommendation_sources"] = *acc.FieldRecommendationSourcesJSON
 	}
 	services.TryWriteAuditLogWithContext(s.DB, "account.created", "account", acc.ID, actor, createdMeta, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	if c.Get("HX-Request") == "true" {
 		c.Set("HX-Redirect", "/accounts?created=1")
@@ -336,6 +337,7 @@ func (s *Server) handleAccountUpdate(c *fiber.Ctx) error {
 		updatedMeta["field_recommendation_sources"] = *existing.FieldRecommendationSourcesJSON
 	}
 	services.TryWriteAuditLogWithContext(s.DB, "account.updated", "account", existing.ID, actor, updatedMeta, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	return c.Redirect("/accounts?updated=1", fiber.StatusSeeOther)
 }
@@ -380,6 +382,7 @@ func (s *Server) handleAccountInactive(c *fiber.Ctx) error {
 		"name":       acc.Name,
 		"company_id": companyID,
 	}, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	return c.Redirect("/accounts?inactive=1", fiber.StatusSeeOther)
 }

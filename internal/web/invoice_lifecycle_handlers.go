@@ -3,6 +3,7 @@ package web
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -97,6 +98,7 @@ func (s *Server) handleInvoiceVoid(c *fiber.Ctx) error {
 	if err := services.VoidInvoice(s.DB, companyID, invoiceID, actor, userID); err != nil {
 		return c.Redirect(fmt.Sprintf("/invoices/%d?voiderror=Could+not+void+invoice.", invoiceID), fiber.StatusSeeOther)
 	}
+	s.ReportCache.InvalidateCompany(companyID)
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?voided=1", invoiceID))
 }
@@ -128,6 +130,7 @@ func (s *Server) handleInvoicePost(c *fiber.Ctx) error {
 	if err := services.PostInvoice(s.DB, companyID, invoiceID, actor, uid); err != nil {
 		return redirectErr(c, fmt.Sprintf("/invoices/%d", invoiceID), "Could not post invoice.")
 	}
+	s.ReportCache.InvalidateCompany(companyID)
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?issued=1", invoiceID))
 }
@@ -342,6 +345,13 @@ func (s *Server) handleInvoiceReceivePaymentSubmit(c *fiber.Ctx) error {
 		"entry_date":     entryDateRaw,
 		"company_id":     companyID,
 	}, &cid, &uid)
+	s.ReportCache.InvalidateCompany(companyID)
+	slog.Info("report.invalidate",
+		"company_id", companyID,
+		"reason", "invoice_receive_payment",
+		"journal_entry_id", jeID,
+		"invoice_id", invoiceID,
+	)
 
 	return redirectTo(c, fmt.Sprintf("/invoices/%d?received=1", invoiceID))
 }

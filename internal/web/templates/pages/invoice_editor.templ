@@ -55,7 +55,6 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 			action="/invoices/save-draft"
 			class="mt-6 space-y-6"
 			x-data="invoiceEditor()"
-			x-init="init()"
 			data-products={ vm.ProductsJSON }
 			data-tax-codes={ vm.TaxCodesJSON }
 			data-initial-lines={ vm.InitialLinesJSON }
@@ -64,6 +63,7 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 			data-initial-terms={ vm.TermCode }
 			data-initial-date={ vm.InvoiceDate }
 			data-initial-due-date={ vm.DueDate }
+			data-invoice-id={ Uitoa(vm.EditingID) }
 			if vm.TaskGeneratedReadOnly {
 				data-task-readonly="true"
 			} else {
@@ -110,35 +110,23 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 						}
 					</div>
 
-					// Customer
-					<div>
-						<label class="block text-body font-medium text-text">Customer *</label>
-						if vm.CustomerError != "" {
-							<select
-								name="customer_id"
-								@change="onContactChange($event.target.value)"
-								disabled?={ vm.TaskGeneratedReadOnly }
-								class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus disabled:opacity-60 disabled:cursor-not-allowed"
-							>
-								<option value="">-- Select --</option>
-								for _, c := range vm.Customers {
-									<option value={ Uitoa(c.ID) } selected?={ Uitoa(c.ID) == vm.CustomerID }>{ c.Name }</option>
-								}
-							</select>
-							<div class="mt-1 text-body text-danger">{ vm.CustomerError }</div>
-						} else {
-							<select
-								name="customer_id"
-								@change="onContactChange($event.target.value)"
-								disabled?={ vm.TaskGeneratedReadOnly }
-								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-60 disabled:cursor-not-allowed"
-							>
-								<option value="">-- Select --</option>
-								for _, c := range vm.Customers {
-									<option value={ Uitoa(c.ID) } selected?={ Uitoa(c.ID) == vm.CustomerID }>{ c.Name }</option>
-								}
-							</select>
-						}
+					// Customer — SmartPicker (entity="customer")
+					// gobooks-picker-select bubbles up from the picker; we forward
+					// the selected ID to onContactChange for due-date auto-fill.
+					<div @gobooks-picker-select="onContactChange($event.detail.id)">
+						@ui.SmartPicker(ui.SmartPickerVM{
+							Label:         "Customer *",
+							FieldName:     "customer_id",
+							Entity:        "customer",
+							Context:       "invoice_editor_customer",
+							Value:         vm.CustomerID,
+							SelectedLabel: InvoiceEditorCustomerLabel(vm),
+							Placeholder:   "Search customers…",
+							Required:      true,
+							Error:         vm.CustomerError,
+							Limit:         20,
+							Disabled:      vm.TaskGeneratedReadOnly,
+						})
 					</div>
 
 					// Invoice Date (Alpine-managed for due date calc)
@@ -202,17 +190,62 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 						<p class="mt-1 text-small text-text-muted2" x-show="dueDateEditable" x-cloak>Enter the custom due date.</p>
 					</div>
 
-					// Memo
+					// Memo — with optional AI Assist button (edit page only)
 					<div>
-						<label class="block text-body font-medium text-text">Memo</label>
+						<div class="flex items-center justify-between">
+							<label class="block text-body font-medium text-text">Memo</label>
+							if vm.IsEdit {
+								<button
+									type="button"
+									@click="aiMemoAssist()"
+									:disabled="invoiceId === 0 || memoAssist.loading || memoAssist.visible"
+									class="flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									<span>✦ AI Assist</span>
+									<span x-show="memoAssist.loading" x-cloak class="text-text-muted2">…</span>
+								</button>
+							}
+						</div>
+						if vm.IsEdit {
+							<p x-show="invoiceId === 0" x-cloak class="mt-1 text-small text-text-muted2">Save the draft first to use AI assist.</p>
+						}
 						<input
 							type="text"
 							name="memo"
 							value={ vm.Memo }
 							placeholder="Internal note or reference"
 							autocomplete="off"
+							x-ref="memoInput"
 							class="mt-2 block w-full rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
 						/>
+						// AI Assist suggestion panel (only visible after a successful call)
+						if vm.IsEdit {
+							<div
+								x-show="memoAssist.visible && !memoAssist.loading"
+								x-cloak
+								class="mt-2 rounded-md border border-border bg-surface p-3 text-body"
+								style="display:none"
+							>
+								<div x-show="memoAssist.error" x-cloak class="text-danger" x-text="memoAssist.error"></div>
+								<div x-show="!memoAssist.error && memoAssist.empty" x-cloak class="text-text-muted2">No suggestion available right now.</div>
+								<div x-show="!memoAssist.error && memoAssist.suggestion" x-cloak>
+									<p class="text-text-muted2 text-small mb-1">Suggested memo:</p>
+									<p class="text-text" x-text="memoAssist.suggestion"></p>
+									<div class="mt-2 flex gap-2">
+										<button
+											type="button"
+											@click="applyMemoSuggestion()"
+											class="rounded-md bg-primary px-3 py-1 text-small font-medium text-white hover:bg-primary-hover"
+										>Apply</button>
+										<button
+											type="button"
+											@click="dismissMemoAssist()"
+											class="rounded-md border border-border px-3 py-1 text-small text-text hover:bg-surface-hover"
+										>Dismiss</button>
+									</div>
+								</div>
+							</div>
+						}
 					</div>
 
 					if vm.MultiCurrencyEnabled {
@@ -463,7 +496,7 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 					</div>
 				</div>
 
-				<script src="/static/invoice_editor.js?v=7"></script>
+				<script src="/static/invoice_editor.js?v=8"></script>
 			</div>
 
 			</fieldset>

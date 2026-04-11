@@ -218,6 +218,7 @@ func (s *Server) handleProductServiceCreate(c *fiber.Ctx) error {
 	services.TryWriteAuditLogWithContext(s.DB, "product_service.created", "product_service", item.ID, actor, map[string]any{
 		"name": name, "type": typeRaw, "structure": structureType, "company_id": companyID,
 	}, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	return c.Redirect("/products-services?created=1", fiber.StatusSeeOther)
 }
@@ -379,6 +380,7 @@ func (s *Server) handleProductServiceUpdate(c *fiber.Ctx) error {
 	services.TryWriteAuditLogWithContext(s.DB, "product_service.updated", "product_service", existing.ID, actor, map[string]any{
 		"name": name, "type": typeRaw, "company_id": companyID,
 	}, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	return c.Redirect("/products-services?updated=1", fiber.StatusSeeOther)
 }
@@ -420,6 +422,7 @@ func (s *Server) handleProductServiceInactive(c *fiber.Ctx) error {
 	services.TryWriteAuditLogWithContext(s.DB, "product_service.deactivated", "product_service", item.ID, actor, map[string]any{
 		"name": item.Name, "company_id": companyID,
 	}, &cid, &uid)
+	s.SPAcceleration.InvalidateCompany(companyID)
 
 	return c.Redirect("/products-services?inactive=1", fiber.StatusSeeOther)
 }

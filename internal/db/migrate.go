@@ -192,6 +192,8 @@ func Migrate(db *gorm.DB) error {
 		&models.PaymentReverseException{},
 		// Batch 26: Payment reverse hook execution trace
 		&models.PaymentReverseResolutionAttempt{},
+		// SmartPicker: selection event log (ranking/popularity signal)
+		&models.SmartPickerUsage{},
 	); err != nil {
 		return err
 	}

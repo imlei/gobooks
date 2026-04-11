@@ -261,7 +261,7 @@ func TestTaskFormServiceItemHandlerIntegration(t *testing.T) {
 		t.Fatalf("expected %d, got %d", http.StatusOK, editResp.StatusCode)
 	}
 	editBody := readResponseBody(t, editResp)
-	if !strings.Contains(editBody, fmt.Sprintf(`data-value="%d"`, validServiceID)) {
+	if !strings.Contains(editBody, fmt.Sprintf(`data-context="task_form_service_item" data-field-name="product_service_id" data-value="%d"`, validServiceID)) {
 		t.Fatalf("expected edit page data-value to rehydrate service item %d, got %q", validServiceID, editBody)
 	}
 	if !strings.Contains(editBody, `data-selected-label="Task Service A"`) {
@@ -289,10 +289,10 @@ func TestTaskFormServiceItemHandlerIntegration(t *testing.T) {
 			if !strings.Contains(body, services.ErrTaskServiceItemInvalid.Error()) {
 				t.Fatalf("expected service item error, got %q", body)
 			}
-			if !strings.Contains(body, `data-value=""`) {
+			if !strings.Contains(body, `data-context="task_form_service_item" data-field-name="product_service_id" data-value=""`) {
 				t.Fatalf("expected rejected service item to clear SmartPicker data-value, got %q", body)
 			}
-			if strings.Contains(body, fmt.Sprintf(`data-value="%d"`, tc.productServiceID)) {
+			if strings.Contains(body, fmt.Sprintf(`data-context="task_form_service_item" data-field-name="product_service_id" data-value="%d"`, tc.productServiceID)) {
 				t.Fatalf("illegal service item ID %d must not be retained in data-value, got %q", tc.productServiceID, body)
 			}
 			var count int64
@@ -332,7 +332,7 @@ func TestTaskFormServiceItemHandlerIntegration(t *testing.T) {
 		t.Fatalf("expected other-field error re-render %d, got %d", http.StatusOK, badTitleResp.StatusCode)
 	}
 	badTitleBody := readResponseBody(t, badTitleResp)
-	if !strings.Contains(badTitleBody, fmt.Sprintf(`data-value="%d"`, validServiceID)) {
+	if !strings.Contains(badTitleBody, fmt.Sprintf(`data-context="task_form_service_item" data-field-name="product_service_id" data-value="%d"`, validServiceID)) {
 		t.Fatalf("valid service item data-value must be preserved on other-field error, got %q", badTitleBody)
 	}
 	if !strings.Contains(badTitleBody, `data-selected-label="Task Service A"`) {
@@ -347,10 +347,10 @@ func TestTaskFormServiceItemHandlerIntegration(t *testing.T) {
 		t.Fatalf("expected stale edit form %d, got %d", http.StatusOK, staleEditResp.StatusCode)
 	}
 	staleEditBody := readResponseBody(t, staleEditResp)
-	if !strings.Contains(staleEditBody, `data-value=""`) {
+	if !strings.Contains(staleEditBody, `data-context="task_form_service_item" data-field-name="product_service_id" data-value=""`) {
 		t.Fatalf("stale service item must clear SmartPicker data-value, got %q", staleEditBody)
 	}
-	if strings.Contains(staleEditBody, fmt.Sprintf(`data-value="%d"`, validServiceID)) {
+	if strings.Contains(staleEditBody, fmt.Sprintf(`data-context="task_form_service_item" data-field-name="product_service_id" data-value="%d"`, validServiceID)) {
 		t.Fatalf("stale service item ID %d must not be retained in data-value, got %q", validServiceID, staleEditBody)
 	}
 	if !strings.Contains(staleEditBody, "Previously selected service item is no longer available") {

@@ -554,6 +554,43 @@ func TestHandleInvoiceDetail_SendModalIncludesDefaultBodySyncMarkup(t *testing.T
 	}
 }
 
+func TestHandleInvoiceDetail_SendModalUsesEmailAssistStateGuards(t *testing.T) {
+	db := testSendUIDB(t)
+	user := seedSendUIUser(t, db)
+	co := seedSendUICompany(t, db, "Email Assist State Co")
+	seedSendUIMembership(t, db, user.ID, co.ID)
+	inv := seedSendUIInvoice(t, db, co.ID, models.InvoiceStatusIssued)
+	seedSendUIVerifiedSMTP(t, db, co.ID)
+
+	server := &Server{DB: db}
+	app := sendUIApp(server, user, co.ID)
+
+	resp := performRequest(t, app, fmt.Sprintf("/invoices/%d", inv.ID), "")
+	body := readResponseBody(t, resp)
+
+	for _, want := range []string{
+		`x-data="gobooksEmailAssist()"`,
+		`:disabled="emailAssist.loading || emailAssist.visible"`,
+		`@input="onBodyEdited()"`,
+		`x-ref="bodyDefaultAttachPDF"`,
+		`x-ref="bodyDefaultNoPDF"`,
+		`/static/invoice_email_assist.js?v=1`,
+		"No draft available right now.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected send modal markup to contain %q", want)
+		}
+	}
+	if strings.Contains(body, `x-init="init()"`) {
+		t.Fatal("email assist modal should rely on Alpine auto-init and must not call init() twice")
+	}
+	if services.PDFGeneratorAvailable() {
+		if !strings.Contains(body, `@change="onAttachPDFToggle()"`) {
+			t.Fatalf("expected send modal markup to contain attach-PDF toggle handler when PDF is available")
+		}
+	}
+}
+
 func TestHandleInvoiceDetail_SendModalNotShownForDraft(t *testing.T) {
 	db := testSendUIDB(t)
 	user := seedSendUIUser(t, db)

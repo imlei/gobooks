@@ -1,5 +1,5 @@
 // smart_picker.js — GoBooks universal SmartPicker Alpine component.
-// v=2
+// v=8
 //
 // IMPORTANT — entity semantics:
 //   entity="account" in Phase 1 maps to ExpenseAccountProvider, which returns
@@ -41,15 +41,20 @@ function gobooksSmartPicker() {
     open:     false,
     loading:  false,
     failed:   false,
-    // items shape: [{id: string, primary: string, secondary: string, meta: object|null}]
+    // items shape: [{id: string, primary: string, secondary: string, meta: object|null, payload: object|null}]
+    // Populated from data.candidates (backend field renamed from data.items in v3).
     // primary   — main display label (e.g. account name)
     // secondary — supplementary info (e.g. account code, tax rate)
-    // meta      — reserved key-value bag for Batch C+ (customer email, product sku, etc.)
+    // meta      — key-value bag rendered in the dropdown
+    // payload   — machine-readable data for downstream components (e.g. default_price); never rendered
     items:       [],
     highlighted: -1,
 
     // ── Internal ──
     _lastFetchQuery: null,  // dedup: skip identical back-to-back requests
+    _fetchSeq:       0,     // monotonic counter; used to discard stale out-of-order responses
+    _lastRequestId:  "",    // request_id from last backend response; correlated into usage ping
+    requiresBackendValidation: true,
 
     init() {
       const el = this.$el;
@@ -118,6 +123,14 @@ function gobooksSmartPicker() {
       // Dedup: same trimmed query with results already loaded → skip.
       if (this._lastFetchQuery === q && this.items.length > 0) return;
       this._lastFetchQuery = q;
+
+      // Stale-response guard: increment sequence before each request.
+      // After awaiting, check that our sequence is still the latest — if not,
+      // a newer request has already written items and we must not overwrite it.
+      this._fetchSeq++;
+      const seq = this._fetchSeq;
+      const requestId = this._newRequestId();
+
       this.loading = true;
       this.failed  = false;
       try {
@@ -126,23 +139,37 @@ function gobooksSmartPicker() {
           context: this.context,
           q:       q,
           limit:   String(this.limit),
+          request_id: requestId,
         });
-        const res = await fetch("/api/smart-picker/search?" + params.toString(), {
-          credentials: "same-origin",
+        const fetchFn = window.gobooksFetch || fetch;
+        const res = await fetchFn("/api/smart-picker/search?" + params.toString(), {
+          method: "GET",
         });
+        // Drop stale response — a newer fetch has taken over.
+        if (seq !== this._fetchSeq) return;
         if (!res.ok) {
           this.failed = true;
           this.items  = [];
           return;
         }
-        const data  = await res.json();
-        this.items  = Array.isArray(data.items) ? data.items : [];
+        const data = await res.json();
+        if (seq !== this._fetchSeq) return; // check again after second await
+        // Backend renamed items → candidates in v3. Accept both for forward compat.
+        this.items  = Array.isArray(data.candidates) ? data.candidates
+                    : Array.isArray(data.items)       ? data.items
+                    : [];
+        this.requiresBackendValidation = data.requires_backend_validation !== false;
+        // Capture request_id for usage ping correlation.
+        if (data.request_id && data.request_id === requestId) {
+          this._lastRequestId = data.request_id;
+        }
         this.failed = false;
       } catch (_) {
+        if (seq !== this._fetchSeq) return;
         this.failed = true;
         this.items  = [];
       } finally {
-        this.loading = false;
+        if (seq === this._fetchSeq) this.loading = false;
       }
     },
 
@@ -156,11 +183,26 @@ function gobooksSmartPicker() {
       // `payload` carries machine-readable data (e.g. default_price) that
       // providers embed in SmartPickerItem.Payload — not shown in the dropdown UI.
       this.$dispatch("gobooks-picker-select", {
-        entity:  this.entity,
-        context: this.context,
-        id:      item.id,
-        payload: item.payload || {},
+        entity:                    this.entity,
+        context:                   this.context,
+        id:                        item.id,
+        payload:                   item.payload || {},
+        requiresBackendValidation: this.requiresBackendValidation,
       });
+      // Fire-and-forget usage ping for future ranking signals.
+      // Uses gobooksFetch so the X-CSRF-Token is injected automatically.
+      // Errors are silently ignored — this must never break picker UX.
+      const fetchFn = window.gobooksFetch || fetch;
+      fetchFn("/api/smart-picker/usage", {
+        method:  "POST",
+        headers: {"Content-Type": "application/json"},
+        body:    JSON.stringify({
+          entity:     this.entity,
+          context:    this.context,
+          item_id:    item.id,
+          request_id: this._lastRequestId || "",
+        }),
+      }).catch(() => {});
     },
 
     close() {
@@ -180,6 +222,7 @@ function gobooksSmartPicker() {
       this.open            = false;
       this.highlighted     = -1;
       this._lastFetchQuery = null;
+      this._fetchSeq       = 0;
     },
 
     // ── Keyboard navigation ──
@@ -222,6 +265,13 @@ function gobooksSmartPicker() {
           }
           break;
       }
+    },
+
+    _newRequestId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return "sp-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
     },
   };
 }
