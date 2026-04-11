@@ -1,5 +1,6 @@
 package pages
 
+import "gobooks/internal/models"
 import "gobooks/internal/web/templates/layout"
 import "gobooks/internal/web/templates/ui"
 
@@ -27,68 +28,19 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 			</div>
 		}
 
-		<form method="post" action={ expenseFormAction(vm) } class="mt-6 space-y-6">
+		<form
+			method="post"
+			action={ expenseFormAction(vm) }
+			class="mt-6 space-y-6"
+			x-data="expenseForm()"
+			@gobooks-picker-select="onPickerSelect($event)">
+
+			<!-- ── Section 1: Expense Details ───────────────────────────────── -->
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<h2 class="text-section font-semibold text-text">Expense Details</h2>
-				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
-					<div>
-						<label class="block text-body font-medium text-text">Expense Date *</label>
-						<input type="date" name="expense_date" value={ vm.ExpenseDate } class={ taskInputClass(vm.ExpenseDateError != "") }/>
-						if vm.ExpenseDateError != "" {
-							<div class="mt-1 text-body text-danger">{ vm.ExpenseDateError }</div>
-						}
-					</div>
+				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
 
-					<div>
-						<label class="block text-body font-medium text-text">Task</label>
-						<select name="task_id" class={ taskInputClass(vm.TaskError != "" || vm.BillableCustomerError != "") }>
-							<option value="">-- No task linkage --</option>
-							for _, task := range vm.SelectableTasks {
-								<option value={ Uitoa(task.ID) } selected?={ Uitoa(task.ID) == vm.TaskID }>{ expenseTaskLabel(task) }</option>
-							}
-						</select>
-						<p class="mt-1 text-small text-text-muted2">Only open or completed tasks are available. Billable customer always follows the selected task customer.</p>
-						if vm.TaskError != "" {
-							<div class="mt-1 text-body text-danger">{ vm.TaskError }</div>
-						}
-						if vm.BillableCustomerError != "" {
-							<div class="mt-1 text-body text-danger">{ vm.BillableCustomerError }</div>
-						}
-					</div>
-
-					<div class="md:col-span-2">
-						<label class="block text-body font-medium text-text">Description *</label>
-						<input type="text" name="description" value={ vm.Description } maxlength="255" placeholder="e.g. Courier charge for client samples" class={ taskInputClass(vm.DescriptionError != "") }/>
-						if vm.DescriptionError != "" {
-							<div class="mt-1 text-body text-danger">{ vm.DescriptionError }</div>
-						}
-					</div>
-
-					<div>
-						<!-- No-JS fallback: Alpine disables this select and removes its name
-						     on init, so only the SmartPicker hidden input submits when JS is
-						     active. Without JS the select retains name="expense_account_id"
-						     and is the sole submitter. -->
-						<div x-data="{}" x-init="var s=$el.querySelector('select');if(s){s.removeAttribute('name');s.disabled=true;}$el.style.display='none';">
-							<select name="expense_account_id" class={ taskInputClass(vm.ExpenseAccountError != "") }>
-								<option value="">-- Select account --</option>
-								for _, acc := range vm.ExpenseAccounts {
-									<option value={ Uitoa(acc.ID) } selected?={ Uitoa(acc.ID) == vm.ExpenseAccountID }>{ acc.Code } { " " } { acc.Name }</option>
-								}
-							</select>
-						</div>
-						@ui.SmartPicker(ui.SmartPickerVM{
-							Label:         "Expense Account *",
-							FieldName:     "expense_account_id",
-							Entity:        "account",
-							Context:       "expense_form_category",
-							Value:         vm.ExpenseAccountID,
-							SelectedLabel: vm.ExpenseAccountLabel,
-							Required:      true,
-							Error:         vm.ExpenseAccountError,
-						})
-					</div>
-
+					<!-- Vendor -->
 					<div>
 						@ui.SmartPicker(ui.SmartPickerVM{
 							Label:         "Vendor",
@@ -104,14 +56,74 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 						})
 					</div>
 
+					<!-- Expense Date -->
+					<div>
+						<label class="block text-body font-medium text-text">Expense Date *</label>
+						<input
+							type="date"
+							name="expense_date"
+							value={ vm.ExpenseDate }
+							class={ taskInputClass(vm.ExpenseDateError != "") }
+							style="color-scheme:dark"/>
+						if vm.ExpenseDateError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.ExpenseDateError }</div>
+						}
+					</div>
+
+					<!-- Amount -->
 					<div>
 						<label class="block text-body font-medium text-text">Amount *</label>
-						<input type="text" name="amount" value={ vm.Amount } inputmode="decimal" placeholder="0.00" class={ taskInputClass(vm.AmountError != "") }/>
+						<input
+							type="text"
+							name="amount"
+							value={ vm.Amount }
+							inputmode="decimal"
+							placeholder="0.00"
+							class={ taskInputClass(vm.AmountError != "") }/>
 						if vm.AmountError != "" {
 							<div class="mt-1 text-body text-danger">{ vm.AmountError }</div>
 						}
 					</div>
 
+					<!-- Description (full width) -->
+					<div class="md:col-span-3">
+						<label class="block text-body font-medium text-text">Description *</label>
+						<input
+							type="text"
+							name="description"
+							value={ vm.Description }
+							maxlength="255"
+							placeholder="e.g. Courier charge for client samples"
+							class={ taskInputClass(vm.DescriptionError != "") }/>
+						if vm.DescriptionError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.DescriptionError }</div>
+						}
+					</div>
+
+					<!-- Expense Category -->
+					<div class="md:col-span-2">
+						<!-- No-JS fallback: Alpine disables this select on init. -->
+						<div x-data="{}" x-init="var s=$el.querySelector('select');if(s){s.removeAttribute('name');s.disabled=true;}$el.style.display='none';">
+							<select name="expense_account_id" class={ taskInputClass(vm.ExpenseAccountError != "") }>
+								<option value="">-- Select account --</option>
+								for _, acc := range vm.ExpenseAccounts {
+									<option value={ Uitoa(acc.ID) } selected?={ Uitoa(acc.ID) == vm.ExpenseAccountID }>{ acc.Code } { " " } { acc.Name }</option>
+								}
+							</select>
+						</div>
+						@ui.SmartPicker(ui.SmartPickerVM{
+							Label:         "Expense Category *",
+							FieldName:     "expense_account_id",
+							Entity:        "account",
+							Context:       "expense_form_category",
+							Value:         vm.ExpenseAccountID,
+							SelectedLabel: vm.ExpenseAccountLabel,
+							Required:      true,
+							Error:         vm.ExpenseAccountError,
+						})
+					</div>
+
+					<!-- Currency -->
 					<div>
 						<label class="block text-body font-medium text-text">Currency</label>
 						if vm.MultiCurrency {
@@ -129,20 +141,122 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 						}
 					</div>
 
-					<div class="md:col-span-2">
-						<label class="block text-body font-medium text-text">Billing</label>
-						<label class="mt-2 inline-flex items-center gap-2 text-body text-text">
-							<input type="checkbox" name="is_billable" value="1" checked?={ vm.IsBillable } class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"/>
-							<span>Billable cost</span>
-						</label>
-						<p class="mt-1 text-small text-text-muted2">Billable controls whether a task-linked cost is eligible for future draft generation. Ordinary expenses without a task keep their normal flow.</p>
-					</div>
 				</div>
 			</div>
 
+			<!-- ── Section 2: Payment ────────────────────────────────────────── -->
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Payment</h2>
+				<p class="mt-1 text-small text-text-muted2">Record how this expense was paid. All fields are optional — leave blank if payment details are not yet known.</p>
+				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+
+					<!-- Payment Account -->
+					<div>
+						<!-- No-JS fallback -->
+						<div x-data="{}" x-init="var s=$el.querySelector('select');if(s){s.removeAttribute('name');s.disabled=true;}$el.style.display='none';">
+							<select name="payment_account_id" class={ taskInputClass(vm.PaymentAccountError != "") }>
+								<option value="">-- None --</option>
+							</select>
+						</div>
+						@ui.SmartPicker(ui.SmartPickerVM{
+							Label:         "Payment Account",
+							FieldName:     "payment_account_id",
+							Entity:        "payment_account",
+							Context:       "expense_form_payment",
+							Value:         vm.PaymentAccountID,
+							SelectedLabel: vm.PaymentAccountLabel,
+							Placeholder:   "Search bank / credit card accounts…",
+							Required:      false,
+							Error:         vm.PaymentAccountError,
+						})
+					</div>
+
+					<!-- Payment Method -->
+					<div>
+						<label class="block text-body font-medium text-text">Payment Method</label>
+						<select
+							name="payment_method"
+							class={ taskInputClass(vm.PaymentMethodError != "") }>
+							<option value="">-- None --</option>
+							for _, m := range models.ExpensePaymentMethods() {
+								<option value={ string(m) } selected?={ string(m) == vm.PaymentMethod }>{ models.PaymentMethodLabel(m) }</option>
+							}
+						</select>
+						if vm.PaymentMethodError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.PaymentMethodError }</div>
+						}
+					</div>
+
+					<!-- Payment Reference (full width) -->
+					<div class="md:col-span-2">
+						<label class="block text-body font-medium text-text">Reference</label>
+						<input
+							type="text"
+							name="payment_reference"
+							value={ vm.PaymentReference }
+							maxlength="200"
+							placeholder="e.g. Cheque #1042, TX-9281"
+							class={ taskInputClass(false) }/>
+					</div>
+
+				</div>
+			</div>
+
+			<!-- ── Section 3: Task & Billing ────────────────────────────────── -->
+			<div class="rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Task &amp; Billing</h2>
+				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+
+					<!-- Task -->
+					<div>
+						<label class="block text-body font-medium text-text">Task</label>
+						<select
+							name="task_id"
+							class={ taskInputClass(vm.TaskError != "" || vm.BillableCustomerError != "") }
+							@change="onTaskChange($event.target.value)">
+							<option value="">-- No task linkage --</option>
+							for _, task := range vm.SelectableTasks {
+								<option value={ Uitoa(task.ID) } selected?={ Uitoa(task.ID) == vm.TaskID }>{ expenseTaskLabel(task) }</option>
+							}
+						</select>
+						<p class="mt-1 text-small text-text-muted2">Only open or completed tasks are available. Billable customer always follows the selected task customer.</p>
+						if vm.TaskError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.TaskError }</div>
+						}
+						if vm.BillableCustomerError != "" {
+							<div class="mt-1 text-body text-danger">{ vm.BillableCustomerError }</div>
+						}
+					</div>
+
+					<!-- Billable -->
+					<div>
+						<label class="block text-body font-medium text-text">Billing</label>
+						<label
+							class="mt-2 inline-flex items-center gap-2 text-body"
+							:class="hasTask ? 'text-text' : 'text-text-muted3 cursor-not-allowed'">
+							<input
+								type="checkbox"
+								name="is_billable"
+								value="1"
+								checked?={ vm.IsBillable }
+								:disabled="!hasTask"
+								class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus disabled:opacity-40"/>
+							<span>Billable cost</span>
+						</label>
+						<p class="mt-1 text-small text-text-muted2">Billable controls whether this cost is eligible for future draft generation. Requires a task linkage.</p>
+					</div>
+
+				</div>
+			</div>
+
+			<!-- ── Section 4: Notes ──────────────────────────────────────────── -->
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<h2 class="text-section font-semibold text-text">Notes</h2>
-				<textarea name="notes" rows="5" placeholder="Optional notes about this cost." class={ taskInputClass(false) }>{ vm.Notes }</textarea>
+				<textarea
+					name="notes"
+					rows="3"
+					placeholder="Optional notes about this cost."
+					class={ taskInputClass(false) }>{ vm.Notes }</textarea>
 			</div>
 
 			<div class="flex items-center justify-end gap-3">
@@ -157,6 +271,28 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 			</div>
 		</form>
 	</div>
+
+	<script>
+		function expenseForm() {
+			return {
+				hasTask: false,
+				init() {
+					const s = this.$el.querySelector('select[name="task_id"]');
+					if (s) this.hasTask = s.value !== "";
+				},
+				onTaskChange(val) {
+					this.hasTask = val !== "";
+					if (!this.hasTask) {
+						const cb = this.$el.querySelector('input[name="is_billable"]');
+						if (cb) cb.checked = false;
+					}
+				},
+				onPickerSelect(event) {
+					// No auto-fill needed on expense form currently.
+				},
+			};
+		}
+	</script>
 }
 
 func expenseFormTitle(vm ExpenseFormVM) string {

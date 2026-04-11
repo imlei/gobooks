@@ -12,11 +12,13 @@ import (
 type PaymentMethod string
 
 const (
-	PaymentMethodCheck   PaymentMethod = "check"
-	PaymentMethodWire    PaymentMethod = "wire"
-	PaymentMethodCash    PaymentMethod = "cash"
-	PaymentMethodOther   PaymentMethod = "other"
-	PaymentMethodGateway PaymentMethod = "gateway"
+	PaymentMethodCheck      PaymentMethod = "check"
+	PaymentMethodWire       PaymentMethod = "wire"
+	PaymentMethodCash       PaymentMethod = "cash"
+	PaymentMethodOther      PaymentMethod = "other"
+	PaymentMethodGateway    PaymentMethod = "gateway"
+	PaymentMethodCreditCard PaymentMethod = "credit_card"
+	PaymentMethodDebitCard  PaymentMethod = "debit_card"
 )
 
 func AllPaymentMethods() []PaymentMethod {
@@ -26,6 +28,21 @@ func AllPaymentMethods() []PaymentMethod {
 		PaymentMethodCash,
 		PaymentMethodOther,
 		PaymentMethodGateway,
+		PaymentMethodCreditCard,
+		PaymentMethodDebitCard,
+	}
+}
+
+// ExpensePaymentMethods returns the payment methods available on the Expense form.
+// Gateway is excluded (gateway payments are system-initiated, not manually recorded).
+func ExpensePaymentMethods() []PaymentMethod {
+	return []PaymentMethod{
+		PaymentMethodCheck,
+		PaymentMethodWire,
+		PaymentMethodCash,
+		PaymentMethodCreditCard,
+		PaymentMethodDebitCard,
+		PaymentMethodOther,
 	}
 }
 
@@ -50,6 +67,10 @@ func PaymentMethodLabel(m PaymentMethod) string {
 		return "Other"
 	case PaymentMethodGateway:
 		return "Payment Gateway"
+	case PaymentMethodCreditCard:
+		return "Credit Card"
+	case PaymentMethodDebitCard:
+		return "Debit Card"
 	default:
 		return string(m)
 	}
@@ -61,7 +82,9 @@ func ParsePaymentMethod(raw string) (PaymentMethod, error) {
 		PaymentMethodWire,
 		PaymentMethodCash,
 		PaymentMethodOther,
-		PaymentMethodGateway:
+		PaymentMethodGateway,
+		PaymentMethodCreditCard,
+		PaymentMethodDebitCard:
 		return PaymentMethod(raw), nil
 	default:
 		return "", fmt.Errorf("unknown payment method: %q", raw)

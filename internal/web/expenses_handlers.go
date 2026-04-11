@@ -34,6 +34,24 @@ func (s *Server) rehydrateExpenseAccountLabel(companyID uint, idStr string) stri
 	return item.Primary
 }
 
+// rehydratePaymentAccountLabel uses the PaymentAccountProvider to look up the
+// human-readable label for the given payment account ID. Returns "" if the ID
+// is empty or the account no longer satisfies the payment-account guards.
+func (s *Server) rehydratePaymentAccountLabel(companyID uint, idStr string) string {
+	if idStr == "" {
+		return ""
+	}
+	p, ok := defaultSmartPickerRegistry.get("payment_account")
+	if !ok {
+		return ""
+	}
+	item, err := p.GetByID(s.DB, SmartPickerContext{CompanyID: companyID, Context: "expense_form_payment"}, idStr)
+	if err != nil || item == nil {
+		return ""
+	}
+	return item.Primary
+}
+
 func (s *Server) handleExpenses(c *fiber.Ctx) error {
 	companyID, ok := ActiveCompanyIDFromCtx(c)
 	if !ok {
@@ -174,17 +192,19 @@ func (s *Server) newExpenseFormVM(companyID uint) (pages.ExpenseFormVM, error) {
 
 func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (pages.ExpenseFormVM, error) {
 	vm := pages.ExpenseFormVM{
-		HasCompany:   true,
-		IsEdit:       true,
-		EditingID:    exp.ID,
-		ExpenseDate:  exp.ExpenseDate.Format("2006-01-02"),
-		Description:  exp.Description,
-		Amount:       exp.Amount.StringFixed(2),
-		CurrencyCode: exp.CurrencyCode,
-		VendorID:     optUintStr(exp.VendorID),
-		TaskID:       optUintStr(exp.TaskID),
-		IsBillable:   exp.IsBillable,
-		Notes:        exp.Notes,
+		HasCompany:      true,
+		IsEdit:          true,
+		EditingID:       exp.ID,
+		ExpenseDate:     exp.ExpenseDate.Format("2006-01-02"),
+		Description:     exp.Description,
+		Amount:          exp.Amount.StringFixed(2),
+		CurrencyCode:    exp.CurrencyCode,
+		VendorID:        optUintStr(exp.VendorID),
+		TaskID:          optUintStr(exp.TaskID),
+		IsBillable:      exp.IsBillable,
+		Notes:           exp.Notes,
+		PaymentMethod:   string(exp.PaymentMethod),
+		PaymentReference: exp.PaymentReference,
 	}
 
 	// Rehydrate expense account for SmartPicker. GetByID enforces the same
@@ -202,6 +222,20 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 			vm.ExpenseAccountID = ""
 			vm.ExpenseAccountLabel = ""
 			vm.ExpenseAccountError = "Previously selected expense account is no longer available. Please choose a new one."
+		}
+	}
+
+	// Rehydrate payment account for SmartPicker.
+	if exp.PaymentAccountID != nil {
+		idStr := fmt.Sprintf("%d", *exp.PaymentAccountID)
+		label := s.rehydratePaymentAccountLabel(companyID, idStr)
+		if label != "" {
+			vm.PaymentAccountID = idStr
+			vm.PaymentAccountLabel = label
+		} else {
+			vm.PaymentAccountID = ""
+			vm.PaymentAccountLabel = ""
+			vm.PaymentAccountError = "Previously selected payment account is no longer available. Please choose a new one."
 		}
 	}
 
@@ -226,6 +260,9 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	vm.VendorID = strings.TrimSpace(c.FormValue("vendor_id"))
 	vm.ExpenseAccountID = strings.TrimSpace(c.FormValue("expense_account_id"))
 	vm.TaskID = strings.TrimSpace(c.FormValue("task_id"))
+	vm.PaymentAccountID = strings.TrimSpace(c.FormValue("payment_account_id"))
+	vm.PaymentMethod = strings.TrimSpace(c.FormValue("payment_method"))
+	vm.PaymentReference = strings.TrimSpace(c.FormValue("payment_reference"))
 
 	// Rehydrate SmartPicker label for error re-render: if the submitted account ID is
 	// still valid, show its label so the user sees their selection. If invalid (cross-company,
@@ -238,6 +275,13 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	if vm.ExpenseAccountID != "" && vm.ExpenseAccountLabel == "" {
 		vm.ExpenseAccountID = ""
 	}
+
+	// Rehydrate payment account SmartPicker label for error re-render.
+	vm.PaymentAccountLabel = s.rehydratePaymentAccountLabel(companyID, vm.PaymentAccountID)
+	if vm.PaymentAccountID != "" && vm.PaymentAccountLabel == "" {
+		vm.PaymentAccountID = ""
+	}
+
 	vm.IsBillable = c.FormValue("is_billable") == "1"
 	vm.Notes = strings.TrimSpace(c.FormValue("notes"))
 
@@ -295,6 +339,12 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		id := uint(id64)
 		input.TaskID = &id
 	}
+	if id64, err := services.ParseUint(vm.PaymentAccountID); err == nil && id64 > 0 {
+		id := uint(id64)
+		input.PaymentAccountID = &id
+	}
+	input.PaymentMethod = models.PaymentMethod(vm.PaymentMethod)
+	input.PaymentReference = vm.PaymentReference
 	return vm, input, hasErr
 }
 
@@ -359,6 +409,10 @@ func (s *Server) applyExpenseServiceError(vm *pages.ExpenseFormVM, err error) {
 		vm.TaskError = err.Error()
 	case errors.Is(err, services.ErrTaskBillableCustomerMismatch):
 		vm.BillableCustomerError = err.Error()
+	case errors.Is(err, services.ErrExpensePaymentAccountInvalid):
+		vm.PaymentAccountError = err.Error()
+	case errors.Is(err, services.ErrExpensePaymentMethodRequired), errors.Is(err, services.ErrExpensePaymentMethodInvalid):
+		vm.PaymentMethodError = err.Error()
 	default:
 		vm.FormError = err.Error()
 	}

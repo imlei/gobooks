@@ -12,14 +12,17 @@ import (
 )
 
 var (
-	ErrExpenseNotFound            = errors.New("expense not found")
-	ErrExpenseDateRequired        = errors.New("expense date is required")
-	ErrExpenseDescriptionRequired = errors.New("description is required")
-	ErrExpenseAmountInvalid       = errors.New("amount must be greater than zero")
-	ErrExpenseCurrencyRequired    = errors.New("currency is required")
-	ErrExpenseAccountRequired     = errors.New("expense account is required")
-	ErrExpenseAccountInvalid      = errors.New("expense account is not valid for this company")
-	ErrExpenseVendorInvalid       = errors.New("vendor is not valid for this company")
+	ErrExpenseNotFound              = errors.New("expense not found")
+	ErrExpenseDateRequired          = errors.New("expense date is required")
+	ErrExpenseDescriptionRequired   = errors.New("description is required")
+	ErrExpenseAmountInvalid         = errors.New("amount must be greater than zero")
+	ErrExpenseCurrencyRequired      = errors.New("currency is required")
+	ErrExpenseAccountRequired       = errors.New("expense account is required")
+	ErrExpenseAccountInvalid        = errors.New("expense account is not valid for this company")
+	ErrExpenseVendorInvalid         = errors.New("vendor is not valid for this company")
+	ErrExpensePaymentAccountInvalid = errors.New("payment account is not valid for this company")
+	ErrExpensePaymentMethodRequired = errors.New("payment method is required when a payment account is selected")
+	ErrExpensePaymentMethodInvalid  = errors.New("payment method is not valid")
 )
 
 type ExpenseInput struct {
@@ -35,6 +38,11 @@ type ExpenseInput struct {
 	VendorID         *uint
 	ExpenseAccountID *uint
 	Notes            string
+
+	// Payment settlement (all optional).
+	PaymentAccountID *uint
+	PaymentMethod    models.PaymentMethod
+	PaymentReference string
 }
 
 type ExpenseListFilter struct {
@@ -129,6 +137,9 @@ func upsertExpense(db *gorm.DB, expenseID uint, in ExpenseInput) (*models.Expens
 		expense.VendorID = in.VendorID
 		expense.ExpenseAccountID = in.ExpenseAccountID
 		expense.Notes = strings.TrimSpace(in.Notes)
+		expense.PaymentAccountID = in.PaymentAccountID
+		expense.PaymentMethod = in.PaymentMethod
+		expense.PaymentReference = strings.TrimSpace(in.PaymentReference)
 
 		if expenseID > 0 {
 			if err := tx.Save(&expense).Error; err != nil {
@@ -188,6 +199,33 @@ func validateExpenseInput(db *gorm.DB, in ExpenseInput) error {
 		}
 		if count == 0 {
 			return ErrExpenseVendorInvalid
+		}
+	}
+
+	if in.PaymentAccountID != nil && *in.PaymentAccountID > 0 {
+		count = 0
+		if err := db.Model(&models.Account{}).
+			Where("id = ? AND company_id = ? AND detail_account_type IN ? AND is_active = true",
+				*in.PaymentAccountID, in.CompanyID,
+				[]string{
+					string(models.DetailBank),
+					string(models.DetailCreditCard),
+					string(models.DetailOtherCurrentAsset),
+				}).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return ErrExpensePaymentAccountInvalid
+		}
+		if in.PaymentMethod == "" {
+			return ErrExpensePaymentMethodRequired
+		}
+	}
+
+	if in.PaymentMethod != "" {
+		if _, err := models.ParsePaymentMethod(string(in.PaymentMethod)); err != nil {
+			return ErrExpensePaymentMethodInvalid
 		}
 	}
 

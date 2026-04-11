@@ -68,6 +68,15 @@ type Expense struct {
 	ExpenseAccountID *uint    `gorm:"index"`
 	ExpenseAccount   *Account `gorm:"foreignKey:ExpenseAccountID"`
 
+	// Payment settlement fields (all optional).
+	// PaymentAccountID points to the bank/credit-card/petty-cash account used to pay.
+	// PaymentMethod records the payment instrument (check, wire, cash, credit_card, etc.).
+	// PaymentReference is a user-supplied memo or cheque number.
+	PaymentAccountID *uint         `gorm:"index"`
+	PaymentAccount   *Account      `gorm:"foreignKey:PaymentAccountID"`
+	PaymentMethod    PaymentMethod `gorm:"type:text;not null;default:''"`
+	PaymentReference string        `gorm:"type:text;not null;default:''"`
+
 	// MarkupPercent is reserved for future pass-through pricing support.
 	// v1: always 0; UI does not expose this field.
 	MarkupPercent decimal.Decimal `gorm:"type:numeric(8,4);not null;default:0"`

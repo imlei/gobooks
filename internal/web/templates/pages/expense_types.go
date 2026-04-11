@@ -32,16 +32,22 @@ type ExpenseFormVM struct {
 	IsEdit     bool
 	EditingID  uint
 
-	ExpenseDate      string
-	Description      string
-	Amount           string
-	CurrencyCode     string
-	VendorID         string
+	ExpenseDate         string
+	Description         string
+	Amount              string
+	CurrencyCode        string
+	VendorID            string
 	ExpenseAccountID    string
 	ExpenseAccountLabel string // human-readable label for SmartPicker rehydration; never a raw DB ID
-	TaskID           string
-	IsBillable       bool
-	Notes            string
+	TaskID              string
+	IsBillable          bool
+	Notes               string
+
+	// Payment settlement fields (all optional).
+	PaymentAccountID    string
+	PaymentAccountLabel string // human-readable label for SmartPicker rehydration
+	PaymentMethod       string
+	PaymentReference    string
 
 	ExpenseDateError      string
 	DescriptionError      string
@@ -51,6 +57,8 @@ type ExpenseFormVM struct {
 	ExpenseAccountError   string
 	TaskError             string
 	BillableCustomerError string
+	PaymentAccountError   string
+	PaymentMethodError    string
 	FormError             string
 
 	BaseCurrencyCode string

@@ -90,6 +90,7 @@ var defaultSmartPickerRegistry = newSmartPickerRegistry(
 	&CustomerProvider{},
 	&VendorProvider{},
 	&ProductServiceProvider{},
+	&PaymentAccountProvider{},
 )
 
 func smartPickerLimit(ctx SmartPickerContext) int {
@@ -356,4 +357,74 @@ func productServiceSmartPickerSecondary(item models.ProductService) string {
 		return "SKU: " + strings.TrimSpace(item.SKU)
 	}
 	return models.ProductServiceTypeLabel(item.Type)
+}
+
+// ── PaymentAccountProvider ───────────────────────────────────────────────────
+
+// PaymentAccountProvider handles entity="payment_account".
+// It returns active accounts suitable for recording a payment outflow:
+// bank accounts (asset), credit card accounts (liability), and
+// petty-cash / other current asset accounts — i.e. detail_account_type IN
+// (bank, credit_card, other_current_asset).
+type PaymentAccountProvider struct{}
+
+func (p *PaymentAccountProvider) EntityType() string { return "payment_account" }
+
+func (p *PaymentAccountProvider) Search(db *gorm.DB, ctx SmartPickerContext, query string) (*SmartPickerResult, error) {
+	var accounts []models.Account
+	q := db.
+		Where("company_id = ? AND detail_account_type IN ? AND is_active = true",
+			ctx.CompanyID,
+			[]string{
+				string(models.DetailBank),
+				string(models.DetailCreditCard),
+				string(models.DetailOtherCurrentAsset),
+			}).
+		Order("code ASC").
+		Limit(smartPickerLimit(ctx))
+	q = applySmartPickerTextSearch(q, db.Dialector.Name(), query, "name", "code")
+
+	if err := q.Find(&accounts).Error; err != nil {
+		return nil, fmt.Errorf("payment account search: %w", err)
+	}
+
+	items := make([]SmartPickerItem, 0, len(accounts))
+	for _, a := range accounts {
+		items = append(items, SmartPickerItem{
+			ID:        fmt.Sprintf("%d", a.ID),
+			Primary:   a.Name,
+			Secondary: a.Code,
+			Meta: map[string]string{
+				"type": models.DetailSnakeToLabel(string(a.DetailAccountType)),
+			},
+		})
+	}
+	return &SmartPickerResult{Candidates: items}, nil
+}
+
+func (p *PaymentAccountProvider) GetByID(db *gorm.DB, ctx SmartPickerContext, id string) (*SmartPickerItem, error) {
+	var account models.Account
+	err := db.
+		Where("id = ? AND company_id = ? AND detail_account_type IN ? AND is_active = true",
+			id, ctx.CompanyID,
+			[]string{
+				string(models.DetailBank),
+				string(models.DetailCreditCard),
+				string(models.DetailOtherCurrentAsset),
+			}).
+		First(&account).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("payment account get by id: %w", err)
+	}
+	return &SmartPickerItem{
+		ID:        fmt.Sprintf("%d", account.ID),
+		Primary:   account.Name,
+		Secondary: account.Code,
+		Meta: map[string]string{
+			"type": models.DetailSnakeToLabel(string(account.DetailAccountType)),
+		},
+	}, nil
 }
