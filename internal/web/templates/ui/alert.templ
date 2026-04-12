@@ -1,0 +1,32 @@
+// 遵循project_guide.md
+package ui
+
+// AlertSuccess renders a green success banner.
+// Used after a successful form submission to confirm the action to the user.
+templ AlertSuccess(message string) {
+	<div class="rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+		{ message }
+	</div>
+}
+
+// AlertError renders a red error banner for form-level errors.
+// Use for errors that apply to the whole form, not a single field.
+templ AlertError(message string) {
+	<div class="rounded-md border border-danger-border bg-danger-soft px-4 py-3 text-body text-danger">
+		{ message }
+	</div>
+}
+
+// AlertWarning renders an amber warning banner.
+templ AlertWarning(message string) {
+	<div class="rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-body text-warning">
+		{ message }
+	</div>
+}
+
+// AlertInfo renders a blue informational banner.
+templ AlertInfo(message string) {
+	<div class="rounded-md border border-border bg-primary-soft px-4 py-3 text-body text-primary">
+		{ message }
+	</div>
+}

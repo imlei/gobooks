@@ -1,0 +1,31 @@
+// 遵循project_guide.md
+package ui
+
+// Badge renders a small status pill.
+// variant: "neutral" | "success" | "warning" | "danger" | "info"
+// Used for: currency codes, report freshness labels, source labels, status flags.
+templ Badge(label string, variant string) {
+	switch variant {
+	case "success":
+		<span class="inline-flex items-center rounded-full bg-success-soft px-2 py-0.5 text-small font-medium text-success">
+			{ label }
+		</span>
+	case "warning":
+		<span class="inline-flex items-center rounded-full bg-warning-soft px-2 py-0.5 text-small font-medium text-warning">
+			{ label }
+		</span>
+	case "danger":
+		<span class="inline-flex items-center rounded-full bg-danger-soft px-2 py-0.5 text-small font-medium text-danger">
+			{ label }
+		</span>
+	case "info":
+		<span class="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-small font-medium text-primary">
+			{ label }
+		</span>
+	default:
+		// neutral
+		<span class="inline-flex items-center rounded-full bg-badge-bg px-2 py-0.5 text-small font-medium text-badge-text">
+			{ label }
+		</span>
+	}
+}

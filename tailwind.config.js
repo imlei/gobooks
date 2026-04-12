@@ -46,10 +46,15 @@ module.exports = {
           DEFAULT: 'rgb(var(--gb-background) / <alpha-value>)',
         },
         text: {
-          DEFAULT: 'rgb(var(--gb-text) / <alpha-value>)',
-          muted:   'rgb(var(--gb-text-muted) / <alpha-value>)',
-          muted2:  'rgb(var(--gb-text-muted2) / <alpha-value>)',
-          muted3:  'rgb(var(--gb-text-muted3) / <alpha-value>)',
+          DEFAULT:  'rgb(var(--gb-text) / <alpha-value>)',
+          muted:    'rgb(var(--gb-text-muted) / <alpha-value>)',
+          muted2:   'rgb(var(--gb-text-muted2) / <alpha-value>)',
+          muted3:   'rgb(var(--gb-text-muted3) / <alpha-value>)',
+          readonly: 'rgb(var(--gb-text-readonly) / <alpha-value>)',
+        },
+        badge: {
+          bg:   'rgb(var(--gb-badge-bg) / <alpha-value>)',
+          text: 'rgb(var(--gb-badge-text) / <alpha-value>)',
         },
         border: {
           DEFAULT: 'rgb(var(--gb-border) / <alpha-value>)',
@@ -58,7 +63,11 @@ module.exports = {
           danger:  'rgb(var(--gb-border-danger) / <alpha-value>)',
         },
         surface: {
-          DEFAULT: 'rgb(var(--gb-surface) / <alpha-value>)',
+          DEFAULT:     'rgb(var(--gb-surface) / <alpha-value>)',
+          tableHeader: 'rgb(var(--gb-surface-table-header) / <alpha-value>)',
+          rowHover:    'rgb(var(--gb-surface-row-hover) / <alpha-value>)',
+          summaryRow:  'rgb(var(--gb-surface-summary-row) / <alpha-value>)',
+          readonly:    'rgb(var(--gb-surface-readonly) / <alpha-value>)',
         },
         onPrimary: 'rgb(var(--gb-on-primary) / <alpha-value>)',
         disabled: {

@@ -59,6 +59,19 @@
     --gb-disabled-bg:   229 231 235;  /* gray-200 */
     --gb-disabled-text: 107 114 128;  /* gray-500 */
     --gb-danger-text:   220  38  38;  /* red-600  */
+
+    /* Table surface layer tokens */
+    --gb-surface-table-header:  249 250 251;  /* gray-50  — table header row   */
+    --gb-surface-row-hover:     239 246 255;  /* blue-50  — row hover state     */
+    --gb-surface-summary-row:   243 244 246;  /* gray-100 — subtotal/total rows */
+
+    /* Read-only / locked field state */
+    --gb-surface-readonly:      249 250 251;  /* gray-50  */
+    --gb-text-readonly:          75  85  99;  /* gray-600 */
+
+    /* Badge neutral (currency tags, status pills) */
+    --gb-badge-bg:      229 231 235;  /* gray-200 */
+    --gb-badge-text:     55  65  81;  /* gray-700 */
   }
 
   /* ── Dark mode overrides ─────────────────────────────────────────────────
@@ -116,6 +129,19 @@
     --gb-disabled-bg:    42  55  74;  /* matches gb-border */
     --gb-disabled-text: 100 114 133;  /* matches gb-text-muted */
     --gb-danger-text:   248 113 113;  /* red-400 */
+
+    /* Table surface layer tokens — dark */
+    --gb-surface-table-header:   33  44  62;  /* slightly deeper than surface */
+    --gb-surface-row-hover:      23  45  88;  /* primary-soft — same as nav active bg */
+    --gb-surface-summary-row:    33  44  62;  /* same as table header            */
+
+    /* Read-only / locked field state — dark */
+    --gb-surface-readonly:       21  27  39;  /* page background — "recessed" look */
+    --gb-text-readonly:         100 114 133;  /* text-muted */
+
+    /* Badge neutral — dark */
+    --gb-badge-bg:       42  55  74;  /* gb-border */
+    --gb-badge-text:    181 194 210;  /* text-muted3 */
   }
 }
 

@@ -213,12 +213,12 @@ func ReportToolbar(vm ReportToolbarVM) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if vm.Mode == "asof" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<!-- Balance Sheet: single As Of date --> <div><label class=\"block text-small font-medium text-text-muted\">As of</label> <input type=\"date\" name=\"as_of\" x-model=\"asOf\" @change=\"onAsOfChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<!-- Balance Sheet: single As Of date --> <div><label class=\"block text-small font-medium text-text-muted\">As of</label> <input type=\"date\" name=\"as_of\" x-model=\"asOf\" @change=\"onAsOfChange()\" class=\"mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus\" style=\"color-scheme:dark\"></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<!-- Period reports: From + To --> <div><label class=\"block text-small font-medium text-text-muted\">From</label> <input type=\"date\" name=\"from\" x-model=\"from\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div><div><label class=\"block text-small font-medium text-text-muted\">To</label> <input type=\"date\" name=\"to\" x-model=\"to\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<!-- Period reports: From + To --> <div><label class=\"block text-small font-medium text-text-muted\">From</label> <input type=\"date\" name=\"from\" x-model=\"from\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus\" style=\"color-scheme:dark\"></div><div><label class=\"block text-small font-medium text-text-muted\">To</label> <input type=\"date\" name=\"to\" x-model=\"to\" @change=\"onFromToChange()\" class=\"mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus\" style=\"color-scheme:dark\"></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -250,7 +250,7 @@ func ReportToolbar(vm ReportToolbarVM) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Source)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 129, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 132, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -263,7 +263,7 @@ func ReportToolbar(vm ReportToolbarVM) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(reportSourceLabel(vm.Source))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 129, Col: 111}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 132, Col: 111}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -282,7 +282,7 @@ func ReportToolbar(vm ReportToolbarVM) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FreshnessLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 132, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 135, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func ReportToolbar(vm ReportToolbarVM) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(vm.FreshnessLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 132, Col: 75}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/report_toolbar.templ`, Line: 135, Col: 75}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {

@@ -67,7 +67,8 @@ templ ReportToolbar(vm ReportToolbarVM) {
 							name="as_of"
 							x-model="asOf"
 							@change="onAsOfChange()"
-							class="mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							class="mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"
+						style="color-scheme:dark"
 						/>
 					</div>
 				} else {
@@ -79,7 +80,8 @@ templ ReportToolbar(vm ReportToolbarVM) {
 							name="from"
 							x-model="from"
 							@change="onFromToChange()"
-							class="mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							class="mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"
+							style="color-scheme:dark"
 						/>
 					</div>
 					<div>
@@ -89,7 +91,8 @@ templ ReportToolbar(vm ReportToolbarVM) {
 							name="to"
 							x-model="to"
 							@change="onFromToChange()"
-							class="mt-1 rounded-md border border-border-input px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+							class="mt-1 rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"
+							style="color-scheme:dark"
 						/>
 					</div>
 				}

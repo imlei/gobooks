@@ -8,3 +8,24 @@ templ Card(content templ.Component) {
 	</div>
 }
 
+// SectionCard is the standard form/page section wrapper: a titled card with an
+// optional subtitle and an inner content slot.
+//
+// Usage:
+//
+//	@ui.SectionCard("Payment Details", "", myContentComponent(vm))
+//
+// The section h2 title and the content slot are separated by a 4-unit gap.
+// Padding is p-5 (20px). Shadow-sm reinforces visual elevation on dark mode.
+templ SectionCard(title string, subtitle string, content templ.Component) {
+	<div class="rounded-lg border border-border bg-surface p-5 shadow-sm">
+		<h2 class="text-section font-semibold text-text">{ title }</h2>
+		if subtitle != "" {
+			<p class="mt-1 text-small text-text-muted2">{ subtitle }</p>
+		}
+		<div class="mt-4">
+			@content
+		</div>
+	</div>
+}
+

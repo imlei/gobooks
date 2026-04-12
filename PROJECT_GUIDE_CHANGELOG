@@ -1,0 +1,51 @@
+# Gobooks Project Guide Changelog
+
+## v4 → v5
+
+### Added
+
+* Historical Honesty > Cosmetic Neatness as a formal core principle
+* Cache = Acceleration ONLY as a formal core principle
+* explicit shared architecture layers: Core Engines, Business Modules, Infrastructure Modules, Connector Layers
+* Shared Cache Infrastructure as formal infrastructure
+* SmartPicker Acceleration as formal infrastructure
+* Report Acceleration as formal infrastructure
+* AI Assist Platform as formal infrastructure
+* FX / multi-currency rules for Journal Entry
+* explicit FX source semantics separation (row origin vs JE snapshot source)
+* explicit JE save-time FX rules
+* Phase 1 FX rounding policy
+* immutable posted JE FX read-path requirement
+* historical honesty rules for FX and legacy data
+* AR/AP foreign-currency control-account routing rules
+* system-reserved account/code governance
+* currencies / multi-currency controls under Company Settings
+* additional audit / observability expectations around FX and cache behavior
+* explicit requirement that report acceleration and picker acceleration remain subordinate to backend truth
+
+### Expanded
+
+* Product definition now explicitly includes FX and cache behavior in the supreme authority scope
+* System architecture now formalizes reusable engine/module/connector layers
+* Multi-company rules now explicitly include currencies and exchange rates as company-scoped data
+* Posting Engine flow now includes FX / Currency Resolution
+* Chart of Accounts now includes system-owned account rules and reserved-code namespaces
+* Invoice direction now includes future compatibility with foreign-currency AR routing
+* UI/UX principles now explicitly call out transaction-currency vs base-currency clarity
+* Implementation checklist now includes historical honesty and cache/provider/AI subordination to backend truth
+* Testing requirements now include provider contract correctness, no-live-provider-at-save, and honest legacy read semantics
+
+### Clarified
+
+* backend authority covers FX conversion and accounting truth
+* external provider data is never accounting truth
+* manual FX override must not mutate shared rate tables
+* customer/vendor default transaction currency controls routing for new AR/AP documents
+* historical uncertainty must be shown honestly rather than cosmetically normalized
+* list/detail/reversal read surfaces must not disagree about legacy FX truth
+
+### Directional Impact
+
+* Gobooks is now explicitly governed as an engine-centered accounting platform with formal FX architecture, not just a single-currency bookkeeping core with later add-ons
+* Multi-currency JE and future AR/AP foreign-currency routing are now part of the official architecture direction
+* Shared acceleration and AI infrastructure are now first-class architecture concepts instead of ad hoc feature decisions

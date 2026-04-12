@@ -31,3 +31,27 @@ templ ButtonDanger(label string, typeAttr string, disabled bool) {
 	</button>
 }
 
+// ButtonToolbar renders a ghost/outline button for toolbar or secondary action rows
+// (e.g. Print, Export CSV, Cancel in a toolbar).
+// It is intentionally lower visual weight than ButtonSecondary.
+templ ButtonToolbar(label string, typeAttr string, disabled bool) {
+	<button
+		type={ typeAttr }
+		disabled?={ disabled }
+		class="rounded-md border border-border px-3 py-2 text-body font-medium text-text hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+	>
+		{ label }
+	</button>
+}
+
+// ButtonLink renders a secondary-button-styled anchor tag.
+// Use for navigation actions that look like buttons but must be <a> elements.
+templ ButtonLink(label string, href string) {
+	<a
+		href={ templ.SafeURL(href) }
+		class="inline-block rounded-md border border-border-input bg-surface px-4 py-2 text-body font-semibold text-text hover:bg-background"
+	>
+		{ label }
+	</a>
+}
+

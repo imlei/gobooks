@@ -1,6 +1,13 @@
 // 遵循project_guide.md
 package ui
 
+// SelectOption is the uniform value/label pair used by SelectField.
+// Pages convert their domain-specific option lists into []SelectOption.
+type SelectOption struct {
+	Value    string
+	Label    string
+}
+
 // InputField is a reusable labeled input with an error state.
 templ InputField(
 	label string,
@@ -130,5 +137,114 @@ templ InputFieldNumericCodeStrict(
 			}
 			<p x-show="localErr" class="mt-1 text-body text-danger" x-text="localErr"></p>
 		</div>
+	</div>
+}
+
+// ── New shared form primitives ────────────────────────────────────────────────
+// These replace the repeated inline label+control+error patterns in page templates.
+// Pages with Alpine bindings (x-model, @change, :readonly, etc.) should continue
+// to render controls inline but use fieldClass() from pages/form_helpers.go for
+// the class string, eliminating the if/else error-state duplication.
+
+// SelectField renders a labeled <select> with integrated error state.
+// Use for static selects that do not need Alpine x-model or @change bindings.
+// For Alpine-bound selects, use fieldClass() in the page template directly.
+templ SelectField(label string, name string, options []SelectOption, selected string, err string, hint string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		if err != "" {
+			<select
+				name={ name }
+				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-danger-focus"
+			>
+				for _, opt := range options {
+					<option value={ opt.Value } selected?={ opt.Value == selected }>{ opt.Label }</option>
+				}
+			</select>
+			<div class="mt-1 text-small text-danger">{ err }</div>
+		} else {
+			<select
+				name={ name }
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"
+			>
+				for _, opt := range options {
+					<option value={ opt.Value } selected?={ opt.Value == selected }>{ opt.Label }</option>
+				}
+			</select>
+		}
+		if hint != "" {
+			<p class="mt-1 text-small text-text-muted2">{ hint }</p>
+		}
+	</div>
+}
+
+// TextareaField renders a labeled <textarea> with integrated error state.
+templ TextareaField(label string, name string, value string, placeholder string, rows int, err string, hint string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		if err != "" {
+			<textarea
+				name={ name }
+				rows={ IntString(rows) }
+				placeholder={ placeholder }
+				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-danger-focus"
+			>{ value }</textarea>
+			<div class="mt-1 text-small text-danger">{ err }</div>
+		} else {
+			<textarea
+				name={ name }
+				rows={ IntString(rows) }
+				placeholder={ placeholder }
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"
+			>{ value }</textarea>
+		}
+		if hint != "" {
+			<p class="mt-1 text-small text-text-muted2">{ hint }</p>
+		}
+	</div>
+}
+
+// DateField renders a labeled date input with dark-mode color-scheme override.
+// Always adds style="color-scheme:dark" so the browser's native calendar picker
+// follows the dark theme regardless of OS/browser defaults.
+// Use for static date inputs without Alpine x-model.
+// For Alpine-bound date inputs, add style="color-scheme:dark" in the page template.
+templ DateField(label string, name string, value string, err string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		if err != "" {
+			<input
+				type="date"
+				name={ name }
+				value={ value }
+				class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-danger-focus"
+				style="color-scheme:dark"
+			/>
+			<div class="mt-1 text-small text-danger">{ err }</div>
+		} else {
+			<input
+				type="date"
+				name={ name }
+				value={ value }
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"
+				style="color-scheme:dark"
+			/>
+		}
+	</div>
+}
+
+// ReadonlyField renders a display-only labeled value.
+// Use when the field is informational and cannot be edited (e.g. locked currency,
+// computed totals, system-assigned IDs).
+// Visually recessed relative to editable controls using surface-readonly token.
+templ ReadonlyField(label string, value string, hint string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<div class="mt-2 rounded-md border border-border-subtle bg-surface-readonly px-3 py-2 text-body text-text-readonly select-none">
+			{ value }
+		</div>
+		if hint != "" {
+			<p class="mt-1 text-small text-text-muted2">{ hint }</p>
+		}
 	</div>
 }
