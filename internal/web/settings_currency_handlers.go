@@ -149,6 +149,7 @@ func (s *Server) handleExchangeRatesAdd(c *fiber.Ctx) error {
 		Target:    targetCode,
 		Rate:      rate,
 		RateType:  "spot",
+		Source:    services.ExchangeRateRowSourceManual,
 		Date:      effectiveDate,
 	})
 	if err != nil {

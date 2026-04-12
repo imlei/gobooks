@@ -219,6 +219,173 @@ function testBillDateFilterInputSanitizesAndNormalizes() {
   assert.ok(documentListeners.DOMContentLoaded, 'expected DOMContentLoaded hook to be registered');
 }
 
+async function testJournalEntryFXEditorBaseModeAndForeignFetch() {
+  const fetchCalls = [];
+  const localStore = new Map();
+  const context = loadBrowserScript('journal_entry_fx.js', {
+    fetch: async (url) => {
+      fetchCalls.push(url);
+      return {
+        ok: true,
+        async json() {
+          return {
+            transaction_currency_code: 'USD',
+            base_currency_code: 'CAD',
+            exchange_rate: '1.37000000',
+            exchange_rate_date: '2026-04-10',
+            exchange_rate_source: 'provider_fetched',
+            source_label: 'Latest',
+            snapshot_id: 55,
+            is_identity: false,
+          };
+        },
+      };
+    },
+    crypto: {
+      randomUUID() {
+        return 'journal-line-1';
+      },
+    },
+    localStorage: {
+      getItem(key) {
+        return localStore.has(key) ? localStore.get(key) : null;
+      },
+      setItem(key, value) {
+        localStore.set(key, value);
+      },
+      removeItem(key) {
+        localStore.delete(key);
+      },
+    },
+    document: {
+      getElementById(id) {
+        if (id === 'gobooks-journal-accounts-data') {
+          return { textContent: '[]' };
+        }
+        if (id === 'gobooks-journal-currency-options') {
+          return { textContent: '["CAD","USD"]' };
+        }
+        return null;
+      },
+    },
+    window: {
+      location: { search: '' },
+      confirm() {
+        return true;
+      },
+      crypto: {
+        randomUUID() {
+          return 'journal-line-1';
+        },
+      },
+    },
+  });
+
+  const editor = context.gobooksJournalEntryDraft();
+  editor.$el = {
+    dataset: {
+      companyId: '42',
+      baseCurrency: 'CAD',
+      defaultCurrency: 'CAD',
+    },
+  };
+
+  editor.init();
+  assert.equal(editor.showFXBlock, false);
+  assert.equal(editor.fx.source, 'identity');
+  assert.equal(editor.lines.length, 2);
+
+  editor.header.transaction_currency_code = 'USD';
+  editor.onCurrencyChange();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(editor.showFXBlock, true);
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(editor.fx.snapshot_id, '55');
+  assert.equal(editor.fx.source, 'provider_fetched');
+}
+
+async function testJournalEntryCurrencyChangeConfirmation() {
+  const confirmations = [];
+  const localStore = new Map();
+  const context = loadBrowserScript('journal_entry_fx.js', {
+    fetch: async () => ({
+      ok: true,
+      async json() {
+        return {
+          transaction_currency_code: 'USD',
+          base_currency_code: 'CAD',
+          exchange_rate: '1.25000000',
+          exchange_rate_date: '2026-04-10',
+          exchange_rate_source: 'provider_fetched',
+          source_label: 'Latest',
+          snapshot_id: 77,
+        };
+      },
+    }),
+    crypto: {
+      randomUUID() {
+        return 'journal-line-2';
+      },
+    },
+    localStorage: {
+      getItem(key) {
+        return localStore.has(key) ? localStore.get(key) : null;
+      },
+      setItem(key, value) {
+        localStore.set(key, value);
+      },
+      removeItem(key) {
+        localStore.delete(key);
+      },
+    },
+    document: {
+      getElementById(id) {
+        if (id === 'gobooks-journal-accounts-data') {
+          return { textContent: '[]' };
+        }
+        if (id === 'gobooks-journal-currency-options') {
+          return { textContent: '["CAD","USD"]' };
+        }
+        return null;
+      },
+    },
+    window: {
+      location: { search: '' },
+      confirm(message) {
+        confirmations.push(message);
+        return false;
+      },
+      crypto: {
+        randomUUID() {
+          return 'journal-line-2';
+        },
+      },
+    },
+  });
+
+  const editor = context.gobooksJournalEntryDraft();
+  editor.$el = {
+    dataset: {
+      companyId: '77',
+      baseCurrency: 'CAD',
+      defaultCurrency: 'CAD',
+    },
+  };
+
+  editor.init();
+  editor.lines[0].account_id = '1';
+  editor.lines[0].debit = '10.00';
+  editor.recalc();
+
+  editor.header.transaction_currency_code = 'USD';
+  editor.onCurrencyChange();
+
+  assert.equal(confirmations.length, 1);
+  assert.equal(editor.header.transaction_currency_code, 'CAD');
+  assert.equal(editor.lines[0].debit, '10.00');
+}
+
 async function run() {
   const tests = [
     {
@@ -236,6 +403,14 @@ async function run() {
     {
       name: 'bill date filter input strips letters and normalizes 8-digit dates',
       fn: testBillDateFilterInputSanitizesAndNormalizes,
+    },
+    {
+      name: 'journal entry editor hides FX in base mode and fetches stored FX in foreign mode',
+      fn: testJournalEntryFXEditorBaseModeAndForeignFetch,
+    },
+    {
+      name: 'journal entry currency change confirmation restores prior currency on cancel',
+      fn: testJournalEntryCurrencyChangeConfirmation,
     },
   ];
 

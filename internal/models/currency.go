@@ -68,23 +68,27 @@ func ValidateCurrencyMode(mode CurrencyMode, currencyCode *string) error {
 	return nil
 }
 
-// ExchangeRate stores a dated rate between two currencies.
+// ExchangeRate stores an immutable dated rate snapshot between two currencies.
 //
 // CompanyID is nullable:
 //   - NULL      → system/shared rate available to all companies
 //   - non-null  → company-specific override; takes precedence during lookup
+//
+// Multiple snapshots may exist for the same scope + day. Lookup resolves to the
+// newest matching row for operational use, while older rows remain available so
+// posted documents can validate and display the exact snapshot they used.
 //
 // Lookup order (implemented in currency_service.GetExchangeRate):
 //
 //	company override exact → company override nearest prior
 //	→ system exact → system nearest prior → ErrNoRate
 type ExchangeRate struct {
-	ID                 uint            `gorm:"primaryKey"`
-	CompanyID          *uint           `gorm:"index"`
-	BaseCurrencyCode   string          `gorm:"size:3;not null"`
-	TargetCurrencyCode string          `gorm:"size:3;not null"`
+	ID                 uint   `gorm:"primaryKey"`
+	CompanyID          *uint  `gorm:"index"`
+	BaseCurrencyCode   string `gorm:"size:3;not null"`
+	TargetCurrencyCode string `gorm:"size:3;not null"`
 	// Rate is stored as NUMERIC(20,8) — never float64.
-	Rate          decimal.Decimal `gorm:"type:numeric(20,8);not null"`
+	Rate decimal.Decimal `gorm:"type:numeric(20,8);not null"`
 	// RateType is one of: "spot", "average", "custom".
 	RateType      string    `gorm:"not null;default:'spot'"`
 	Source        string    `gorm:"not null;default:''"`

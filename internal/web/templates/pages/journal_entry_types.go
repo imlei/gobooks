@@ -7,6 +7,15 @@ import "gobooks/internal/models"
 type JournalEntryVM struct {
 	HasCompany      bool
 	ActiveCompanyID uint // scopes client-side recent-account localStorage
+	BaseCurrencyCode string
+	// MultiCurrencyEnabled controls whether the JE currency selector is available.
+	MultiCurrencyEnabled bool
+	// CompanyCurrencies carries the enabled foreign currencies for the company.
+	CompanyCurrencies []models.CompanyCurrency
+	// TransactionCurrencyOptions is the explicit JE currency option list (base first).
+	TransactionCurrencyOptions []string
+	// DefaultTransactionCurrency is the initial JE transaction currency code.
+	DefaultTransactionCurrency string
 
 	// Dropdown data
 	Accounts         []models.Account

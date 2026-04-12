@@ -125,17 +125,35 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 	// isForeignCurrency is true when the invoice has an explicit currency code
 	// that differs from the company base currency.
 	exchangeRate := decimal.NewFromInt(1)
-	isForeignCurrency := inv.CurrencyCode != "" && inv.CurrencyCode != company.BaseCurrencyCode
+	transactionCurrencyCode := company.BaseCurrencyCode
+	if normalizeCurrencyCode(inv.CurrencyCode) != "" {
+		transactionCurrencyCode = normalizeCurrencyCode(inv.CurrencyCode)
+	}
+	isForeignCurrency := transactionCurrencyCode != company.BaseCurrencyCode
+	jeSnapshot := IdentityExchangeRateSnapshot(company.BaseCurrencyCode, inv.InvoiceDate)
 	if isForeignCurrency {
 		if inv.ExchangeRate.GreaterThan(decimal.Zero) && !inv.ExchangeRate.Equal(decimal.NewFromInt(1)) {
 			exchangeRate = inv.ExchangeRate
+			jeSnapshot = ExchangeRateSnapshot{
+				TransactionCurrencyCode: transactionCurrencyCode,
+				BaseCurrencyCode:        company.BaseCurrencyCode,
+				ExchangeRate:            exchangeRate.RoundBank(8),
+				ExchangeRateDate:        normalizeDate(inv.InvoiceDate),
+				ExchangeRateSource:      JournalEntryExchangeRateSourceManual,
+				SourceLabel:             ExchangeRateSourceLabel(JournalEntryExchangeRateSourceManual),
+			}
 		} else {
-			r, err := GetExchangeRate(db, &companyID, inv.CurrencyCode, company.BaseCurrencyCode, inv.InvoiceDate)
+			row, found, err := lookupExchangeRateRow(db, companyID, transactionCurrencyCode, company.BaseCurrencyCode, inv.InvoiceDate)
 			if err != nil {
 				return fmt.Errorf("exchange rate %s→%s not found for %s: %w",
-					inv.CurrencyCode, company.BaseCurrencyCode, inv.InvoiceDate.Format("2006-01-02"), err)
+					transactionCurrencyCode, company.BaseCurrencyCode, inv.InvoiceDate.Format("2006-01-02"), err)
 			}
-			exchangeRate = r
+			if !found {
+				return fmt.Errorf("exchange rate %s→%s not found for %s: %w",
+					transactionCurrencyCode, company.BaseCurrencyCode, inv.InvoiceDate.Format("2006-01-02"), ErrNoRate)
+			}
+			jeSnapshot = snapshotFromExchangeRateRow(row, companyID)
+			exchangeRate = jeSnapshot.ExchangeRate
 		}
 	}
 
@@ -162,7 +180,7 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return fmt.Errorf("clearing account is not active")
 		}
 	} else if isForeignCurrency {
-		sysKey := "ar_" + inv.CurrencyCode
+		sysKey := "ar_" + transactionCurrencyCode
 		err := db.Where("company_id = ? AND system_key = ? AND is_active = true", companyID, sysKey).
 			First(&arAccount).Error
 		if err != nil {
@@ -212,6 +230,8 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 	if err != nil {
 		return fmt.Errorf("aggregate journal lines: %w", err)
 	}
+	txJournalLines := make([]PostingFragment, len(jeLines))
+	copy(txJournalLines, jeLines)
 	// ── 5b. Apply FX scaling (foreign-currency invoices only) ────────────────
 	// Scale all non-AR lines to base currency. The AR anchor absorbs rounding so
 	// that ΣDebit == ΣCredit after conversion.
@@ -258,12 +278,16 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		//    SourceType + SourceID enable the unique partial index backstop:
 		//    (company_id, source_type='invoice', source_id=inv.ID) WHERE status='posted'.
 		je := models.JournalEntry{
-			CompanyID:  companyID,
-			EntryDate:  inv.InvoiceDate,
-			JournalNo:  inv.InvoiceNumber,
-			Status:     models.JournalEntryStatusPosted,
-			SourceType: models.LedgerSourceInvoice,
-			SourceID:   inv.ID,
+			CompanyID:               companyID,
+			EntryDate:               inv.InvoiceDate,
+			JournalNo:               inv.InvoiceNumber,
+			Status:                  models.JournalEntryStatusPosted,
+			SourceType:              models.LedgerSourceInvoice,
+			SourceID:                inv.ID,
+			TransactionCurrencyCode: transactionCurrencyCode,
+			ExchangeRate:            jeSnapshot.ExchangeRate,
+			ExchangeRateDate:        jeSnapshot.ExchangeRateDate,
+			ExchangeRateSource:      jeSnapshot.ExchangeRateSource,
 		}
 		if err := wrapUniqueViolation(tx.Create(&je).Error, "create journal entry"); err != nil {
 			return fmt.Errorf("create journal entry: %w", err)
@@ -273,11 +297,14 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		//    Collect created rows: ProjectToLedger needs AccountID + Debit/Credit
 		//    from the persisted rows (company_id cross-check inside ProjectToLedger).
 		createdLines := make([]models.JournalLine, 0, len(jeLines))
-		for _, jl := range jeLines {
+		for i, jl := range jeLines {
+			txLine := txJournalLines[i]
 			line := models.JournalLine{
 				CompanyID:      companyID,
 				JournalEntryID: je.ID,
 				AccountID:      jl.AccountID,
+				TxDebit:        txLine.Debit,
+				TxCredit:       txLine.Credit,
 				Debit:          jl.Debit,
 				Credit:         jl.Credit,
 				Memo:           jl.Memo,

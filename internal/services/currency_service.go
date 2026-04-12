@@ -4,6 +4,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -48,7 +49,9 @@ func GetExchangeRate(db *gorm.DB, companyID *uint, base, target string, date tim
 }
 
 // lookupRate queries for the most recent rate on or before day within the given
-// company scope (nil = system rates only).
+// company scope (nil = system rates only). When multiple snapshots exist for the
+// same day, the newest row wins for lookup purposes while older snapshot rows
+// remain available for exact JE save-time validation.
 func lookupRate(db *gorm.DB, companyID *uint, base, target string, day time.Time) (decimal.Decimal, error) {
 	q := db.Model(&models.ExchangeRate{}).
 		Where("base_currency_code = ? AND target_currency_code = ?", base, target).
@@ -61,7 +64,7 @@ func lookupRate(db *gorm.DB, companyID *uint, base, target string, day time.Time
 	}
 
 	var er models.ExchangeRate
-	if err := q.Order("effective_date DESC").First(&er).Error; err != nil {
+	if err := q.Order("effective_date DESC, id DESC").First(&er).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return decimal.Zero, ErrNoRate
 		}
@@ -100,8 +103,10 @@ type UpsertExchangeRateInput struct {
 	Date     time.Time
 }
 
-// UpsertExchangeRate creates a new exchange rate or updates the rate/source of an
-// existing row that matches (companyID, base, target, rateType, effectiveDate).
+// UpsertExchangeRate creates a new immutable exchange-rate snapshot row for the
+// given scope/date unless an exact matching snapshot already exists. Snapshot
+// rows are append-only so JE save-time validation can continue to accept the
+// exact rate row the user saw even after a newer same-day refresh occurs.
 // Rate must be strictly positive. Base and Target must differ.
 func UpsertExchangeRate(db *gorm.DB, in UpsertExchangeRateInput) (models.ExchangeRate, error) {
 	if in.Base == "" || in.Target == "" {
@@ -120,9 +125,10 @@ func UpsertExchangeRate(db *gorm.DB, in UpsertExchangeRateInput) (models.Exchang
 	}
 	day := time.Date(in.Date.Year(), in.Date.Month(), in.Date.Day(), 0, 0, 0, 0, time.UTC)
 
+	source := strings.TrimSpace(in.Source)
 	q := db.Model(&models.ExchangeRate{}).
-		Where("base_currency_code = ? AND target_currency_code = ? AND rate_type = ? AND effective_date = ?",
-			in.Base, in.Target, rateType, day)
+		Where("base_currency_code = ? AND target_currency_code = ? AND rate_type = ? AND effective_date = ? AND rate = ? AND source = ?",
+			in.Base, in.Target, rateType, day, in.Rate, source)
 	if in.CompanyID == nil {
 		q = q.Where("company_id IS NULL")
 	} else {
@@ -131,40 +137,44 @@ func UpsertExchangeRate(db *gorm.DB, in UpsertExchangeRateInput) (models.Exchang
 
 	var er models.ExchangeRate
 	err := q.First(&er).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		er = models.ExchangeRate{
-			CompanyID:          in.CompanyID,
-			BaseCurrencyCode:   in.Base,
-			TargetCurrencyCode: in.Target,
-			Rate:               in.Rate,
-			RateType:           rateType,
-			Source:             in.Source,
-			EffectiveDate:      day,
-		}
-		return er, db.Create(&er).Error
+	if err == nil {
+		return er, nil
 	}
 	if err != nil {
-		return er, err
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return er, err
+		}
 	}
-	// Update in-place.
-	err = db.Model(&er).Updates(map[string]any{
-		"rate":   in.Rate,
-		"source": in.Source,
-	}).Error
-	return er, err
+
+	er = models.ExchangeRate{
+		CompanyID:          in.CompanyID,
+		BaseCurrencyCode:   in.Base,
+		TargetCurrencyCode: in.Target,
+		Rate:               in.Rate,
+		RateType:           rateType,
+		Source:             source,
+		EffectiveDate:      day,
+	}
+	return er, db.Create(&er).Error
 }
 
 // ListExchangeRates returns all rates for a currency pair in the given company
 // scope, ordered by effective_date DESC. Pass companyID=nil for system rates.
 func ListExchangeRates(db *gorm.DB, companyID *uint, base, target string) ([]models.ExchangeRate, error) {
-	q := db.Where("base_currency_code = ? AND target_currency_code = ?", base, target)
+	q := db.Model(&models.ExchangeRate{})
+	if strings.TrimSpace(base) != "" {
+		q = q.Where("base_currency_code = ?", base)
+	}
+	if strings.TrimSpace(target) != "" {
+		q = q.Where("target_currency_code = ?", target)
+	}
 	if companyID == nil {
 		q = q.Where("company_id IS NULL")
 	} else {
 		q = q.Where("company_id = ?", *companyID)
 	}
 	var rates []models.ExchangeRate
-	err := q.Order("effective_date DESC").Find(&rates).Error
+	err := q.Order("effective_date DESC, id DESC").Find(&rates).Error
 	return rates, err
 }
 

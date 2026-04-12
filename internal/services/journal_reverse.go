@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gobooks/internal/models"
 
 	"gorm.io/gorm"
@@ -51,6 +52,27 @@ func ReverseJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDa
 		return 0, err
 	}
 
+	var company models.Company
+	if err := tx.Select("id", "base_currency_code").First(&company, companyID).Error; err != nil {
+		return 0, err
+	}
+	transactionCurrencyCode := original.TransactionCurrencyCode
+	if strings.TrimSpace(transactionCurrencyCode) == "" {
+		transactionCurrencyCode = company.BaseCurrencyCode
+	}
+	exchangeRate := original.ExchangeRate
+	if exchangeRate.IsZero() {
+		exchangeRate = decimal.NewFromInt(1)
+	}
+	exchangeRateDate := original.ExchangeRateDate
+	if exchangeRateDate.IsZero() {
+		exchangeRateDate = original.EntryDate
+	}
+	exchangeRateSource := original.ExchangeRateSource
+	if strings.TrimSpace(exchangeRateSource) == "" {
+		exchangeRateSource = JournalEntryExchangeRateSourceIdentity
+	}
+
 	revDesc := fmt.Sprintf("Reversal of JE #%d", original.ID)
 	if s := strings.TrimSpace(original.JournalNo); s != "" {
 		revDesc = fmt.Sprintf("%s: %s", revDesc, s)
@@ -59,13 +81,17 @@ func ReverseJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDa
 	// The unique partial index (status='posted', source_type != '', source_id > 0)
 	// ensures at most one posted reversal per original JE, acting as DB backstop.
 	reversed := models.JournalEntry{
-		CompanyID:      companyID,
-		EntryDate:      reverseDate,
-		JournalNo:      revDesc,
-		ReversedFromID: &original.ID,
-		Status:         models.JournalEntryStatusPosted,
-		SourceType:     models.LedgerSourceReversal,
-		SourceID:       original.ID,
+		CompanyID:               companyID,
+		EntryDate:               reverseDate,
+		JournalNo:               revDesc,
+		ReversedFromID:          &original.ID,
+		Status:                  models.JournalEntryStatusPosted,
+		SourceType:              models.LedgerSourceReversal,
+		SourceID:                original.ID,
+		TransactionCurrencyCode: transactionCurrencyCode,
+		ExchangeRate:            exchangeRate,
+		ExchangeRateDate:        exchangeRateDate,
+		ExchangeRateSource:      exchangeRateSource,
 	}
 	if err := wrapUniqueViolation(tx.Create(&reversed).Error, "create reversal entry"); err != nil {
 		return 0, err
@@ -73,10 +99,20 @@ func ReverseJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDa
 
 	lines := make([]models.JournalLine, 0, len(original.Lines))
 	for _, l := range original.Lines {
+		txDebit := l.TxCredit
+		txCredit := l.TxDebit
+		if txDebit.IsZero() && !l.Credit.IsZero() {
+			txDebit = l.Credit
+		}
+		if txCredit.IsZero() && !l.Debit.IsZero() {
+			txCredit = l.Debit
+		}
 		lines = append(lines, models.JournalLine{
 			CompanyID:      companyID,
 			JournalEntryID: reversed.ID,
 			AccountID:      l.AccountID,
+			TxDebit:        txDebit,
+			TxCredit:       txCredit,
 			Debit:          l.Credit,
 			Credit:         l.Debit,
 			Memo:           l.Memo,

@@ -145,26 +145,68 @@ func TestUpsertExchangeRate_CreateNew(t *testing.T) {
 	}
 }
 
-// TestUpsertExchangeRate_UpdateExisting verifies that calling UpsertExchangeRate
-// again for the same key updates the rate rather than inserting a duplicate.
-func TestUpsertExchangeRate_UpdateExisting(t *testing.T) {
+// TestUpsertExchangeRate_ReusesExactSnapshot verifies that calling
+// UpsertExchangeRate again with the exact same immutable snapshot reuses the
+// existing row instead of creating noise duplicates.
+func TestUpsertExchangeRate_ReusesExactSnapshot(t *testing.T) {
 	db := testCurrencyDB(t)
-	in := UpsertExchangeRateInput{Base: "CAD", Target: "USD", Rate: fxRate(0.73), Date: fxDate(2024, 7, 1)}
+	in := UpsertExchangeRateInput{
+		Base:   "CAD",
+		Target: "USD",
+		Rate:   fxRate(0.73),
+		Source: ExchangeRateRowSourceProviderFetched,
+		Date:   fxDate(2024, 7, 1),
+	}
 	first, _ := UpsertExchangeRate(db, in)
 
-	in.Rate = fxRate(0.75) // updated rate
 	second, err := UpsertExchangeRate(db, in)
 	if err != nil {
-		t.Fatalf("unexpected error on update: %v", err)
+		t.Fatalf("unexpected error on exact reinsert: %v", err)
 	}
 	if first.ID != second.ID {
-		t.Errorf("expected same row ID; first=%d second=%d", first.ID, second.ID)
+		t.Errorf("expected same row ID for exact snapshot; first=%d second=%d", first.ID, second.ID)
+	}
+	var count int64
+	if err := db.Model(&models.ExchangeRate{}).Where("base_currency_code = ? AND target_currency_code = ?", "CAD", "USD").Count(&count).Error; err != nil {
+		t.Fatalf("count exact snapshots: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly one stored snapshot, got %d", count)
+	}
+}
+
+func TestUpsertExchangeRate_AppendsNewSameDaySnapshot(t *testing.T) {
+	db := testCurrencyDB(t)
+	first, err := UpsertExchangeRate(db, UpsertExchangeRateInput{
+		Base:   "CAD",
+		Target: "USD",
+		Rate:   fxRate(0.73),
+		Source: ExchangeRateRowSourceProviderFetched,
+		Date:   fxDate(2024, 7, 1),
+	})
+	if err != nil {
+		t.Fatalf("create first snapshot: %v", err)
+	}
+	second, err := UpsertExchangeRate(db, UpsertExchangeRateInput{
+		Base:   "CAD",
+		Target: "USD",
+		Rate:   fxRate(0.75),
+		Source: ExchangeRateRowSourceProviderFetched,
+		Date:   fxDate(2024, 7, 1),
+	})
+	if err != nil {
+		t.Fatalf("create second snapshot: %v", err)
+	}
+	if first.ID == second.ID {
+		t.Fatal("expected same-day changed rate to append a new snapshot row")
 	}
 
-	// Confirm updated value is persisted.
-	got, _ := GetExchangeRate(db, nil, "CAD", "USD", fxDate(2024, 7, 1))
+	got, err := GetExchangeRate(db, nil, "CAD", "USD", fxDate(2024, 7, 1))
+	if err != nil {
+		t.Fatalf("lookup latest same-day rate: %v", err)
+	}
 	if !got.Equal(fxRate(0.75)) {
-		t.Errorf("expected 0.75 after update, got %s", got)
+		t.Fatalf("expected latest same-day snapshot 0.75, got %s", got)
 	}
 }
 

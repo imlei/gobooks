@@ -712,7 +712,7 @@ END $$;
 // It runs 5 idempotent steps:
 //  1. Create the global currencies dictionary table and seed 7 ISO 4217 currencies.
 //  2. Create the company_currencies join table.
-//  3. Create the exchange_rates table with partial unique indexes.
+//  3. Create the exchange_rates table with partial lookup indexes.
 //  4. Add base_currency_code and multi_currency_enabled to the companies table.
 //  5. Add currency_mode, currency_code, is_system_generated, system_key to accounts.
 //
@@ -751,7 +751,7 @@ CREATE TABLE IF NOT EXISTS company_currencies (
   CONSTRAINT uq_company_currency UNIQUE (company_id, currency_code)
 );
 `,
-		// ── Step 3: exchange_rates table + partial unique indexes ──────────────
+		// ── Step 3: exchange_rates table + partial lookup indexes ──────────────
 		`
 CREATE TABLE IF NOT EXISTS exchange_rates (
   id                   BIGSERIAL     PRIMARY KEY,
@@ -766,11 +766,11 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
 );
 CREATE INDEX IF NOT EXISTS idx_exchange_rates_effective_date
   ON exchange_rates (effective_date);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_exchange_rates_system
-  ON exchange_rates (base_currency_code, target_currency_code, rate_type, effective_date)
+CREATE INDEX IF NOT EXISTS idx_exchange_rates_system_lookup
+  ON exchange_rates (base_currency_code, target_currency_code, rate_type, effective_date DESC, id DESC)
   WHERE company_id IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_exchange_rates_company
-  ON exchange_rates (company_id, base_currency_code, target_currency_code, rate_type, effective_date)
+CREATE INDEX IF NOT EXISTS idx_exchange_rates_company_lookup
+  ON exchange_rates (company_id, base_currency_code, target_currency_code, rate_type, effective_date DESC, id DESC)
   WHERE company_id IS NOT NULL;
 `,
 		// ── Step 4: add multi-currency columns to companies ────────────────────

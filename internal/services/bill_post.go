@@ -111,17 +111,35 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 
 	// ── 2c. Determine exchange rate ───────────────────────────────────────────
 	exchangeRate := decimal.NewFromInt(1)
-	isForeignCurrency := bill.CurrencyCode != "" && bill.CurrencyCode != company.BaseCurrencyCode
+	transactionCurrencyCode := company.BaseCurrencyCode
+	if normalizeCurrencyCode(bill.CurrencyCode) != "" {
+		transactionCurrencyCode = normalizeCurrencyCode(bill.CurrencyCode)
+	}
+	isForeignCurrency := transactionCurrencyCode != company.BaseCurrencyCode
+	jeSnapshot := IdentityExchangeRateSnapshot(company.BaseCurrencyCode, bill.BillDate)
 	if isForeignCurrency {
 		if bill.ExchangeRate.GreaterThan(decimal.Zero) && !bill.ExchangeRate.Equal(decimal.NewFromInt(1)) {
 			exchangeRate = bill.ExchangeRate
+			jeSnapshot = ExchangeRateSnapshot{
+				TransactionCurrencyCode: transactionCurrencyCode,
+				BaseCurrencyCode:        company.BaseCurrencyCode,
+				ExchangeRate:            exchangeRate.RoundBank(8),
+				ExchangeRateDate:        normalizeDate(bill.BillDate),
+				ExchangeRateSource:      JournalEntryExchangeRateSourceManual,
+				SourceLabel:             ExchangeRateSourceLabel(JournalEntryExchangeRateSourceManual),
+			}
 		} else {
-			r, err := GetExchangeRate(db, &companyID, bill.CurrencyCode, company.BaseCurrencyCode, bill.BillDate)
+			row, found, err := lookupExchangeRateRow(db, companyID, transactionCurrencyCode, company.BaseCurrencyCode, bill.BillDate)
 			if err != nil {
 				return fmt.Errorf("exchange rate %s→%s not found for %s: %w",
-					bill.CurrencyCode, company.BaseCurrencyCode, bill.BillDate.Format("2006-01-02"), err)
+					transactionCurrencyCode, company.BaseCurrencyCode, bill.BillDate.Format("2006-01-02"), err)
 			}
-			exchangeRate = r
+			if !found {
+				return fmt.Errorf("exchange rate %s→%s not found for %s: %w",
+					transactionCurrencyCode, company.BaseCurrencyCode, bill.BillDate.Format("2006-01-02"), ErrNoRate)
+			}
+			jeSnapshot = snapshotFromExchangeRateRow(row, companyID)
+			exchangeRate = jeSnapshot.ExchangeRate
 		}
 	}
 
@@ -131,7 +149,7 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 	// Fall back to the first active AP account if not found.
 	var apAccount models.Account
 	if isForeignCurrency {
-		sysKey := "ap_" + bill.CurrencyCode
+		sysKey := "ap_" + transactionCurrencyCode
 		err := db.Where("company_id = ? AND system_key = ? AND is_active = true", companyID, sysKey).
 			First(&apAccount).Error
 		if err != nil {
@@ -171,6 +189,8 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 	if err != nil {
 		return fmt.Errorf("aggregate journal lines: %w", err)
 	}
+	txJournalLines := make([]PostingFragment, len(jeLines))
+	copy(txJournalLines, jeLines)
 
 	// ── 5b. Apply FX scaling (foreign bills only) ────────────────────────────
 	// Capture document-currency AP total before scaling; this is stored in bill.Amount
@@ -206,12 +226,16 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 
 		// b. Journal entry header.
 		je := models.JournalEntry{
-			CompanyID:  companyID,
-			EntryDate:  bill.BillDate,
-			JournalNo:  bill.BillNumber,
-			Status:     models.JournalEntryStatusPosted,
-			SourceType: models.LedgerSourceBill,
-			SourceID:   bill.ID,
+			CompanyID:               companyID,
+			EntryDate:               bill.BillDate,
+			JournalNo:               bill.BillNumber,
+			Status:                  models.JournalEntryStatusPosted,
+			SourceType:              models.LedgerSourceBill,
+			SourceID:                bill.ID,
+			TransactionCurrencyCode: transactionCurrencyCode,
+			ExchangeRate:            jeSnapshot.ExchangeRate,
+			ExchangeRateDate:        jeSnapshot.ExchangeRateDate,
+			ExchangeRateSource:      jeSnapshot.ExchangeRateSource,
 		}
 		if err := wrapUniqueViolation(tx.Create(&je).Error, "create journal entry"); err != nil {
 			return fmt.Errorf("create journal entry: %w", err)
@@ -220,11 +244,14 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		// c. Journal lines — one per aggregated fragment.
 		//    Collect created rows for the ledger projection step.
 		createdLines := make([]models.JournalLine, 0, len(jeLines))
-		for _, jl := range jeLines {
+		for i, jl := range jeLines {
+			txLine := txJournalLines[i]
 			line := models.JournalLine{
 				CompanyID:      companyID,
 				JournalEntryID: je.ID,
 				AccountID:      jl.AccountID,
+				TxDebit:        txLine.Debit,
+				TxCredit:       txLine.Credit,
 				Debit:          jl.Debit,
 				Credit:         jl.Credit,
 				Memo:           jl.Memo,

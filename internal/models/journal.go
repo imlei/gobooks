@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 // ── Journal entry status ──────────────────────────────────────────────────────
@@ -63,6 +64,15 @@ type JournalEntry struct {
 	EntryDate time.Time          `gorm:"not null"`
 	JournalNo string             `gorm:"column:journal_no;not null;default:''"`
 	Status    JournalEntryStatus `gorm:"type:text;not null;default:'posted'"`
+	// TransactionCurrencyCode always stores the explicit transaction currency ISO code.
+	// Base-currency entries persist the company base currency, never an empty string.
+	TransactionCurrencyCode string `gorm:"column:transaction_currency_code;size:3;not null;default:''"`
+	// ExchangeRate stores the accepted immutable transaction-currency -> base-currency snapshot.
+	ExchangeRate decimal.Decimal `gorm:"type:numeric(20,8);not null;default:1"`
+	// ExchangeRateDate stores the effective date of the accepted snapshot.
+	ExchangeRateDate time.Time `gorm:"type:date"`
+	// ExchangeRateSource stores JE snapshot semantics, not exchange-rate-row origin semantics.
+	ExchangeRateSource string `gorm:"type:text;not null;default:'identity'"`
 
 	// SourceType identifies the originating business document.
 	// Empty string for manual journal entries; excluded from the uniqueness index.
@@ -94,6 +104,10 @@ type JournalLine struct {
 	AccountID uint    `gorm:"not null;index"`
 	Account   Account `gorm:"foreignKey:AccountID"`
 
+	// TxDebit / TxCredit preserve the original transaction-currency source amounts.
+	TxDebit  decimal.Decimal `gorm:"column:tx_debit;type:numeric(18,2);not null"`
+	TxCredit decimal.Decimal `gorm:"column:tx_credit;type:numeric(18,2);not null"`
+	// Debit / Credit remain ledger truth in company base currency.
 	Debit  decimal.Decimal `gorm:"type:numeric(18,2);not null"`
 	Credit decimal.Decimal `gorm:"type:numeric(18,2);not null"`
 
@@ -105,4 +119,33 @@ type JournalLine struct {
 	// Banking: reconciliation markers (optional).
 	ReconciliationID *uint      `gorm:"index"`
 	ReconciledAt     *time.Time `gorm:""`
+}
+
+func (j *JournalEntry) BeforeCreate(tx *gorm.DB) error {
+	if j.TransactionCurrencyCode == "" && j.CompanyID != 0 {
+		var company Company
+		if err := tx.Select("id", "base_currency_code").First(&company, j.CompanyID).Error; err == nil {
+			j.TransactionCurrencyCode = company.BaseCurrencyCode
+		}
+	}
+	if j.ExchangeRate.IsZero() {
+		j.ExchangeRate = decimal.NewFromInt(1)
+	}
+	if j.ExchangeRateDate.IsZero() {
+		j.ExchangeRateDate = j.EntryDate
+	}
+	if j.ExchangeRateSource == "" {
+		j.ExchangeRateSource = "identity"
+	}
+	return nil
+}
+
+func (l *JournalLine) BeforeCreate(tx *gorm.DB) error {
+	if l.TxDebit.IsZero() && !l.Debit.IsZero() {
+		l.TxDebit = l.Debit
+	}
+	if l.TxCredit.IsZero() && !l.Credit.IsZero() {
+		l.TxCredit = l.Credit
+	}
+	return nil
 }

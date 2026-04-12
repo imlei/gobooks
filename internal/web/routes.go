@@ -151,6 +151,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 
 	// SmartPicker 通用实体搜索 API（只读，仅需成员资格）
 	app.Get("/api/smart-picker/search", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSmartPickerSearch)
+	app.Get("/api/exchange-rate", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleExchangeRateGet)
 	// SmartPicker 使用事件（fire-and-forget，用于未来的排名信号）
 	app.Post("/api/smart-picker/usage", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSmartPickerUsage)
 
@@ -163,6 +164,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/journal-entry", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleJournalEntryForm)
 	app.Post("/journal-entry", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleJournalEntryPost)
 	app.Get("/journal-entry/list", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleJournalEntryList)
+	app.Get("/journal-entry/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleJournalEntryDetail)
 	app.Post("/journal-entry/:id/reverse", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleJournalEntryReverse)
 
 	// ── 发票 ─────────────────────────────────────────────────────────────────────
