@@ -23,9 +23,15 @@ type ExpenseLine struct {
 	ExpenseAccountID *uint    `gorm:"index"`
 	ExpenseAccount   *Account `gorm:"foreignKey:ExpenseAccountID"`
 
+	// Optional per-line tax.
+	TaxCodeID *uint     `gorm:"index"`
+	TaxCode   *TaxCode  `gorm:"foreignKey:TaxCodeID"`
+	LineTax   decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
+	LineTotal decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
+
 	// Optional per-line task linkage.
-	TaskID    *uint `gorm:"index"`
-	Task      *Task `gorm:"foreignKey:TaskID"`
+	TaskID     *uint `gorm:"index"`
+	Task       *Task `gorm:"foreignKey:TaskID"`
 	IsBillable bool  `gorm:"not null;default:false"`
 
 	CreatedAt time.Time

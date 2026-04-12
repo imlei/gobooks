@@ -15,7 +15,7 @@ templ ExpenseForm(vm ExpenseFormVM) {
 
 templ expenseFormBody(vm ExpenseFormVM) {
 	@bodyExpenseForm(vm)
-	<script src="/static/expense_form.js?v=2"></script>
+	<script src="/static/expense_form.js?v=3"></script>
 }
 
 templ bodyExpenseForm(vm ExpenseFormVM) {
@@ -40,6 +40,7 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 			data-base-currency={ vm.BaseCurrencyCode }
 			data-multi-currency={ expenseBoolAttr(vm.MultiCurrency) }
 			data-expense-accounts={ vm.ExpenseAccountsJSON }
+			data-tax-codes={ vm.TaxCodesJSON }
 			data-tasks={ vm.SelectableTasksJSON }
 			data-initial-lines={ expenseInitialLinesJSON(vm) }
 			@gobooks-picker-select="onPickerSelect($event)"
@@ -170,8 +171,7 @@ templ expenseHeaderSection(vm ExpenseFormVM) {
 }
 
 // expenseFXStrip renders a compact informational FX note when the selected
-// currency differs from the company base currency. It does not collect a
-// snapshot_id — FX is informational only for expenses.
+// currency differs from the company base currency.
 templ expenseFXStrip(vm ExpenseFormVM) {
 	<div x-show="showFX" x-cloak class="rounded-md border border-border-subtle bg-background/70 px-4 py-2.5 text-small text-text-muted2">
 		<span>
@@ -182,25 +182,27 @@ templ expenseFXStrip(vm ExpenseFormVM) {
 }
 
 // expenseLinesSection renders the dynamic line-item grid managed by Alpine.
-// Each line includes: Category | Description | Amount | Remove
-// and a sub-row for Task linkage + Billable toggle.
+// Each line: Category | Description | Amount | Tax | Remove
+// Sub-row: Task | Billable
+// Footer:  subtotal + per-code tax adjustment + grand total
 templ expenseLinesSection(vm ExpenseFormVM) {
 	<div>
-		<!-- Line-item table header -->
-		<div class="mb-1 hidden grid-cols-[1fr_2fr_9rem_2rem] gap-2 text-small font-medium text-text-muted2 sm:grid">
+		<!-- Column headers (desktop only) -->
+		<div class="mb-1 hidden gap-2 text-small font-medium text-text-muted2 sm:grid sm:grid-cols-[1fr_2fr_8rem_8rem_2rem]">
 			<span>Category *</span>
 			<span>Description</span>
 			<span class="text-right">Amount *</span>
+			<span>Tax</span>
 			<span></span>
 		</div>
 
-		<!-- Dynamic line rows — rendered by Alpine x-for -->
+		<!-- Dynamic line rows -->
 		<div class="space-y-3">
 			<template x-for="(line, idx) in lines" :key="idx">
 				<div class="rounded-md border border-border bg-surface/30 p-2 space-y-1.5 sm:border-0 sm:bg-transparent sm:p-0">
 
-					<!-- Main row: Category | Description | Amount | Remove -->
-					<div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_9rem_2rem]">
+					<!-- Main row: Category | Description | Amount | Tax | Remove -->
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_8rem_8rem_2rem]">
 
 						<!-- Category select -->
 						<select
@@ -226,7 +228,7 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 							class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"
 						/>
 
-						<!-- Amount -->
+						<!-- Amount (pre-tax) -->
 						<input
 							type="text"
 							:name="'line_amount[' + idx + ']'"
@@ -234,9 +236,22 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 							inputmode="decimal"
 							placeholder="0.00"
 							@blur="onAmountBlur(idx)"
-							@input="recalc()"
+							@input="onAmountInput(idx)"
 							class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-right font-mono text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus tabular-nums"
 						/>
+
+						<!-- Tax code select -->
+						<select
+							:name="'line_tax_code_id[' + idx + ']'"
+							x-model="line.tax_code_id"
+							@change="onTaxCodeChange(idx)"
+							class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"
+						>
+							<option value="">— No tax —</option>
+							<template x-for="tc in taxCodes" :key="tc.id">
+								<option :value="String(tc.id)" :selected="String(line.tax_code_id) === String(tc.id)" x-text="tc.code + ' — ' + tc.name"></option>
+							</template>
+						</select>
 
 						<!-- Remove button -->
 						<button
@@ -253,8 +268,7 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 					</div>
 
 					<!-- Task & Billing sub-row -->
-					<div class="flex flex-wrap items-center gap-3 sm:pr-[calc(2rem+0.5rem)]">
-						<!-- Task select -->
+					<div class="flex flex-wrap items-center gap-3">
 						<div class="min-w-0 flex-1">
 							<select
 								:name="'line_task_id[' + idx + ']'"
@@ -268,7 +282,6 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 								</template>
 							</select>
 						</div>
-						<!-- Billable toggle -->
 						<label
 							class="inline-flex shrink-0 items-center gap-2 text-small"
 							:class="line.task_id ? 'text-text' : 'text-text-muted3 cursor-not-allowed'"
@@ -291,22 +304,64 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 			</template>
 		</div>
 
-		<!-- Totals row + Add line button -->
-		<div class="mt-3 flex items-center justify-between border-t border-border pt-3">
-			<button
-				type="button"
-				@click="addLine()"
-				class="text-small text-primary hover:underline"
-			>+ Add line</button>
+		<!-- Hidden line count -->
+		<input type="hidden" name="line_count" :value="lines.length"/>
 
-			<div class="flex items-center gap-3 text-body">
-				<span class="text-text-muted2">Total</span>
-				<span class="w-32 text-right font-mono font-medium text-text tabular-nums" x-text="totalFormatted()"></span>
+		<!-- Totals footer -->
+		<div class="mt-4 flex flex-col items-end gap-0.5 border-t border-border pt-3">
+			<!-- Add line button (left) + totals (right) -->
+			<div class="flex w-full items-start justify-between">
+				<button
+					type="button"
+					@click="addLine()"
+					class="text-small text-primary hover:underline"
+				>+ Add line</button>
+
+				<!-- Totals panel -->
+				<div class="w-64 space-y-1 text-body">
+					<!-- Pre-tax subtotal -->
+					<div class="flex items-center justify-between">
+						<span class="text-text-muted2">Pre-tax subtotal</span>
+						<span class="font-mono tabular-nums text-text" x-text="subtotal()"></span>
+					</div>
+
+					<!-- Per-tax-code breakdown (editable override) -->
+					<template x-for="tc in taxBreakdown()" :key="tc.id">
+						<div class="flex items-center justify-between gap-2">
+							<span class="truncate text-small text-text-muted2" x-text="tc.code + ' @ ' + (tc.rate * 100).toFixed(2).replace(/\\.?0+$/, '') + '%'"></span>
+							<input
+								type="number"
+								min="0"
+								step="0.01"
+								:value="taxAdjValue(tc.id)"
+								@input="onTaxAdjInput(tc.id, $event.target.value)"
+								@blur="if (!$event.target.value.trim()) { $event.target.value = taxAdjValue(tc.id) }"
+								class="w-24 rounded-md border border-border-input bg-surface px-2 py-0.5 text-right font-mono text-body text-text tabular-nums outline-none focus:ring-2 focus:ring-primary-focus"
+							/>
+						</div>
+					</template>
+
+					<!-- Hidden tax adjustment inputs submitted with form -->
+					<template x-if="taxBreakdown().length > 0">
+						<span>
+							<input type="hidden" name="tax_adj_count" :value="taxBreakdown().length"/>
+							<template x-for="(tc, i) in taxBreakdown()" :key="tc.id">
+								<span>
+									<input type="hidden" :name="'tax_adj_id[' + i + ']'" :value="tc.id"/>
+									<input type="hidden" :name="'tax_adj_amount[' + i + ']'" :value="taxAdjValue(tc.id)"/>
+								</span>
+							</template>
+						</span>
+					</template>
+
+					<!-- Grand total -->
+					<div class="flex items-center justify-between border-t border-border pt-1.5 font-semibold">
+						<span>Total</span>
+						<span class="font-mono tabular-nums" x-text="grandTotal()"></span>
+					</div>
+				</div>
 			</div>
 		</div>
-
-		<!-- Hidden line count for the server -->
-		<input type="hidden" name="line_count" :value="lines.length"/>
 	</div>
 }
 

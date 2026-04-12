@@ -235,10 +235,15 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 			lineVM := pages.ExpenseLineFormVM{
 				Description: l.Description,
 				Amount:      l.Amount.StringFixed(2),
+				LineTax:     l.LineTax.StringFixed(2),
+				LineTotal:   l.LineTotal.StringFixed(2),
 				IsBillable:  l.IsBillable,
 			}
 			if l.ExpenseAccountID != nil {
 				lineVM.ExpenseAccountID = fmt.Sprintf("%d", *l.ExpenseAccountID)
+			}
+			if l.TaxCodeID != nil {
+				lineVM.TaxCodeID = fmt.Sprintf("%d", *l.TaxCodeID)
 			}
 			if l.TaskID != nil {
 				lineVM.TaskID = fmt.Sprintf("%d", *l.TaskID)
@@ -246,10 +251,12 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 			vm.Lines = append(vm.Lines, lineVM)
 		}
 	} else {
-		// Fallback: single line from header fields (pre-migration data).
+		// Fallback: single line from header fields (pre-migration data, no tax).
 		lineVM := pages.ExpenseLineFormVM{
 			Description: exp.Description,
 			Amount:      exp.Amount.StringFixed(2),
+			LineTax:     "0.00",
+			LineTotal:   exp.Amount.StringFixed(2),
 			IsBillable:  exp.IsBillable,
 		}
 		if exp.ExpenseAccountID != nil {
@@ -300,7 +307,9 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	type parsedLine struct {
 		ExpenseAccountID *uint
 		Description      string
-		Amount           decimal.Decimal
+		Amount           decimal.Decimal // pre-tax net
+		TaxCodeIDRaw     string
+		TaxCodeID        *uint
 		TaskID           *uint
 		IsBillable       bool
 	}
@@ -312,6 +321,7 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		accIDRaw := strings.TrimSpace(c.FormValue(key("line_expense_account_id")))
 		desc := strings.TrimSpace(c.FormValue(key("line_description")))
 		amtRaw := strings.TrimSpace(c.FormValue(key("line_amount")))
+		tcIDRaw := strings.TrimSpace(c.FormValue(key("line_tax_code_id")))
 		taskIDRaw := strings.TrimSpace(c.FormValue(key("line_task_id")))
 		isBillable := c.FormValue(key("line_is_billable")) == "1"
 
@@ -320,8 +330,9 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 			amt = decimal.Zero
 		}
 
-		// Skip fully blank placeholder rows (no account, no description, zero amount).
-		if accIDRaw == "" && desc == "" && taskIDRaw == "" && (amtRaw == "" || amtRaw == "0.00" || amtRaw == "0") {
+		// Skip fully blank placeholder rows (no account, no description, zero amount, no task).
+		if accIDRaw == "" && desc == "" && taskIDRaw == "" && tcIDRaw == "" &&
+			(amtRaw == "" || amtRaw == "0.00" || amtRaw == "0") {
 			continue
 		}
 
@@ -329,14 +340,19 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 			ExpenseAccountID: accIDRaw,
 			Description:      desc,
 			Amount:           amt.StringFixed(2),
+			TaxCodeID:        tcIDRaw,
 			TaskID:           taskIDRaw,
 			IsBillable:       isBillable,
 		}
 
-		pl := parsedLine{Description: desc, Amount: amt, IsBillable: isBillable}
+		pl := parsedLine{Description: desc, Amount: amt, TaxCodeIDRaw: tcIDRaw, IsBillable: isBillable}
 		if id64, err := strconv.ParseUint(accIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
 			pl.ExpenseAccountID = &id
+		}
+		if id64, err := strconv.ParseUint(tcIDRaw, 10, 64); err == nil && id64 > 0 {
+			id := uint(id64)
+			pl.TaxCodeID = &id
 		}
 		if id64, err := strconv.ParseUint(taskIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
@@ -353,19 +369,143 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	}
 	vm.Lines = lineVMs
 
+	// ── Validate and load tax codes ───────────────────────────────────────────
+	taxCodeCache := map[uint]*models.TaxCode{}
+	for i, pl := range parsedLines {
+		if pl.TaxCodeID == nil {
+			continue
+		}
+		tcID := *pl.TaxCodeID
+		if _, ok := taxCodeCache[tcID]; ok {
+			continue
+		}
+		var tc models.TaxCode
+		if err := s.DB.
+			Where("id = ? AND company_id = ? AND is_active = true", tcID, companyID).
+			First(&tc).Error; err != nil {
+			vm.FormError = fmt.Sprintf("Line %d has an invalid tax code.", i+1)
+			return vm, services.ExpenseInput{}, true
+		}
+		taxCodeCache[tcID] = &tc
+	}
+
+	// ── Parse tax adjustments (user-edited per-code overrides) ────────────────
+	taxAdjCountRaw := strings.TrimSpace(c.FormValue("tax_adj_count"))
+	taxAdjCount, _ := strconv.Atoi(taxAdjCountRaw)
+	taxAdjMap := map[uint]decimal.Decimal{}
+	for i := 0; i < taxAdjCount; i++ {
+		idRaw := strings.TrimSpace(c.FormValue(fmt.Sprintf("tax_adj_id[%d]", i)))
+		adjAmtRaw := strings.TrimSpace(c.FormValue(fmt.Sprintf("tax_adj_amount[%d]", i)))
+		tcID64, err := strconv.ParseUint(idRaw, 10, 64)
+		if err != nil || tcID64 == 0 {
+			continue
+		}
+		adjAmt, err := decimal.NewFromString(adjAmtRaw)
+		if err != nil {
+			continue
+		}
+		taxAdjMap[uint(tcID64)] = adjAmt.RoundBank(2)
+	}
+
+	// ── Compute per-line tax amounts (two-pass, mirrors bill handler) ─────────
+	type computedLine struct {
+		parsedLine
+		LineNet   decimal.Decimal
+		LineTax   decimal.Decimal
+		LineTotal decimal.Decimal
+	}
+	var computed []computedLine
+
+	type perCodeData struct {
+		calcTotal decimal.Decimal
+		indices   []int
+	}
+	codeData := map[uint]*perCodeData{}
+
+	for _, pl := range parsedLines {
+		lineNet := pl.Amount.RoundBank(2)
+		var lineTax decimal.Decimal
+		if pl.TaxCodeID != nil {
+			if tc, ok := taxCodeCache[*pl.TaxCodeID]; ok {
+				lineTax = lineNet.Mul(tc.Rate).RoundBank(2)
+			}
+		}
+		idx := len(computed)
+		computed = append(computed, computedLine{
+			parsedLine: pl,
+			LineNet:    lineNet,
+			LineTax:    lineTax,
+			LineTotal:  lineNet.Add(lineTax),
+		})
+		if pl.TaxCodeID != nil {
+			cd := codeData[*pl.TaxCodeID]
+			if cd == nil {
+				cd = &perCodeData{}
+				codeData[*pl.TaxCodeID] = cd
+			}
+			cd.calcTotal = cd.calcTotal.Add(lineTax)
+			cd.indices = append(cd.indices, idx)
+		}
+	}
+
+	// Second pass: apply user tax adjustments proportionally.
+	for codeID, cd := range codeData {
+		adj, hasAdj := taxAdjMap[codeID]
+		if !hasAdj || adj.Equal(cd.calcTotal) {
+			continue
+		}
+		if cd.calcTotal.IsZero() {
+			each := adj.Div(decimal.NewFromInt(int64(len(cd.indices)))).RoundBank(2)
+			remainder := adj
+			for i, li := range cd.indices {
+				tax := each
+				if i == len(cd.indices)-1 {
+					tax = remainder
+				}
+				computed[li].LineTax = tax
+				computed[li].LineTotal = computed[li].LineNet.Add(tax)
+				remainder = remainder.Sub(tax)
+			}
+		} else {
+			remaining := adj
+			for i, li := range cd.indices {
+				var tax decimal.Decimal
+				if i == len(cd.indices)-1 {
+					tax = remaining
+				} else {
+					tax = computed[li].LineTax.Mul(adj).Div(cd.calcTotal).RoundBank(2)
+				}
+				computed[li].LineTax = tax
+				computed[li].LineTotal = computed[li].LineNet.Add(tax)
+				remaining = remaining.Sub(tax)
+			}
+		}
+	}
+
+	// Backfill computed tax into lineVMs for error re-render.
+	for i, cl := range computed {
+		if i < len(vm.Lines) {
+			vm.Lines[i].LineTax = cl.LineTax.StringFixed(2)
+			vm.Lines[i].LineTotal = cl.LineTotal.StringFixed(2)
+		}
+	}
+
 	// ── Build service input ───────────────────────────────────────────────────
 	var input services.ExpenseInput
 	input.CompanyID = companyID
 	input.CurrencyCode = vm.CurrencyCode
 	input.Notes = vm.Notes
 
-	for _, pl := range parsedLines {
+	for _, cl := range computed {
 		input.Lines = append(input.Lines, services.ExpenseLineInput{
-			Description:      pl.Description,
-			Amount:           pl.Amount,
-			ExpenseAccountID: pl.ExpenseAccountID,
-			TaskID:           pl.TaskID,
-			IsBillable:       pl.IsBillable,
+			Description:      cl.Description,
+			Amount:           cl.LineNet,
+			ExpenseAccountID: cl.ExpenseAccountID,
+			TaxCodeID:        cl.TaxCodeID,
+			LineTax:          cl.LineTax,
+			LineTotal:        cl.LineTotal,
+			TaskID:           cl.TaskID,
+			IsBillable:       cl.IsBillable,
 		})
 	}
 
@@ -467,6 +607,17 @@ func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM)
 	}
 	vm.ExpenseAccountsJSON = buildExpenseAccountsJSON(expAccounts)
 
+	// Pre-load purchase-scope tax codes for the per-line tax <select>.
+	var taxCodes []models.TaxCode
+	if err := s.DB.
+		Where("company_id = ? AND is_active = true AND scope IN ?", companyID,
+			[]models.TaxScope{models.TaxScopePurchase, models.TaxScopeBoth}).
+		Order("name ASC").
+		Find(&taxCodes).Error; err != nil {
+		return err
+	}
+	vm.TaxCodesJSON = buildExpenseTaxCodesJSON(taxCodes)
+
 	return nil
 }
 
@@ -480,6 +631,27 @@ func buildExpenseAccountsJSON(accounts []models.Account) string {
 	items := make([]expenseAccountJSONItem, 0, len(accounts))
 	for _, a := range accounts {
 		items = append(items, expenseAccountJSONItem{ID: a.ID, Code: a.Code, Name: a.Name})
+	}
+	b, _ := json.Marshal(items)
+	return string(b)
+}
+
+type expenseTaxCodeJSONItem struct {
+	ID   uint   `json:"id"`
+	Code string `json:"code"`
+	Name string `json:"name"`
+	Rate string `json:"rate"` // fraction string, e.g. "0.050000"
+}
+
+func buildExpenseTaxCodesJSON(codes []models.TaxCode) string {
+	items := make([]expenseTaxCodeJSONItem, 0, len(codes))
+	for _, tc := range codes {
+		items = append(items, expenseTaxCodeJSONItem{
+			ID:   tc.ID,
+			Code: tc.Code,
+			Name: tc.Name,
+			Rate: tc.Rate.String(),
+		})
 	}
 	b, _ := json.Marshal(items)
 	return string(b)

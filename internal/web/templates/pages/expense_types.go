@@ -22,7 +22,10 @@ type ExpenseListVM struct {
 type ExpenseLineFormVM struct {
 	ExpenseAccountID string
 	Description      string
-	Amount           string
+	Amount           string // pre-tax net
+	TaxCodeID        string
+	LineTax          string
+	LineTotal        string
 	TaskID           string
 	IsBillable       bool
 	Error            string
@@ -49,6 +52,10 @@ type ExpenseFormVM struct {
 	// SelectableTasksJSON is the JSON-encoded list of selectable tasks for the
 	// per-line task <select>. Shape: [{id, title, customer_name}].
 	SelectableTasksJSON string
+
+	// TaxCodesJSON is the JSON-encoded list of purchase-scope tax codes.
+	// Shape: [{id, code, name, rate}] where rate is a fraction string e.g. "0.05".
+	TaxCodesJSON string
 
 	// Payment settlement fields (all optional).
 	PaymentAccountID    string

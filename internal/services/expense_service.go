@@ -33,8 +33,11 @@ var (
 // total Amount and primary ExpenseAccountID from the lines.
 type ExpenseLineInput struct {
 	Description      string
-	Amount           decimal.Decimal
+	Amount           decimal.Decimal // pre-tax net
 	ExpenseAccountID *uint
+	TaxCodeID        *uint
+	LineTax          decimal.Decimal
+	LineTotal        decimal.Decimal // Amount + LineTax
 	TaskID           *uint
 	IsBillable       bool
 }
@@ -123,11 +126,11 @@ func ListExpenses(db *gorm.DB, filter ExpenseListFilter) ([]models.Expense, erro
 func upsertExpense(db *gorm.DB, expenseID uint, in ExpenseInput) (*models.Expense, error) {
 	// When lines are present, derive header fields from them.
 	if len(in.Lines) > 0 {
-		total := decimal.Zero
+		grandTotal := decimal.Zero
 		for _, l := range in.Lines {
-			total = total.Add(l.Amount)
+			grandTotal = grandTotal.Add(l.LineTotal) // grand total = net + tax per line
 		}
-		in.Amount = total
+		in.Amount = grandTotal
 		in.ExpenseAccountID = in.Lines[0].ExpenseAccountID
 		// Use first non-empty line description as header description if blank.
 		if strings.TrimSpace(in.Description) == "" {
@@ -221,6 +224,9 @@ func upsertExpense(db *gorm.DB, expenseID uint, in ExpenseInput) (*models.Expens
 					Description:      strings.TrimSpace(l.Description),
 					Amount:           l.Amount.RoundBank(2),
 					ExpenseAccountID: l.ExpenseAccountID,
+					TaxCodeID:        l.TaxCodeID,
+					LineTax:          l.LineTax.RoundBank(2),
+					LineTotal:        l.LineTotal.RoundBank(2),
 					TaskID:           l.TaskID,
 					IsBillable:       l.IsBillable,
 				}
