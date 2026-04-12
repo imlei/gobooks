@@ -34,6 +34,24 @@ func (s *Server) rehydrateExpenseAccountLabel(companyID uint, idStr string) stri
 	return item.Primary
 }
 
+// rehydrateVendorLabel uses the VendorProvider to look up the human-readable
+// label for the given vendor ID. Returns "" if the ID is empty or the vendor
+// is not found within the company scope.
+func (s *Server) rehydrateVendorLabel(companyID uint, idStr string) string {
+	if idStr == "" {
+		return ""
+	}
+	p, ok := defaultSmartPickerRegistry.get("vendor")
+	if !ok {
+		return ""
+	}
+	item, err := p.GetByID(s.DB, SmartPickerContext{CompanyID: companyID, Context: "expense_form_vendor"}, idStr)
+	if err != nil || item == nil {
+		return ""
+	}
+	return item.Primary
+}
+
 // rehydratePaymentAccountLabel uses the PaymentAccountProvider to look up the
 // human-readable label for the given payment account ID. Returns "" if the ID
 // is empty or the account no longer satisfies the payment-account guards.
@@ -207,6 +225,9 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 		PaymentReference: exp.PaymentReference,
 	}
 
+	// Rehydrate vendor label for SmartPicker.
+	vm.VendorLabel = s.rehydrateVendorLabel(companyID, vm.VendorID)
+
 	// Rehydrate expense account for SmartPicker. GetByID enforces the same
 	// company / active / expense-type guards as the search provider.
 	if exp.ExpenseAccountID != nil {
@@ -264,6 +285,9 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	vm.PaymentMethod = strings.TrimSpace(c.FormValue("payment_method"))
 	vm.PaymentReference = strings.TrimSpace(c.FormValue("payment_reference"))
 
+	// Rehydrate vendor label for error re-render.
+	vm.VendorLabel = s.rehydrateVendorLabel(companyID, vm.VendorID)
+
 	// Rehydrate SmartPicker label for error re-render: if the submitted account ID is
 	// still valid, show its label so the user sees their selection. If invalid (cross-company,
 	// inactive, wrong type), label stays "" — the picker shows blank, matching the empty
@@ -278,9 +302,6 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 
 	// Rehydrate payment account SmartPicker label for error re-render.
 	vm.PaymentAccountLabel = s.rehydratePaymentAccountLabel(companyID, vm.PaymentAccountID)
-	if vm.PaymentAccountID != "" && vm.PaymentAccountLabel == "" {
-		vm.PaymentAccountID = ""
-	}
 
 	vm.IsBillable = c.FormValue("is_billable") == "1"
 	vm.Notes = strings.TrimSpace(c.FormValue("notes"))
@@ -300,6 +321,15 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	input.Notes = vm.Notes
 
 	var hasErr bool
+	// If the submitted payment account ID fails the provider's eligibility guards (inactive,
+	// cross-company, or ineligible account type such as revenue or A/P), surface an explicit
+	// error. Payment account is optional, so without this check the service would skip its
+	// validation and silently save without a payment account.
+	if vm.PaymentAccountID != "" && vm.PaymentAccountLabel == "" {
+		vm.PaymentAccountError = "The selected payment account is not available or is not a valid payment source (must be a bank, credit card, or petty-cash account)."
+		vm.PaymentAccountID = ""
+		hasErr = true
+	}
 	if d, err := time.Parse("2006-01-02", vm.ExpenseDate); err == nil {
 		input.ExpenseDate = d
 	} else {
@@ -349,20 +379,13 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 }
 
 func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM) error {
-	vendors, err := s.vendorsForCompany(companyID)
-	if err != nil {
-		return err
-	}
-	expenseAccounts, err := s.expenseAccountsForCompany(companyID)
-	if err != nil {
-		return err
-	}
+	// Vendor and expense-account lists are no longer pre-loaded here: both fields
+	// use SmartPicker, which fetches candidates on-demand via the search API.
+	// Eligibility filtering is enforced by the respective backend providers.
 	selectableTasks, err := services.ListSelectableTasks(s.DB, companyID)
 	if err != nil {
 		return err
 	}
-	vm.Vendors = vendors
-	vm.ExpenseAccounts = expenseAccounts
 	vm.SelectableTasks = selectableTasks
 
 	var company models.Company

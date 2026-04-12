@@ -89,7 +89,7 @@ templ expenseDetailsSection(vm ExpenseFormVM) {
 				Entity:        "vendor",
 				Context:       "expense_form_vendor",
 				Value:         vm.VendorID,
-				SelectedLabel: ExpenseFormVendorLabel(vm),
+				SelectedLabel: vm.VendorLabel,
 				Placeholder:   "Search vendors… (optional)",
 				Required:      false,
 				Error:         vm.VendorError,
@@ -144,17 +144,8 @@ templ expenseDetailsSection(vm ExpenseFormVM) {
 			}
 		</div>
 
-		<!-- Expense Category (SmartPicker with no-JS fallback) -->
+		<!-- Expense Category (SmartPicker — single authoritative input surface) -->
 		<div class="sm:col-span-2">
-			<!-- No-JS fallback: Alpine disables this on init -->
-			<div x-data="{}" x-init="var s=$el.querySelector('select');if(s){s.removeAttribute('name');s.disabled=true;}$el.style.display='none';">
-				<select name="expense_account_id" class={ taskInputClass(vm.ExpenseAccountError != "") }>
-					<option value="">-- Select account --</option>
-					for _, acc := range vm.ExpenseAccounts {
-						<option value={ Uitoa(acc.ID) } selected?={ Uitoa(acc.ID) == vm.ExpenseAccountID }>{ acc.Code } { " " } { acc.Name }</option>
-					}
-				</select>
-			</div>
 			@ui.SmartPicker(ui.SmartPickerVM{
 				Label:         "Expense Category *",
 				FieldName:     "expense_account_id",
@@ -192,14 +183,9 @@ templ expenseDetailsSection(vm ExpenseFormVM) {
 templ expensePaymentSection(vm ExpenseFormVM) {
 	<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
-		<!-- Payment Account -->
+		<!-- Payment Account (SmartPicker — eligible payment-source accounts only,
+		     enforced by PaymentAccountProvider: bank, credit card, other current asset) -->
 		<div>
-			<!-- No-JS fallback: Alpine disables this on init -->
-			<div x-data="{}" x-init="var s=$el.querySelector('select');if(s){s.removeAttribute('name');s.disabled=true;}$el.style.display='none';">
-				<select name="payment_account_id" class={ taskInputClass(vm.PaymentAccountError != "") }>
-					<option value="">-- None --</option>
-				</select>
-			</div>
 			@ui.SmartPicker(ui.SmartPickerVM{
 				Label:         "Payment Account",
 				FieldName:     "payment_account_id",

@@ -89,11 +89,13 @@ function gobooksSmartPicker() {
       return this.$el.dataset.hasError === "true";
     },
 
+    // inputClass() returns only the state-conditional classes (border colour + ring colour).
+    // The base layout/surface classes are on the static `class` attribute of the <input>
+    // so they are applied before Alpine initialises — eliminating the white-box FOUC.
     inputClass() {
-      const base = "mt-2 block w-full rounded-md border bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2";
       return this.hasError()
-        ? base + " border-danger focus:ring-danger-focus"
-        : base + " border-border-input focus:ring-primary-focus";
+        ? "border-danger focus:ring-danger-focus"
+        : "border-border-input focus:ring-primary-focus";
     },
 
     // ── Dropdown lifecycle ──

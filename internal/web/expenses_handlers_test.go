@@ -157,8 +157,8 @@ func seedVendor(t *testing.T, db *gorm.DB, companyID uint, name string) uint {
 // ── SmartPicker integration tests ─────────────────────────────────────────────
 
 // TestExpenseNew_SmartPickerAttrs verifies that GET /expenses/new renders the
-// SmartPicker with the correct data-* attributes for the expense account field,
-// and that the no-JS fallback select is also present.
+// SmartPicker with the correct data-* attributes for vendor, expense account,
+// and payment account fields.
 func TestExpenseNew_SmartPickerAttrs(t *testing.T) {
 	db := testRouteDB(t)
 	companyID := seedCompany(t, db, "SP New Co")
@@ -174,24 +174,33 @@ func TestExpenseNew_SmartPickerAttrs(t *testing.T) {
 	body := readResponseBody(t, resp)
 
 	for _, want := range []string{
+		// Expense account SmartPicker
 		`data-entity="account"`,
 		`data-context="expense_form_category"`,
 		`data-required="true"`,
 		`data-field-name="expense_account_id"`,
+		// Vendor SmartPicker
 		`data-entity="vendor"`,
 		`data-context="expense_form_vendor"`,
 		`data-field-name="vendor_id"`,
+		// Payment account SmartPicker
+		`data-entity="payment_account"`,
+		`data-context="expense_form_payment"`,
+		`data-field-name="payment_account_id"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing SmartPicker attr %q in new form", want)
 		}
 	}
-	// No-JS fallback select must be present in the HTML structure.
+	// Native selects (task, payment method, currency) must still be present.
 	if !strings.Contains(body, `<select`) {
-		t.Error("fallback select must be present for no-JS users")
+		t.Error("native selects (task, payment method) must be present")
 	}
-	if !strings.Contains(body, `name="expense_account_id"`) {
-		t.Error("fallback select must have name attribute for no-JS submission")
+	// expense_account_id must NOT appear as a fallback <select name=...> — the field
+	// is SmartPicker-only; no static select fallback should remain.
+	// (data-field-name="expense_account_id" is intentional and not checked here.)
+	if strings.Contains(body, `<select name="expense_account_id"`) {
+		t.Error("expense_account_id must not appear as a fallback select; SmartPicker hidden input is named by Alpine at runtime")
 	}
 }
 
@@ -413,11 +422,13 @@ func TestExpense_ErrorRerenderPreservesSmartPickerState(t *testing.T) {
 	}
 }
 
-// TestExpense_FallbackSelectInHTML verifies that the no-JS fallback select is
-// present in the HTML with a name attribute, proving the no-JS path is viable.
-func TestExpense_FallbackSelectInHTML(t *testing.T) {
+// TestExpense_SmartPickerOnlyInputSurface verifies that each SmartPicker-controlled
+// field (vendor, expense account, payment account) has exactly one visible input
+// surface in the HTML — the SmartPicker's text input rendered by Alpine. No duplicate
+// fallback selects or legacy mirror fields should be present for these fields.
+func TestExpense_SmartPickerOnlyInputSurface(t *testing.T) {
 	db := testRouteDB(t)
-	companyID := seedCompany(t, db, "SP Fallback Co")
+	companyID := seedCompany(t, db, "SP Single Surface Co")
 	user, rawToken := seedUserSession(t, db, &companyID)
 	seedMembership(t, db, user.ID, companyID)
 	seedSPAccount(t, db, companyID, "6100", "Office Supplies", models.RootExpense, true)
@@ -429,13 +440,155 @@ func TestExpense_FallbackSelectInHTML(t *testing.T) {
 	}
 	body := readResponseBody(t, resp)
 
-	// The fallback select must appear with name="expense_account_id" in the HTML.
-	if !strings.Contains(body, `name="expense_account_id"`) {
-		t.Error("fallback select must have name attribute for no-JS form submission")
+	// No-JS fallback <select> elements for SmartPicker-controlled fields must be absent.
+	// The SmartPicker hidden input receives its name from Alpine at runtime; a static
+	// fallback select would create a duplicate visible input surface.
+	for _, fallbackSelect := range []string{
+		`<select name="expense_account_id"`,
+		`<select name="payment_account_id"`,
+		`<select name="vendor_id"`,
+	} {
+		if strings.Contains(body, fallbackSelect) {
+			t.Errorf("no-JS fallback select must be removed: %s found in HTML", fallbackSelect)
+		}
 	}
-	// At least one option must be present for the user to choose from.
-	if !strings.Contains(body, "<option value=") {
-		t.Error("fallback select must contain options")
+
+	// Task options must still be present (task_id is a native select).
+	if !strings.Contains(body, `name="task_id"`) {
+		t.Error("task select must still have a static name attribute")
+	}
+}
+
+// ── Payment Account eligibility tests ────────────────────────────────────────
+// These tests verify that the backend enforces the payment-source account
+// contract: only DetailBank, DetailCreditCard, and DetailOtherCurrentAsset
+// accounts are accepted. Any other account type must be rejected at the
+// service layer regardless of whether it belongs to the same company.
+
+func expensePaymentForm(t *testing.T, expAccID, payAccID uint) url.Values {
+	t.Helper()
+	csrf := newCSRFToken(t)
+	form := url.Values{
+		"expense_date":       {"2026-04-10"},
+		"description":        {"Payment account test"},
+		"amount":             {"20.00"},
+		"currency_code":      {"CAD"},
+		"expense_account_id": {fmt.Sprintf("%d", expAccID)},
+		"payment_account_id": {fmt.Sprintf("%d", payAccID)},
+		"payment_method":     {"wire"},
+	}
+	form.Set(CSRFFormField, csrf)
+	return form
+}
+
+func TestExpensePaymentAccount_BankAccepted(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "PA Bank Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	expAccID := seedValidationAccount(t, db, companyID, "6100", models.RootExpense, models.DetailOfficeExpense)
+	bankID := seedValidationAccount(t, db, companyID, "1010", models.RootAsset, models.DetailBank)
+	app := testRouteApp(t, db)
+
+	form := expensePaymentForm(t, expAccID, bankID)
+	resp := performSecurityRequest(t, app, http.MethodPost, "/expenses",
+		[]byte(form.Encode()), "application/x-www-form-urlencoded",
+		&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"},
+		&http.Cookie{Name: CSRFCookieName, Value: form.Get(CSRFFormField), Path: "/"},
+	)
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("bank account must be accepted as payment source, got %d", resp.StatusCode)
+	}
+}
+
+func TestExpensePaymentAccount_CreditCardAccepted(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "PA CC Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	expAccID := seedValidationAccount(t, db, companyID, "6100", models.RootExpense, models.DetailOfficeExpense)
+	ccID := seedValidationAccount(t, db, companyID, "2100", models.RootLiability, models.DetailCreditCard)
+	app := testRouteApp(t, db)
+
+	form := expensePaymentForm(t, expAccID, ccID)
+	resp := performSecurityRequest(t, app, http.MethodPost, "/expenses",
+		[]byte(form.Encode()), "application/x-www-form-urlencoded",
+		&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"},
+		&http.Cookie{Name: CSRFCookieName, Value: form.Get(CSRFFormField), Path: "/"},
+	)
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("credit card account must be accepted as payment source, got %d", resp.StatusCode)
+	}
+}
+
+func TestExpensePaymentAccount_PettyCashAccepted(t *testing.T) {
+	// DetailOtherCurrentAsset is the model's representation of petty cash /
+	// liquid current assets ("cash" in the product requirement).
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "PA Cash Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	expAccID := seedValidationAccount(t, db, companyID, "6100", models.RootExpense, models.DetailOfficeExpense)
+	cashID := seedValidationAccount(t, db, companyID, "1050", models.RootAsset, models.DetailOtherCurrentAsset)
+	app := testRouteApp(t, db)
+
+	form := expensePaymentForm(t, expAccID, cashID)
+	resp := performSecurityRequest(t, app, http.MethodPost, "/expenses",
+		[]byte(form.Encode()), "application/x-www-form-urlencoded",
+		&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"},
+		&http.Cookie{Name: CSRFCookieName, Value: form.Get(CSRFFormField), Path: "/"},
+	)
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("petty-cash (other_current_asset) account must be accepted as payment source, got %d", resp.StatusCode)
+	}
+}
+
+func TestExpensePaymentAccount_NonEligibleRejected(t *testing.T) {
+	// An expense account (operating_expense) is a valid company-scoped account but
+	// must NOT be accepted as a payment source — backend must reject it.
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "PA Ineligible Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	expAccID := seedValidationAccount(t, db, companyID, "6100", models.RootExpense, models.DetailOfficeExpense)
+	// Use a revenue account as the (ineligible) payment account.
+	revenueID := seedValidationAccount(t, db, companyID, "4100", models.RootRevenue, models.DetailOperatingRevenue)
+	app := testRouteApp(t, db)
+
+	form := expensePaymentForm(t, expAccID, revenueID)
+	resp := performSecurityRequest(t, app, http.MethodPost, "/expenses",
+		[]byte(form.Encode()), "application/x-www-form-urlencoded",
+		&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"},
+		&http.Cookie{Name: CSRFCookieName, Value: form.Get(CSRFFormField), Path: "/"},
+	)
+	if resp.StatusCode == http.StatusSeeOther {
+		t.Fatal("non-eligible account type (revenue) must not be accepted as payment source")
+	}
+	body := readResponseBody(t, resp)
+	if !strings.Contains(body, "payment account") && !strings.Contains(body, "not valid") {
+		t.Errorf("expected payment account error message, got body snippet: %.300s", body)
+	}
+}
+
+func TestExpensePaymentAccount_APAccountRejected(t *testing.T) {
+	// An A/P account (accounts_payable) would be semantically wrong as a payment
+	// source; backend must reject it.
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "PA AP Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	expAccID := seedValidationAccount(t, db, companyID, "6100", models.RootExpense, models.DetailOfficeExpense)
+	apID := seedValidationAccount(t, db, companyID, "2000", models.RootLiability, models.DetailAccountsPayable)
+	app := testRouteApp(t, db)
+
+	form := expensePaymentForm(t, expAccID, apID)
+	resp := performSecurityRequest(t, app, http.MethodPost, "/expenses",
+		[]byte(form.Encode()), "application/x-www-form-urlencoded",
+		&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"},
+		&http.Cookie{Name: CSRFCookieName, Value: form.Get(CSRFFormField), Path: "/"},
+	)
+	if resp.StatusCode == http.StatusSeeOther {
+		t.Fatal("A/P account must not be accepted as payment source")
 	}
 }
 

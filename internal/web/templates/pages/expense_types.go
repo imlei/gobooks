@@ -16,17 +16,6 @@ type ExpenseListVM struct {
 	Expenses []models.Expense
 }
 
-// ExpenseFormVendorLabel returns the display name for the currently selected vendor,
-// used to pre-populate the SmartPicker visible input on edit pages.
-func ExpenseFormVendorLabel(vm ExpenseFormVM) string {
-	for _, v := range vm.Vendors {
-		if Uitoa(v.ID) == vm.VendorID {
-			return v.Name
-		}
-	}
-	return ""
-}
-
 type ExpenseFormVM struct {
 	HasCompany bool
 	IsEdit     bool
@@ -37,6 +26,7 @@ type ExpenseFormVM struct {
 	Amount              string
 	CurrencyCode        string
 	VendorID            string
+	VendorLabel         string // human-readable label for SmartPicker rehydration; never a raw DB ID
 	ExpenseAccountID    string
 	ExpenseAccountLabel string // human-readable label for SmartPicker rehydration; never a raw DB ID
 	TaskID              string
@@ -64,7 +54,5 @@ type ExpenseFormVM struct {
 	BaseCurrencyCode string
 	MultiCurrency    bool
 	CurrencyOptions  []string
-	Vendors          []models.Vendor
-	ExpenseAccounts  []models.Account
 	SelectableTasks  []models.Task
 }

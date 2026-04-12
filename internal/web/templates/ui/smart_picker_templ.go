@@ -378,7 +378,7 @@ func smartPickerInteractive(vm SmartPickerVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" :value=\"selectedId\"><!-- Visible search input + optional clear button (required fields omit clear) --><div class=\"relative\"><input type=\"text\" autocomplete=\"off\" :placeholder=\"placeholder\" x-model=\"query\" :class=\"inputClass()\" @focus=\"onFocus()\" @input.debounce.250ms=\"onInput()\" aria-autocomplete=\"list\" :aria-expanded=\"open\" role=\"combobox\"> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" :value=\"selectedId\"><!-- Visible search input + optional clear button (required fields omit clear) --><div class=\"relative\"><!-- Static class provides dark-mode-safe base styling before Alpine initialises\r\n\t\t\t     (eliminates the white-box FOUC). Alpine's :class merges on top and adds\r\n\t\t\t     the state-conditional border/ring colour from inputClass(). --><input type=\"text\" autocomplete=\"off\" :placeholder=\"placeholder\" x-model=\"query\" class=\"mt-2 block w-full rounded-md border bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2\" :class=\"inputClass()\" @focus=\"onFocus()\" @input.debounce.250ms=\"onInput()\" aria-autocomplete=\"list\" :aria-expanded=\"open\" role=\"combobox\"> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

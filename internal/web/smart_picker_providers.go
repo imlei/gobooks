@@ -375,11 +375,7 @@ func (p *PaymentAccountProvider) Search(db *gorm.DB, ctx SmartPickerContext, que
 	q := db.
 		Where("company_id = ? AND detail_account_type IN ? AND is_active = true",
 			ctx.CompanyID,
-			[]string{
-				string(models.DetailBank),
-				string(models.DetailCreditCard),
-				string(models.DetailOtherCurrentAsset),
-			}).
+			models.PaymentSourceDetailTypes()).
 		Order("code ASC").
 		Limit(smartPickerLimit(ctx))
 	q = applySmartPickerTextSearch(q, db.Dialector.Name(), query, "name", "code")
@@ -407,11 +403,7 @@ func (p *PaymentAccountProvider) GetByID(db *gorm.DB, ctx SmartPickerContext, id
 	err := db.
 		Where("id = ? AND company_id = ? AND detail_account_type IN ? AND is_active = true",
 			id, ctx.CompanyID,
-			[]string{
-				string(models.DetailBank),
-				string(models.DetailCreditCard),
-				string(models.DetailOtherCurrentAsset),
-			}).
+			models.PaymentSourceDetailTypes()).
 		First(&account).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {

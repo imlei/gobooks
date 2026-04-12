@@ -207,11 +207,7 @@ func validateExpenseInput(db *gorm.DB, in ExpenseInput) error {
 		if err := db.Model(&models.Account{}).
 			Where("id = ? AND company_id = ? AND detail_account_type IN ? AND is_active = true",
 				*in.PaymentAccountID, in.CompanyID,
-				[]string{
-					string(models.DetailBank),
-					string(models.DetailCreditCard),
-					string(models.DetailOtherCurrentAsset),
-				}).
+				models.PaymentSourceDetailTypes()).
 			Count(&count).Error; err != nil {
 			return err
 		}

@@ -104,6 +104,26 @@ var validRootDetails = map[RootAccountType]map[DetailAccountType]struct{}{
 	},
 }
 
+// PaymentSourceDetailTypes returns the string values of account detail types that
+// are eligible as a payment source in direct-payment flows (expenses, pay bills,
+// receive payment). This is the single authoritative list — callers must use this
+// function rather than repeating the slice inline.
+//
+// Eligible types:
+//   - DetailBank           — bank, savings, chequing, and cash accounts
+//   - DetailCreditCard     — credit card liability accounts
+//   - DetailOtherCurrentAsset — petty cash and other liquid current assets
+//
+// "Cash" as a conceptual category maps to DetailOtherCurrentAsset (the model has
+// no separate DetailCash constant; petty-cash accounts are classified here).
+func PaymentSourceDetailTypes() []string {
+	return []string{
+		string(DetailBank),
+		string(DetailCreditCard),
+		string(DetailOtherCurrentAsset),
+	}
+}
+
 // ParseRootAccountType parses and validates a root value.
 func ParseRootAccountType(s string) (RootAccountType, error) {
 	r := RootAccountType(strings.TrimSpace(s))
