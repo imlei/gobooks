@@ -128,11 +128,6 @@ func (s *Server) handleReportsHub(c *fiber.Ctx) error {
 	return pages.ReportsHub(hasCompany).Render(c.Context(), c)
 }
 
-func (s *Server) handleSalesTaxReport(c *fiber.Ctx) error {
-	_, hasCompany := ActiveCompanyIDFromCtx(c)
-	return pages.ReportsHub(hasCompany).Render(c.Context(), c)
-}
-
 // reportCompanyInfo holds the company fields needed by report handlers.
 type reportCompanyInfo struct {
 	Name          string

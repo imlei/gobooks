@@ -1,0 +1,327 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"fmt"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+// ── Sales Tax Report ──────────────────────────────────────────────────────────
+
+templ SalesTaxReport(vm SalesTaxReportVM) {
+	@layout.Layout(
+		"GoBooks - Sales Tax Report",
+		ui.SidebarVM{Active: "Reports", HasCompany: vm.HasCompany},
+		bodySalesTaxReport(vm),
+	)
+}
+
+templ bodySalesTaxReport(vm SalesTaxReportVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-center justify-between">
+			<h1 class="text-title font-semibold">Sales Tax Report</h1>
+		</div>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		@ReportToolbar(vm.Toolbar)
+
+		<div class="mt-6 space-y-8">
+			// ── SALES & PURCHASES ─────────────────────────────────────────────────
+			<div class="rounded-lg border border-border bg-surface overflow-x-auto">
+				<div class="flex items-center justify-between px-6 py-4 border-b border-border">
+					<span class="text-small font-semibold uppercase tracking-wider text-text-muted">Sales &amp; Purchases</span>
+					<span class="text-small text-text-muted2">{ vm.DateLabel }</span>
+				</div>
+				<table class="w-full text-left text-body">
+					<thead class="bg-surface-tableHeader text-small uppercase tracking-wider text-text-muted">
+						<tr>
+							<th class="px-6 py-3 font-medium">Tax</th>
+							<th class="px-4 py-3 font-medium text-right">Sales Subject to Tax</th>
+							<th class="px-4 py-3 font-medium text-right">Tax Amount on Sales</th>
+							<th class="px-4 py-3 font-medium text-right">Purchases Subject to Tax</th>
+							<th class="px-4 py-3 font-medium text-right">Tax Amount on Purchases</th>
+							<th class="px-6 py-3 font-medium text-right">Net Tax Owing</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-border-subtle text-text">
+						if len(vm.SummaryRows) == 0 {
+							<tr>
+								<td colspan="6" class="px-6 py-8 text-center text-text-muted2">No tax codes configured for this company.</td>
+							</tr>
+						} else {
+							for _, r := range vm.SummaryRows {
+								<tr class="hover:bg-background">
+									<td class="px-6 py-3">
+										<a
+											href={ templ.SafeURL(salesTaxAccountLink(r.SalesTaxAccountID, vm.DateFrom, vm.DateTo)) }
+											class="font-medium text-primary hover:underline inline-flex items-center gap-1"
+										>
+											{ r.TaxCodeCode }
+											if r.TaxCodeName != "" {
+												<span class="text-text-muted2 font-normal">({ r.TaxCodeName })</span>
+											}
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+											</svg>
+										</a>
+									</td>
+									<td class="px-4 py-3 text-right tabular-nums">{ Money(r.SalesSubjectToTax) }</td>
+									<td class="px-4 py-3 text-right tabular-nums">{ Money(r.TaxAmountOnSales) }</td>
+									<td class="px-4 py-3 text-right tabular-nums">{ Money(r.PurchasesSubjectToTax) }</td>
+									<td class="px-4 py-3 text-right tabular-nums">{ Money(r.TaxAmountOnPurchases) }</td>
+									<td class="px-6 py-3 text-right tabular-nums">{ Money(r.NetTaxOwing) }</td>
+								</tr>
+							}
+						}
+					</tbody>
+					if len(vm.SummaryRows) > 0 {
+						<tfoot class="border-t border-border bg-surface-tableHeader">
+							<tr class="font-semibold text-text">
+								<td class="px-6 py-3">Total</td>
+								<td class="px-4 py-3 text-right tabular-nums">{ Money(vm.SummaryTotals.SalesSubjectToTax) }</td>
+								<td class="px-4 py-3 text-right tabular-nums font-bold">{ Money(vm.SummaryTotals.TaxAmountOnSales) }</td>
+								<td class="px-4 py-3 text-right tabular-nums">{ Money(vm.SummaryTotals.PurchasesSubjectToTax) }</td>
+								<td class="px-4 py-3 text-right tabular-nums font-bold">{ Money(vm.SummaryTotals.TaxAmountOnPurchases) }</td>
+								<td class="px-6 py-3 text-right tabular-nums font-bold">{ Money(vm.SummaryTotals.NetTaxOwing) }</td>
+							</tr>
+						</tfoot>
+					}
+				</table>
+			</div>
+
+			// ── PAYMENTS & BALANCES OWING ─────────────────────────────────────────
+			<div class="rounded-lg border border-border bg-surface overflow-x-auto">
+				<div class="grid grid-cols-2 px-6 py-4 border-b border-border">
+					<span class="text-small font-semibold uppercase tracking-wider text-text-muted">Payments &amp; Balances Owing</span>
+					<div class="grid grid-cols-4 text-right text-small text-text-muted2">
+						<span class="col-start-1 font-medium">As of { vm.DateFrom }</span>
+						<span></span>
+						<span></span>
+						<span class="font-medium">As of { vm.DateTo }</span>
+					</div>
+				</div>
+				<table class="w-full text-left text-body">
+					<thead class="bg-surface-tableHeader text-small uppercase tracking-wider text-text-muted">
+						<tr>
+							<th class="px-6 py-3 font-medium">Tax</th>
+							<th class="px-4 py-3 font-medium text-right">Starting Balance</th>
+							<th class="px-4 py-3 font-medium text-right">Net Tax Owing</th>
+							<th class="px-4 py-3 font-medium text-right">Less Payments to Government</th>
+							<th class="px-6 py-3 font-medium text-right">Ending Balance</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-border-subtle text-text">
+						if len(vm.BalanceRows) == 0 {
+							<tr>
+								<td colspan="5" class="px-6 py-8 text-center text-text-muted2">No data available.</td>
+							</tr>
+						} else {
+							for _, r := range vm.BalanceRows {
+								<tr class="hover:bg-background">
+									<td class="px-6 py-3">
+										<a
+											href={ templ.SafeURL(salesTaxAccountLink(r.SalesTaxAccountID, vm.DateFrom, vm.DateTo)) }
+											class="font-medium text-primary hover:underline inline-flex items-center gap-1"
+										>
+											{ r.TaxCodeCode }
+											if r.TaxCodeName != "" {
+												<span class="text-text-muted2 font-normal">({ r.TaxCodeName })</span>
+											}
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+											</svg>
+										</a>
+									</td>
+									<td class="px-4 py-3 text-right tabular-nums">{ Money(r.StartingBalance) }</td>
+									<td class="px-4 py-3 text-right tabular-nums">{ Money(r.NetTaxOwing) }</td>
+									<td class="px-4 py-3 text-right tabular-nums">{ Money(r.LessPayments) }</td>
+									<td class="px-6 py-3 text-right tabular-nums">{ Money(r.EndingBalance) }</td>
+								</tr>
+							}
+						}
+					</tbody>
+					if len(vm.BalanceRows) > 0 {
+						<tfoot class="border-t border-border bg-surface-tableHeader">
+							<tr class="font-semibold text-text">
+								<td class="px-6 py-3">Total</td>
+								<td class="px-4 py-3 text-right tabular-nums font-bold">{ Money(vm.BalanceTotals.StartingBalance) }</td>
+								<td class="px-4 py-3 text-right tabular-nums font-bold">{ Money(vm.BalanceTotals.NetTaxOwing) }</td>
+								<td class="px-4 py-3 text-right tabular-nums font-bold">{ Money(vm.BalanceTotals.LessPayments) }</td>
+								<td class="px-6 py-3 text-right tabular-nums font-bold">{ Money(vm.BalanceTotals.EndingBalance) }</td>
+							</tr>
+						</tfoot>
+					}
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+// salesTaxAccountLink builds a URL for drilling into an account's transactions.
+func salesTaxAccountLink(accountID uint, from, to string) string {
+	return fmt.Sprintf("/reports/account-transactions?account_id=%d&from=%s&to=%s",
+		accountID, from, to)
+}
+
+// ── Account Transactions ──────────────────────────────────────────────────────
+
+templ AccountTransactions(vm AccountTransactionsVM) {
+	@layout.Layout(
+		"GoBooks - Account Transactions",
+		ui.SidebarVM{Active: "Reports", HasCompany: vm.HasCompany},
+		bodyAccountTransactions(vm),
+	)
+}
+
+templ bodyAccountTransactions(vm AccountTransactionsVM) {
+	<div class="max-w-[95%]">
+		<div class="flex items-center gap-3">
+			<a href="/reports/sales-tax" class="text-text-muted2 hover:text-text text-small">← Sales Tax Report</a>
+		</div>
+		<h1 class="mt-2 text-title font-semibold">Account Transactions</h1>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.FormError }
+			</div>
+		}
+
+		@ReportToolbar(vm.Toolbar)
+
+		if vm.Report != nil {
+			<div class="mt-6 rounded-lg border border-border bg-surface overflow-x-auto">
+				// Account header
+				<div class="px-6 py-4 border-b border-border bg-surface-tableHeader">
+					<div class="font-semibold text-text">{ vm.Report.AccountCode } — { vm.Report.AccountName }</div>
+					<div class="text-small text-text-muted2 mt-0.5">
+						{ accountDetailLabel(vm.Report.AccountRootType, vm.Report.DetailType) }
+					</div>
+				</div>
+
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted border-b border-border">
+						<tr>
+							<th class="px-6 py-3 font-medium">Date</th>
+							<th class="px-4 py-3 font-medium">Description</th>
+							<th class="px-4 py-3 font-medium text-right">Debit</th>
+							<th class="px-4 py-3 font-medium text-right">Credit</th>
+							<th class="px-6 py-3 font-medium text-right">Balance</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						// Starting balance row
+						<tr class="border-b border-border bg-surface-tableHeader">
+							<td class="px-6 py-3 font-semibold" colspan="4">Starting Balance</td>
+							<td class="px-6 py-3 text-right tabular-nums font-semibold">{ Money(vm.Report.StartingBalance) }</td>
+						</tr>
+
+						if len(vm.Report.Rows) == 0 {
+							<tr class="border-b border-border-subtle">
+								<td colspan="5" class="px-6 py-6 text-center text-text-muted2">No transactions in this date range.</td>
+							</tr>
+						} else {
+							for _, row := range vm.Report.Rows {
+								<tr class="border-b border-border-subtle hover:bg-background">
+									<td class="px-6 py-2.5 text-text-muted2">{ row.Date }</td>
+									<td class="px-4 py-2.5">{ row.Description }</td>
+									<td class="px-4 py-2.5 text-right tabular-nums">
+										if row.Debit.IsPositive() {
+											{ Money(row.Debit) }
+										}
+									</td>
+									<td class="px-4 py-2.5 text-right tabular-nums">
+										if row.Credit.IsPositive() {
+											{ Money(row.Credit) }
+										}
+									</td>
+									<td class="px-6 py-2.5 text-right tabular-nums">{ Money(row.Balance) }</td>
+								</tr>
+							}
+						}
+
+						// Totals row
+						<tr class="border-t border-border bg-surface-tableHeader font-semibold">
+							<td class="px-6 py-3" colspan="2">Totals and Ending Balance</td>
+							<td class="px-4 py-3 text-right tabular-nums">{ Money(vm.Report.TotalDebits) }</td>
+							<td class="px-4 py-3 text-right tabular-nums">{ Money(vm.Report.TotalCredits) }</td>
+							<td class="px-6 py-3 text-right tabular-nums">{ Money(vm.Report.EndingBalance) }</td>
+						</tr>
+
+						// Balance change row
+						<tr class="bg-surface-tableHeader text-text-muted2 text-small">
+							<td class="px-6 pb-3" colspan="4">
+								<span class="font-medium text-text">Balance Change</span>
+								<span class="ml-1">Difference between starting and ending balances</span>
+							</td>
+							<td class="px-6 pb-3 text-right tabular-nums font-medium text-text">
+								{ Money(vm.Report.EndingBalance.Sub(vm.Report.StartingBalance)) }
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		} else if vm.FormError == "" {
+			<div class="mt-6 rounded-lg border border-border bg-surface p-8 text-center text-text-muted2">
+				No results were found.<br/>
+				<span class="text-small mt-1 block">Try choosing a different date range or account.</span>
+			</div>
+		}
+	</div>
+}
+
+// accountDetailLabel returns a human-readable "Root > Detail" label.
+func accountDetailLabel(rootType, detailType string) string {
+	root := rootTypeLabel(rootType)
+	detail := detailTypeLabel(detailType)
+	if detail == "" {
+		return root
+	}
+	return root + " > " + detail
+}
+
+func rootTypeLabel(s string) string {
+	switch s {
+	case "asset":
+		return "Asset"
+	case "liability":
+		return "Liability"
+	case "equity":
+		return "Equity"
+	case "revenue":
+		return "Revenue"
+	case "expense":
+		return "Expense"
+	case "cost_of_sales":
+		return "Cost of Sales"
+	default:
+		return s
+	}
+}
+
+func detailTypeLabel(s string) string {
+	switch s {
+	case "sales_tax_payable":
+		return "Sales Tax on Sales and Purchases"
+	case "accounts_receivable":
+		return "Accounts Receivable"
+	case "accounts_payable":
+		return "Accounts Payable"
+	case "bank":
+		return "Bank"
+	case "other_current_asset":
+		return "Other Current Asset"
+	case "other_current_liability":
+		return "Other Current Liability"
+	case "credit_card":
+		return "Credit Card"
+	default:
+		return ""
+	}
+}
+
