@@ -13,6 +13,7 @@ templ Setup(vm SetupViewModel) {
 }
 
 templ bodySetup(vm SetupViewModel) {
+	@setupFormScripts()
 	<div class="max-w-[95%]">
 		<h1 class="text-title font-semibold">First-time Setup</h1>
 		<p class="mt-2 text-text-muted2">
@@ -45,8 +46,8 @@ templ bodySetup(vm SetupViewModel) {
 						vm.Errors.Industry,
 						[]string{"Retail", "Consulting", "Services", "Manufacturing", "Construction", "Other"},
 					)
-					@dateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate)
-					@dateField("Fiscal Year End *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd)
+					@smartDateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate)
+					@smartMonthDayField("Fiscal Year End (MM-DD) *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd)
 					@textField("Business Number *", "business_number", vm.Values.BusinessNumber, vm.Errors.BusinessNumber, "")
 
 					@selectField(
@@ -83,6 +84,183 @@ templ textField(label string, name string, value string, err string, placeholder
 
 templ dateField(label string, name string, value string, err string) {
 	@ui.InputField(label, name, value, "YYYY-MM-DD", "text", err)
+}
+
+// smartDateField renders a text input (YYYY/MM/DD display) with a calendar
+// icon button that triggers the native date picker. Alpine normalises free-form
+// input (YYYYMMDD, YYYY-MM-DD, YYYY/MM/DD) to YYYY-MM-DD for submission.
+// Requires setupFormScripts() to be rendered once on the same page.
+templ smartDateField(label string, name string, value string, err string) {
+	<div x-data="gbSmartDate()" data-init={ value }>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<div class="relative mt-2">
+			if err != "" {
+				<input
+					type="text"
+					x-model="display"
+					@input="onInput()"
+					@blur="onBlur()"
+					placeholder="YYYY/MM/DD"
+					autocomplete="off"
+					class="block w-full rounded-md border border-danger bg-surface px-3 py-2 pr-10 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-danger-focus"
+				/>
+			} else {
+				<input
+					type="text"
+					x-model="display"
+					@input="onInput()"
+					@blur="onBlur()"
+					placeholder="YYYY/MM/DD"
+					autocomplete="off"
+					class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 pr-10 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"
+				/>
+			}
+			<button
+				type="button"
+				@click="tryPicker()"
+				tabindex="-1"
+				title="Choose date"
+				class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-muted3 hover:text-text focus:outline-none"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+					<path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/>
+				</svg>
+			</button>
+			<input
+				type="date"
+				x-ref="picker"
+				x-model="iso"
+				@change="onPickerChange()"
+				tabindex="-1"
+				class="sr-only"
+			/>
+		</div>
+		<input type="hidden" name={ name } :value="iso"/>
+		if err != "" {
+			<div class="mt-1 text-body text-danger">{ err }</div>
+		}
+	</div>
+}
+
+// smartMonthDayField renders a text input (MM-DD display) that accepts MMDD,
+// MM-DD, or MM/DD and normalises on blur. Requires setupFormScripts().
+templ smartMonthDayField(label string, name string, value string, err string) {
+	<div x-data="gbSmartMonthDay()" data-init={ value }>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<div class="mt-2">
+			if err != "" {
+				<input
+					type="text"
+					x-model="display"
+					@blur="onBlur()"
+					placeholder="MM-DD"
+					maxlength="5"
+					autocomplete="off"
+					class="block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-danger-focus"
+				/>
+			} else {
+				<input
+					type="text"
+					x-model="display"
+					@blur="onBlur()"
+					placeholder="MM-DD"
+					maxlength="5"
+					autocomplete="off"
+					class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"
+				/>
+			}
+		</div>
+		<input type="hidden" name={ name } :value="mdValue"/>
+		if err != "" {
+			<div class="mt-1 text-body text-danger">{ err }</div>
+		}
+	</div>
+}
+
+// setupFormScripts emits the Alpine component definitions for gbSmartDate and
+// gbSmartMonthDay. Call once per page that uses smartDateField or
+// smartMonthDayField.
+templ setupFormScripts() {
+	<script>
+	function gbSmartDate() {
+		return {
+			display: '',
+			iso: '',
+			init() {
+				var v = this.$el.dataset.init || '';
+				this.iso = v;
+				this.display = v ? v.replace(/-/g, '/') : '';
+			},
+			_raw(s) { return (s || '').replace(/\D/g, ''); },
+			_toIso(raw) {
+				if (raw.length !== 8) return '';
+				var y = raw.slice(0,4), m = raw.slice(4,6), d = raw.slice(6,8);
+				var iso = y + '-' + m + '-' + d;
+				var dt = new Date(iso);
+				if (isNaN(dt) || dt.getFullYear() !== +y || dt.getMonth()+1 !== +m || dt.getDate() !== +d) return '';
+				return iso;
+			},
+			onInput() {
+				var raw = this._raw(this.display);
+				if (raw.length === 8) {
+					var iso = this._toIso(raw);
+					if (iso) { this.iso = iso; this.display = iso.replace(/-/g, '/'); return; }
+				}
+				this.iso = '';
+			},
+			onBlur() {
+				var iso = this._toIso(this._raw(this.display));
+				if (iso) {
+					this.iso = iso;
+					this.display = iso.replace(/-/g, '/');
+				} else {
+					this.iso = '';
+					// Leave display unchanged so the user can see what was invalid.
+				}
+			},
+			onPickerChange() {
+				if (this.iso) this.display = this.iso.replace(/-/g, '/');
+			},
+			tryPicker() {
+				try { this.$refs.picker.showPicker(); } catch(e) { this.$refs.picker.focus(); }
+			},
+		};
+	}
+
+	function gbSmartMonthDay() {
+		return {
+			display: '',
+			mdValue: '',
+			init() {
+				var v = this.$el.dataset.init || '';
+				this.mdValue = v;
+				this.display = v;
+			},
+			_normalize(s) {
+				var raw = (s || '').replace(/\D/g, '');
+				if (raw.length !== 4) return '';
+				var m = raw.slice(0,2), d = raw.slice(2,4);
+				var mNum = +m, dNum = +d;
+				if (mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31) return '';
+				// Reject impossible day/month combos (Feb 30, Apr 31, etc.)
+				var maxDay = [31,29,31,30,31,30,31,31,30,31,30,31][mNum-1];
+				if (dNum > maxDay) return '';
+				return m + '-' + d;
+			},
+			onBlur() {
+				var norm = this._normalize(this.display);
+				if (norm) {
+					this.mdValue = norm;
+					this.display = norm;
+				} else {
+					this.mdValue = '';
+					// Leave display so user sees what they typed.
+				}
+			},
+		};
+	}
+	</script>
 }
 
 templ monthDayField(label string, name string, value string, err string) {

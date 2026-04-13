@@ -67,6 +67,10 @@ func bodyCompanyProfile(vm CompanySettingsVM) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = setupFormScripts().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-[95%]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -93,7 +97,7 @@ func bodyCompanyProfile(vm CompanySettingsVM) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vm.Errors.Form)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_profile.templ`, Line: 31, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_profile.templ`, Line: 32, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -116,7 +120,7 @@ func bodyCompanyProfile(vm CompanySettingsVM) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.LogoError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_profile.templ`, Line: 44, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/company_profile.templ`, Line: 45, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -180,11 +184,11 @@ func bodyCompanyProfile(vm CompanySettingsVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = dateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = smartDateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = monthDayField("Fiscal Year End *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = smartMonthDayField("Fiscal Year End (MM-DD) *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

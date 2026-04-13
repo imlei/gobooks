@@ -13,6 +13,7 @@ templ Bootstrap(vm BootstrapViewModel) {
 }
 
 templ bodyBootstrap(vm BootstrapViewModel) {
+	@setupFormScripts()
 	<div class="max-w-[95%]">
 		<h1 class="text-title font-semibold">Bootstrap GoBooks</h1>
 		<p class="mt-2 text-text-muted2">
@@ -59,8 +60,8 @@ templ bodyBootstrap(vm BootstrapViewModel) {
 						vm.Errors.Industry,
 						[]string{"Retail", "Consulting", "Services", "Manufacturing", "Construction", "Other"},
 					)
-					@bootstrapDateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate)
-					@monthDayField("Fiscal Year End *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd)
+					@smartDateField("Incorporated Date *", "incorporated_date", vm.Values.IncorporatedDate, vm.Errors.IncorporatedDate)
+					@smartMonthDayField("Fiscal Year End (MM-DD) *", "fiscal_year_end", vm.Values.FiscalYearEnd, vm.Errors.FiscalYearEnd)
 					@bootstrapTextField("Business Number *", "business_number", vm.Values.BusinessNumber, vm.Errors.BusinessNumber, "")
 
 					@bootstrapSelectFieldWithHint(

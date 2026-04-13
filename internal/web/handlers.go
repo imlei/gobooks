@@ -590,8 +590,16 @@ func (s *Server) handleSetupSubmit(c *fiber.Ctx) error {
 	country := strings.TrimSpace(c.FormValue("country"))
 	businessNumber := strings.TrimSpace(c.FormValue("business_number"))
 	industry := strings.TrimSpace(c.FormValue("industry"))
-	incorporatedDate := strings.TrimSpace(c.FormValue("incorporated_date"))
-	fiscalYearEnd := strings.TrimSpace(c.FormValue("fiscal_year_end"))
+	incorporatedDateRaw := strings.TrimSpace(c.FormValue("incorporated_date"))
+	incorporatedDate := incorporatedDateRaw
+	if norm := NormalizeIncorporatedDate(incorporatedDateRaw); norm != "" {
+		incorporatedDate = norm
+	}
+	fiscalYearEndRaw := strings.TrimSpace(c.FormValue("fiscal_year_end"))
+	fiscalYearEnd := fiscalYearEndRaw
+	if norm := NormalizeFiscalYearEnd(fiscalYearEndRaw); norm != "" {
+		fiscalYearEnd = norm
+	}
 	accountCodeLengthRaw := strings.TrimSpace(c.FormValue("account_code_length"))
 
 	values := pages.SetupFormValues{
