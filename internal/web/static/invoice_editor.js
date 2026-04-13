@@ -1,5 +1,5 @@
 // invoice_editor.js — Alpine component for the invoice line-items editor.
-// v=10
+// v=11
 function invoiceEditor() {
   return {
     lines: [],
@@ -192,7 +192,9 @@ function invoiceEditor() {
           s = s.slice(0, firstDot + maxDp + 1);
         }
       }
-      return negative && s !== '' ? '-' + s : s;
+      // When the user has typed only '-' so far, preserve it so they can continue
+      // entering digits. On blur, _format2dp will resolve '-' to '0.00'.
+      return negative ? (s !== '' ? '-' + s : '-') : s;
     },
 
     // Format to exactly 2 decimal places on blur.
