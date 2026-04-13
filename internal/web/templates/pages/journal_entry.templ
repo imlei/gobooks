@@ -63,7 +63,7 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 					</button>
 				</div>
 
-				<div class="mt-4 w-[95%] overflow-x-auto overflow-y-visible">
+				<div class="mt-4 w-[95%] overflow-visible">
 					<table class="w-full table-fixed text-left text-body">
 						<thead class="text-small uppercase tracking-wider text-text-muted">
 							<tr class="border-b border-border">
@@ -79,7 +79,7 @@ templ bodyJournalEntry(vm JournalEntryVM) {
 								<tr class="border-b border-border-subtle align-top">
 									<td class="w-[28%] min-w-0 max-w-[28%] overflow-visible py-3 pr-4 align-top">
 										<!-- Anchor: only this block is position:relative; dropdown is absolutely positioned inside it (not td/table). -->
-										<div class="relative isolate z-0 block w-full min-w-0 max-w-full">
+										<div class="relative block w-full min-w-0 max-w-full">
 											<input type="hidden" :name="`lines[${idx}][account_id]`" :value="line.account_id"/>
 											<input
 												type="text"
