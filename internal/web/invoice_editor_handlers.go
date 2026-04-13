@@ -684,8 +684,15 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 			if err := tx.Create(&inv).Error; err != nil {
 				return err
 			}
-			if err := services.BumpInvoiceNextNumberAfterCreate(tx, companyID); err != nil {
-				return err
+			// Only advance the counter if the user kept the system-suggested number.
+			// If the user entered a custom number, leave the counter unchanged so the
+			// suggestion remains valid for the next invoice.
+			if suggestedNo, sErr := services.SuggestNextInvoiceNumber(tx, companyID); sErr == nil {
+				if strings.EqualFold(strings.TrimSpace(invoiceNo), strings.TrimSpace(suggestedNo)) {
+					if err := services.BumpInvoiceNextNumberAfterCreate(tx, companyID); err != nil {
+						return err
+					}
+				}
 			}
 		}
 
