@@ -4,6 +4,15 @@ package pages
 import "gobooks/internal/web/templates/layout"
 import "gobooks/internal/web/templates/ui"
 
+// customerNewCurrencyOptions converts the VM currency list to SelectOption slice.
+func customerNewCurrencyOptions(vm CustomerNewVM) []ui.SelectOption {
+	opts := make([]ui.SelectOption, 0, len(vm.Currencies))
+	for _, cur := range vm.Currencies {
+		opts = append(opts, ui.SelectOption{Value: cur.Code, Label: cur.Code + " – " + cur.Name})
+	}
+	return opts
+}
+
 templ CustomerNew(vm CustomerNewVM) {
 	@layout.Layout(
 		"GoBooks - New Customer",
@@ -71,6 +80,22 @@ templ bodyCustomerNew(vm CustomerNewVM) {
 							autocomplete="email"
 							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"
 						/>
+					</div>
+					// Currency (required when multi-currency, read-only otherwise)
+					<div>
+						if vm.MultiCurrency {
+							@ui.SelectField(
+								"Currency *",
+								"currency_code",
+								customerNewCurrencyOptions(vm),
+								vm.CurrencyCode,
+								vm.CurrencyError,
+								"Transaction currency for this customer.",
+							)
+						} else {
+							@ui.ReadonlyField("Currency", vm.BaseCurrencyCode, "Multi-currency not enabled.")
+							<input type="hidden" name="currency_code" value={ vm.BaseCurrencyCode }/>
+						}
 					</div>
 					// Payment term (optional)
 					<div>

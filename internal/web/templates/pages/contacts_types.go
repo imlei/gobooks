@@ -21,6 +21,7 @@ type CustomersVM struct {
 	// Editable form fields (repopulated on validation failure)
 	Name                   string
 	Email                  string
+	CurrencyCode           string
 	DefaultPaymentTermCode string
 	AddrStreet1            string
 	AddrStreet2            string
@@ -29,7 +30,13 @@ type CustomersVM struct {
 	AddrPostalCode         string
 	AddrCountry            string
 
-	NameError string
+	NameError     string
+	CurrencyError string
+
+	// MultiCurrency indicates whether the company has multi-currency enabled.
+	MultiCurrency    bool
+	BaseCurrencyCode string
+	Currencies       []models.Currency
 
 	Customers    []models.Customer
 	PaymentTerms []models.PaymentTerm
@@ -42,6 +49,7 @@ type CustomerNewVM struct {
 
 	Name                   string
 	Email                  string
+	CurrencyCode           string
 	DefaultPaymentTermCode string
 	AddrStreet1            string
 	AddrStreet2            string
@@ -50,8 +58,14 @@ type CustomerNewVM struct {
 	AddrPostalCode         string
 	AddrCountry            string
 
-	NameError string
-	FormError string
+	NameError     string
+	CurrencyError string
+	FormError     string
+
+	// MultiCurrency indicates whether the company has multi-currency enabled.
+	MultiCurrency    bool
+	BaseCurrencyCode string
+	Currencies       []models.Currency
 
 	PaymentTerms []models.PaymentTerm
 }

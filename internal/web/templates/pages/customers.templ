@@ -180,6 +180,22 @@ templ custEditDrawerForm(vm CustomersVM) {
 					class={ custInputClass(false) }
 				/>
 			</div>
+			// Currency
+			<div>
+				if vm.MultiCurrency {
+					@ui.SelectField(
+						"Currency *",
+						"currency_code",
+						custCurrencyOptions(vm),
+						vm.CurrencyCode,
+						vm.CurrencyError,
+						"Transaction currency for this customer.",
+					)
+				} else {
+					@ui.ReadonlyField("Currency", vm.BaseCurrencyCode, "Multi-currency not enabled.")
+					<input type="hidden" name="currency_code" value={ vm.BaseCurrencyCode }/>
+				}
+			</div>
 			// Payment term
 			<div>
 				<label class="block text-body font-medium text-text">Payment term <span class="font-normal text-text-muted2">(optional)</span></label>
@@ -295,4 +311,13 @@ func custInputClass(hasErr bool) string {
 		return base + "border-danger focus:ring-danger-focus"
 	}
 	return base + "border-border-input focus:ring-primary-focus"
+}
+
+// custCurrencyOptions converts the VM currency list to SelectOption slice.
+func custCurrencyOptions(vm CustomersVM) []ui.SelectOption {
+	opts := make([]ui.SelectOption, 0, len(vm.Currencies))
+	for _, cur := range vm.Currencies {
+		opts = append(opts, ui.SelectOption{Value: cur.Code, Label: cur.Code + " – " + cur.Name})
+	}
+	return opts
 }

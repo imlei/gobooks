@@ -21,11 +21,16 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
+	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
+
 	vm := pages.CustomersVM{
-		HasCompany: true,
-		FormError:  strings.TrimSpace(c.Query("error")),
-		Created:    c.Query("created") == "1",
-		Updated:    c.Query("updated") == "1",
+		HasCompany:       true,
+		FormError:        strings.TrimSpace(c.Query("error")),
+		Created:          c.Query("created") == "1",
+		Updated:          c.Query("updated") == "1",
+		MultiCurrency:    multiCurrency,
+		BaseCurrencyCode: baseCurrency,
+		Currencies:       currencies,
 	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
@@ -48,6 +53,7 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 				vm.EditingID = uint(id64)
 				vm.Name = cust.Name
 				vm.Email = cust.Email
+				vm.CurrencyCode = cust.CurrencyCode
 				vm.DefaultPaymentTermCode = cust.DefaultPaymentTermCode
 				vm.AddrStreet1 = cust.AddrStreet1
 				vm.AddrStreet2 = cust.AddrStreet2
@@ -104,7 +110,13 @@ func (s *Server) handleCustomerNew(c *fiber.Ctx) error {
 	if !ok {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
-	vm := pages.CustomerNewVM{HasCompany: true}
+	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
+	vm := pages.CustomerNewVM{
+		HasCompany:       true,
+		MultiCurrency:    multiCurrency,
+		BaseCurrencyCode: baseCurrency,
+		Currencies:       currencies,
+	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 	return pages.CustomerNew(vm).Render(c.Context(), c)
 }
@@ -119,12 +131,14 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry := parseCustomerForm(c)
+	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
+	name, email, currencyCode, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry := parseCustomerForm(c)
 
 	vm := pages.CustomerNewVM{
 		HasCompany:             true,
 		Name:                   name,
 		Email:                  email,
+		CurrencyCode:           currencyCode,
 		DefaultPaymentTermCode: paymentTerm,
 		AddrStreet1:            addrStreet1,
 		AddrStreet2:            addrStreet2,
@@ -132,14 +146,17 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 		AddrProvince:           addrProvince,
 		AddrPostalCode:         addrPostalCode,
 		AddrCountry:            addrCountry,
+		MultiCurrency:          multiCurrency,
+		BaseCurrencyCode:       baseCurrency,
+		Currencies:             currencies,
 	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
-	if errMsg := validateCustomerFields(name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry, &vm.NameError); errMsg != "" {
+	if errMsg := validateCustomerFields(name, email, currencyCode, multiCurrency, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry, &vm.NameError, &vm.CurrencyError); errMsg != "" {
 		vm.FormError = errMsg
 		return pages.CustomerNew(vm).Render(c.Context(), c)
 	}
-	if vm.NameError != "" {
+	if vm.NameError != "" || vm.CurrencyError != "" {
 		return pages.CustomerNew(vm).Render(c.Context(), c)
 	}
 
@@ -160,6 +177,7 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 		CompanyID:              companyID,
 		Name:                   name,
 		Email:                  email,
+		CurrencyCode:           currencyCode,
 		DefaultPaymentTermCode: paymentTerm,
 		AddrStreet1:            addrStreet1,
 		AddrStreet2:            addrStreet2,
@@ -214,16 +232,18 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 		return c.Redirect("/customers", fiber.StatusSeeOther)
 	}
 
-	name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry := parseCustomerForm(c)
+	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
+	name, email, currencyCode, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry := parseCustomerForm(c)
 
 	// Build a VM for re-rendering the list page with the drawer open on error.
-	buildErrVM := func(nameErr, formErr string) pages.CustomersVM {
+	buildErrVM := func(nameErr, currencyErr, formErr string) pages.CustomersVM {
 		vm := pages.CustomersVM{
 			HasCompany:             true,
 			DrawerOpen:             true,
 			EditingID:              customerID,
 			Name:                   name,
 			Email:                  email,
+			CurrencyCode:           currencyCode,
 			DefaultPaymentTermCode: paymentTerm,
 			AddrStreet1:            addrStreet1,
 			AddrStreet2:            addrStreet2,
@@ -232,7 +252,11 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 			AddrPostalCode:         addrPostalCode,
 			AddrCountry:            addrCountry,
 			NameError:              nameErr,
+			CurrencyError:          currencyErr,
 			FormError:              formErr,
+			MultiCurrency:          multiCurrency,
+			BaseCurrencyCode:       baseCurrency,
+			Currencies:             currencies,
 		}
 		_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vm.Customers)
 		_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
@@ -242,12 +266,12 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 		return vm
 	}
 
-	var nameErr string
-	if formErr := validateCustomerFields(name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry, &nameErr); formErr != "" {
-		return pages.Customers(buildErrVM(nameErr, formErr)).Render(c.Context(), c)
+	var nameErr, currencyErr string
+	if formErr := validateCustomerFields(name, email, currencyCode, multiCurrency, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry, &nameErr, &currencyErr); formErr != "" {
+		return pages.Customers(buildErrVM(nameErr, currencyErr, formErr)).Render(c.Context(), c)
 	}
-	if nameErr != "" {
-		return pages.Customers(buildErrVM(nameErr, "")).Render(c.Context(), c)
+	if nameErr != "" || currencyErr != "" {
+		return pages.Customers(buildErrVM(nameErr, currencyErr, "")).Render(c.Context(), c)
 	}
 
 	// Duplicate name check (exclude self).
@@ -255,14 +279,15 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 	if err := s.DB.Model(&models.Customer{}).
 		Where("company_id = ? AND lower(name) = lower(?) AND id <> ?", companyID, name, customerID).
 		Count(&count).Error; err != nil {
-		return pages.Customers(buildErrVM("", "Could not validate customer name.")).Render(c.Context(), c)
+		return pages.Customers(buildErrVM("", "", "Could not validate customer name.")).Render(c.Context(), c)
 	}
 	if count > 0 {
-		return pages.Customers(buildErrVM("A customer with this name already exists for this company.", "")).Render(c.Context(), c)
+		return pages.Customers(buildErrVM("A customer with this name already exists for this company.", "", "")).Render(c.Context(), c)
 	}
 
 	existing.Name = name
 	existing.Email = email
+	existing.CurrencyCode = currencyCode
 	existing.DefaultPaymentTermCode = paymentTerm
 	existing.AddrStreet1 = addrStreet1
 	existing.AddrStreet2 = addrStreet2
@@ -272,7 +297,7 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 	existing.AddrCountry = addrCountry
 
 	if err := s.DB.Save(&existing).Error; err != nil {
-		return pages.Customers(buildErrVM("", "Could not update customer. Please try again.")).Render(c.Context(), c)
+		return pages.Customers(buildErrVM("", "", "Could not update customer. Please try again.")).Render(c.Context(), c)
 	}
 
 	cid := companyID
@@ -297,9 +322,10 @@ func (s *Server) customersForCompany(companyID uint) ([]models.Customer, error) 
 }
 
 // parseCustomerForm reads and trims all customer form fields from a POST request.
-func parseCustomerForm(c *fiber.Ctx) (name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry string) {
+func parseCustomerForm(c *fiber.Ctx) (name, email, currencyCode, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry string) {
 	name = strings.TrimSpace(c.FormValue("name"))
 	email = strings.TrimSpace(c.FormValue("email"))
+	currencyCode = strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
 	paymentTerm = strings.TrimSpace(c.FormValue("payment_term"))
 	addrStreet1 = strings.TrimSpace(c.FormValue("addr_street1"))
 	addrStreet2 = strings.TrimSpace(c.FormValue("addr_street2"))
@@ -311,12 +337,17 @@ func parseCustomerForm(c *fiber.Ctx) (name, email, paymentTerm, addrStreet1, add
 }
 
 // validateCustomerFields validates all customer form fields.
-// Sets *nameErr if the name is invalid; returns a non-empty formErr string for all other errors.
-func validateCustomerFields(name, email, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry string, nameErr *string) string {
+// Sets *nameErr and *currencyErr for field-level errors; returns a non-empty formErr string for all other errors.
+func validateCustomerFields(name, email, currencyCode string, multiCurrency bool, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry string, nameErr, currencyErr *string) string {
 	if name == "" {
 		*nameErr = "Name is required."
 	} else if len(name) > 200 {
 		*nameErr = "Name must be 200 characters or fewer."
+	}
+	if multiCurrency && currencyCode == "" {
+		*currencyErr = "Currency is required when multi-currency is enabled."
+	} else if currencyCode != "" && len(currencyCode) != 3 {
+		*currencyErr = "Currency code must be 3 letters (e.g. CAD, USD)."
 	}
 	if len(email) > 200 {
 		return "Email must be 200 characters or fewer."
