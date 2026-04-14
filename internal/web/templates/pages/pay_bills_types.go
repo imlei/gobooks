@@ -7,13 +7,18 @@ import "gobooks/internal/models"
 type PayBillsVM struct {
 	HasCompany bool
 
-	OpenBills []models.Bill    // preloaded with Vendor; status posted or partially_paid
-	Accounts  []models.Account // active accounts for bank + A/P dropdowns
+	OpenBills    []models.Bill    // preloaded with Vendor; status posted or partially_paid
+	Accounts     []models.Account // active bank/credit-card accounts for Pay From dropdown
+	BaseCurrency string           // company base currency code (e.g. "CAD")
+
+	// AccountCurrencies maps account ID → currency code for fixed_foreign accounts.
+	// Empty string means the account is base-currency (base_only).
+	AccountCurrencies map[uint]string
 
 	// Form values (repopulated on validation error)
 	EntryDate     string
 	BankAccountID string
-	APAccountID   string
+	ExchangeRate  string // user-supplied override rate (bill currency → base); empty = auto-lookup
 	Memo          string
 
 	// Per-bill form values: keyed by bill ID string ("123" → "45.00")
@@ -21,10 +26,10 @@ type PayBillsVM struct {
 	BillAmounts map[string]string
 
 	// Errors
-	FormError string
-	DateError string
-	BankError string
-	APError   string
+	FormError         string
+	DateError         string
+	BankError         string
+	ExchangeRateError string
 
 	Saved bool
 }

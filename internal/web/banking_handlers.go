@@ -719,13 +719,17 @@ func (s *Server) handlePayBillsForm(c *fiber.Ctx) error {
 
 	accounts, _ := s.activeAccountsForCompany(companyID)
 	openBills, _ := s.openPostedBillsForCompany(companyID)
+	var company models.Company
+	s.DB.Select("id", "base_currency_code").First(&company, companyID)
 
 	vm := pages.PayBillsVM{
-		HasCompany: true,
-		Accounts:   accounts,
-		OpenBills:  openBills,
-		Saved:      c.Query("saved") == "1",
-		EntryDate:  time.Now().Format("2006-01-02"),
+		HasCompany:        true,
+		Accounts:          accounts,
+		OpenBills:         openBills,
+		BaseCurrency:      company.BaseCurrencyCode,
+		AccountCurrencies: buildAccountCurrencies(accounts),
+		Saved:             c.Query("saved") == "1",
+		EntryDate:         time.Now().Format("2006-01-02"),
 	}
 
 	return pages.PayBills(vm).Render(c.Context(), c)
@@ -743,20 +747,25 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 
 	accounts, _ := s.activeAccountsForCompany(companyID)
 	openBills, _ := s.openPostedBillsForCompany(companyID)
+	var company models.Company
+	s.DB.Select("id", "base_currency_code").First(&company, companyID)
+	baseCurrency := company.BaseCurrencyCode
 
 	entryDateRaw := strings.TrimSpace(c.FormValue("entry_date"))
 	bankIDRaw := strings.TrimSpace(c.FormValue("bank_account_id"))
-	apIDRaw := strings.TrimSpace(c.FormValue("ap_account_id"))
+	exchangeRateRaw := strings.TrimSpace(c.FormValue("exchange_rate"))
 	memo := strings.TrimSpace(c.FormValue("memo"))
 
 	vm := pages.PayBillsVM{
-		HasCompany:    true,
-		Accounts:      accounts,
-		OpenBills:     openBills,
-		EntryDate:     entryDateRaw,
-		BankAccountID: bankIDRaw,
-		APAccountID:   apIDRaw,
-		Memo:          memo,
+		HasCompany:        true,
+		Accounts:          accounts,
+		OpenBills:         openBills,
+		BaseCurrency:      baseCurrency,
+		AccountCurrencies: buildAccountCurrencies(accounts),
+		EntryDate:         entryDateRaw,
+		BankAccountID:     bankIDRaw,
+		ExchangeRate:      exchangeRateRaw,
+		Memo:              memo,
 	}
 
 	entryDate, err := time.Parse("2006-01-02", entryDateRaw)
@@ -769,18 +778,17 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 		vm.BankError = "Bank account is required."
 	}
 
-	apU64, err := services.ParseUint(apIDRaw)
-	if err != nil || apU64 == 0 {
-		vm.APError = "A/P account is required."
-	}
-
-	if vm.DateError != "" || vm.BankError != "" || vm.APError != "" {
+	if vm.DateError != "" || vm.BankError != "" {
 		return pages.PayBills(vm).Render(c.Context(), c)
 	}
 
+	// Build a bill lookup map from the already-loaded bills.
+	billByID := make(map[uint]models.Bill, len(openBills))
+	for _, b := range openBills {
+		billByID[b.ID] = b
+	}
+
 	// Collect selected bills and their payment amounts from the form.
-	// The template posts: bill_selected=<id> (checkbox, may repeat) and
-	// pay_amount_<id>=<amount> (one hidden/text input per row).
 	selectedIDs := c.Request().PostArgs().PeekMultiBytes([]byte("bill_selected"))
 	if len(selectedIDs) == 0 {
 		vm.FormError = "Please select at least one bill to pay."
@@ -789,6 +797,7 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 
 	billAmounts := make(map[string]string, len(selectedIDs))
 	var billPayments []services.BillPayment
+	var detectedCurrency string // normalised: "" = base, "USD" = foreign
 	for _, idBytes := range selectedIDs {
 		idStr := string(idBytes)
 		amtRaw := strings.TrimSpace(c.FormValue("pay_amount_" + idStr))
@@ -805,22 +814,67 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 			vm.BillAmounts = billAmounts
 			return pages.PayBills(vm).Render(c.Context(), c)
 		}
+
+		// Validate same currency across all selected bills.
+		bill, found := billByID[uint(idU64)]
+		if !found {
+			vm.FormError = "Bill not found."
+			vm.BillAmounts = billAmounts
+			return pages.PayBills(vm).Render(c.Context(), c)
+		}
+		billCurr := bill.CurrencyCode
+		if billCurr == baseCurrency {
+			billCurr = "" // normalise base currency to empty
+		}
+		if len(billPayments) == 0 {
+			detectedCurrency = billCurr
+		} else if billCurr != detectedCurrency {
+			vm.FormError = "All selected bills must use the same currency. Please pay bills of different currencies separately."
+			vm.BillAmounts = billAmounts
+			return pages.PayBills(vm).Render(c.Context(), c)
+		}
+
 		billPayments = append(billPayments, services.BillPayment{
 			BillID: uint(idU64),
 			Amount: amt,
 		})
 	}
 
+	// Resolve AP account automatically by bill currency.
+	apAccountID, apErr := s.resolveAPAccount(companyID, detectedCurrency)
+	if apErr != nil {
+		effectiveCurr := detectedCurrency
+		if effectiveCurr == "" {
+			effectiveCurr = baseCurrency
+		}
+		vm.FormError = "No Accounts Payable account found for currency " + effectiveCurr +
+			". Please set up a matching AP account under Company > Sales Tax or Chart of Accounts."
+		vm.BillAmounts = billAmounts
+		return pages.PayBills(vm).Render(c.Context(), c)
+	}
+
+	// Parse optional user-supplied exchange rate override.
+	var exchangeRateOverride decimal.Decimal
+	if exchangeRateRaw != "" {
+		exchangeRateOverride, err = services.ParseDecimalMoney(exchangeRateRaw)
+		if err != nil || !exchangeRateOverride.IsPositive() {
+			vm.ExchangeRateError = "Exchange rate must be a positive number (e.g. 0.73)."
+			vm.BillAmounts = billAmounts
+			return pages.PayBills(vm).Render(c.Context(), c)
+		}
+	}
+
 	var jeID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var txErr error
 		jeID, txErr = services.RecordPayBills(tx, services.PayBillsInput{
-			CompanyID:     companyID,
-			EntryDate:     entryDate,
-			BankAccountID: uint(bankU64),
-			APAccountID:   uint(apU64),
-			Bills:         billPayments,
-			Memo:          memo,
+			CompanyID:            companyID,
+			EntryDate:            entryDate,
+			BankAccountID:        uint(bankU64),
+			APAccountID:          apAccountID,
+			Bills:                billPayments,
+			Memo:                 memo,
+			ExchangeRateOverride: exchangeRateOverride,
 		})
 		return txErr
 	}); err != nil {
@@ -1130,6 +1184,38 @@ func (s *Server) openPostedBillsForCompany(companyID uint) ([]models.Bill, error
 		Order("bill_date asc, id asc").
 		Find(&bills).Error
 	return bills, err
+}
+
+// resolveAPAccount finds the active AP account for the given bill currency.
+// currencyCode is empty (or equals base currency, already normalised to "") for
+// base-currency bills. Foreign bills pass the ISO 4217 code (e.g. "USD").
+func (s *Server) resolveAPAccount(companyID uint, currencyCode string) (uint, error) {
+	var acc models.Account
+	q := s.DB.Where("company_id = ? AND is_active = ? AND detail_account_type = ?",
+		companyID, true, string(models.DetailAccountsPayable))
+	if currencyCode == "" {
+		q = q.Where("currency_mode = ?", string(models.CurrencyModeBaseOnly))
+	} else {
+		q = q.Where("currency_mode = ? AND currency_code = ?",
+			string(models.CurrencyModeFixedForeign), currencyCode)
+	}
+	if err := q.First(&acc).Error; err != nil {
+		return 0, err
+	}
+	return acc.ID, nil
+}
+
+// buildAccountCurrencies returns a map of account ID → currency code for
+// accounts with currency_mode = fixed_foreign. Base-only accounts are omitted
+// (the frontend treats missing entries as base currency).
+func buildAccountCurrencies(accounts []models.Account) map[uint]string {
+	m := make(map[uint]string)
+	for _, a := range accounts {
+		if a.CurrencyMode == models.CurrencyModeFixedForeign && a.CurrencyCode != nil {
+			m[a.ID] = *a.CurrencyCode
+		}
+	}
+	return m
 }
 
 // expenseAccountsForCompany returns all active expense accounts for a company,

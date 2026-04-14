@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"gobooks/internal/models"
@@ -163,17 +164,141 @@ func billBalanceDue(b models.Bill) decimal.Decimal {
 }
 
 // payBillsInitData generates the Alpine x-data attribute value for the Pay Bills page.
-// It returns a JS function call: payBillsData([{id:"1",balance:"123.45"}, ...])
-func payBillsInitData(bills []models.Bill) string {
-	var sb strings.Builder
-	sb.WriteString("payBillsData([")
-	for i, b := range bills {
+// It returns a JS function call: payBillsData(bills, accountCurrencies, baseCurrency)
+func payBillsInitData(vm PayBillsVM) string {
+	// Build bill array with pre-populated amounts for error-repopulation.
+	var billsSB strings.Builder
+	billsSB.WriteString("[")
+	for i, b := range vm.OpenBills {
 		if i > 0 {
-			sb.WriteString(",")
+			billsSB.WriteString(",")
 		}
 		bal := billBalanceDue(b)
-		sb.WriteString(fmt.Sprintf(`{"id":"%d","balance":"%s"}`, b.ID, bal.StringFixed(2)))
+		curr := b.CurrencyCode
+		if curr == "" {
+			curr = vm.BaseCurrency
+		}
+		preAmt := "0.00"
+		if vm.BillAmounts != nil {
+			if a, ok := vm.BillAmounts[fmt.Sprintf("%d", b.ID)]; ok && a != "" {
+				preAmt = a
+			}
+		}
+		billsSB.WriteString(fmt.Sprintf(
+			`{"id":"%d","balance":"%s","currency":"%s","amount":"%s"}`,
+			b.ID, bal.StringFixed(2), curr, preAmt))
 	}
-	sb.WriteString("])")
-	return sb.String()
+	billsSB.WriteString("]")
+
+	// Build accountCurrencies object: {"1":"USD","2":"EUR"}
+	var accSB strings.Builder
+	accSB.WriteString("{")
+	first := true
+	for id, code := range vm.AccountCurrencies {
+		if !first {
+			accSB.WriteString(",")
+		}
+		accSB.WriteString(fmt.Sprintf(`"%d":"%s"`, id, code))
+		first = false
+	}
+	accSB.WriteString("}")
+
+	baseCurr := vm.BaseCurrency
+	if baseCurr == "" {
+		baseCurr = "CAD"
+	}
+	return fmt.Sprintf("payBillsData(%s,%s,%q)", billsSB.String(), accSB.String(), baseCurr)
+}
+
+// currencyFlag returns the Unicode flag emoji for a well-known ISO 4217 currency code,
+// or an empty string when the currency has no obvious single-country flag.
+func currencyFlag(code string) string {
+	switch code {
+	case "CAD":
+		return "🇨🇦"
+	case "USD":
+		return "🇺🇸"
+	case "EUR":
+		return "🇪🇺"
+	case "GBP":
+		return "🇬🇧"
+	case "AUD":
+		return "🇦🇺"
+	case "NZD":
+		return "🇳🇿"
+	case "JPY":
+		return "🇯🇵"
+	case "CNY":
+		return "🇨🇳"
+	case "HKD":
+		return "🇭🇰"
+	case "SGD":
+		return "🇸🇬"
+	case "CHF":
+		return "🇨🇭"
+	case "SEK":
+		return "🇸🇪"
+	case "NOK":
+		return "🇳🇴"
+	case "DKK":
+		return "🇩🇰"
+	case "MXN":
+		return "🇲🇽"
+	case "BRL":
+		return "🇧🇷"
+	case "INR":
+		return "🇮🇳"
+	case "KRW":
+		return "🇰🇷"
+	default:
+		return ""
+	}
+}
+
+// billDueStatusFromBill combines billDaysFromToday + billDueStatus for use in templates.
+func billDueStatusFromBill(b models.Bill) string {
+	return billDueStatus(b, billDaysFromToday(b))
+}
+
+// billDueStatus returns "overdue", "today", "soon" (≤7 days), or "ok".
+func billDueStatus(b models.Bill, daysFromToday int) string {
+	if daysFromToday < 0 {
+		return "overdue"
+	}
+	if daysFromToday == 0 {
+		return "today"
+	}
+	if daysFromToday <= 7 {
+		return "soon"
+	}
+	return "ok"
+}
+
+// fieldBorderClass returns the appropriate Tailwind border class based on whether
+// the field has a validation error.
+func fieldBorderClass(hasError bool) string {
+	if hasError {
+		return "border-border-danger"
+	}
+	return "border-border-input"
+}
+
+// totalBillBalanceDue sums the balance due across all bills (for the footer total).
+func totalBillBalanceDue(bills []models.Bill) decimal.Decimal {
+	var total decimal.Decimal
+	for _, b := range bills {
+		total = total.Add(billBalanceDue(b))
+	}
+	return total
+}
+
+// billDaysFromToday returns the number of calendar days until the bill's due date
+// (negative = already overdue). Returns 9999 when DueDate is nil (no due date set).
+func billDaysFromToday(b models.Bill) int {
+	if b.DueDate == nil {
+		return 9999
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	due := b.DueDate.UTC().Truncate(24 * time.Hour)
+	return int(due.Sub(today).Hours() / 24)
 }

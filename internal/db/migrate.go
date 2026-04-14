@@ -191,6 +191,8 @@ func Migrate(db *gorm.DB) error {
 		// Batch 16: Customer credit balance (overpayment + credit apply)
 		&models.CustomerCredit{},
 		&models.CustomerCreditApplication{},
+		// Vendor credit balance (bill overpayment → vendor prepayment)
+		&models.VendorCredit{},
 		// Batch 18: Payout ↔ bank entry reconciliation
 		&models.BankEntry{},
 		&models.PayoutReconciliation{},

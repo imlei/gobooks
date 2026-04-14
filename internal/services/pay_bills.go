@@ -33,6 +33,10 @@ type PayBillsInput struct {
 	APAccountID   uint          // default AP account; overridden per-bill when BillPayment.APAccountID != 0
 	Bills         []BillPayment // at least one entry required
 	Memo          string
+	// ExchangeRateOverride, when non-zero, replaces the auto-looked-up rate for all
+	// foreign-currency bills in this batch. Use when the user explicitly confirms or
+	// overrides the rate (e.g. today's rate is not yet in the rate table).
+	ExchangeRateOverride decimal.Decimal
 }
 
 // RecordPayBills posts a journal entry for a vendor payment and settles one or
@@ -77,13 +81,16 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 
 	// ── Validate each bill and compute settlement amounts ─────────────────────
 	type billRecord struct {
-		bill    models.Bill
-		apAccID uint
-		result  fxSettleResult
+		bill            models.Bill
+		apAccID         uint
+		result          fxSettleResult
+		overpaymentDoc  decimal.Decimal // > 0 when user paid more than balance
+		overpaymentBase decimal.Decimal // base-currency equivalent of overpayment
 	}
 	records := make([]billRecord, 0, len(in.Bills))
 	totalBankBase := decimal.Zero
 	hasFX := false
+	hasOverpayment := false
 
 	for i, bp := range in.Bills {
 		if bp.Amount.LessThanOrEqual(decimal.Zero) {
@@ -102,24 +109,41 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 		effBalance, effBalanceBase := effectiveBalances(
 			bill.BalanceDue, bill.BalanceDueBase, bill.Amount, bill.AmountBase, isForeign,
 		)
-		if bp.Amount.GreaterThan(effBalance) {
-			return 0, fmt.Errorf("payment %s exceeds balance %s for bill %s",
-				bp.Amount.StringFixed(2), effBalance.StringFixed(2), bill.BillNumber)
+
+		// Detect overpayment: user paid more than the bill balance.
+		// The excess becomes a vendor credit (DR Vendor Prepayments asset).
+		overpaymentDoc := decimal.Zero
+		payAmt := bp.Amount
+		if payAmt.GreaterThan(effBalance) {
+			overpaymentDoc = payAmt.Sub(effBalance)
+			payAmt = effBalance // cap bill settlement at balance
 		}
 
 		settlementRate := decimal.NewFromInt(1)
 		if isForeign {
-			r, err := GetExchangeRate(tx, &in.CompanyID, bill.CurrencyCode, baseCurrency, in.EntryDate)
-			if err != nil {
-				return 0, fmt.Errorf("bill %s (allocation %d): exchange rate %s→%s not found for %s: %w",
-					bill.BillNumber, i+1, bill.CurrencyCode, baseCurrency, in.EntryDate.Format("2006-01-02"), err)
+			if in.ExchangeRateOverride.IsPositive() {
+				settlementRate = in.ExchangeRateOverride
+			} else {
+				r, err := GetExchangeRate(tx, &in.CompanyID, bill.CurrencyCode, baseCurrency, in.EntryDate)
+				if err != nil {
+					return 0, fmt.Errorf("bill %s (allocation %d): exchange rate %s→%s not found for %s: %w",
+						bill.BillNumber, i+1, bill.CurrencyCode, baseCurrency, in.EntryDate.Format("2006-01-02"), err)
+				}
+				settlementRate = r
 			}
-			settlementRate = r
 			hasFX = true
 		}
 
-		result := computeAllocationAmounts(bp.Amount, effBalance, effBalanceBase, settlementRate)
+		result := computeAllocationAmounts(payAmt, effBalance, effBalanceBase, settlementRate)
 		totalBankBase = totalBankBase.Add(result.bankBaseAmount)
+
+		// Convert overpayment to base and add to bank credit.
+		overpaymentBase := decimal.Zero
+		if overpaymentDoc.IsPositive() {
+			overpaymentBase = overpaymentDoc.Mul(settlementRate).Round(2)
+			totalBankBase = totalBankBase.Add(overpaymentBase)
+			hasOverpayment = true
+		}
 
 		apAccID := bp.APAccountID
 		if apAccID == 0 {
@@ -134,7 +158,13 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 			return 0, fmt.Errorf("A/P account must be a liability for bill %s", bill.BillNumber)
 		}
 
-		records = append(records, billRecord{bill: bill, apAccID: apAccID, result: result})
+		records = append(records, billRecord{
+			bill:            bill,
+			apAccID:         apAccID,
+			result:          result,
+			overpaymentDoc:  overpaymentDoc,
+			overpaymentBase: overpaymentBase,
+		})
 	}
 
 	if totalBankBase.LessThanOrEqual(decimal.Zero) {
@@ -151,6 +181,16 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 		fxAccountID = id
 	}
 
+	// Ensure Vendor Prepayments asset account exists (only when needed).
+	var vendorPrepayAccountID uint
+	if hasOverpayment {
+		id, err := EnsureVendorPrepaymentAccount(tx, in.CompanyID)
+		if err != nil {
+			return 0, err
+		}
+		vendorPrepayAccountID = id
+	}
+
 	// ── Build journal fragments ───────────────────────────────────────────────
 	frags := make([]PostingFragment, 0, 1+len(records)*3)
 
@@ -164,6 +204,16 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 			Memo:      "Bill " + rec.bill.BillNumber,
 		})
 		totalFXGainLoss = totalFXGainLoss.Add(rec.result.realizedFXGainLoss)
+
+		// Overpayment: DR Vendor Prepayments (excess amount → asset).
+		if rec.overpaymentBase.IsPositive() {
+			frags = append(frags, PostingFragment{
+				AccountID: vendorPrepayAccountID,
+				Debit:     rec.overpaymentBase,
+				Credit:    decimal.Zero,
+				Memo:      "Vendor prepayment – " + rec.bill.BillNumber,
+			})
+		}
 	}
 
 	// Single aggregated FX line (all allocations combined).
@@ -278,6 +328,27 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 			"status":           newStatus,
 		}).Error; err != nil {
 			return 0, err
+		}
+	}
+
+	// ── Create vendor credits for any overpayments ───────────────────────────
+	for _, rec := range records {
+		if !rec.overpaymentDoc.IsPositive() {
+			continue
+		}
+		billID := rec.bill.ID
+		vc := models.VendorCredit{
+			CompanyID:            in.CompanyID,
+			VendorID:             rec.bill.VendorID,
+			SourceJournalEntryID: je.ID,
+			SourceBillID:         &billID,
+			OriginalAmount:       rec.overpaymentDoc,
+			RemainingAmount:      rec.overpaymentDoc,
+			CurrencyCode:         rec.bill.CurrencyCode,
+			Status:               models.VendorCreditActive,
+		}
+		if err := tx.Create(&vc).Error; err != nil {
+			return 0, fmt.Errorf("create vendor credit for bill %s: %w", rec.bill.BillNumber, err)
 		}
 	}
 
