@@ -314,6 +314,14 @@ func RunRevaluation(db *gorm.DB, in RunRevaluationInput) (uint, error) {
 			createdLines = append(createdLines, line)
 		}
 
+		// Secondary book amounts — no-op when no secondary books are configured.
+		// Revaluation JEs are always denominated in base currency.
+		if err := WriteSecondaryBookAmounts(tx, in.CompanyID, createdLines,
+			base, in.RunDate,
+			models.FXPostingReasonRemeasurement); err != nil {
+			return fmt.Errorf("write secondary book amounts (revaluation): %w", err)
+		}
+
 		if err := ProjectToLedger(tx, in.CompanyID, LedgerPostInput{
 			JournalEntry: je,
 			Lines:        createdLines,
@@ -351,6 +359,13 @@ func RunRevaluation(db *gorm.DB, in RunRevaluationInput) (uint, error) {
 				return fmt.Errorf("create reversal journal line: %w", err)
 			}
 			createdReversalLines = append(createdReversalLines, line)
+		}
+
+		// Secondary book amounts for the auto-reversal JE.
+		if err := WriteSecondaryBookAmounts(tx, in.CompanyID, createdReversalLines,
+			base, in.ReversalDate,
+			models.FXPostingReasonRemeasurement); err != nil {
+			return fmt.Errorf("write secondary book amounts (reversal): %w", err)
 		}
 
 		if err := ProjectToLedger(tx, in.CompanyID, LedgerPostInput{

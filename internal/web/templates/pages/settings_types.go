@@ -81,6 +81,22 @@ type UserPreferencesHubVM struct {
 	Breadcrumb []SettingsBreadcrumbPart
 }
 
+// AccountingBooksVM is the view-model for Settings > Accounting Books hub.
+type AccountingBooksVM struct {
+	HasCompany bool
+	Breadcrumb []SettingsBreadcrumbPart
+	Books      []models.AccountingBook
+
+	// Create-form state — visible when DrawerOpen = true.
+	DrawerOpen  bool
+	FormError   string
+	// Form field round-trips (strings to survive validation errors).
+	FieldBookType    string // "secondary" | "adjustment" | "tax"
+	FieldCurrency    string // ISO 4217
+	FieldProfileCode string // AccountingStandardProfileCode
+	Profiles         []models.AccountingStandardProfile
+}
+
 // UserPrefSystemSetupVM is the User Preferences > System Setup page.
 type UserPrefSystemSetupVM struct {
 	HasCompany   bool

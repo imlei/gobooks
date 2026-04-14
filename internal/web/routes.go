@@ -129,6 +129,10 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/settings/user-preferences/system-setup", s.LoadSession(), s.RequireAuth(), s.LoadSidebarData(), s.handleUserPrefSystemSetupGet)
 	app.Post("/settings/user-preferences/system-setup", s.LoadSession(), s.RequireAuth(), s.LoadSidebarData(), s.handleUserPrefSystemSetupPost)
 
+	// ── 设置：会计账簿（多账本 / IFRS 辅助账簿）──────────────────────────────────
+	app.Get("/settings/accounting-books", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleAccountingBooksGet)
+	app.Post("/settings/accounting-books", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleAccountingBooksCreate)
+
 	// ── 设置：AI Connect（owner / admin 专属）───────────────────────────────────
 	app.Get("/settings/ai-connect", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleAIConnectGet)
 	app.Post("/settings/ai-connect", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleAIConnectPost)
@@ -214,6 +218,16 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/invoices/:id/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceDelete), s.handleInvoiceDelete)
 	// Batch 12: manual gateway settlement retry (requires journal-create permission — same as posting)
 	app.Post("/invoices/:id/retry-gateway-settlement", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionJournalCreate), s.handleRetryGatewaySettlement)
+
+	// ── AR Module Phase 1: Credit Notes ─────────────────────────────────────────
+	// /new must be before /:id to avoid param collision.
+	app.Get("/credit-notes", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCreditNotesList)
+	app.Get("/credit-notes/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleCreditNoteNewGet)
+	app.Post("/credit-notes/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleCreditNoteNewPost)
+	app.Get("/credit-notes/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCreditNoteDetail)
+	app.Post("/credit-notes/:id/issue", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceApprove), s.handleCreditNoteIssue)
+	app.Post("/credit-notes/:id/void", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceApprove), s.handleCreditNoteVoid)
+	app.Post("/credit-notes/:id/apply", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleCreditNoteApply)
 
 	// Batch 13: settlement review list + row-level retry
 	app.Get("/settings/payment-gateways/settlement-review", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleGatewaySettlementReview)

@@ -252,3 +252,73 @@ func applyFXScaling(frags []PostingFragment, exchangeRate decimal.Decimal, ancho
 	}
 	return frags
 }
+
+// ── Credit note fragments ──────────────────────────────────────────────────────
+
+// BuildCreditNoteFragments builds the raw PostingFragments for a customer credit note.
+//
+// Fragment structure produced (mirror-image of BuildInvoiceFragments):
+//
+//	DR  Revenue account       line.LineNet   per line   (reversal of recognised revenue)
+//	DR  Sales Tax Payable     tax amount     per line   (reversal of collected tax; if applicable)
+//	CR  Accounts Receivable   cn.Amount                 (one line for gross total — reduces AR)
+//
+// Pre-conditions:
+//   - cn.Lines must be preloaded with RevenueAccount and TaxCode.
+//   - arAccountID must be the ID of the active Accounts Receivable account.
+//
+// This is a pure function: no DB calls, no side effects.
+func BuildCreditNoteFragments(cn models.CreditNote, arAccountID uint) ([]PostingFragment, error) {
+	if arAccountID == 0 {
+		return nil, errors.New("fragment builder: AR account ID is required")
+	}
+	if len(cn.Lines) == 0 {
+		return nil, errors.New("fragment builder: credit note has no line items")
+	}
+
+	frags := make([]PostingFragment, 0, 1+len(cn.Lines)*2)
+
+	// Single AR credit for the credit note gross total (reduces AR).
+	frags = append(frags, PostingFragment{
+		AccountID: arAccountID,
+		Debit:     decimal.Zero,
+		Credit:    cn.Amount,
+		Memo:      "Credit Note " + cn.CreditNoteNumber,
+	})
+
+	for i, l := range cn.Lines {
+		lineNum := i + 1
+		if l.RevenueAccountID == 0 {
+			return nil, fmt.Errorf("fragment builder: line %d (%q) has no revenue account", lineNum, l.Description)
+		}
+
+		// Revenue debit (reversal). A positive LineNet becomes a DR on the revenue account.
+		// A negative LineNet (rare: re-debit customer, e.g. restocking fee on return) becomes CR.
+		lineDebit, lineCredit := l.LineNet, decimal.Zero
+		if l.LineNet.IsNegative() {
+			lineDebit = decimal.Zero
+			lineCredit = l.LineNet.Neg()
+		}
+		frags = append(frags, PostingFragment{
+			AccountID: l.RevenueAccountID,
+			Debit:     lineDebit,
+			Credit:    lineCredit,
+			Memo:      l.Description,
+		})
+
+		// Tax debit (reversal of Sales Tax Payable).
+		if l.TaxCodeID != nil && l.TaxCode != nil &&
+			l.TaxCode.Scope != models.TaxScopePurchase &&
+			l.TaxCode.SalesTaxAccountID != 0 &&
+			l.LineTax.IsPositive() {
+			frags = append(frags, PostingFragment{
+				AccountID: l.TaxCode.SalesTaxAccountID,
+				Debit:     l.LineTax,
+				Credit:    decimal.Zero,
+				Memo:      "Tax reversal on " + l.Description,
+			})
+		}
+	}
+
+	return frags, nil
+}

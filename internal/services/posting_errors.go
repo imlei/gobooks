@@ -21,6 +21,7 @@ package services
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
@@ -70,6 +71,22 @@ func applyLockForUpdate(q *gorm.DB) *gorm.DB {
 //	if err := tx.Create(&je).Error; err != nil {
 //	    return wrapUniqueViolation(err, "create journal entry")
 //	}
+// isNoSuchTableError reports whether err indicates a missing table. This covers
+// SQLite ("no such table: ...") and Postgres ("42P01" / "relation ... does not exist"),
+// allowing callers to treat a missing table as a no-op rather than a hard error.
+// Used primarily by WriteSecondaryBookAmounts to remain safe in test environments
+// (SQLite in-memory DBs) and pre-migration fresh installs.
+func isNoSuchTableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "42P01"
+	}
+	return strings.Contains(err.Error(), "no such table")
+}
+
 func wrapUniqueViolation(err error, op string) error {
 	if err == nil {
 		return nil

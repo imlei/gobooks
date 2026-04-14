@@ -239,6 +239,13 @@ func (s *Server) handleJournalEntryPost(c *fiber.Ctx) error {
 		if err := tx.Create(&prepared.JournalLines).Error; err != nil {
 			return err
 		}
+		// Secondary book amounts — no-op when no secondary books are configured.
+		if err := services.WriteSecondaryBookAmounts(tx, companyID, prepared.JournalLines,
+			prepared.JournalEntry.TransactionCurrencyCode,
+			prepared.JournalEntry.EntryDate,
+			models.FXPostingReasonTransaction); err != nil {
+			return err
+		}
 		return services.ProjectToLedger(tx, companyID, services.LedgerPostInput{
 			JournalEntry: je,
 			Lines:        prepared.JournalLines,

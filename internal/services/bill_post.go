@@ -264,6 +264,13 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 			createdLines = append(createdLines, line)
 		}
 
+		// c2. Secondary book amounts — no-op when no secondary books are configured.
+		if err := WriteSecondaryBookAmounts(tx, companyID, createdLines,
+			transactionCurrencyCode, bill.BillDate,
+			models.FXPostingReasonTransaction); err != nil {
+			return fmt.Errorf("write secondary book amounts: %w", err)
+		}
+
 		// d. Ledger projection — one ledger_entry per journal_line, status=active.
 		if err := ProjectToLedger(tx, companyID, LedgerPostInput{
 			JournalEntry: je,

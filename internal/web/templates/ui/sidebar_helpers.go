@@ -18,7 +18,8 @@ func SectionKeyForActivePage(active string) string {
 	case "AI Connect Settings", "Members Settings", "Audit Log", "Products & Services",
 		"Payment Gateways", "Gateway Settlement Review", "Gateway Payouts", "Gateway Disputes",
 		"Recon Exceptions", "Investigation Workspace",
-		"User Preferences Hub", "User Preferences System Setup":
+		"User Preferences Hub", "User Preferences System Setup",
+		"Accounting Books":
 		return "settings"
 	default:
 		if IsCompanySettingsNavActive(active) {

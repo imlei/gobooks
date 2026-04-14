@@ -47,6 +47,8 @@ const (
 	LedgerSourceBankCharge LedgerSourceType = "bank_charge"
 	// LedgerSourceBankInterest is used by bank interest earned entries auto-created during reconciliation setup.
 	LedgerSourceBankInterest LedgerSourceType = "bank_interest"
+	// LedgerSourceCreditNote is used by customer credit note postings.
+	LedgerSourceCreditNote LedgerSourceType = "credit_note"
 )
 
 // LedgerEntry is one row in the accounting fact layer.

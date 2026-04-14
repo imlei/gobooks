@@ -218,6 +218,18 @@ func Migrate(db *gorm.DB) error {
 		&models.SmartPickerUsage{},
 		// User preferences (number format, etc.) — one row per user
 		&models.UserPreference{},
+		// Phase 8: per-secondary-book accounted amounts for each journal line.
+		// JournalLineBookAmount depends on JournalLine and AccountingBook (FK deps above).
+		&models.JournalLineBookAmount{},
+		// Phase 9: period-end IAS 21 translation runs + per-account lines.
+		// TranslationRun depends on AccountingBook; TranslationLine depends on TranslationRun.
+		&models.TranslationRun{},
+		&models.TranslationLine{},
+		// AR Phase 1: credit note header + lines + application allocations.
+		// CreditNote depends on Customer and Invoice (nullable FK).
+		&models.CreditNote{},
+		&models.CreditNoteLine{},
+		&models.CreditNoteApplication{},
 	); err != nil {
 		return err
 	}
@@ -251,7 +263,21 @@ func Migrate(db *gorm.DB) error {
 	}
 	// Phase 7: fx_snapshots table; journal_entries.fx_snapshot_id;
 	// settlement_allocations.fx_snapshot_id. Existing rows get NULL (valid).
-	return migrateCurrencyPhase7(db)
+	if err := migrateCurrencyPhase7(db); err != nil {
+		return err
+	}
+	// Phase 8: journal_line_book_amounts table (per-secondary-book accounted amounts).
+	// AutoMigrate above handles fresh installs; this guard adds the table on live DBs
+	// that already have journal_lines and accounting_books but predate Phase 8.
+	if err := migrateCurrencyPhase8(db); err != nil {
+		return err
+	}
+	// Phase 9: translation_runs + translation_lines tables (IAS 21 period-end translation).
+	if err := migrateCurrencyPhase9(db); err != nil {
+		return err
+	}
+	// AR Phase 1: credit_notes + credit_note_lines + credit_note_applications tables.
+	return migrateARPhase1(db)
 }
 
 // migrateEnsureUserPlans seeds the user_plans table with the three default tiers
@@ -1443,6 +1469,179 @@ END $$;`,
 				continue
 			}
 			return fmt.Errorf("migrateCurrencyPhase7 step %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+// migrateCurrencyPhase8 creates the journal_line_book_amounts table and its indexes.
+// AutoMigrate handles fresh installs; this guard adds the table on live databases
+// that predate Phase 8.
+func migrateCurrencyPhase8(db *gorm.DB) error {
+	steps := []string{
+		// Step 1: journal_line_book_amounts table
+		`CREATE TABLE IF NOT EXISTS journal_line_book_amounts (
+    id               BIGSERIAL     PRIMARY KEY,
+    journal_line_id  BIGINT        NOT NULL,
+    book_id          BIGINT        NOT NULL,
+    company_id       BIGINT        NOT NULL,
+    accounted_debit  NUMERIC(18,2) NOT NULL,
+    accounted_credit NUMERIC(18,2) NOT NULL,
+    fx_snapshot_id   BIGINT,
+    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_jlba_line_book UNIQUE (journal_line_id, book_id)
+);
+CREATE INDEX IF NOT EXISTS idx_jlba_book_id
+    ON journal_line_book_amounts (book_id);
+CREATE INDEX IF NOT EXISTS idx_jlba_company_id
+    ON journal_line_book_amounts (company_id);
+CREATE INDEX IF NOT EXISTS idx_jlba_fx_snapshot_id
+    ON journal_line_book_amounts (fx_snapshot_id)
+    WHERE fx_snapshot_id IS NOT NULL;`,
+	}
+
+	for i, stmt := range steps {
+		if err := db.Exec(stmt).Error; err != nil {
+			if strings.Contains(err.Error(), "42P01") {
+				continue
+			}
+			return fmt.Errorf("migrateCurrencyPhase8 step %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+// migrateCurrencyPhase9 creates the translation_runs and translation_lines tables.
+// AutoMigrate handles fresh installs; this guard adds the tables on live databases
+// that predate Phase 9.
+func migrateCurrencyPhase9(db *gorm.DB) error {
+	steps := []string{
+		// Step 1: translation_runs table
+		`CREATE TABLE IF NOT EXISTS translation_runs (
+    id                    BIGSERIAL     PRIMARY KEY,
+    company_id            BIGINT        NOT NULL,
+    book_id               BIGINT        NOT NULL,
+    period_start          DATE          NOT NULL,
+    period_end            DATE          NOT NULL,
+    run_date              DATE          NOT NULL,
+    functional_currency   VARCHAR(3)    NOT NULL,
+    presentation_currency VARCHAR(3)    NOT NULL,
+    closing_rate          NUMERIC(20,8) NOT NULL,
+    average_rate          NUMERIC(20,8) NOT NULL,
+    cta_amount            NUMERIC(18,2) NOT NULL,
+    cta_account_id        BIGINT,
+    status                TEXT          NOT NULL DEFAULT 'posted',
+    created_at            TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_tr_company_id ON translation_runs (company_id);
+CREATE INDEX IF NOT EXISTS idx_tr_book_id    ON translation_runs (book_id);`,
+		// Step 2: translation_lines table
+		`CREATE TABLE IF NOT EXISTS translation_lines (
+    id                 BIGSERIAL     PRIMARY KEY,
+    translation_run_id BIGINT        NOT NULL,
+    company_id         BIGINT        NOT NULL,
+    account_id         BIGINT        NOT NULL,
+    functional_debit   NUMERIC(18,2) NOT NULL,
+    functional_credit  NUMERIC(18,2) NOT NULL,
+    rate_applied       NUMERIC(20,8) NOT NULL,
+    rate_type          TEXT          NOT NULL,
+    translated_debit   NUMERIC(18,2) NOT NULL,
+    translated_credit  NUMERIC(18,2) NOT NULL,
+    created_at         TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_tl_run_id     ON translation_lines (translation_run_id);
+CREATE INDEX IF NOT EXISTS idx_tl_company_id ON translation_lines (company_id);
+CREATE INDEX IF NOT EXISTS idx_tl_account_id ON translation_lines (account_id);`,
+	}
+
+	for i, stmt := range steps {
+		if err := db.Exec(stmt).Error; err != nil {
+			if strings.Contains(err.Error(), "42P01") {
+				continue
+			}
+			return fmt.Errorf("migrateCurrencyPhase9 step %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+// migrateARPhase1 creates the credit_notes, credit_note_lines, and
+// credit_note_applications tables. AutoMigrate handles fresh installs;
+// this guard adds the tables on live databases that predate AR Phase 1.
+func migrateARPhase1(db *gorm.DB) error {
+	steps := []string{
+		// Step 1: credit_notes table
+		`CREATE TABLE IF NOT EXISTS credit_notes (
+    id                      BIGSERIAL     PRIMARY KEY,
+    company_id              BIGINT        NOT NULL,
+    credit_note_number      TEXT          NOT NULL,
+    customer_id             BIGINT        NOT NULL,
+    invoice_id              BIGINT,
+    credit_note_date        DATE          NOT NULL,
+    status                  TEXT          NOT NULL DEFAULT 'draft',
+    reason                  TEXT          NOT NULL DEFAULT 'other',
+    memo                    TEXT          NOT NULL DEFAULT '',
+    subtotal                NUMERIC(18,2) NOT NULL DEFAULT 0,
+    tax_total               NUMERIC(18,2) NOT NULL DEFAULT 0,
+    amount                  NUMERIC(18,2) NOT NULL DEFAULT 0,
+    balance_remaining       NUMERIC(18,2) NOT NULL DEFAULT 0,
+    currency_code           VARCHAR(3)    NOT NULL DEFAULT '',
+    exchange_rate           NUMERIC(20,8) NOT NULL DEFAULT 1,
+    amount_base             NUMERIC(18,2) NOT NULL DEFAULT 0,
+    journal_entry_id        BIGINT,
+    issued_at               TIMESTAMPTZ,
+    voided_at               TIMESTAMPTZ,
+    customer_name_snapshot  TEXT          NOT NULL DEFAULT '',
+    created_at              TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cn_company_id    ON credit_notes (company_id);
+CREATE INDEX IF NOT EXISTS idx_cn_customer_id   ON credit_notes (customer_id);
+CREATE INDEX IF NOT EXISTS idx_cn_invoice_id    ON credit_notes (invoice_id)    WHERE invoice_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_cn_je_id         ON credit_notes (journal_entry_id) WHERE journal_entry_id IS NOT NULL;`,
+		// Step 2: credit_note_lines table
+		`CREATE TABLE IF NOT EXISTS credit_note_lines (
+    id                  BIGSERIAL     PRIMARY KEY,
+    company_id          BIGINT        NOT NULL,
+    credit_note_id      BIGINT        NOT NULL,
+    sort_order          INT           NOT NULL DEFAULT 1,
+    product_service_id  BIGINT,
+    revenue_account_id  BIGINT        NOT NULL,
+    description         TEXT          NOT NULL,
+    qty                 NUMERIC(10,4) NOT NULL DEFAULT 1,
+    unit_price          NUMERIC(18,4) NOT NULL DEFAULT 0,
+    tax_code_id         BIGINT,
+    line_net            NUMERIC(18,2) NOT NULL DEFAULT 0,
+    line_tax            NUMERIC(18,2) NOT NULL DEFAULT 0,
+    line_total          NUMERIC(18,2) NOT NULL DEFAULT 0,
+    created_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cnl_credit_note_id ON credit_note_lines (credit_note_id);
+CREATE INDEX IF NOT EXISTS idx_cnl_company_id     ON credit_note_lines (company_id);`,
+		// Step 3: credit_note_applications table
+		`CREATE TABLE IF NOT EXISTS credit_note_applications (
+    id                   BIGSERIAL     PRIMARY KEY,
+    company_id           BIGINT        NOT NULL,
+    credit_note_id       BIGINT        NOT NULL,
+    invoice_id           BIGINT        NOT NULL,
+    amount_applied       NUMERIC(18,2) NOT NULL,
+    amount_applied_base  NUMERIC(18,2) NOT NULL,
+    applied_at           TIMESTAMPTZ   NOT NULL,
+    created_at           TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cna_credit_note_id ON credit_note_applications (credit_note_id);
+CREATE INDEX IF NOT EXISTS idx_cna_invoice_id     ON credit_note_applications (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_cna_company_id     ON credit_note_applications (company_id);`,
+	}
+
+	for i, stmt := range steps {
+		if err := db.Exec(stmt).Error; err != nil {
+			if strings.Contains(err.Error(), "42P01") {
+				continue
+			}
+			return fmt.Errorf("migrateARPhase1 step %d: %w", i+1, err)
 		}
 	}
 	return nil

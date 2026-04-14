@@ -1,0 +1,167 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+templ AccountingBooksHub(vm AccountingBooksVM) {
+	@layout.Layout(
+		"GoBooks - Accounting Books",
+		ui.SidebarVM{Active: "Accounting Books", HasCompany: vm.HasCompany},
+		bodyAccountingBooksHub(vm),
+	)
+}
+
+templ bodyAccountingBooksHub(vm AccountingBooksVM) {
+	<div class="max-w-[95%]">
+		@SettingsBreadcrumb(vm.Breadcrumb)
+		<div class="flex items-center justify-between">
+			<div>
+				<h1 class="text-title font-semibold">Accounting Books</h1>
+				<p class="mt-1 max-w-3xl text-text-muted2">
+					Manage your primary and secondary accounting books. Secondary books allow
+					parallel reporting under different standards (e.g. IFRS alongside ASPE)
+					or in a different functional currency.
+				</p>
+			</div>
+			if vm.HasCompany {
+				<button
+					type="button"
+					hx-get="/settings/accounting-books?drawer=create"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover"
+				>
+					Add Secondary Book
+				</button>
+			}
+		</div>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-body text-red-700">{ vm.FormError }</div>
+		}
+
+		<!-- Books table -->
+		<div class="mt-6 overflow-hidden rounded-lg border border-border">
+			<table class="w-full text-body">
+				<thead class="bg-surface-raised">
+					<tr>
+						<th class="px-4 py-3 text-left font-medium text-text-muted">Type</th>
+						<th class="px-4 py-3 text-left font-medium text-text-muted">Functional Currency</th>
+						<th class="px-4 py-3 text-left font-medium text-text-muted">Standard Profile</th>
+						<th class="px-4 py-3 text-left font-medium text-text-muted">Change Policy</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-border">
+					if len(vm.Books) == 0 {
+						<tr>
+							<td colspan="4" class="px-4 py-8 text-center text-text-muted2">No books found.</td>
+						</tr>
+					}
+					for _, b := range vm.Books {
+						<tr class="hover:bg-surface-raised">
+							<td class="px-4 py-3">
+								@bookTypeBadge(b.BookType)
+							</td>
+							<td class="px-4 py-3 font-medium">{ b.FunctionalCurrencyCode }</td>
+							<td class="px-4 py-3 text-text-muted2">{ b.StandardProfile.DisplayName }</td>
+							<td class="px-4 py-3 text-text-muted2">{ accountingBookChangePolicyLabel(b.StandardChangePolicy) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<!-- Create drawer -->
+		if vm.DrawerOpen {
+			@accountingBookCreateDrawer(vm)
+		}
+	</div>
+}
+
+templ bookTypeBadge(bt models.AccountingBookType) {
+	switch bt {
+	case models.AccountingBookTypePrimary:
+		<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-small font-medium text-blue-700">Primary</span>
+	case models.AccountingBookTypeSecondary:
+		<span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-small font-medium text-green-700">Secondary</span>
+	case models.AccountingBookTypeAdjustment:
+		<span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-small font-medium text-yellow-700">Adjustment</span>
+	case models.AccountingBookTypeTax:
+		<span class="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-small font-medium text-purple-700">Tax</span>
+	default:
+		<span class="text-text-muted2">{ string(bt) }</span>
+	}
+}
+
+templ accountingBookCreateDrawer(vm AccountingBooksVM) {
+	<div class="fixed inset-0 z-40 flex justify-end" x-data>
+		<div class="absolute inset-0 bg-black/30" hx-get="/settings/accounting-books" hx-target="body" hx-swap="outerHTML"></div>
+		<div class="relative z-50 flex w-full max-w-md flex-col bg-surface shadow-xl">
+			<div class="flex items-center justify-between border-b border-border px-6 py-4">
+				<h2 class="text-lg font-semibold">Add Secondary Book</h2>
+				<button type="button" hx-get="/settings/accounting-books" hx-target="body" hx-swap="outerHTML" class="rounded p-1 hover:bg-background">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+					</svg>
+				</button>
+			</div>
+			<form method="POST" action="/settings/accounting-books" class="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+				<div>
+					<label class="block text-body font-medium text-text">Book Type</label>
+					<select name="book_type" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary">
+						<option value="secondary" selected?={ vm.FieldBookType == "secondary" || vm.FieldBookType == "" }>Secondary</option>
+						<option value="adjustment" selected?={ vm.FieldBookType == "adjustment" }>Adjustment</option>
+						<option value="tax" selected?={ vm.FieldBookType == "tax" }>Tax</option>
+					</select>
+					<p class="mt-1 text-small text-text-muted2">Secondary books record parallel amounts for a different standard or reporting currency.</p>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Functional Currency</label>
+					<input
+						type="text"
+						name="currency"
+						value={ vm.FieldCurrency }
+						placeholder="e.g. USD, EUR, GBP"
+						maxlength="3"
+						class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body uppercase focus:outline-none focus:ring-2 focus:ring-primary"
+					/>
+					<p class="mt-1 text-small text-text-muted2">The ISO 4217 currency code for this book's functional currency.</p>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Accounting Standard</label>
+					<select name="profile_code" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary">
+						for _, p := range vm.Profiles {
+							<option value={ string(p.Code) } selected?={ string(p.Code) == vm.FieldProfileCode }>{ p.DisplayName }</option>
+						}
+					</select>
+				</div>
+				<div class="flex gap-3 pt-2">
+					<button type="submit" class="flex-1 rounded-md bg-primary px-4 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover">
+						Create Book
+					</button>
+					<button type="button" hx-get="/settings/accounting-books" hx-target="body" hx-swap="outerHTML" class="flex-1 rounded-md border border-border px-4 py-2 text-body hover:bg-background">
+						Cancel
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+// accountingBookChangePolicyLabel returns a human-readable label for a StandardChangePolicy.
+func accountingBookChangePolicyLabel(p models.StandardChangePolicy) string {
+	switch p {
+	case models.StandardChangePolicyAllowDirect:
+		return "Allow direct change"
+	case models.StandardChangePolicyRequireWizard:
+		return "Requires wizard"
+	case models.StandardChangePolicyForbidDirect:
+		return "Locked (closed periods)"
+	default:
+		return string(p)
+	}
+}
