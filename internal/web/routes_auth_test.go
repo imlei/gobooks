@@ -52,6 +52,9 @@ func testRouteDB(t *testing.T) *gorm.DB {
 		&models.Expense{},
 		&models.ExpenseLine{},
 		&models.TaskInvoiceSource{},
+		&models.UserPreference{},
+		&models.AccountingBook{},
+		&models.UserPlan{},
 	); err != nil {
 		t.Fatal(err)
 	}

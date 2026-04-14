@@ -1,13 +1,12 @@
 // 遵循project_guide.md
 package web
 
-// ar_stub_handlers.go — Phase 1 AR module route stubs.
+// ar_stub_handlers.go — AR module Phase 3+ route stubs.
 //
 // These handlers return HTTP 501 Not Implemented as route placeholders.
-// They establish the AR module URL structure without implementing any logic.
-// Each handler will be replaced by a real implementation in the corresponding Phase:
+// Phase 2 (Quote, SalesOrder) implemented in quote_handlers.go / sales_order_handlers.go.
 //
-//   Phase 2: Quote, SalesOrder
+// Each handler will be replaced by a real implementation in the corresponding Phase:
 //   Phase 3: CustomerDeposit
 //   Phase 4: CustomerReceipt, PaymentApplication
 //   Phase 5: ARReturn, ARRefund
@@ -15,62 +14,6 @@ package web
 //   Phase 7: Gateway interaction
 
 import "github.com/gofiber/fiber/v2"
-
-// ── Quote stubs (Phase 2) ─────────────────────────────────────────────────────
-
-func (s *Server) handleQuoteList(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Quotes: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleQuoteNew(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("New Quote: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleQuoteDetail(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Quote Detail: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleQuoteCreate(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Create Quote: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleQuoteUpdate(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Update Quote: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleQuoteSend(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Send Quote: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleQuoteConvert(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Convert Quote: not yet implemented (Phase 2)")
-}
-
-// ── SalesOrder stubs (Phase 2) ────────────────────────────────────────────────
-
-func (s *Server) handleSalesOrderList(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Sales Orders: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleSalesOrderNew(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("New Sales Order: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleSalesOrderDetail(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Sales Order Detail: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleSalesOrderCreate(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Create Sales Order: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleSalesOrderConfirm(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Confirm Sales Order: not yet implemented (Phase 2)")
-}
-
-func (s *Server) handleSalesOrderCancel(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).SendString("Cancel Sales Order: not yet implemented (Phase 2)")
-}
 
 // ── CustomerDeposit stubs (Phase 3) ──────────────────────────────────────────
 

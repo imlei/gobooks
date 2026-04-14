@@ -106,6 +106,9 @@ type SalesOrder struct {
 	// ConfirmedAt is set when the order is confirmed.
 	ConfirmedAt *time.Time
 
+	// Lines is the set of line items; populated via Preload.
+	Lines []SalesOrderLine `gorm:"foreignKey:SalesOrderID"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

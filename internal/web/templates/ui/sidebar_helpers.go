@@ -9,7 +9,7 @@ func SectionKeyForActivePage(active string) string {
 	switch active {
 	case "Dashboard", "Setup":
 		return "core"
-	case "Customers", "Receive Payment":
+	case "Customers", "Quotes", "Sales Orders", "Receive Payment", "Credit Notes":
 		return "sales"
 	case "Expenses", "Vendors", "Pay Bills":
 		return "expenses"

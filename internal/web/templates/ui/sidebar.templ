@@ -77,6 +77,8 @@ templ sidebarShell(vm SidebarVM) {
 					</button>
 					<div class="sidebar-section-panel mt-1 space-y-0.5" data-sidebar-panel>
 						@navItem("/customers", "Customers", "customers", vm.Active == "Customers")
+						@navItem("/quotes", "Quotes", "invoice", vm.Active == "Quotes")
+						@navItem("/sales-orders", "Sales Orders", "invoice", vm.Active == "Sales Orders")
 						@navItem("/credit-notes", "Credit Notes", "invoice", vm.Active == "Credit Notes")
 						@navItem("/banking/receive-payment", "Receive Payment", "receive", vm.Active == "Receive Payment")
 					</div>

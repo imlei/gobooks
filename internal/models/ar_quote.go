@@ -107,6 +107,9 @@ type Quote struct {
 	// SentAt is set when the quote is marked as sent.
 	SentAt *time.Time
 
+	// Lines is the set of line items; populated via Preload.
+	Lines []QuoteLine `gorm:"foreignKey:QuoteID"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

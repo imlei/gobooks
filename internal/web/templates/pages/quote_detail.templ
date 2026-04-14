@@ -1,0 +1,417 @@
+// 遵循project_guide.md
+package pages
+
+import "github.com/shopspring/decimal"
+import "gobooks/internal/models"
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ QuoteDetail(vm QuoteDetailVM) {
+	@layout.Layout(
+		"GoBooks - "+quoteDetailTitle(vm),
+		ui.SidebarVM{Active: "Quotes", HasCompany: vm.HasCompany},
+		bodyQuoteDetail(vm),
+	)
+}
+
+func quoteDetailTitle(vm QuoteDetailVM) string {
+	if vm.Quote.ID == 0 {
+		return "New Quote"
+	}
+	return "Quote " + vm.Quote.QuoteNumber
+}
+
+templ bodyQuoteDetail(vm QuoteDetailVM) {
+	<div class="max-w-[95%]">
+		<div class="flex flex-wrap items-center justify-between gap-4">
+			<div>
+				<h1 class="text-title font-semibold">{ quoteDetailTitle(vm) }</h1>
+				<p class="mt-1 text-text-muted2">
+					if vm.Quote.ID == 0 {
+						Create a new quote for a customer.
+					} else {
+						View and manage this quote.
+					}
+				</p>
+			</div>
+			<a href="/quotes" class="text-body text-text-muted3 hover:text-text">← Back to Quotes</a>
+		</div>
+
+		// Flash messages
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Quote saved.</div>
+		}
+		if vm.Sent {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Quote sent.</div>
+		}
+		if vm.Accepted {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Quote accepted.</div>
+		}
+		if vm.Rejected {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">Quote rejected.</div>
+		}
+		if vm.Converted {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Quote converted to Sales Order.</div>
+		}
+		if vm.Cancelled {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">Quote cancelled.</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		// Status badge for existing quotes
+		if vm.Quote.ID != 0 {
+			<div class="mt-4 flex items-center gap-3">
+				<span class="text-body font-medium text-text-muted">Status:</span>
+				<span class={ quoteStatusBadgeClass(vm.Quote.Status) }>{ models.QuoteStatusLabel(vm.Quote.Status) }</span>
+				if vm.Quote.SalesOrderID != nil {
+					// Reserved for future: linked SalesOrder badge
+				}
+			</div>
+		}
+
+		// Edit form (draft only) or read-only view
+		if vm.Quote.ID == 0 || vm.Quote.Status == models.QuoteStatusDraft {
+			@quoteEditForm(vm)
+		} else {
+			@quoteReadOnlyView(vm)
+		}
+
+		// Action buttons for existing quotes
+		if vm.Quote.ID != 0 {
+			@quoteActionButtons(vm)
+		}
+	</div>
+}
+
+templ quoteEditForm(vm QuoteDetailVM) {
+	<form method="post" action="/quotes/save" class="mt-6 space-y-6">
+		if vm.Quote.ID != 0 {
+			<input type="hidden" name="quote_id" value={ Uitoa(vm.Quote.ID) }/>
+		}
+
+		// Header card
+		<div class="rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Quote Details</h2>
+			<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
+				<div>
+					<label class="block text-body font-medium text-text">Customer <span class="text-danger">*</span></label>
+					<select name="customer_id" required class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+						<option value="">-- Select Customer --</option>
+						for _, c := range vm.Customers {
+							<option value={ Uitoa(c.ID) } selected?={ c.ID == vm.Quote.CustomerID }>{ c.Name }</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Currency</label>
+					<input
+						type="text"
+						name="currency_code"
+						value={ vm.Quote.CurrencyCode }
+						maxlength="3"
+						placeholder="CAD"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body uppercase outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Quote Date <span class="text-danger">*</span></label>
+					<input
+						type="date"
+						name="quote_date"
+						value={ vm.Quote.QuoteDate.Format("2006-01-02") }
+						required
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Expiry Date</label>
+					<input
+						type="date"
+						name="expiry_date"
+						value={ quoteExpiryVal(vm.Quote) }
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					/>
+				</div>
+				<div class="md:col-span-2">
+					<label class="block text-body font-medium text-text">Notes (Customer Visible)</label>
+					<textarea
+						name="notes"
+						rows="2"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					>{ vm.Quote.Notes }</textarea>
+				</div>
+				<div class="md:col-span-3">
+					<label class="block text-body font-medium text-text">Memo (Internal)</label>
+					<textarea
+						name="memo"
+						rows="2"
+						class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+					>{ vm.Quote.Memo }</textarea>
+				</div>
+			</div>
+		</div>
+
+		// Line items
+		<div class="rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Line Items</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body" id="quote-lines-table">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-2 pr-3">Description</th>
+							<th class="py-2 pr-3 w-28">Qty</th>
+							<th class="py-2 pr-3 w-36">Unit Price</th>
+							<th class="py-2 pr-3 w-36">Tax Code</th>
+							<th class="py-2 pr-3 w-32 text-right">Line Total</th>
+							<th class="py-2 w-10"></th>
+						</tr>
+					</thead>
+					<tbody id="quote-lines-body">
+						for i, line := range vm.Quote.Lines {
+							@quoteLineRow(i, line, vm)
+						}
+						if len(vm.Quote.Lines) == 0 {
+							@quoteLineRow(0, models.QuoteLine{}, vm)
+						}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				onclick="quoteAddLine()"
+				class="mt-4 rounded-md border border-border px-3 py-1.5 text-small text-text-muted hover:bg-background"
+			>+ Add Line</button>
+		</div>
+
+		// Totals
+		<div class="flex justify-end">
+			<div class="w-64 space-y-2 rounded-lg border border-border bg-surface p-4 text-body">
+				<div class="flex justify-between">
+					<span class="text-text-muted">Subtotal</span>
+					<span class="font-mono" data-numfmt>{ vm.Quote.Subtotal.StringFixed(2) }</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-text-muted">Tax</span>
+					<span class="font-mono" data-numfmt>{ vm.Quote.TaxTotal.StringFixed(2) }</span>
+				</div>
+				<div class="flex justify-between border-t border-border pt-2 font-semibold">
+					<span>Total</span>
+					<span class="font-mono" data-numfmt>{ vm.Quote.Total.StringFixed(2) }</span>
+				</div>
+			</div>
+		</div>
+
+		// Save button
+		<div class="flex justify-end gap-3">
+			<button
+				type="submit"
+				class="rounded-md bg-primary px-6 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+			>Save Quote</button>
+		</div>
+	</form>
+
+	<script>
+	let quoteLineCount = document.querySelectorAll('#quote-lines-body tr').length;
+	function quoteAddLine() {
+		const tbody = document.getElementById('quote-lines-body');
+		const i = quoteLineCount++;
+		const row = document.createElement('tr');
+		row.className = 'border-b border-border-subtle';
+		row.innerHTML = `
+			<td class="py-2 pr-3"><input type="text" name="line_description_${i}" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus" placeholder="Description"/></td>
+			<td class="py-2 pr-3"><input type="number" name="line_qty_${i}" value="1" step="0.0001" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"/></td>
+			<td class="py-2 pr-3"><input type="number" name="line_price_${i}" value="0" step="0.0001" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"/></td>
+			<td class="py-2 pr-3"><select name="line_tax_${i}" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"><option value="">No Tax</option></select></td>
+			<td class="py-2 pr-3 text-right font-mono text-text-muted">—</td>
+			<td class="py-2"><button type="button" onclick="this.closest('tr').remove()" class="text-danger hover:text-danger-hover">✕</button></td>
+		`;
+		tbody.appendChild(row);
+	}
+	</script>
+}
+
+// quoteLineRow renders one editable line row.
+templ quoteLineRow(i int, line models.QuoteLine, vm QuoteDetailVM) {
+	<tr class="border-b border-border-subtle">
+		<td class="py-2 pr-3">
+			<input
+				type="text"
+				name={ "line_description_" + Itoa(i) }
+				value={ line.Description }
+				class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"
+				placeholder="Description"
+			/>
+		</td>
+		<td class="py-2 pr-3">
+			<input
+				type="number"
+				name={ "line_qty_" + Itoa(i) }
+				value={ line.Quantity.StringFixed(4) }
+				step="0.0001"
+				class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"
+			/>
+		</td>
+		<td class="py-2 pr-3">
+			<input
+				type="number"
+				name={ "line_price_" + Itoa(i) }
+				value={ line.UnitPrice.StringFixed(4) }
+				step="0.0001"
+				class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"
+			/>
+		</td>
+		<td class="py-2 pr-3">
+			<select name={ "line_tax_" + Itoa(i) } class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus">
+				<option value="">No Tax</option>
+				for _, tc := range vm.TaxCodes {
+					<option value={ Uitoa(tc.ID) } selected?={ line.TaxCodeID != nil && *line.TaxCodeID == tc.ID }>
+						{ tc.Code } ({ tc.Rate.Mul(decimal.NewFromInt(100)).StringFixed(1) }%)
+					</option>
+				}
+			</select>
+		</td>
+		<td class="py-2 pr-3 text-right font-mono" data-numfmt>{ line.LineTotal.StringFixed(2) }</td>
+		<td class="py-2">
+			<button type="button" onclick="this.closest('tr').remove()" class="text-danger hover:text-danger-hover text-small">✕</button>
+		</td>
+	</tr>
+}
+
+templ quoteReadOnlyView(vm QuoteDetailVM) {
+	<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text">Quote Details</h2>
+		<dl class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div>
+				<dt class="text-small text-text-muted">Customer</dt>
+				<dd class="mt-1 text-body font-medium">{ vm.Quote.Customer.Name }</dd>
+			</div>
+			<div>
+				<dt class="text-small text-text-muted">Currency</dt>
+				<dd class="mt-1 text-body font-medium">{ vm.Quote.CurrencyCode }</dd>
+			</div>
+			<div>
+				<dt class="text-small text-text-muted">Quote Date</dt>
+				<dd class="mt-1 text-body font-medium">{ vm.Quote.QuoteDate.Format("2006-01-02") }</dd>
+			</div>
+			<div>
+				<dt class="text-small text-text-muted">Expiry Date</dt>
+				<dd class="mt-1 text-body font-medium">
+					if vm.Quote.ExpiryDate != nil {
+						{ vm.Quote.ExpiryDate.Format("2006-01-02") }
+					} else {
+						—
+					}
+				</dd>
+			</div>
+			if vm.Quote.Notes != "" {
+				<div class="md:col-span-2">
+					<dt class="text-small text-text-muted">Notes</dt>
+					<dd class="mt-1 text-body">{ vm.Quote.Notes }</dd>
+				</div>
+			}
+		</dl>
+	</div>
+
+	<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text">Line Items</h2>
+		<div class="mt-4 overflow-x-auto">
+			<table class="w-full text-left text-body">
+				<thead class="text-small uppercase tracking-wider text-text-muted">
+					<tr class="border-b border-border">
+						<th class="py-2 pr-4">Description</th>
+						<th class="py-2 pr-4 w-24 text-right">Qty</th>
+						<th class="py-2 pr-4 w-32 text-right">Unit Price</th>
+						<th class="py-2 pr-4 w-32 text-right">Net</th>
+						<th class="py-2 pr-4 w-28 text-right">Tax</th>
+						<th class="py-2 w-32 text-right">Total</th>
+					</tr>
+				</thead>
+				<tbody class="text-text">
+					for _, line := range vm.Quote.Lines {
+						<tr class="border-b border-border-subtle">
+							<td class="py-2 pr-4">{ line.Description }</td>
+							<td class="py-2 pr-4 text-right font-mono" data-numfmt>{ line.Quantity.StringFixed(2) }</td>
+							<td class="py-2 pr-4 text-right font-mono" data-numfmt>{ line.UnitPrice.StringFixed(2) }</td>
+							<td class="py-2 pr-4 text-right font-mono" data-numfmt>{ line.LineNet.StringFixed(2) }</td>
+							<td class="py-2 pr-4 text-right font-mono" data-numfmt>{ line.TaxAmount.StringFixed(2) }</td>
+							<td class="py-2 text-right font-mono font-medium" data-numfmt>{ line.LineTotal.StringFixed(2) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="mt-4 flex justify-end">
+			<div class="w-64 space-y-2 text-body">
+				<div class="flex justify-between">
+					<span class="text-text-muted">Subtotal</span>
+					<span class="font-mono" data-numfmt>{ vm.Quote.Subtotal.StringFixed(2) }</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-text-muted">Tax</span>
+					<span class="font-mono" data-numfmt>{ vm.Quote.TaxTotal.StringFixed(2) }</span>
+				</div>
+				<div class="flex justify-between border-t border-border pt-2 font-semibold">
+					<span>Total</span>
+					<span class="font-mono" data-numfmt>{ vm.Quote.Total.StringFixed(2) }</span>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ quoteActionButtons(vm QuoteDetailVM) {
+	<div class="mt-6 flex flex-wrap gap-3">
+		switch vm.Quote.Status {
+			case models.QuoteStatusDraft:
+				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/send") }>
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+						Mark as Sent
+					</button>
+				</form>
+				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/cancel") }
+					onsubmit="return confirm('Cancel this quote?')">
+					<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
+						Cancel Quote
+					</button>
+				</form>
+			case models.QuoteStatusSent:
+				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/accept") }>
+					<button type="submit" class="rounded-md bg-success px-4 py-2 text-body font-semibold text-onPrimary hover:bg-success-hover">
+						Mark Accepted
+					</button>
+				</form>
+				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/reject") }>
+					<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
+						Mark Rejected
+					</button>
+				</form>
+				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/convert") }>
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+						Convert to Sales Order
+					</button>
+				</form>
+				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/cancel") }
+					onsubmit="return confirm('Cancel this quote?')">
+					<button type="submit" class="rounded-md border border-border px-4 py-2 text-body text-text-muted hover:bg-background">
+						Cancel Quote
+					</button>
+				</form>
+			case models.QuoteStatusAccepted:
+				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/convert") }>
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+						Convert to Sales Order
+					</button>
+				</form>
+		}
+	</div>
+}
+
+// quoteExpiryVal returns the expiry date as a string for the form input.
+func quoteExpiryVal(q models.Quote) string {
+	if q.ExpiryDate == nil {
+		return ""
+	}
+	return q.ExpiryDate.Format("2006-01-02")
+}
