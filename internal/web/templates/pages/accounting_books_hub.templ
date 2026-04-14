@@ -2,6 +2,7 @@
 package pages
 
 import (
+	"fmt"
 	"gobooks/internal/models"
 	"gobooks/internal/web/templates/layout"
 	"gobooks/internal/web/templates/ui"
@@ -40,6 +41,9 @@ templ bodyAccountingBooksHub(vm AccountingBooksVM) {
 			}
 		</div>
 
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-body text-green-700">Book created successfully.</div>
+		}
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-body text-red-700">{ vm.FormError }</div>
 		}
@@ -53,6 +57,7 @@ templ bodyAccountingBooksHub(vm AccountingBooksVM) {
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Functional Currency</th>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Standard Profile</th>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Change Policy</th>
+						<th class="px-4 py-3"></th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border">
@@ -69,6 +74,12 @@ templ bodyAccountingBooksHub(vm AccountingBooksVM) {
 							<td class="px-4 py-3 font-medium">{ b.FunctionalCurrencyCode }</td>
 							<td class="px-4 py-3 text-text-muted2">{ b.StandardProfile.DisplayName }</td>
 							<td class="px-4 py-3 text-text-muted2">{ accountingBookChangePolicyLabel(b.StandardChangePolicy) }</td>
+							<td class="px-4 py-3 text-right">
+								<a
+									href={ templ.SafeURL(fmt.Sprintf("/settings/accounting-books/%d", b.ID)) }
+									class="text-small text-primary hover:underline"
+								>Manage</a>
+							</td>
 						</tr>
 					}
 				</tbody>

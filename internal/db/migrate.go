@@ -230,6 +230,9 @@ func Migrate(db *gorm.DB) error {
 		&models.CreditNote{},
 		&models.CreditNoteLine{},
 		&models.CreditNoteApplication{},
+		// Phase 10: fiscal period governance + accounting standard change audit trail.
+		&models.FiscalPeriod{},
+		&models.BookStandardChange{},
 	); err != nil {
 		return err
 	}
@@ -277,7 +280,11 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 	// AR Phase 1: credit_notes + credit_note_lines + credit_note_applications tables.
-	return migrateARPhase1(db)
+	if err := migrateARPhase1(db); err != nil {
+		return err
+	}
+	// Phase 10: fiscal_periods + book_standard_changes tables.
+	return migratePhase10(db)
 }
 
 // migrateEnsureUserPlans seeds the user_plans table with the three default tiers
@@ -1642,6 +1649,60 @@ CREATE INDEX IF NOT EXISTS idx_cna_company_id     ON credit_note_applications (c
 				continue
 			}
 			return fmt.Errorf("migrateARPhase1 step %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+// migratePhase10 creates the fiscal_periods and book_standard_changes tables.
+// AutoMigrate above handles fresh installs; this guard adds the tables on live
+// databases that predate Phase 10.
+func migratePhase10(db *gorm.DB) error {
+	stmts := []string{
+		// fiscal_periods: named reporting-period rows for a company.
+		// book_id = 0 means company-wide.
+		`CREATE TABLE IF NOT EXISTS fiscal_periods (
+			id           BIGSERIAL PRIMARY KEY,
+			company_id   BIGINT      NOT NULL,
+			book_id      BIGINT      NOT NULL DEFAULT 0,
+			label        TEXT        NOT NULL,
+			period_start DATE        NOT NULL,
+			period_end   DATE        NOT NULL,
+			status       TEXT        NOT NULL DEFAULT 'open',
+			closed_at    TIMESTAMPTZ,
+			closed_by    TEXT        NOT NULL DEFAULT '',
+			created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+			updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_fiscal_periods_company ON fiscal_periods(company_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_fiscal_periods_book   ON fiscal_periods(book_id)`,
+
+		// book_standard_changes: immutable audit log of standard-profile changes.
+		`CREATE TABLE IF NOT EXISTS book_standard_changes (
+			id              BIGSERIAL PRIMARY KEY,
+			company_id      BIGINT      NOT NULL,
+			book_id         BIGINT      NOT NULL,
+			old_profile_id  BIGINT      NOT NULL,
+			new_profile_id  BIGINT      NOT NULL,
+			method          TEXT        NOT NULL,
+			cutover_date    DATE,
+			notes           TEXT        NOT NULL DEFAULT '',
+			changed_by      TEXT        NOT NULL DEFAULT '',
+			created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_book_standard_changes_company ON book_standard_changes(company_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_book_standard_changes_book    ON book_standard_changes(book_id)`,
+	}
+
+	for i, stmt := range stmts {
+		if err := db.Exec(stmt).Error; err != nil {
+			// Postgres: 42P01 means relation already exists for IF NOT EXISTS guards.
+			// Treat as a no-op on live databases.
+			if strings.Contains(err.Error(), "42P01") ||
+				strings.Contains(err.Error(), "already exists") {
+				continue
+			}
+			return fmt.Errorf("migratePhase10 step %d: %w", i+1, err)
 		}
 	}
 	return nil

@@ -86,6 +86,7 @@ type AccountingBooksVM struct {
 	HasCompany bool
 	Breadcrumb []SettingsBreadcrumbPart
 	Books      []models.AccountingBook
+	Saved      bool
 
 	// Create-form state — visible when DrawerOpen = true.
 	DrawerOpen  bool
@@ -95,6 +96,31 @@ type AccountingBooksVM struct {
 	FieldCurrency    string // ISO 4217
 	FieldProfileCode string // AccountingStandardProfileCode
 	Profiles         []models.AccountingStandardProfile
+}
+
+// AccountingBookDetailVM is the view-model for Settings > Accounting Books > :id.
+type AccountingBookDetailVM struct {
+	HasCompany bool
+	Breadcrumb []SettingsBreadcrumbPart
+	Book       models.AccountingBook
+	Periods    []models.FiscalPeriod
+	Changes    []models.BookStandardChange
+	Profiles   []models.AccountingStandardProfile
+	Saved      bool
+	FormError  string
+
+	// DrawerOpen: "change-standard" | "add-period" | ""
+	DrawerOpen string
+
+	// Change-standard form field round-trips.
+	FieldNewProfile  string
+	FieldCutoverDate string
+	FieldNotes       string
+
+	// Add-period form field round-trips.
+	FieldPeriodLabel string
+	FieldPeriodStart string
+	FieldPeriodEnd   string
 }
 
 // UserPrefSystemSetupVM is the User Preferences > System Setup page.
