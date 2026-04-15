@@ -1356,17 +1356,46 @@ VALUES
     ('IFRS_IAS21_2027', 'IFRS IAS 21 (2027)', '2027-01-01', TRUE, NOW())
 ON CONFLICT (code) DO NOTHING;`,
 		// Step 3: accounting_books table (FK to accounting_standard_profiles)
+		// Column name matches the GORM model field FunctionalCurrencyCode → functional_currency_code.
 		`CREATE TABLE IF NOT EXISTS accounting_books (
-    id                     BIGSERIAL    PRIMARY KEY,
-    company_id             BIGINT       NOT NULL,
-    book_type              TEXT         NOT NULL DEFAULT 'primary',
-    functional_currency    VARCHAR(3)   NOT NULL,
-    standard_profile_id    BIGINT       NOT NULL REFERENCES accounting_standard_profiles(id),
-    standard_change_policy TEXT         NOT NULL DEFAULT 'allow_direct',
-    created_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    id                      BIGSERIAL    PRIMARY KEY,
+    company_id              BIGINT       NOT NULL,
+    book_type               TEXT         NOT NULL DEFAULT 'primary',
+    functional_currency_code VARCHAR(3)  NOT NULL DEFAULT '',
+    standard_profile_id     BIGINT       NOT NULL REFERENCES accounting_standard_profiles(id),
+    standard_change_policy  TEXT         NOT NULL DEFAULT 'allow_direct',
+    created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_accounting_books_company ON accounting_books (company_id);`,
+		// Step 3b: guard for live databases where accounting_books was previously
+		// created (by AutoMigrate or old Step 3) without functional_currency_code.
+		// Adds the column if absent and backfills from the old functional_currency
+		// column if that exists.
+		`DO $$
+BEGIN
+    -- Add functional_currency_code if missing.
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = CURRENT_SCHEMA()
+          AND table_name   = 'accounting_books'
+          AND column_name  = 'functional_currency_code'
+    ) THEN
+        ALTER TABLE accounting_books ADD COLUMN functional_currency_code VARCHAR(3) NOT NULL DEFAULT '';
+    END IF;
+
+    -- Backfill from old functional_currency column if it existed on this server.
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = CURRENT_SCHEMA()
+          AND table_name   = 'accounting_books'
+          AND column_name  = 'functional_currency'
+    ) THEN
+        UPDATE accounting_books
+        SET    functional_currency_code = functional_currency
+        WHERE  functional_currency_code = '' AND functional_currency <> '';
+    END IF;
+END $$;`,
 		// Step 4: add primary_book_id to companies (nullable; backfilled in step 5)
 		`DO $$
 BEGIN
@@ -1401,7 +1430,7 @@ BEGIN
 
     -- Insert a primary book for each company that does not already have one.
     INSERT INTO accounting_books
-        (company_id, book_type, functional_currency, standard_profile_id,
+        (company_id, book_type, functional_currency_code, standard_profile_id,
          standard_change_policy, created_at, updated_at)
     SELECT
         c.id,
