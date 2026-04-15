@@ -479,6 +479,17 @@ templ psInventorySection(vm ProductServicesVM) {
 						<input type="date" name="opening_date" class={ psInputClass(false) }/>
 					</div>
 				</div>
+				if len(vm.Warehouses) > 0 {
+					<div>
+						<label class="block text-small text-text-muted2">Warehouse (optional)</label>
+						<select name="warehouse_id" class={ psInputClass(false) }>
+							<option value="">— Company default —</option>
+							for _, w := range vm.Warehouses {
+								<option value={ Uitoa(w.ID) }>{ w.Name } ({ w.Code })</option>
+							}
+						</select>
+					</div>
+				}
 				<button
 					type="submit"
 					class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover"
@@ -511,6 +522,17 @@ templ psInventorySection(vm ProductServicesVM) {
 					<label class="block text-small text-text-muted2">Note (optional)</label>
 					<input type="text" name="adj_note" placeholder="e.g. Physical count correction" class={ psInputClass(false) }/>
 				</div>
+				if len(vm.Warehouses) > 0 {
+					<div>
+						<label class="block text-small text-text-muted2">Warehouse (optional)</label>
+						<select name="warehouse_id" class={ psInputClass(false) }>
+							<option value="">— Company default —</option>
+							for _, w := range vm.Warehouses {
+								<option value={ Uitoa(w.ID) }>{ w.Name } ({ w.Code })</option>
+							}
+						</select>
+					</div>
+				}
 				<button
 					type="submit"
 					class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-small font-semibold text-text hover:bg-background"

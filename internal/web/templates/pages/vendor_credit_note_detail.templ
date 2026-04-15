@@ -55,8 +55,14 @@ templ bodyVCNDetail(vm VendorCreditNoteDetailVM) {
 		if vm.Voided {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">Credit note voided.</div>
 		}
+		if vm.Applied {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Credit applied to bill successfully.</div>
+		}
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+		if vm.ApplyError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.ApplyError }</div>
 		}
 
 		if vm.CreditNote.ID != 0 {
@@ -223,6 +229,7 @@ templ vcnEditForm(vm VendorCreditNoteDetailVM) {
 }
 
 templ vcnReadOnlyView(vm VendorCreditNoteDetailVM) {
+	// Credit note summary card
 	<div class="mt-6 space-y-4 rounded-md border border-border bg-surface p-6">
 		<div class="grid grid-cols-2 gap-x-8 gap-y-3 text-body">
 			<div><span class="font-medium text-text-muted">Vendor:</span> <span class="text-text">{ vm.CreditNote.Vendor.Name }</span></div>
@@ -235,7 +242,7 @@ templ vcnReadOnlyView(vm VendorCreditNoteDetailVM) {
 			</div>
 			<div>
 				<span class="font-medium text-text-muted">Remaining:</span>
-				<span class="text-text"><span data-numfmt>{ vm.CreditNote.RemainingAmount.StringFixed(2) }</span></span>
+				<span class={ "text-text font-semibold " + vcnRemainingClass(vm.CreditNote) }><span data-numfmt>{ vm.CreditNote.RemainingAmount.StringFixed(2) }</span></span>
 			</div>
 			if vm.CreditNote.Reason != "" {
 				<div class="col-span-2"><span class="font-medium text-text-muted">Reason:</span> <span class="text-text">{ vm.CreditNote.Reason }</span></div>
@@ -245,4 +252,93 @@ templ vcnReadOnlyView(vm VendorCreditNoteDetailVM) {
 			}
 		</div>
 	</div>
+
+	// Apply to Bill section (only when credit is usable)
+	if vcnIsApplicable(vm.CreditNote) {
+		<div class="mt-6 rounded-md border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Apply Credit to Bill</h2>
+			<p class="mt-1 text-small text-text-muted2">
+				Reduce an open bill's balance due using this credit note.
+				No new journal entry is created — the AP reduction was recorded when this credit note was posted.
+			</p>
+			if len(vm.OpenBills) == 0 {
+				<p class="mt-4 text-body text-text-muted2">No open bills found for this vendor.</p>
+			} else {
+				<form method="POST" action={ templ.SafeURL("/vendor-credit-notes/" + fmt.Sprintf("%d", vm.CreditNote.ID) + "/apply-to-bill") } class="mt-4 space-y-4">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+						<div>
+							<label class="block text-body font-medium text-text-muted">Bill *</label>
+							<select name="bill_id" required class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text">
+								<option value="">— Select open bill —</option>
+								for _, b := range vm.OpenBills {
+									<option value={ fmt.Sprintf("%d", b.ID) }>
+										{ b.BillNumber } — Balance: { b.BalanceDue.StringFixed(2) }
+									</option>
+								}
+							</select>
+						</div>
+						<div>
+							<label class="block text-body font-medium text-text-muted">Amount to Apply *</label>
+							<input
+								type="text"
+								name="amount_to_apply"
+								placeholder={ "Max " + vm.CreditNote.RemainingAmount.StringFixed(2) }
+								required
+								class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text"
+							/>
+						</div>
+					</div>
+					<div>
+						<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+							Apply Credit
+						</button>
+					</div>
+				</form>
+			}
+		</div>
+	}
+
+	// Applications history
+	if len(vm.CreditNote.Applications) > 0 {
+		<div class="mt-6 rounded-md border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Applications</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-2 pr-6">Bill ID</th>
+							<th class="py-2 pr-6 text-right">Amount Applied</th>
+							<th class="py-2 pr-0">Applied At</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, app := range vm.CreditNote.Applications {
+							<tr class="border-b border-border-subtle text-small">
+								<td class="py-2 pr-6">
+									<a href={ templ.SafeURL("/bills/" + fmt.Sprintf("%d", app.BillID)) } class="text-primary hover:underline">
+										Bill #{ fmt.Sprintf("%d", app.BillID) }
+									</a>
+								</td>
+								<td class="py-2 pr-6 text-right tabular-nums"><span data-numfmt>{ app.AmountApplied.StringFixed(2) }</span></td>
+								<td class="py-2 pr-0 text-text-muted2">{ app.AppliedAt.Format("2006-01-02") }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	}
+}
+
+func vcnIsApplicable(vcn models.VendorCreditNote) bool {
+	return (vcn.Status == models.VendorCreditNoteStatusPosted ||
+		vcn.Status == models.VendorCreditNoteStatusPartiallyApplied) &&
+		vcn.RemainingAmount.IsPositive()
+}
+
+func vcnRemainingClass(vcn models.VendorCreditNote) string {
+	if vcn.RemainingAmount.IsZero() {
+		return "text-text-muted"
+	}
+	return "text-success-hover"
 }

@@ -43,9 +43,13 @@ type InvoiceEditorVM struct {
 	LinesError         string
 	FormError          string
 
+	// WarehouseID is the selected warehouse for inventory routing (empty = company default).
+	WarehouseID string
+
 	// Dropdown data.
 	Customers    []models.Customer
 	PaymentTerms []models.PaymentTerm
+	Warehouses   []models.Warehouse
 	// Products contains only active ProductServices for this company.
 	// Serialised to ProductsJSON for Alpine.
 	Products []models.ProductService

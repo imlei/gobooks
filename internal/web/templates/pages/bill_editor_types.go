@@ -32,12 +32,16 @@ type BillEditorVM struct {
 	LinesError        string
 	FormError         string
 
+	// WarehouseID is the selected warehouse for inventory routing (empty = company default).
+	WarehouseID string
+
 	// Dropdown data.
 	Vendors         []models.Vendor
 	Accounts        []models.Account
 	TaxCodes        []models.TaxCode
 	PaymentTerms    []models.PaymentTerm
 	SelectableTasks []models.Task
+	Warehouses      []models.Warehouse
 
 	// Alpine initialisation JSON (set by handler, consumed by bill_editor.js).
 	AccountsJSON     string

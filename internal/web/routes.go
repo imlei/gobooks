@@ -339,6 +339,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/vendor-credit-notes/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorCreditNoteDetail)
 	app.Post("/vendor-credit-notes/:id/post", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorCreditNotePost)
 	app.Post("/vendor-credit-notes/:id/void", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorCreditNoteVoid)
+	app.Post("/vendor-credit-notes/:id/apply-to-bill", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVCNApplyToBill)
 
 	// AP Phase A: Vendor Refunds
 	app.Get("/vendor-refunds", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorRefundList)

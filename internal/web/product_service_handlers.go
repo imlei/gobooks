@@ -448,19 +448,25 @@ func (s *Server) handleInventoryOpening(c *fiber.Ctx) error {
 	qtyRaw := strings.TrimSpace(c.FormValue("opening_qty"))
 	costRaw := strings.TrimSpace(c.FormValue("opening_cost"))
 	dateRaw := strings.TrimSpace(c.FormValue("opening_date"))
+	whIDRaw := strings.TrimSpace(c.FormValue("warehouse_id"))
 
 	qty, _ := decimal.NewFromString(qtyRaw)
 	unitCost, _ := decimal.NewFromString(costRaw)
-
 	asOfDate := parseTimeOrToday(dateRaw)
 
+	var openingWHID *uint
+	if wid64, err := strconv.ParseUint(whIDRaw, 10, 64); err == nil && wid64 > 0 {
+		wid := uint(wid64)
+		openingWHID = &wid
+	}
+
 	_, err = services.CreateOpeningBalance(s.DB, services.OpeningBalanceInput{
-		CompanyID:    companyID,
-		ItemID:       uint(itemID64),
-		Quantity:     qty,
-		UnitCost:     unitCost,
-		AsOfDate:     asOfDate,
-		LocationType: models.LocationTypeInternal,
+		CompanyID:   companyID,
+		ItemID:      uint(itemID64),
+		Quantity:    qty,
+		UnitCost:    unitCost,
+		AsOfDate:    asOfDate,
+		WarehouseID: openingWHID,
 	})
 	if err != nil {
 		return c.Redirect("/products-services?edit="+itemIDRaw+"&openerr=1", fiber.StatusSeeOther)
@@ -499,6 +505,7 @@ func (s *Server) handleInventoryAdjustment(c *fiber.Ctx) error {
 	costRaw := strings.TrimSpace(c.FormValue("adj_cost"))
 	dateRaw := strings.TrimSpace(c.FormValue("adj_date"))
 	note := strings.TrimSpace(c.FormValue("adj_note"))
+	adjWHIDRaw := strings.TrimSpace(c.FormValue("warehouse_id"))
 
 	qtyDelta, _ := decimal.NewFromString(qtyRaw)
 	var unitCost *decimal.Decimal
@@ -511,6 +518,12 @@ func (s *Server) handleInventoryAdjustment(c *fiber.Ctx) error {
 
 	movDate := parseTimeOrToday(dateRaw)
 
+	var adjWHID *uint
+	if wid64, err := strconv.ParseUint(adjWHIDRaw, 10, 64); err == nil && wid64 > 0 {
+		wid := uint(wid64)
+		adjWHID = &wid
+	}
+
 	_, err = services.CreateAdjustment(s.DB, services.AdjustmentInput{
 		CompanyID:     companyID,
 		ItemID:        uint(itemID64),
@@ -518,7 +531,7 @@ func (s *Server) handleInventoryAdjustment(c *fiber.Ctx) error {
 		UnitCost:      unitCost,
 		MovementDate:  movDate,
 		Note:          note,
-		LocationType:  models.LocationTypeInternal,
+		WarehouseID:   adjWHID,
 	})
 	if err != nil {
 		return c.Redirect("/products-services?edit="+itemIDRaw+"&adjerr=1", fiber.StatusSeeOther)
@@ -773,6 +786,8 @@ func (s *Server) loadProductServicesDropdowns(companyID uint, vm *pages.ProductS
 		Find(&vm.InventoryItems).Error; err != nil {
 		return err
 	}
+	// Warehouses for opening balance / adjustment routing (ignore error — optional feature).
+	vm.Warehouses, _ = services.ListWarehouses(s.DB, companyID)
 	return nil
 }
 

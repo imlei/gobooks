@@ -17,6 +17,9 @@ type ProductServicesVM struct {
 	// Component picker dropdown (inventory items only, for bundle component selection)
 	InventoryItems []models.ProductService
 
+	// Warehouses available for opening balance / adjustment routing.
+	Warehouses []models.Warehouse
+
 	// Form fields
 	Name               string
 	SKU                string

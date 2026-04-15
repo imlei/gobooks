@@ -207,6 +207,7 @@ func (s *Server) handleInvoiceEdit(c *fiber.Ctx) error {
 		InvoiceDate:           inv.InvoiceDate.Format("2006-01-02"),
 		TermCode:              inv.TermCode,
 		Memo:                  inv.Memo,
+		WarehouseID:           optUintStr(inv.WarehouseID),
 		FormError:             strings.TrimSpace(c.Query("error")),
 		Saved:                 c.Query("saved") == "1",
 		CurrencyCode:          inv.CurrencyCode,
@@ -269,6 +270,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 	memo := strings.TrimSpace(c.FormValue("memo"))
 	currencyCodeRaw := strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
 	exchangeRateRaw := strings.TrimSpace(c.FormValue("exchange_rate"))
+	warehouseIDRaw := strings.TrimSpace(c.FormValue("warehouse_id"))
 	lineCountRaw := strings.TrimSpace(c.FormValue("line_count"))
 	taxAdjCountRaw := strings.TrimSpace(c.FormValue("tax_adj_count"))
 
@@ -292,6 +294,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		TermCode:      termsRaw,
 		DueDate:       dueDateRaw,
 		Memo:          memo,
+		WarehouseID:   warehouseIDRaw,
 		CurrencyCode:  currencyCodeRaw,
 		ExchangeRate:  exchangeRateRaw,
 	}
@@ -603,6 +606,13 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		return pages.InvoiceEditor(vm).Render(c.Context(), c)
 	}
 
+	// Parse optional warehouse selection.
+	var invWarehouseID *uint
+	if wid64, err := strconv.ParseUint(warehouseIDRaw, 10, 64); err == nil && wid64 > 0 {
+		wid := uint(wid64)
+		invWarehouseID = &wid
+	}
+
 	var savedInvoiceID uint
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var inv models.Invoice
@@ -631,6 +641,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 			}
 			inv.DueDate = dueDate
 			inv.Memo = memo
+			inv.WarehouseID = invWarehouseID
 			inv.CurrencyCode = currencySelection.CurrencyCode
 			inv.ExchangeRate = currencySelection.ExchangeRate
 			inv.Subtotal = subtotal
@@ -663,6 +674,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 				DueDate:                 dueDate,
 				Status:                  models.InvoiceStatusDraft,
 				Memo:                    memo,
+				WarehouseID:             invWarehouseID,
 				CurrencyCode:            currencySelection.CurrencyCode,
 				ExchangeRate:            currencySelection.ExchangeRate,
 				Subtotal:                subtotal,
@@ -812,6 +824,7 @@ func (s *Server) loadEditorDropdowns(companyID uint, vm *pages.InvoiceEditorVM) 
 		Find(&vm.PaymentTerms).Error; err != nil {
 		return err
 	}
+	vm.Warehouses, _ = services.ListWarehouses(s.DB, companyID)
 	vm.ProductsJSON = buildProductsJSON(vm.Products)
 	vm.TaxCodesJSON = buildTaxCodesJSON(vm.TaxCodes)
 	vm.PaymentTermsJSON = buildPaymentTermsJSON(vm.PaymentTerms)

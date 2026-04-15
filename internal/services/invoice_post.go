@@ -200,7 +200,9 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 	// ── 3b. Validate inventory stock (for stock items) ───────────────────────
 	// Must happen before the transaction to provide a clear error without
 	// acquiring locks. The actual deduction happens inside the transaction.
-	outboundCosts, bundleExpansions, stockErr := ValidateStockForInvoice(db, companyID, inv.Lines)
+	// Resolve the warehouse: inv.WarehouseID → company default → nil (legacy).
+	invWarehouseID := ResolveInventoryWarehouse(db, companyID, inv.WarehouseID)
+	outboundCosts, bundleExpansions, stockErr := ValidateStockForInvoice(db, companyID, inv.Lines, invWarehouseID)
 	if stockErr != nil {
 		return stockErr
 	}
@@ -331,7 +333,7 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		}
 
 		// e. Record inventory sale movements for stock items (same transaction).
-		if err := CreateSaleMovements(tx, companyID, inv, je.ID, outboundCosts, bundleExpansions); err != nil {
+		if err := CreateSaleMovements(tx, companyID, inv, je.ID, outboundCosts, bundleExpansions, invWarehouseID); err != nil {
 			return fmt.Errorf("inventory sale movements: %w", err)
 		}
 

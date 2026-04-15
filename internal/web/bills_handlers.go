@@ -160,6 +160,7 @@ func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 		BillDate:     bill.BillDate.Format("2006-01-02"),
 		TermCode:     bill.TermCode,
 		Memo:         bill.Memo,
+		WarehouseID:  optUintStr(bill.WarehouseID),
 		FormError:    strings.TrimSpace(c.Query("error")),
 		Saved:        c.Query("saved") == "1",
 		CurrencyCode: bill.CurrencyCode,
@@ -214,6 +215,7 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	memo := strings.TrimSpace(c.FormValue("memo"))
 	currencyCodeRaw := strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
 	exchangeRateRaw := strings.TrimSpace(c.FormValue("exchange_rate"))
+	warehouseIDRaw := strings.TrimSpace(c.FormValue("warehouse_id"))
 	lineCountRaw := strings.TrimSpace(c.FormValue("line_count"))
 
 	isEdit := billIDRaw != "" && billIDRaw != "0"
@@ -227,15 +229,16 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	}
 
 	vm := pages.BillEditorVM{
-		HasCompany:   true,
-		IsEdit:       isEdit,
-		EditingID:    editingID,
-		BillNumber:   billNo,
-		VendorID:     vendorRaw,
-		BillDate:     dateRaw,
-		TermCode:     termsRaw,
-		DueDate:      dueDateRaw,
-		Memo:         memo,
+		HasCompany:  true,
+		IsEdit:      isEdit,
+		EditingID:   editingID,
+		BillNumber:  billNo,
+		VendorID:    vendorRaw,
+		BillDate:    dateRaw,
+		TermCode:    termsRaw,
+		DueDate:     dueDateRaw,
+		Memo:        memo,
+		WarehouseID: warehouseIDRaw,
 		CurrencyCode: currencyCodeRaw,
 		ExchangeRate: exchangeRateRaw,
 	}
@@ -592,6 +595,13 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		actor = "user"
 	}
 
+	// Parse optional warehouse selection.
+	var billWarehouseID *uint
+	if wid64, err := strconv.ParseUint(warehouseIDRaw, 10, 64); err == nil && wid64 > 0 {
+		wid := uint(wid64)
+		billWarehouseID = &wid
+	}
+
 	var savedBillID uint
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var bill models.Bill
@@ -613,6 +623,7 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 			}
 			bill.DueDate = dueDate
 			bill.Memo = memo
+			bill.WarehouseID = billWarehouseID
 			bill.CurrencyCode = currencySelection.CurrencyCode
 			bill.ExchangeRate = currencySelection.ExchangeRate
 			bill.Subtotal = subtotal
@@ -640,6 +651,7 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 				DueDate:             dueDate,
 				Status:              models.BillStatusDraft,
 				Memo:                memo,
+				WarehouseID:         billWarehouseID,
 				CurrencyCode:        currencySelection.CurrencyCode,
 				ExchangeRate:        currencySelection.ExchangeRate,
 				Subtotal:            subtotal,
@@ -760,6 +772,7 @@ func (s *Server) loadBillEditorDropdowns(companyID uint, vm *pages.BillEditorVM)
 		return err
 	}
 	vm.SelectableTasks = selectableTasks
+	vm.Warehouses, _ = services.ListWarehouses(s.DB, companyID)
 	vm.AccountsJSON = buildBillAccountsJSON(vm.Accounts)
 	vm.TaxCodesJSON = buildTaxCodesJSON(vm.TaxCodes)
 	vm.TasksJSON = buildBillTasksJSON(vm.SelectableTasks)

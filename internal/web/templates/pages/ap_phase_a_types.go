@@ -100,11 +100,15 @@ type VendorCreditNoteDetailVM struct {
 	CreditNote models.VendorCreditNote
 	Vendors    []models.Vendor
 	Accounts   []models.Account
-	Bills      []models.Bill // bills for same vendor
+	Bills      []models.Bill // bills for same vendor (linked bill selector)
+	// OpenBills are vendor's open bills available for credit application.
+	OpenBills []models.Bill
 	FormError  string
+	ApplyError string
 	Saved      bool
 	Posted     bool
 	Voided     bool
+	Applied    bool
 }
 
 // ── VendorRefund VMs ──────────────────────────────────────────────────────────

@@ -35,6 +35,10 @@ var (
 	ErrVendorCreditNoteInvalidStatus = errors.New("action not allowed in current vendor credit note status")
 	ErrVendorCreditNoteNoAPAcct      = errors.New("AP account is required before posting")
 	ErrVendorCreditNoteNoOffsetAcct  = errors.New("offset account is required before posting")
+	ErrVCNApplyAmountExceedsBalance  = errors.New("amount to apply exceeds vendor credit note remaining balance")
+	ErrVCNApplyAmountExceedsBill     = errors.New("amount to apply exceeds bill balance due")
+	ErrVCNVendorMismatch             = errors.New("vendor credit note and bill must belong to the same vendor")
+	ErrVCNBillNotOpen                = errors.New("bill must be posted or partially paid to apply a credit")
 )
 
 // ── Input types ───────────────────────────────────────────────────────────────
@@ -104,11 +108,12 @@ func CreateVendorCreditNote(db *gorm.DB, companyID uint, in VendorCreditNoteInpu
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 
-// GetVendorCreditNote loads a credit note with vendor and accounts for the given company.
+// GetVendorCreditNote loads a credit note with vendor, accounts, and applications for the given company.
 func GetVendorCreditNote(db *gorm.DB, companyID, vcnID uint) (*models.VendorCreditNote, error) {
 	var vcn models.VendorCreditNote
 	err := db.Preload("Vendor").Preload("APAccount").Preload("OffsetAccount").
 		Preload("Bill").Preload("VendorReturn").
+		Preload("Applications").
 		Where("id = ? AND company_id = ?", vcnID, companyID).First(&vcn).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrVendorCreditNoteNotFound
@@ -276,4 +281,134 @@ func VoidVendorCreditNote(db *gorm.DB, companyID, vcnID uint) error {
 		return fmt.Errorf("%w: only draft credit notes can be voided", ErrVendorCreditNoteInvalidStatus)
 	}
 	return db.Model(&vcn).Update("status", models.VendorCreditNoteStatusVoided).Error
+}
+
+// ── Apply to Bill ─────────────────────────────────────────────────────────────
+
+// ApplyVendorCreditNoteToBill applies a portion of a posted vendor credit note
+// against an open bill, reducing the bill's BalanceDue.
+//
+// No new JE is created — the accounting reduction to AP already occurred when
+// the credit note was posted (Dr AP / Cr Purchase Returns). This operation is
+// purely an AP open-item allocation.
+//
+// Rules:
+//   - VCN must be posted or partially_applied
+//   - Bill must be posted or partially_paid (open)
+//   - VCN.VendorID must match Bill.VendorID
+//   - amountToApply must be ≤ VCN.RemainingAmount and ≤ Bill.BalanceDue
+func ApplyVendorCreditNoteToBill(db *gorm.DB, companyID, vcnID, billID uint, amountToApply decimal.Decimal) error {
+	if !amountToApply.IsPositive() {
+		return errors.New("amount to apply must be positive")
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		var vcn models.VendorCreditNote
+		if err := tx.Where("id = ? AND company_id = ?", vcnID, companyID).First(&vcn).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrVendorCreditNoteNotFound
+			}
+			return err
+		}
+		if vcn.Status != models.VendorCreditNoteStatusPosted &&
+			vcn.Status != models.VendorCreditNoteStatusPartiallyApplied {
+			return fmt.Errorf("%w: current status is %s", ErrVendorCreditNoteInvalidStatus, vcn.Status)
+		}
+		if amountToApply.GreaterThan(vcn.RemainingAmount) {
+			return fmt.Errorf("%w: applying %s but only %s remaining",
+				ErrVCNApplyAmountExceedsBalance, amountToApply.StringFixed(2), vcn.RemainingAmount.StringFixed(2))
+		}
+
+		var bill models.Bill
+		if err := tx.Where("id = ? AND company_id = ?", billID, companyID).First(&bill).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("bill not found")
+			}
+			return err
+		}
+		if bill.VendorID != vcn.VendorID {
+			return ErrVCNVendorMismatch
+		}
+		if bill.Status != models.BillStatusPosted && bill.Status != models.BillStatusPartiallyPaid {
+			return ErrVCNBillNotOpen
+		}
+		if amountToApply.GreaterThan(bill.BalanceDue) {
+			return fmt.Errorf("%w: applying %s but bill balance is %s",
+				ErrVCNApplyAmountExceedsBill, amountToApply.StringFixed(2), bill.BalanceDue.StringFixed(2))
+		}
+
+		// Compute base amount proportionally (using VCN's exchange rate).
+		amountBase := amountToApply
+		if vcn.Amount.GreaterThan(decimal.Zero) && vcn.AmountBase.GreaterThan(decimal.Zero) {
+			ratio := amountToApply.Div(vcn.Amount)
+			amountBase = vcn.AmountBase.Mul(ratio).Round(2)
+		}
+
+		now := time.Now()
+
+		// 1. Create application record.
+		app := models.APCreditApplication{
+			CompanyID:          companyID,
+			VendorCreditNoteID: vcnID,
+			BillID:             billID,
+			AmountApplied:      amountToApply,
+			AmountAppliedBase:  amountBase,
+			AppliedAt:          now,
+		}
+		if err := tx.Create(&app).Error; err != nil {
+			return fmt.Errorf("create AP credit application: %w", err)
+		}
+
+		// 2. Update VCN remaining / applied amounts and status.
+		newVCNRemaining := vcn.RemainingAmount.Sub(amountToApply)
+		newVCNApplied := vcn.AppliedAmount.Add(amountToApply)
+		newVCNStatus := models.VendorCreditNoteStatusPartiallyApplied
+		if newVCNRemaining.IsZero() {
+			newVCNStatus = models.VendorCreditNoteStatusFullyApplied
+		}
+		if err := tx.Model(&vcn).Updates(map[string]any{
+			"remaining_amount": newVCNRemaining,
+			"applied_amount":   newVCNApplied,
+			"status":           string(newVCNStatus),
+		}).Error; err != nil {
+			return fmt.Errorf("update vendor credit note: %w", err)
+		}
+
+		// 3. Update Bill balance due and status.
+		newBillBalance := bill.BalanceDue.Sub(amountToApply)
+		newBillStatus := models.BillStatusPartiallyPaid
+		if newBillBalance.IsZero() {
+			newBillStatus = models.BillStatusPaid
+		}
+		if err := tx.Model(&bill).Updates(map[string]any{
+			"balance_due": newBillBalance,
+			"status":      string(newBillStatus),
+		}).Error; err != nil {
+			return fmt.Errorf("update bill: %w", err)
+		}
+
+		return nil
+	})
+}
+
+// ListOpenBillsForVendor returns bills that can receive a credit application
+// (status posted or partially_paid, balance_due > 0) for a given vendor.
+func ListOpenBillsForVendor(db *gorm.DB, companyID, vendorID uint) ([]models.Bill, error) {
+	var bills []models.Bill
+	err := db.Where("company_id = ? AND vendor_id = ? AND status IN ? AND balance_due > 0",
+		companyID, vendorID, []string{
+			string(models.BillStatusPosted),
+			string(models.BillStatusPartiallyPaid),
+		}).
+		Order("bill_date asc, id asc").
+		Find(&bills).Error
+	return bills, err
+}
+
+// ListVCNApplicationsForBill returns all AP credit applications for a given bill.
+func ListVCNApplicationsForBill(db *gorm.DB, companyID, billID uint) ([]models.APCreditApplication, error) {
+	var apps []models.APCreditApplication
+	err := db.Where("company_id = ? AND bill_id = ?", companyID, billID).
+		Order("applied_at asc").Find(&apps).Error
+	return apps, err
 }

@@ -13,6 +13,16 @@ import (
 
 // ── Snapshot ─────────────────────────────────────────────────────────────────
 
+// WarehouseBalance holds per-warehouse stock data for the ledger snapshot.
+type WarehouseBalance struct {
+	WarehouseID   uint
+	WarehouseCode string
+	WarehouseName string
+	QtyOnHand     decimal.Decimal
+	AverageCost   decimal.Decimal
+	Value         decimal.Decimal
+}
+
 // InventorySnapshot holds the current stock state for a single item.
 type InventorySnapshot struct {
 	ItemID         uint
@@ -21,6 +31,8 @@ type InventorySnapshot struct {
 	InventoryValue decimal.Decimal // qty × avg_cost
 	CostingMethod  string
 	HasOpening     bool
+	// Per-warehouse breakdown (populated when multi-warehouse is active)
+	WarehouseBreakdown []WarehouseBalance
 }
 
 // GetInventorySnapshot returns the current stock snapshot for an inventory item.
@@ -40,13 +52,35 @@ func GetInventorySnapshot(db *gorm.DB, companyID, itemID uint) (*InventorySnapsh
 		}
 	}
 
+	// Per-warehouse breakdown: query all balance rows keyed by warehouse_id.
+	var whBals []models.InventoryBalance
+	db.Preload("Warehouse").
+		Where("company_id = ? AND item_id = ? AND warehouse_id IS NOT NULL", companyID, itemID).
+		Find(&whBals)
+
+	breakdown := make([]WarehouseBalance, 0, len(whBals))
+	for _, wb := range whBals {
+		if wb.Warehouse == nil {
+			continue
+		}
+		breakdown = append(breakdown, WarehouseBalance{
+			WarehouseID:   *wb.WarehouseID,
+			WarehouseCode: wb.Warehouse.Code,
+			WarehouseName: wb.Warehouse.Name,
+			QtyOnHand:     wb.QuantityOnHand,
+			AverageCost:   wb.AverageCost,
+			Value:         wb.QuantityOnHand.Mul(wb.AverageCost).RoundBank(2),
+		})
+	}
+
 	return &InventorySnapshot{
-		ItemID:         itemID,
-		QuantityOnHand: bal.QuantityOnHand,
-		AverageCost:    bal.AverageCost,
-		InventoryValue: bal.QuantityOnHand.Mul(bal.AverageCost).RoundBank(2),
-		CostingMethod:  method,
-		HasOpening:     HasOpening(db, companyID, itemID),
+		ItemID:             itemID,
+		QuantityOnHand:     bal.QuantityOnHand,
+		AverageCost:        bal.AverageCost,
+		InventoryValue:     bal.QuantityOnHand.Mul(bal.AverageCost).RoundBank(2),
+		CostingMethod:      method,
+		HasOpening:         HasOpening(db, companyID, itemID),
+		WarehouseBreakdown: breakdown,
 	}, nil
 }
 
@@ -95,6 +129,9 @@ type MovementRow struct {
 	TotalCost      string
 	JournalEntryID *uint
 	Note           string
+	// Warehouse info (empty string = legacy movement, no warehouse routing)
+	WarehouseCode string
+	WarehouseName string
 }
 
 // ListMovements returns paginated movement rows for an item, newest first.
@@ -109,7 +146,8 @@ func ListMovements(db *gorm.DB, companyID, itemID uint, limit, offset int) ([]Mo
 		Count(&total)
 
 	var movs []models.InventoryMovement
-	err := db.Where("company_id = ? AND item_id = ?", companyID, itemID).
+	err := db.Preload("Warehouse").
+		Where("company_id = ? AND item_id = ?", companyID, itemID).
 		Order("movement_date DESC, id DESC").
 		Limit(limit).Offset(offset).
 		Find(&movs).Error
@@ -119,6 +157,11 @@ func ListMovements(db *gorm.DB, companyID, itemID uint, limit, offset int) ([]Mo
 
 	rows := make([]MovementRow, len(movs))
 	for i, m := range movs {
+		whCode, whName := "", ""
+		if m.Warehouse != nil {
+			whCode = m.Warehouse.Code
+			whName = m.Warehouse.Name
+		}
 		rows[i] = MovementRow{
 			ID:             m.ID,
 			Date:           m.MovementDate.Format("2006-01-02"),
@@ -132,6 +175,8 @@ func ListMovements(db *gorm.DB, companyID, itemID uint, limit, offset int) ([]Mo
 			TotalCost:      formatOptDecimal(m.TotalCost),
 			JournalEntryID: m.JournalEntryID,
 			Note:           m.ReferenceNote,
+			WarehouseCode:  whCode,
+			WarehouseName:  whName,
 		}
 	}
 	return rows, total, nil

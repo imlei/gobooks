@@ -266,6 +266,7 @@ func Migrate(db *gorm.DB) error {
 		&models.VendorReturn{},
 		&models.VendorCreditNote{},
 		&models.VendorRefund{},
+		&models.APCreditApplication{},
 		// Phase C: inter-warehouse stock transfers.
 		// Warehouse must precede WarehouseTransfer (FK deps already above).
 		&models.WarehouseTransfer{},
@@ -338,7 +339,11 @@ func Migrate(db *gorm.DB) error {
 	}
 	// Phase B: Warehouse table + warehouse_id columns on inventory tables.
 	// AutoMigrate above handles fresh installs; these guards add columns on live DBs.
-	return migratePhaseBWarehouse(db)
+	if err := migratePhaseBWarehouse(db); err != nil {
+		return err
+	}
+	// Phase D: warehouse_id columns on bills and invoices.
+	return migratePhaseDInventory(db)
 }
 
 // migrateEnsureUserPlans seeds the user_plans table with the three default tiers
@@ -2098,6 +2103,28 @@ func migratePhase13(db *gorm.DB) error {
 				continue
 			}
 			return fmt.Errorf("migratePhase13 step %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+// migratePhaseDInventory adds warehouse_id (nullable FK) to bills and invoices
+// on live databases that predate Phase D.
+// AutoMigrate handles the column on fresh installs. These guards are idempotent.
+func migratePhaseDInventory(db *gorm.DB) error {
+	stmts := []string{
+		`ALTER TABLE bills ADD COLUMN IF NOT EXISTS warehouse_id BIGINT REFERENCES warehouses(id)`,
+		`CREATE INDEX IF NOT EXISTS idx_bills_warehouse_id ON bills(warehouse_id)`,
+		`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS warehouse_id BIGINT REFERENCES warehouses(id)`,
+		`CREATE INDEX IF NOT EXISTS idx_invoices_warehouse_id ON invoices(warehouse_id)`,
+	}
+	for i, stmt := range stmts {
+		if err := db.Exec(stmt).Error; err != nil {
+			if strings.Contains(err.Error(), "already exists") ||
+				strings.Contains(err.Error(), "42701") {
+				continue
+			}
+			return fmt.Errorf("migratePhaseDInventory step %d: %w", i+1, err)
 		}
 	}
 	return nil

@@ -107,8 +107,9 @@ func AdjustBillFragmentsForInventory(frags []PostingFragment, bill models.Bill) 
 
 // ValidateStockForInvoice checks that sufficient inventory exists for all
 // stock items on the invoice, including bundle component items.
+// warehouseID routes the check to a specific warehouse (nil = legacy path).
 // Returns per-item outbound cost results and the expanded bundle components.
-func ValidateStockForInvoice(db *gorm.DB, companyID uint, lines []models.InvoiceLine) (
+func ValidateStockForInvoice(db *gorm.DB, companyID uint, lines []models.InvoiceLine, warehouseID *uint) (
 	outboundCosts map[uint]*OutboundResult,
 	bundleExpansions []ExpandedComponent,
 	err error,
@@ -140,13 +141,17 @@ func ValidateStockForInvoice(db *gorm.DB, companyID uint, lines []models.Invoice
 
 	// Validate stock availability for all required items.
 	for itemID, needQty := range required {
-		result, err := engine.PreviewOutbound(db, OutboundRequest{
+		req := OutboundRequest{
 			CompanyID:    companyID,
 			ItemID:       itemID,
 			Quantity:     needQty,
 			MovementType: models.MovementTypeSale,
-			LocationType: models.LocationTypeInternal,
-		})
+			WarehouseID:  warehouseID,
+		}
+		if warehouseID == nil {
+			req.LocationType = models.LocationTypeInternal
+		}
+		result, err := engine.PreviewOutbound(db, req)
 		if err != nil {
 			itemName := fmt.Sprintf("#%d", itemID)
 			for _, l := range lines {
@@ -174,9 +179,10 @@ func ValidateStockForInvoice(db *gorm.DB, companyID uint, lines []models.Invoice
 
 // CreateSaleMovements records inventory outflows for stock items on a posted
 // invoice. Handles both single stock items and bundle component items.
+// warehouseID routes movements to a specific warehouse (nil = legacy path).
 // Must be called inside the same transaction as the JE creation.
 func CreateSaleMovements(tx *gorm.DB, companyID uint, inv models.Invoice, jeID uint,
-	outboundCosts map[uint]*OutboundResult, bundleExpansions []ExpandedComponent) error {
+	outboundCosts map[uint]*OutboundResult, bundleExpansions []ExpandedComponent, warehouseID *uint) error {
 
 	engine, err := ResolveCostingEngineForCompany(tx, companyID)
 	if err != nil {
@@ -188,14 +194,14 @@ func CreateSaleMovements(tx *gorm.DB, companyID uint, inv models.Invoice, jeID u
 		if l.ProductService == nil || !l.ProductService.IsStockItem {
 			continue
 		}
-		if err := createSaleMovement(tx, engine, companyID, inv, jeID, l.ProductService.ID, l.Qty); err != nil {
+		if err := createSaleMovement(tx, engine, companyID, inv, jeID, l.ProductService.ID, l.Qty, warehouseID); err != nil {
 			return err
 		}
 	}
 
 	// 2. Bundle component items.
 	for _, ec := range bundleExpansions {
-		if err := createSaleMovement(tx, engine, companyID, inv, jeID, ec.ComponentItem.ID, ec.RequiredQty); err != nil {
+		if err := createSaleMovement(tx, engine, companyID, inv, jeID, ec.ComponentItem.ID, ec.RequiredQty, warehouseID); err != nil {
 			return err
 		}
 	}
@@ -204,16 +210,20 @@ func CreateSaleMovements(tx *gorm.DB, companyID uint, inv models.Invoice, jeID u
 }
 
 func createSaleMovement(tx *gorm.DB, engine CostingEngine, companyID uint,
-	inv models.Invoice, jeID, itemID uint, qty decimal.Decimal) error {
+	inv models.Invoice, jeID, itemID uint, qty decimal.Decimal, warehouseID *uint) error {
 
-	result, err := engine.ApplyOutbound(tx, OutboundRequest{
+	req := OutboundRequest{
 		CompanyID:    companyID,
 		ItemID:       itemID,
 		Quantity:     qty,
 		MovementType: models.MovementTypeSale,
-		LocationType: models.LocationTypeInternal,
+		WarehouseID:  warehouseID,
 		Date:         inv.InvoiceDate,
-	})
+	}
+	if warehouseID == nil {
+		req.LocationType = models.LocationTypeInternal
+	}
+	result, err := engine.ApplyOutbound(tx, req)
 	if err != nil {
 		return fmt.Errorf("apply outbound for item %d: %w", itemID, err)
 	}
@@ -231,14 +241,16 @@ func createSaleMovement(tx *gorm.DB, engine CostingEngine, companyID uint,
 		JournalEntryID: &jeID,
 		ReferenceNote:  "Sale: " + inv.InvoiceNumber,
 		MovementDate:   inv.InvoiceDate,
+		WarehouseID:    warehouseID,
 	}
 	return tx.Create(&mov).Error
 }
 
 // CreatePurchaseMovements records inventory inflows for stock items on a posted
 // bill. Bundle items on bills are not expanded (bundles are sales-only).
+// warehouseID routes movements to a specific warehouse (nil = legacy path).
 // Must be called inside the same transaction as the JE creation.
-func CreatePurchaseMovements(tx *gorm.DB, companyID uint, bill models.Bill, jeID uint) error {
+func CreatePurchaseMovements(tx *gorm.DB, companyID uint, bill models.Bill, jeID uint, warehouseID *uint) error {
 	engine, err := ResolveCostingEngineForCompany(tx, companyID)
 	if err != nil {
 		return fmt.Errorf("resolve costing engine: %w", err)
@@ -249,15 +261,19 @@ func CreatePurchaseMovements(tx *gorm.DB, companyID uint, bill models.Bill, jeID
 			continue
 		}
 
-		result, err := engine.ApplyInbound(tx, InboundRequest{
+		req := InboundRequest{
 			CompanyID:    companyID,
 			ItemID:       l.ProductService.ID,
 			Quantity:     l.Qty,
 			UnitCost:     l.UnitPrice,
 			MovementType: models.MovementTypePurchase,
-			LocationType: models.LocationTypeInternal,
+			WarehouseID:  warehouseID,
 			Date:         bill.BillDate,
-		})
+		}
+		if warehouseID == nil {
+			req.LocationType = models.LocationTypeInternal
+		}
+		result, err := engine.ApplyInbound(tx, req)
 		if err != nil {
 			return fmt.Errorf("apply inbound for item %d: %w", l.ProductService.ID, err)
 		}
@@ -275,6 +291,7 @@ func CreatePurchaseMovements(tx *gorm.DB, companyID uint, bill models.Bill, jeID
 			JournalEntryID: &jeID,
 			ReferenceNote:  "Purchase: " + bill.BillNumber,
 			MovementDate:   bill.BillDate,
+			WarehouseID:    warehouseID,
 		}
 		if err := tx.Create(&mov).Error; err != nil {
 			return fmt.Errorf("create purchase movement for item %d: %w", l.ProductService.ID, err)

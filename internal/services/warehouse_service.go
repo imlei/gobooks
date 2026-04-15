@@ -169,6 +169,23 @@ func EnsureDefaultWarehouse(db *gorm.DB, companyID uint) (uint, error) {
 	return w.ID, nil
 }
 
+// ResolveInventoryWarehouse returns the warehouse ID to use for inventory
+// operations on a document. Resolution order:
+//
+//  1. docWarehouseID — if not nil, use it directly.
+//  2. Company default warehouse — if one exists, use it.
+//  3. nil — fall back to the legacy LocationType/LocationRef path.
+func ResolveInventoryWarehouse(db *gorm.DB, companyID uint, docWarehouseID *uint) *uint {
+	if docWarehouseID != nil {
+		return docWarehouseID
+	}
+	id, err := DefaultWarehouseID(db, companyID)
+	if err != nil || id == 0 {
+		return nil
+	}
+	return &id
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // validateWarehouseCode ensures the code is unique within the company.

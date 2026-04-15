@@ -110,6 +110,9 @@ type VendorCreditNote struct {
 	JournalEntryID *uint         `gorm:"index"`
 	JournalEntry   *JournalEntry `gorm:"foreignKey:JournalEntryID"`
 
+	// Applications records each allocation of this credit note to a bill.
+	Applications []APCreditApplication `gorm:"foreignKey:VendorCreditNoteID"`
+
 	PostedAt       *time.Time `gorm:"index"`
 	PostedBy       string     `gorm:"type:text;not null;default:''"`
 	PostedByUserID *uuid.UUID `gorm:"type:text"`

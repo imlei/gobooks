@@ -84,6 +84,7 @@ func (s *Server) handleVendorCreditNoteDetail(c *fiber.Ctx) error {
 		Saved:      c.Query("saved") == "1",
 		Posted:     c.Query("posted") == "1",
 		Voided:     c.Query("voided") == "1",
+		Applied:    c.Query("applied") == "1",
 	}
 	s.loadVCNFormData(companyID, &vm)
 	return pages.VendorCreditNoteDetail(vm).Render(c.Context(), c)
@@ -178,6 +179,38 @@ func (s *Server) handleVendorCreditNoteVoid(c *fiber.Ctx) error {
 	return c.Redirect("/vendor-credit-notes/"+strconv.FormatUint(uint64(id), 10)+"?voided=1", fiber.StatusSeeOther)
 }
 
+// ── Apply to Bill ──────────────────────────────────────────────────────────────
+
+// handleVCNApplyToBill handles POST /vendor-credit-notes/:id/apply-to-bill
+func (s *Server) handleVCNApplyToBill(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	id, err := parseIDParam(c)
+	if err != nil {
+		return c.Redirect("/vendor-credit-notes", fiber.StatusSeeOther)
+	}
+
+	billIDStr := strings.TrimSpace(c.FormValue("bill_id"))
+	billID64, _ := strconv.ParseUint(billIDStr, 10, 64)
+	billID := uint(billID64)
+
+	amountStr := strings.TrimSpace(c.FormValue("amount_to_apply"))
+	amount, _ := decimal.NewFromString(amountStr)
+
+	if applyErr := services.ApplyVendorCreditNoteToBill(s.DB, companyID, id, billID, amount); applyErr != nil {
+		vcn, _ := services.GetVendorCreditNote(s.DB, companyID, id)
+		vm := pages.VendorCreditNoteDetailVM{HasCompany: true, ApplyError: applyErr.Error()}
+		if vcn != nil {
+			vm.CreditNote = *vcn
+		}
+		s.loadVCNFormData(companyID, &vm)
+		return pages.VendorCreditNoteDetail(vm).Render(c.Context(), c)
+	}
+	return c.Redirect("/vendor-credit-notes/"+strconv.FormatUint(uint64(id), 10)+"?applied=1", fiber.StatusSeeOther)
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func (s *Server) loadVCNFormData(companyID uint, vm *pages.VendorCreditNoteDetailVM) {
@@ -186,6 +219,7 @@ func (s *Server) loadVCNFormData(companyID uint, vm *pages.VendorCreditNoteDetai
 	if vm.CreditNote.VendorID > 0 {
 		s.DB.Where("company_id = ? AND vendor_id = ?", companyID, vm.CreditNote.VendorID).
 			Order("bill_date desc").Find(&vm.Bills)
+		vm.OpenBills, _ = services.ListOpenBillsForVendor(s.DB, companyID, vm.CreditNote.VendorID)
 	}
 }
 

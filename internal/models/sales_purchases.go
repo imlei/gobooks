@@ -157,6 +157,11 @@ type Invoice struct {
 
 	Memo string `gorm:"not null;default:''"`
 
+	// WarehouseID optionally links the invoice to a specific warehouse for inventory
+	// deduction routing. nil = use company default warehouse → legacy path.
+	WarehouseID *uint      `gorm:"index"`
+	Warehouse   *Warehouse `gorm:"foreignKey:WarehouseID"`
+
 	// JournalEntryID links the posted accounting entry (nil = not yet posted).
 	JournalEntryID *uint         `gorm:"index"`
 	JournalEntry   *JournalEntry `gorm:"foreignKey:JournalEntryID"`
@@ -316,6 +321,11 @@ type Bill struct {
 	TaxTotalBase decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
 
 	Memo string `gorm:"not null;default:''"`
+
+	// WarehouseID optionally links the bill to a specific warehouse for inventory
+	// receipt routing. nil = use company default warehouse → legacy path.
+	WarehouseID *uint      `gorm:"index"`
+	Warehouse   *Warehouse `gorm:"foreignKey:WarehouseID"`
 
 	// JournalEntryID links the posted accounting entry (nil = not yet posted).
 	JournalEntryID *uint         `gorm:"index"`

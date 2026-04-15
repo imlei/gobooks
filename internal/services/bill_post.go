@@ -159,6 +159,10 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		return err
 	}
 
+	// ── 3b. Resolve warehouse for inventory posting ───────────────────────────
+	// Resolve: bill.WarehouseID → company default warehouse → nil (legacy path).
+	billWarehouseID := ResolveInventoryWarehouse(db, companyID, bill.WarehouseID)
+
 	// ── 4. Build posting fragments ────────────────────────────────────────────
 	// Pure function: one DR per line (expense ± embedded tax), one DR per
 	// recoverable-tax line (ITC), and one CR (AP) for the gross total.
@@ -271,7 +275,7 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		}
 
 		// e. Record inventory purchase movements for stock items (same transaction).
-		if err := CreatePurchaseMovements(tx, companyID, bill, je.ID); err != nil {
+		if err := CreatePurchaseMovements(tx, companyID, bill, je.ID, billWarehouseID); err != nil {
 			return fmt.Errorf("inventory purchase movements: %w", err)
 		}
 

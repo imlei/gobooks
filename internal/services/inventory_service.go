@@ -30,13 +30,15 @@ type OpeningBalanceInput struct {
 	AsOfDate     time.Time
 	LocationType models.LocationType
 	LocationRef  string
+	// WarehouseID routes the opening to a specific warehouse (nil = legacy path).
+	WarehouseID *uint
 }
 
 // CreateOpeningBalance records the initial stock level for an inventory item.
-// Each (item, location_type, location_ref) combination may have at most one
-// opening movement. Uses CostingEngine.ApplyInbound for balance update.
+// Each (item × warehouse_id) or (item × location_type × location_ref) combination
+// may have at most one opening movement. Uses CostingEngine.ApplyInbound for balance update.
 func CreateOpeningBalance(db *gorm.DB, in OpeningBalanceInput) (*models.InventoryMovement, error) {
-	if in.LocationType == "" {
+	if in.WarehouseID == nil && in.LocationType == "" {
 		in.LocationType = models.LocationTypeInternal
 	}
 
@@ -46,12 +48,17 @@ func CreateOpeningBalance(db *gorm.DB, in OpeningBalanceInput) (*models.Inventor
 	}
 	_ = item
 
-	// Check no prior opening for this item + location.
+	// Check no prior opening for this item + location (warehouse-aware).
 	var existing int64
-	db.Model(&models.InventoryMovement{}).
+	q := db.Model(&models.InventoryMovement{}).
 		Where("company_id = ? AND item_id = ? AND movement_type = ? AND source_type = ?",
-			in.CompanyID, in.ItemID, models.MovementTypeOpening, "opening").
-		Count(&existing)
+			in.CompanyID, in.ItemID, models.MovementTypeOpening, "opening")
+	if in.WarehouseID != nil {
+		q = q.Where("warehouse_id = ?", *in.WarehouseID)
+	} else {
+		q = q.Where("warehouse_id IS NULL")
+	}
+	q.Count(&existing)
 	if existing > 0 {
 		return nil, ErrOpeningExists
 	}
@@ -67,22 +74,24 @@ func CreateOpeningBalance(db *gorm.DB, in OpeningBalanceInput) (*models.Inventor
 
 	var mov models.InventoryMovement
 	err = db.Transaction(func(tx *gorm.DB) error {
-		// Use CostingEngine for balance update.
 		engine, err := ResolveCostingEngineForCompany(tx, in.CompanyID)
 		if err != nil {
 			return fmt.Errorf("resolve costing engine: %w", err)
 		}
-		_, err = engine.ApplyInbound(tx, InboundRequest{
+		req := InboundRequest{
 			CompanyID:    in.CompanyID,
 			ItemID:       in.ItemID,
 			Quantity:     in.Quantity,
 			UnitCost:     in.UnitCost,
 			MovementType: models.MovementTypeOpening,
-			LocationType: in.LocationType,
-			LocationRef:  in.LocationRef,
+			WarehouseID:  in.WarehouseID,
 			Date:         in.AsOfDate,
-		})
-		if err != nil {
+		}
+		if in.WarehouseID == nil {
+			req.LocationType = in.LocationType
+			req.LocationRef = in.LocationRef
+		}
+		if _, err = engine.ApplyInbound(tx, req); err != nil {
 			return fmt.Errorf("costing engine inbound: %w", err)
 		}
 
@@ -96,6 +105,7 @@ func CreateOpeningBalance(db *gorm.DB, in OpeningBalanceInput) (*models.Inventor
 			SourceType:    "opening",
 			ReferenceNote: "Opening balance",
 			MovementDate:  in.AsOfDate,
+			WarehouseID:   in.WarehouseID,
 		}
 		return tx.Create(&mov).Error
 	})
@@ -118,12 +128,14 @@ type AdjustmentInput struct {
 	Note          string
 	LocationType  models.LocationType
 	LocationRef   string
+	// WarehouseID routes the adjustment to a specific warehouse (nil = legacy path).
+	WarehouseID *uint
 }
 
 // CreateAdjustment records a manual inventory adjustment.
 // Positive adjustments use CostingEngine.ApplyInbound; negative use ApplyOutbound.
 func CreateAdjustment(db *gorm.DB, in AdjustmentInput) (*models.InventoryMovement, error) {
-	if in.LocationType == "" {
+	if in.WarehouseID == nil && in.LocationType == "" {
 		in.LocationType = models.LocationTypeInternal
 	}
 
@@ -151,16 +163,20 @@ func CreateAdjustment(db *gorm.DB, in AdjustmentInput) (*models.InventoryMovemen
 			if in.UnitCost != nil {
 				uc = *in.UnitCost
 			}
-			result, err := engine.ApplyInbound(tx, InboundRequest{
+			req := InboundRequest{
 				CompanyID:    in.CompanyID,
 				ItemID:       in.ItemID,
 				Quantity:     in.QuantityDelta,
 				UnitCost:     uc,
 				MovementType: models.MovementTypeAdjustment,
-				LocationType: in.LocationType,
-				LocationRef:  in.LocationRef,
+				WarehouseID:  in.WarehouseID,
 				Date:         in.MovementDate,
-			})
+			}
+			if in.WarehouseID == nil {
+				req.LocationType = in.LocationType
+				req.LocationRef = in.LocationRef
+			}
+			result, err := engine.ApplyInbound(tx, req)
 			if err != nil {
 				return err
 			}
@@ -168,15 +184,19 @@ func CreateAdjustment(db *gorm.DB, in AdjustmentInput) (*models.InventoryMovemen
 			totalCost = result.TotalCost
 		} else if in.QuantityDelta.IsNegative() {
 			// Negative adjustment = outbound.
-			result, err := engine.ApplyOutbound(tx, OutboundRequest{
+			req := OutboundRequest{
 				CompanyID:    in.CompanyID,
 				ItemID:       in.ItemID,
 				Quantity:     in.QuantityDelta.Abs(),
 				MovementType: models.MovementTypeAdjustment,
-				LocationType: in.LocationType,
-				LocationRef:  in.LocationRef,
+				WarehouseID:  in.WarehouseID,
 				Date:         in.MovementDate,
-			})
+			}
+			if in.WarehouseID == nil {
+				req.LocationType = in.LocationType
+				req.LocationRef = in.LocationRef
+			}
+			result, err := engine.ApplyOutbound(tx, req)
 			if err != nil {
 				return err
 			}
@@ -195,6 +215,7 @@ func CreateAdjustment(db *gorm.DB, in AdjustmentInput) (*models.InventoryMovemen
 			SourceType:    "adjustment",
 			ReferenceNote: in.Note,
 			MovementDate:  in.MovementDate,
+			WarehouseID:   in.WarehouseID,
 		}
 		return tx.Create(&mov).Error
 	})
