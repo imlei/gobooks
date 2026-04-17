@@ -128,7 +128,9 @@ templ vendorListTable(vm VendorsVM) {
 			<tbody class="divide-y divide-border-subtle">
 				for _, v := range vm.Vendors {
 					<tr class="hover:bg-surface-rowHover transition-colors duration-75">
-						<td class="py-2.5 pr-4 font-medium text-text">{ v.Name }</td>
+						<td class="py-2.5 pr-4 font-medium">
+							<a href={ templ.SafeURL("/vendors/" + Uitoa(v.ID)) } class="text-primary hover:underline">{ v.Name }</a>
+						</td>
 						<td class="py-2.5 pr-4 text-small text-text-muted2">
 							if v.Email != "" {
 								<a href={ templ.SafeURL("mailto:" + v.Email) } class="hover:underline">{ v.Email }</a>
