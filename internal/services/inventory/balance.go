@@ -1,0 +1,103 @@
+// 遵循project_guide.md
+package inventory
+
+// balance.go — internal helpers for reading and updating the
+// InventoryBalance cache inside IN verb implementations.
+//
+// Kept local to this package to avoid importing internal/services (which
+// imports us back via the old costing engine callers — import cycle).
+// The legacy services.MovingAverageCostingEngine still serves its existing
+// callers; as they migrate to this package (Slices 3-6), the engine will
+// be inlined/retired. The cost-flow math here is weighted-average only,
+// matching the only algorithm the live system currently supports.
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"gobooks/internal/models"
+)
+
+// readOrCreateBalance locates the InventoryBalance row for the given
+// (company, item, warehouse) triple, creating a zero-valued row if none
+// exists. When forUpdate is true the row is locked with SELECT FOR UPDATE
+// on engines that support it (skipped on sqlite for tests).
+func readOrCreateBalance(db *gorm.DB, companyID, itemID uint, warehouseID *uint, forUpdate bool) (*models.InventoryBalance, error) {
+	var bal models.InventoryBalance
+	var q *gorm.DB
+	if warehouseID != nil {
+		q = db.Where("company_id = ? AND item_id = ? AND warehouse_id = ?",
+			companyID, itemID, *warehouseID)
+	} else {
+		// Legacy path: LocationType defaults to internal for receipts that
+		// haven't been routed to a specific warehouse yet.
+		q = db.Where("company_id = ? AND item_id = ? AND location_type = ? AND location_ref = ? AND warehouse_id IS NULL",
+			companyID, itemID, models.LocationTypeInternal, "")
+	}
+	if forUpdate && db.Dialector.Name() != "sqlite" {
+		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+
+	err := q.First(&bal).Error
+	if err == nil {
+		return &bal, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("inventory: load balance: %w", err)
+	}
+
+	// First movement at this location — seed a zero row.
+	bal = models.InventoryBalance{
+		CompanyID:      companyID,
+		ItemID:         itemID,
+		WarehouseID:    warehouseID,
+		QuantityOnHand: decimal.Zero,
+		AverageCost:    decimal.Zero,
+	}
+	if warehouseID == nil {
+		bal.LocationType = models.LocationTypeInternal
+	}
+	if err := db.Create(&bal).Error; err != nil {
+		return nil, fmt.Errorf("inventory: create balance: %w", err)
+	}
+	return &bal, nil
+}
+
+// applyInboundToBalance updates the balance for a receipt using weighted
+// average cost:
+//
+//	new_avg = (old_qty × old_avg + in_qty × in_cost) / (old_qty + in_qty)
+//
+// The balance row is saved in-place and returned. Quantity must be positive;
+// unitCost is the per-unit base-currency cost (already inclusive of any
+// apportioned landed cost).
+func applyInboundToBalance(db *gorm.DB, bal *models.InventoryBalance, quantity, unitCostBase decimal.Decimal) error {
+	oldValue := bal.QuantityOnHand.Mul(bal.AverageCost)
+	inboundValue := quantity.Mul(unitCostBase)
+	newQty := bal.QuantityOnHand.Add(quantity)
+
+	var newAvg decimal.Decimal
+	switch {
+	case newQty.IsPositive():
+		newAvg = oldValue.Add(inboundValue).Div(newQty).Round(4)
+	default:
+		// Edge case: previous balance was negative enough that this receipt
+		// doesn't bring it back to positive. Fall back to the inbound cost
+		// so we don't divide by a non-positive quantity. Shouldn't arise in
+		// normal operation.
+		newAvg = unitCostBase
+	}
+
+	bal.QuantityOnHand = newQty
+	bal.AverageCost = newAvg
+	bal.UpdatedAt = time.Now()
+	if err := db.Save(bal).Error; err != nil {
+		return fmt.Errorf("inventory: save balance: %w", err)
+	}
+	return nil
+}

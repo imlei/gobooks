@@ -7,9 +7,29 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"gobooks/internal/models"
 	"gorm.io/gorm"
+
+	"gobooks/internal/models"
+	"gobooks/internal/services/inventory"
 )
+
+// translateInventoryErr maps errors returned by the new inventory package
+// back to this package's legacy sentinel errors so existing callers keep
+// matching them via errors.Is. Dropped entirely in slice 8 once all callers
+// consume the inventory package directly.
+func translateInventoryErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	switch {
+	case errors.Is(err, inventory.ErrItemNotTracked):
+		return ErrNotInventoryItem
+	case errors.Is(err, inventory.ErrInsufficientStock):
+		return ErrInsufficientStock
+	default:
+		return err
+	}
+}
 
 // ── Errors ───────────────────────────────────────────────────────────────────
 
@@ -36,19 +56,27 @@ type OpeningBalanceInput struct {
 
 // CreateOpeningBalance records the initial stock level for an inventory item.
 // Each (item × warehouse_id) or (item × location_type × location_ref) combination
-// may have at most one opening movement. Uses CostingEngine.ApplyInbound for balance update.
+// may have at most one opening movement.
+//
+// As of Phase D.0 slice 2 this function is a thin facade over
+// inventory.ReceiveStock — the body below preserves the legacy pre-check
+// (ErrOpeningExists), then delegates. Callers should eventually migrate to
+// calling inventory.ReceiveStock directly with SourceType="opening" and an
+// idempotency key of the form "opening:item:<id>:warehouse:<id>".
 func CreateOpeningBalance(db *gorm.DB, in OpeningBalanceInput) (*models.InventoryMovement, error) {
 	if in.WarehouseID == nil && in.LocationType == "" {
 		in.LocationType = models.LocationTypeInternal
 	}
-
-	item, err := loadInventoryItem(db, in.CompanyID, in.ItemID)
-	if err != nil {
-		return nil, err
+	if in.Quantity.IsNegative() {
+		return nil, fmt.Errorf("opening quantity cannot be negative")
 	}
-	_ = item
+	if in.Quantity.IsPositive() && in.UnitCost.IsNegative() {
+		return nil, fmt.Errorf("unit cost cannot be negative")
+	}
 
-	// Check no prior opening for this item + location (warehouse-aware).
+	// Legacy invariant: one opening row per (item × warehouse). Retained here
+	// because the new API expresses this via idempotency keys, which would
+	// turn a "second opening attempt" into a silent replay — different UX.
 	var existing int64
 	q := db.Model(&models.InventoryMovement{}).
 		Where("company_id = ? AND item_id = ? AND movement_type = ? AND source_type = ?",
@@ -63,56 +91,34 @@ func CreateOpeningBalance(db *gorm.DB, in OpeningBalanceInput) (*models.Inventor
 		return nil, ErrOpeningExists
 	}
 
-	if in.Quantity.IsNegative() {
-		return nil, fmt.Errorf("opening quantity cannot be negative")
+	warehouseID := uint(0)
+	if in.WarehouseID != nil {
+		warehouseID = *in.WarehouseID
 	}
-	if in.Quantity.IsPositive() && in.UnitCost.IsNegative() {
-		return nil, fmt.Errorf("unit cost cannot be negative")
-	}
-
-	totalCost := in.Quantity.Mul(in.UnitCost).RoundBank(2)
 
 	var mov models.InventoryMovement
-	err = db.Transaction(func(tx *gorm.DB) error {
-		engine, err := ResolveCostingEngineForCompany(tx, in.CompanyID)
-		if err != nil {
-			return fmt.Errorf("resolve costing engine: %w", err)
-		}
-		req := InboundRequest{
+	err := db.Transaction(func(tx *gorm.DB) error {
+		result, err := inventory.ReceiveStock(tx, inventory.ReceiveStockInput{
 			CompanyID:    in.CompanyID,
 			ItemID:       in.ItemID,
+			WarehouseID:  warehouseID,
 			Quantity:     in.Quantity,
+			MovementDate: in.AsOfDate,
 			UnitCost:     in.UnitCost,
-			MovementType: models.MovementTypeOpening,
-			WarehouseID:  in.WarehouseID,
-			Date:         in.AsOfDate,
+			ExchangeRate: decimal.NewFromInt(1),
+			SourceType:   "opening",
+			IdempotencyKey: fmt.Sprintf("opening:item:%d:warehouse:%d:v1",
+				in.ItemID, warehouseID),
+			Memo: "Opening balance",
+		})
+		if err != nil {
+			return translateInventoryErr(err)
 		}
-		if in.WarehouseID == nil {
-			req.LocationType = in.LocationType
-			req.LocationRef = in.LocationRef
-		}
-		if _, err = engine.ApplyInbound(tx, req); err != nil {
-			return fmt.Errorf("costing engine inbound: %w", err)
-		}
-
-		mov = models.InventoryMovement{
-			CompanyID:     in.CompanyID,
-			ItemID:        in.ItemID,
-			MovementType:  models.MovementTypeOpening,
-			QuantityDelta: in.Quantity,
-			UnitCost:      &in.UnitCost,
-			TotalCost:     &totalCost,
-			SourceType:    "opening",
-			ReferenceNote: "Opening balance",
-			MovementDate:  in.AsOfDate,
-			WarehouseID:   in.WarehouseID,
-		}
-		return tx.Create(&mov).Error
+		return tx.First(&mov, result.MovementID).Error
 	})
 	if err != nil {
 		return nil, err
 	}
-
 	return &mov, nil
 }
 

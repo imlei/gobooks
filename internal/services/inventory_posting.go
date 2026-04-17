@@ -15,8 +15,10 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	"gobooks/internal/models"
 	"gorm.io/gorm"
+
+	"gobooks/internal/models"
+	"gobooks/internal/services/inventory"
 )
 
 // ── COGS fragment builder (invoice sale) ─────────────────────────────────────
@@ -250,10 +252,18 @@ func createSaleMovement(tx *gorm.DB, engine CostingEngine, companyID uint,
 // bill. Bundle items on bills are not expanded (bundles are sales-only).
 // warehouseID routes movements to a specific warehouse (nil = legacy path).
 // Must be called inside the same transaction as the JE creation.
+// CreatePurchaseMovements books inventory receipts for each stock-item line
+// on a bill. Phase D.0 slice 2: now a thin facade over inventory.ReceiveStock.
+//
+// The jeID argument is preserved for backward compatibility and still
+// populates the legacy InventoryMovement.JournalEntryID column via a
+// follow-up UPDATE. That column is scheduled for removal in slice 8; once
+// all readers migrate to source_type+source_id lookup this facade can pass
+// jeID through as a pure no-op.
 func CreatePurchaseMovements(tx *gorm.DB, companyID uint, bill models.Bill, jeID uint, warehouseID *uint) error {
-	engine, err := ResolveCostingEngineForCompany(tx, companyID)
-	if err != nil {
-		return fmt.Errorf("resolve costing engine: %w", err)
+	warehouseValue := uint(0)
+	if warehouseID != nil {
+		warehouseValue = *warehouseID
 	}
 
 	for _, l := range bill.Lines {
@@ -261,40 +271,33 @@ func CreatePurchaseMovements(tx *gorm.DB, companyID uint, bill models.Bill, jeID
 			continue
 		}
 
-		req := InboundRequest{
+		lineID := l.ID
+		in := inventory.ReceiveStockInput{
 			CompanyID:    companyID,
 			ItemID:       l.ProductService.ID,
+			WarehouseID:  warehouseValue,
 			Quantity:     l.Qty,
+			MovementDate: bill.BillDate,
 			UnitCost:     l.UnitPrice,
-			MovementType: models.MovementTypePurchase,
-			WarehouseID:  warehouseID,
-			Date:         bill.BillDate,
+			ExchangeRate: decimal.NewFromInt(1),
+			SourceType:   "bill",
+			SourceID:     bill.ID,
+			SourceLineID: &lineID,
+			IdempotencyKey: fmt.Sprintf("bill:%d:line:%d:v1", bill.ID, l.ID),
+			Memo:           "Purchase: " + bill.BillNumber,
 		}
-		if warehouseID == nil {
-			req.LocationType = models.LocationTypeInternal
-		}
-		result, err := engine.ApplyInbound(tx, req)
+		result, err := inventory.ReceiveStock(tx, in)
 		if err != nil {
-			return fmt.Errorf("apply inbound for item %d: %w", l.ProductService.ID, err)
+			return fmt.Errorf("receive stock for item %d: %w", l.ProductService.ID, translateInventoryErr(err))
 		}
 
-		sourceID := bill.ID
-		mov := models.InventoryMovement{
-			CompanyID:      companyID,
-			ItemID:         l.ProductService.ID,
-			MovementType:   models.MovementTypePurchase,
-			QuantityDelta:  l.Qty,
-			UnitCost:       &result.UnitCostUsed,
-			TotalCost:      &result.TotalCost,
-			SourceType:     "bill",
-			SourceID:       &sourceID,
-			JournalEntryID: &jeID,
-			ReferenceNote:  "Purchase: " + bill.BillNumber,
-			MovementDate:   bill.BillDate,
-			WarehouseID:    warehouseID,
-		}
-		if err := tx.Create(&mov).Error; err != nil {
-			return fmt.Errorf("create purchase movement for item %d: %w", l.ProductService.ID, err)
+		// Legacy JE linkage — slice 8 removes this follow-up update.
+		if jeID > 0 {
+			if err := tx.Model(&models.InventoryMovement{}).
+				Where("id = ?", result.MovementID).
+				Update("journal_entry_id", jeID).Error; err != nil {
+				return fmt.Errorf("link movement %d to journal %d: %w", result.MovementID, jeID, err)
+			}
 		}
 	}
 	return nil
