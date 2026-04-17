@@ -139,7 +139,12 @@ type AdjustmentInput struct {
 }
 
 // CreateAdjustment records a manual inventory adjustment.
-// Positive adjustments use CostingEngine.ApplyInbound; negative use ApplyOutbound.
+//
+// Phase D.0 slice 4: now a thin facade over inventory.AdjustStock.
+// Behaviour preserved — positive delta = inbound, negative = outbound,
+// zero delta writes an audit-only marker. Callers should eventually
+// migrate to calling inventory.AdjustStock directly with an explicit
+// AdjustmentReason and IdempotencyKey.
 func CreateAdjustment(db *gorm.DB, in AdjustmentInput) (*models.InventoryMovement, error) {
 	if in.WarehouseID == nil && in.LocationType == "" {
 		in.LocationType = models.LocationTypeInternal
@@ -153,77 +158,27 @@ func CreateAdjustment(db *gorm.DB, in AdjustmentInput) (*models.InventoryMovemen
 		return nil, fmt.Errorf("unit cost cannot be negative")
 	}
 
+	warehouseValue := uint(0)
+	if in.WarehouseID != nil {
+		warehouseValue = *in.WarehouseID
+	}
+
 	var mov models.InventoryMovement
 	err := db.Transaction(func(tx *gorm.DB) error {
-		engine, err := ResolveCostingEngineForCompany(tx, in.CompanyID)
-		if err != nil {
-			return fmt.Errorf("resolve costing engine: %w", err)
-		}
-
-		var unitCostUsed decimal.Decimal
-		var totalCost decimal.Decimal
-
-		if in.QuantityDelta.IsPositive() {
-			// Positive adjustment = inbound.
-			uc := decimal.Zero
-			if in.UnitCost != nil {
-				uc = *in.UnitCost
-			}
-			req := InboundRequest{
-				CompanyID:    in.CompanyID,
-				ItemID:       in.ItemID,
-				Quantity:     in.QuantityDelta,
-				UnitCost:     uc,
-				MovementType: models.MovementTypeAdjustment,
-				WarehouseID:  in.WarehouseID,
-				Date:         in.MovementDate,
-			}
-			if in.WarehouseID == nil {
-				req.LocationType = in.LocationType
-				req.LocationRef = in.LocationRef
-			}
-			result, err := engine.ApplyInbound(tx, req)
-			if err != nil {
-				return err
-			}
-			unitCostUsed = result.UnitCostUsed
-			totalCost = result.TotalCost
-		} else if in.QuantityDelta.IsNegative() {
-			// Negative adjustment = outbound.
-			req := OutboundRequest{
-				CompanyID:    in.CompanyID,
-				ItemID:       in.ItemID,
-				Quantity:     in.QuantityDelta.Abs(),
-				MovementType: models.MovementTypeAdjustment,
-				WarehouseID:  in.WarehouseID,
-				Date:         in.MovementDate,
-			}
-			if in.WarehouseID == nil {
-				req.LocationType = in.LocationType
-				req.LocationRef = in.LocationRef
-			}
-			result, err := engine.ApplyOutbound(tx, req)
-			if err != nil {
-				return err
-			}
-			unitCostUsed = result.UnitCostUsed
-			totalCost = result.TotalCost
-		}
-		// Zero delta = no-op (movement is still recorded for audit).
-
-		mov = models.InventoryMovement{
+		result, err := inventory.AdjustStock(tx, inventory.AdjustStockInput{
 			CompanyID:     in.CompanyID,
 			ItemID:        in.ItemID,
-			MovementType:  models.MovementTypeAdjustment,
+			WarehouseID:   warehouseValue,
 			QuantityDelta: in.QuantityDelta,
-			UnitCost:      &unitCostUsed,
-			TotalCost:     &totalCost,
-			SourceType:    "adjustment",
-			ReferenceNote: in.Note,
 			MovementDate:  in.MovementDate,
-			WarehouseID:   in.WarehouseID,
+			UnitCost:      in.UnitCost,
+			SourceType:    "adjustment",
+			Memo:          in.Note,
+		})
+		if err != nil {
+			return translateInventoryErr(err)
 		}
-		return tx.Create(&mov).Error
+		return tx.First(&mov, result.MovementID).Error
 	})
 	if err != nil {
 		return nil, err
