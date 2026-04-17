@@ -24,6 +24,9 @@ templ bodyVendorDetail(vm VendorDetailVM) {
 				<div class="flex flex-wrap items-center gap-3">
 					<h1 class="text-title font-semibold">{ vm.Vendor.Name }</h1>
 					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-primary-soft text-primary">Vendor Workspace</span>
+					if !vm.Vendor.IsActive {
+						<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-background border border-border text-text-muted">Inactive</span>
+					}
 				</div>
 				<p class="mt-2 text-text-muted2">Operational view of this vendor's outstanding bills, credits and recent activity.</p>
 			</div>
@@ -32,6 +35,7 @@ templ bodyVendorDetail(vm VendorDetailVM) {
 					<a href={ templ.SafeURL(fmt.Sprintf("/vendors/%d?edit=1", vm.Vendor.ID)) } class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text hover:bg-background">
 						Edit
 					</a>
+					@vendorLifecycleActions(vm)
 				}
 				<a href="/vendors" class="text-body text-text-muted3 hover:text-text">Back to Vendors</a>
 			</div>
@@ -42,8 +46,21 @@ templ bodyVendorDetail(vm VendorDetailVM) {
 				Vendor saved.
 			</div>
 		}
+		if vm.Deactivated {
+			<div class="mt-4 rounded-md border border-border bg-background px-4 py-3 text-body text-text-muted2">
+				Vendor deactivated. It will be hidden from pickers but remains here for reference.
+			</div>
+		}
+		if vm.Reactivated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Vendor reactivated.
+			</div>
+		}
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+		if vm.LifecycleErr != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.LifecycleErr }</div>
 		}
 
 		// ── Vendor Details + AP Summary ─────────────────────────────────────
@@ -378,4 +395,36 @@ templ vendorEditCard(vm VendorDetailVM) {
 			</div>
 		</form>
 	</div>
+}
+
+// vendorLifecycleActions — renders the correct Delete / Deactivate /
+// Reactivate button given the vendor's IsActive state and whether any AP
+// document still references it.
+//
+//   active + no records   → Delete (hard)
+//   active + has records  → Deactivate (soft)
+//   inactive              → Reactivate
+//
+// Each button posts to the matching /vendors/:id/{delete,deactivate,reactivate}
+// endpoint. onsubmit confirms destructive actions inline.
+templ vendorLifecycleActions(vm VendorDetailVM) {
+	if !vm.Vendor.IsActive {
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/vendors/%d/reactivate", vm.Vendor.ID)) } class="inline">
+			<button type="submit" class="rounded-md border border-border-input bg-surface px-4 py-2 text-body font-medium text-text hover:bg-background">
+				Reactivate
+			</button>
+		</form>
+	} else if vm.HasRecords {
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/vendors/%d/deactivate", vm.Vendor.ID)) } class="inline" onsubmit="return confirm('Deactivate this vendor? They will be hidden from pickers but historical records remain. You can reactivate later.');">
+			<button type="submit" class="rounded-md border border-border-input bg-surface px-4 py-2 text-body font-medium text-text hover:bg-background">
+				Deactivate
+			</button>
+		</form>
+	} else {
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/vendors/%d/delete", vm.Vendor.ID)) } class="inline" onsubmit="return confirm('Permanently delete this vendor? This cannot be undone. (Only available because no bills, POs or other records reference this vendor.)');">
+			<button type="submit" class="rounded-md border border-border-danger bg-danger-soft px-4 py-2 text-body font-medium text-danger hover:bg-danger-soft">
+				Delete
+			</button>
+		</form>
+	}
 }

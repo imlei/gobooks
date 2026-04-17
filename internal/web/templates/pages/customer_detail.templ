@@ -23,6 +23,9 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 				<div class="flex flex-wrap items-center gap-3">
 					<h1 class="text-title font-semibold">{ vm.Customer.Name }</h1>
 					<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-primary-soft text-primary">Customer Workspace</span>
+					if !vm.Customer.IsActive {
+						<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-background border border-border text-text-muted">Inactive</span>
+					}
 				</div>
 				<p class="mt-2 text-text-muted2">Operational visibility only. This page summarizes current billable work, outstanding balances, and recent customer invoice activity.</p>
 			</div>
@@ -31,6 +34,7 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 					<a href={ templ.SafeURL(fmt.Sprintf("/customers/%d?edit=1", vm.Customer.ID)) } class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text hover:bg-background">
 						Edit
 					</a>
+					@customerLifecycleActions(vm)
 				}
 				<a href="/customers" class="text-body text-text-muted3 hover:text-text">Back to Customers</a>
 			</div>
@@ -41,8 +45,21 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 				Customer saved.
 			</div>
 		}
+		if vm.Deactivated {
+			<div class="mt-4 rounded-md border border-border bg-background px-4 py-3 text-body text-text-muted2">
+				Customer deactivated. They will be hidden from pickers but remain here for reference.
+			</div>
+		}
+		if vm.Reactivated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Customer reactivated.
+			</div>
+		}
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+		if vm.LifecycleErr != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.LifecycleErr }</div>
 		}
 
 		<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -584,4 +601,28 @@ templ customerEditCard(vm CustomerDetailVM) {
 			</div>
 		</form>
 	</div>
+}
+
+// customerLifecycleActions — AR mirror of vendorLifecycleActions. Shows
+// exactly one of Delete / Deactivate / Reactivate based on customer state.
+templ customerLifecycleActions(vm CustomerDetailVM) {
+	if !vm.Customer.IsActive {
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/reactivate", vm.Customer.ID)) } class="inline">
+			<button type="submit" class="rounded-md border border-border-input bg-surface px-4 py-2 text-body font-medium text-text hover:bg-background">
+				Reactivate
+			</button>
+		</form>
+	} else if vm.HasRecords {
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/deactivate", vm.Customer.ID)) } class="inline" onsubmit="return confirm('Deactivate this customer? They will be hidden from pickers but historical records remain. You can reactivate later.');">
+			<button type="submit" class="rounded-md border border-border-input bg-surface px-4 py-2 text-body font-medium text-text hover:bg-background">
+				Deactivate
+			</button>
+		</form>
+	} else {
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/delete", vm.Customer.ID)) } class="inline" onsubmit="return confirm('Permanently delete this customer? This cannot be undone. (Only available because no invoices, quotes or other records reference this customer.)');">
+			<button type="submit" class="rounded-md border border-border-danger bg-danger-soft px-4 py-2 text-body font-medium text-danger hover:bg-danger-soft">
+				Delete
+			</button>
+		</form>
+	}
 }

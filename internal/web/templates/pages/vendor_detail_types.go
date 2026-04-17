@@ -68,4 +68,11 @@ type VendorDetailVM struct {
 	MultiCurrency    bool
 	BaseCurrencyCode string
 	Currencies       []models.Currency
+
+	// Lifecycle state driving the Delete / Deactivate / Reactivate button set.
+	// HasRecords = true when any AP document references this vendor.
+	HasRecords   bool
+	Deactivated  bool
+	Reactivated  bool
+	LifecycleErr string
 }

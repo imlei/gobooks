@@ -131,6 +131,10 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		baseCurrencyCode = company.BaseCurrencyCode
 	}
 
+	// Lifecycle decision — delete vs deactivate depends on whether the
+	// customer is referenced by any AR document.
+	hasRecords, _ := services.CustomerHasRecords(s.DB, companyID, uint(customerID64))
+
 	vm := pages.CustomerDetailVM{
 		HasCompany:              true,
 		Customer:                workspace.Customer,
@@ -151,6 +155,10 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		CurrencyPolicySaved:     c.Query("policy_saved") == "1",
 		Editing:                 c.Query("edit") == "1",
 		Saved:                   c.Query("saved") == "1",
+		HasRecords:              hasRecords,
+		Deactivated:             c.Query("deactivated") == "1",
+		Reactivated:             c.Query("reactivated") == "1",
+		LifecycleErr:            strings.TrimSpace(c.Query("error")),
 	}
 
 	// Seed the edit form from the current customer record when entering edit

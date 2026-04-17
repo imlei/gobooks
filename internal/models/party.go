@@ -60,7 +60,11 @@ type Customer struct {
 	// DefaultPaymentTermCode references a PaymentTerm.Code for this company.
 	// Empty string means "use company default at document creation time".
 	DefaultPaymentTermCode string `gorm:"type:text;not null;default:''"`
-	CreatedAt              time.Time
+	// IsActive drives soft-delete semantics: inactive customers stay in the
+	// database for audit / historical reference but should be hidden from
+	// pickers and deactivated in day-to-day workflows. See migration 055.
+	IsActive  bool `gorm:"not null;default:true"`
+	CreatedAt time.Time
 }
 
 // FormattedAddress returns a newline-separated address string composed from
@@ -126,6 +130,8 @@ type Vendor struct {
 	Notes string `gorm:"type:text;not null;default:''"`
 	// DefaultPaymentTermCode references a PaymentTerm.Code for this company.
 	DefaultPaymentTermCode string `gorm:"type:text;not null;default:''"`
-	CreatedAt              time.Time
+	// IsActive — soft-delete flag, see Customer.IsActive.
+	IsActive  bool `gorm:"not null;default:true"`
+	CreatedAt time.Time
 }
 

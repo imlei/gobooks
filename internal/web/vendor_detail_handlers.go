@@ -6,6 +6,7 @@ package web
 // routes through the create form on /vendors; adding edit is a separate task.
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -111,6 +112,10 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 		}
 	}
 
+	// Lifecycle decision — delete vs deactivate depends on whether the
+	// vendor is referenced by any AP document.
+	hasRecords, _ := services.VendorHasRecords(s.DB, companyID, vendorID)
+
 	vm := pages.VendorDetailVM{
 		HasCompany:              true,
 		Vendor:                  vendor,
@@ -125,6 +130,10 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 		CreditRemaining:         creditRemaining,
 		Editing:                 c.Query("edit") == "1",
 		Saved:                   c.Query("saved") == "1",
+		HasRecords:              hasRecords,
+		Deactivated:             c.Query("deactivated") == "1",
+		Reactivated:             c.Query("reactivated") == "1",
+		LifecycleErr:            strings.TrimSpace(c.Query("error")),
 	}
 
 	// Edit mode needs dropdown data + form field seeds (pre-populated from

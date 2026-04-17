@@ -131,6 +131,14 @@ type CustomerDetailVM struct {
 	PaymentTerms  []models.PaymentTerm
 	MultiCurrency bool
 	Currencies    []models.Currency
+
+	// Lifecycle: drives the Delete / Deactivate / Reactivate button set in the
+	// page header. HasRecords = true means any AR document references this
+	// customer — full deletion is blocked; Deactivate is the only option.
+	HasRecords    bool
+	Deactivated   bool // flash banner: just deactivated
+	Reactivated   bool // flash banner: just reactivated
+	LifecycleErr  string
 }
 
 type VendorsVM struct {
