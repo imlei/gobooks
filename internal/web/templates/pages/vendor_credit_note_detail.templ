@@ -43,7 +43,16 @@ templ bodyVCNDetail(vm VendorCreditNoteDetailVM) {
 					}
 				</p>
 			</div>
-			<a href="/vendor-credit-notes" class="text-body text-text-muted3 hover:text-text">← Back to Credit Notes</a>
+			<div class="flex items-center gap-3">
+				// More actions — Convert to Refund when the vendor owes us cash rather than
+				// another credit to apply. Only meaningful while there's unapplied balance.
+				if vm.CreditNote.ID != 0 && (vm.CreditNote.Status == models.VendorCreditNoteStatusPosted || vm.CreditNote.Status == models.VendorCreditNoteStatusPartiallyApplied) && vm.CreditNote.RemainingAmount.IsPositive() {
+					@ui.MoreMenu() {
+						@ui.MoreMenuItem(fmt.Sprintf("/vendor-refunds/new?vendor_credit_note_id=%d", vm.CreditNote.ID), "Convert to refund")
+					}
+				}
+				<a href="/vendor-credit-notes" class="text-body text-text-muted3 hover:text-text">← Back to Credit Notes</a>
+			</div>
 		</div>
 
 		if vm.Saved {

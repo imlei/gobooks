@@ -128,6 +128,13 @@ templ bodyCreditNoteDetail(vm CreditNoteDetailVM) {
 						<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-medium text-danger hover:bg-danger-soft">Void</button>
 					</form>
 				}
+				// More actions — Convert to Refund when CN has unapplied balance the customer
+				// wants in cash rather than applied to a future invoice.
+				if (vm.CreditNote.Status == models.CreditNoteStatusIssued || vm.CreditNote.Status == models.CreditNoteStatusPartiallyApplied) && vm.CreditNote.BalanceRemaining.IsPositive() {
+					@ui.MoreMenu() {
+						@ui.MoreMenuItem(fmt.Sprintf("/refunds/new?credit_note_id=%d", vm.CreditNote.ID), "Convert to refund")
+					}
+				}
 			</div>
 		</div>
 

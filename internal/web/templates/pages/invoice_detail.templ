@@ -231,6 +231,23 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 					</form>
 				}
 
+				// ── More actions (AR adjustments) ─────────────────────────────
+				// Grouped low-frequency actions: return / credit note / refund / write-off.
+				// Individual items render only when their business condition is met.
+				if vm.Invoice.Status != models.InvoiceStatusDraft && vm.Invoice.Status != models.InvoiceStatusVoided {
+					@ui.MoreMenu() {
+						@ui.MoreMenuItem("/returns/new?invoice_id=" + Uitoa(vm.Invoice.ID), "Record return")
+						@ui.MoreMenuItem("/credit-notes/new?invoice_id=" + Uitoa(vm.Invoice.ID), "Issue credit note")
+						if vm.Invoice.Status == models.InvoiceStatusPaid || vm.Invoice.Status == models.InvoiceStatusPartiallyPaid {
+							@ui.MoreMenuItem("/refunds/new?invoice_id=" + Uitoa(vm.Invoice.ID), "Issue refund")
+						}
+						if vm.Invoice.Status == models.InvoiceStatusIssued || vm.Invoice.Status == models.InvoiceStatusSent || vm.Invoice.Status == models.InvoiceStatusOverdue || vm.Invoice.Status == models.InvoiceStatusPartiallyPaid {
+							@ui.MoreMenuDivider()
+							@ui.MoreMenuDanger("/write-offs/new?invoice_id=" + Uitoa(vm.Invoice.ID), "Write off as bad debt")
+						}
+					}
+				}
+
 				<a href="/invoices" class="ml-2 text-body text-primary hover:text-primary-hover">← Back</a>
 			</div>
 		</div>

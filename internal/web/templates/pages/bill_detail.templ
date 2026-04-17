@@ -49,6 +49,16 @@ templ bodyBillDetail(vm BillDetailVM) {
 						</button>
 					</form>
 				}
+				// More actions (AP adjustments) — group low-frequency flows out of the top row.
+				if vm.Bill.Status != models.BillStatusDraft && vm.Bill.Status != models.BillStatusVoided {
+					@ui.MoreMenu() {
+						@ui.MoreMenuItem(fmt.Sprintf("/vendor-returns/new?bill_id=%d", vm.Bill.ID), "Record vendor return")
+						@ui.MoreMenuItem(fmt.Sprintf("/vendor-credit-notes/new?bill_id=%d", vm.Bill.ID), "Record vendor credit note")
+						if vm.Bill.Status == models.BillStatusPaid || vm.Bill.Status == models.BillStatusPartiallyPaid {
+							@ui.MoreMenuItem(fmt.Sprintf("/vendor-refunds/new?bill_id=%d", vm.Bill.ID), "Record vendor refund")
+						}
+					}
+				}
 			</div>
 		</div>
 
