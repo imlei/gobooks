@@ -23,6 +23,11 @@ type VendorDetailVM struct {
 	OutstandingBills []models.Bill // status in {posted, partially_paid} ordered by due_date asc
 	RecentBills      []models.Bill // newest-first, capped (any status)
 
+	// Purchase orders — newest-first, capped. PO rows include any status
+	// (draft / confirmed / partially_received / received / closed / cancelled)
+	// so the page shows the full commitment history at a glance.
+	RecentPOs []models.PurchaseOrder
+
 	// Aggregate counts/totals for quick-scan header strip.
 	OutstandingBillCount int
 	OutstandingTotal     decimal.Decimal // sum of BalanceDue across OutstandingBills (doc currency — company base)

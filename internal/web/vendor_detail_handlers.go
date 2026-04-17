@@ -54,6 +54,15 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 		Limit(vendorDetailBillCap).
 		Find(&recentBills)
 
+	// Recent purchase orders — any status, newest first. Capped at the same
+	// limit as bills. POs don't generate journal entries so we don't aggregate
+	// totals for them; the table is purely a recent-activity window.
+	var recentPOs []models.PurchaseOrder
+	s.DB.Where("company_id = ? AND vendor_id = ?", companyID, vendorID).
+		Order("po_date desc, id desc").
+		Limit(vendorDetailBillCap).
+		Find(&recentPOs)
+
 	// Aggregates — fresh queries so counts aren't capped by vendorDetailBillCap.
 	openStatuses := []models.BillStatus{models.BillStatusPosted, models.BillStatusPartiallyPaid}
 
@@ -108,6 +117,7 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 		DefaultPaymentTermLabel: termLabel,
 		OutstandingBills:        outstandingBills,
 		RecentBills:             recentBills,
+		RecentPOs:               recentPOs,
 		OutstandingBillCount:    int(outstandingCount),
 		OutstandingTotal:        outstandingTotal,
 		OverdueBillCount:        int(overdueCount),

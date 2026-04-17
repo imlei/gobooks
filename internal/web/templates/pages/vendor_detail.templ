@@ -176,8 +176,58 @@ templ bodyVendorDetail(vm VendorDetailVM) {
 			</div>
 		}
 
-		if len(vm.OutstandingBills) == 0 && len(vm.RecentBills) == 0 {
-			<p class="mt-8 text-body text-text-muted2">No bills recorded for this vendor yet.</p>
+		// ── Recent purchase orders ──────────────────────────────────────────
+		if len(vm.RecentPOs) > 0 {
+			<div class="mt-8">
+				<div class="flex items-baseline justify-between">
+					<h2 class="text-section font-semibold text-text">Recent Purchase Orders</h2>
+					<a href={ templ.SafeURL(fmt.Sprintf("/purchase-orders?vendor_id=%d", vm.Vendor.ID)) } class="text-small text-primary hover:underline">View all →</a>
+				</div>
+				<div class="mt-3 overflow-hidden rounded-lg border border-border">
+					<table class="w-full text-body">
+						<thead class="bg-surface-raised text-small uppercase tracking-wider text-text-muted">
+							<tr>
+								<th class="px-4 py-3 text-left">PO #</th>
+								<th class="px-4 py-3 text-left">Date</th>
+								<th class="px-4 py-3 text-left">Expected</th>
+								<th class="px-4 py-3 text-left">Status</th>
+								<th class="px-4 py-3 text-right">Amount</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-border">
+							for _, po := range vm.RecentPOs {
+								<tr>
+									<td class="px-4 py-3">
+										<a href={ templ.SafeURL(fmt.Sprintf("/purchase-orders/%d", po.ID)) } class="text-primary hover:underline">
+											if po.PONumber != "" {
+												{ po.PONumber }
+											} else {
+												{ fmt.Sprintf("#%d", po.ID) }
+											}
+										</a>
+									</td>
+									<td class="px-4 py-3 text-text-muted2">{ po.PODate.Format("2006-01-02") }</td>
+									<td class="px-4 py-3 text-text-muted2">
+										if po.ExpectedDate != nil {
+											{ po.ExpectedDate.Format("2006-01-02") }
+										} else {
+											<span class="text-text-muted3">-</span>
+										}
+									</td>
+									<td class="px-4 py-3">{ models.POStatusLabel(po.Status) }</td>
+									<td class="px-4 py-3 text-right tabular-nums">
+										<span data-numfmt>{ po.Amount.StringFixed(2) }</span>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+
+		if len(vm.OutstandingBills) == 0 && len(vm.RecentBills) == 0 && len(vm.RecentPOs) == 0 {
+			<p class="mt-8 text-body text-text-muted2">No bills or purchase orders recorded for this vendor yet.</p>
 		}
 	</div>
 }
