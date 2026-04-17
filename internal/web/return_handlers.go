@@ -57,6 +57,20 @@ func (s *Server) handleReturnNew(c *fiber.Ctx) error {
 	}
 	vm := pages.ReturnDetailVM{HasCompany: true}
 	vm.Return.ReturnDate = time.Now()
+
+	// Pre-fill customer + source invoice when deep-linked from Invoice detail.
+	// Line pre-selection is intentionally NOT implemented here — the user still
+	// picks which lines to return; the form just starts focused on the right
+	// invoice rather than blank.
+	if invID := c.QueryInt("invoice_id", 0); invID > 0 {
+		var inv models.Invoice
+		if err := s.DB.Where("company_id = ? AND id = ?", companyID, uint(invID)).First(&inv).Error; err == nil {
+			vm.Return.CustomerID = inv.CustomerID
+			vm.Return.InvoiceID = inv.ID
+			vm.Return.CurrencyCode = inv.CurrencyCode
+		}
+	}
+
 	s.loadReturnFormData(companyID, &vm)
 	return pages.ReturnDetail(vm).Render(c.Context(), c)
 }

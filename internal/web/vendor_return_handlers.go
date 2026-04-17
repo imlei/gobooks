@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/shopspring/decimal"
 
+	"gobooks/internal/models"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
@@ -56,6 +57,18 @@ func (s *Server) handleVendorReturnNew(c *fiber.Ctx) error {
 	}
 	vm := pages.VendorReturnDetailVM{HasCompany: true}
 	vm.Return.ReturnDate = time.Now()
+
+	// Pre-fill vendor + source bill when deep-linked from Bill detail.
+	if billID := c.QueryInt("bill_id", 0); billID > 0 {
+		var bill models.Bill
+		if err := s.DB.Where("company_id = ? AND id = ?", companyID, uint(billID)).First(&bill).Error; err == nil {
+			vm.Return.VendorID = bill.VendorID
+			bID := bill.ID
+			vm.Return.BillID = &bID
+			vm.Return.CurrencyCode = bill.CurrencyCode
+		}
+	}
+
 	s.loadVRFormData(companyID, &vm)
 	return pages.VendorReturnDetail(vm).Render(c.Context(), c)
 }

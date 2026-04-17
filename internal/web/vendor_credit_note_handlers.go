@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/shopspring/decimal"
 
+	"gobooks/internal/models"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
@@ -57,6 +58,19 @@ func (s *Server) handleVendorCreditNoteNew(c *fiber.Ctx) error {
 	vm := pages.VendorCreditNoteDetailVM{HasCompany: true}
 	vm.CreditNote.CreditNoteDate = time.Now()
 	vm.CreditNote.ExchangeRate = decimal.NewFromInt(1)
+
+	// Pre-fill vendor + source bill when deep-linked from Bill detail.
+	// Mirrors the AR CreditNote?invoice_id= pre-fill pattern.
+	if billID := c.QueryInt("bill_id", 0); billID > 0 {
+		var bill models.Bill
+		if err := s.DB.Where("company_id = ? AND id = ?", companyID, uint(billID)).First(&bill).Error; err == nil {
+			vm.CreditNote.VendorID = bill.VendorID
+			bID := bill.ID
+			vm.CreditNote.BillID = &bID
+			vm.CreditNote.CurrencyCode = bill.CurrencyCode
+		}
+	}
+
 	s.loadVCNFormData(companyID, &vm)
 	return pages.VendorCreditNoteDetail(vm).Render(c.Context(), c)
 }

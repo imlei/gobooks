@@ -60,6 +60,27 @@ func (s *Server) handleVendorRefundNew(c *fiber.Ctx) error {
 	vm.Refund.ExchangeRate = decimal.NewFromInt(1)
 	vm.Refund.SourceType = models.VendorRefundSourceOther
 	vm.Refund.PaymentMethod = models.PaymentMethodOther
+
+	// Pre-fill from source document when deep-linked from Bill or Vendor Credit
+	// Note detail. VCN takes precedence — it carries amount + linkage for the
+	// "Convert to refund" flow.
+	if vcnID := c.QueryInt("vendor_credit_note_id", 0); vcnID > 0 {
+		if vcn, err := services.GetVendorCreditNote(s.DB, companyID, uint(vcnID)); err == nil {
+			vm.Refund.VendorID = vcn.VendorID
+			vm.Refund.SourceType = models.VendorRefundSourceCreditNote
+			vcnIDUint := vcn.ID
+			vm.Refund.VendorCreditNoteID = &vcnIDUint
+			vm.Refund.CurrencyCode = vcn.CurrencyCode
+			vm.Refund.Amount = vcn.RemainingAmount
+		}
+	} else if billID := c.QueryInt("bill_id", 0); billID > 0 {
+		var bill models.Bill
+		if err := s.DB.Where("company_id = ? AND id = ?", companyID, uint(billID)).First(&bill).Error; err == nil {
+			vm.Refund.VendorID = bill.VendorID
+			vm.Refund.CurrencyCode = bill.CurrencyCode
+		}
+	}
+
 	s.loadVRFFormData(companyID, &vm)
 	return pages.VendorRefundDetail(vm).Render(c.Context(), c)
 }
@@ -261,17 +282,28 @@ func parseVRFInput(c *fiber.Ctx) services.VendorRefundInput {
 		pm = models.PaymentMethodOther
 	}
 
+	// Preserve source document linkage across round-trips (hidden field carried
+	// when deep-linked from Vendor Credit Note detail).
+	var vendorCreditNoteID *uint
+	if raw := strings.TrimSpace(c.FormValue("vendor_credit_note_id")); raw != "" {
+		if id, err := strconv.ParseUint(raw, 10, 64); err == nil && id > 0 {
+			v := uint(id)
+			vendorCreditNoteID = &v
+		}
+	}
+
 	return services.VendorRefundInput{
-		VendorID:        uint(vendorID),
-		SourceType:      sourceType,
-		RefundDate:      refundDate,
-		CurrencyCode:    strings.TrimSpace(c.FormValue("currency_code")),
-		ExchangeRate:    rate,
-		Amount:          amount,
-		BankAccountID:   bankAccountID,
-		CreditAccountID: creditAccountID,
-		PaymentMethod:   pm,
-		Reference:       strings.TrimSpace(c.FormValue("reference")),
-		Memo:            strings.TrimSpace(c.FormValue("memo")),
+		VendorID:           uint(vendorID),
+		SourceType:         sourceType,
+		VendorCreditNoteID: vendorCreditNoteID,
+		RefundDate:         refundDate,
+		CurrencyCode:       strings.TrimSpace(c.FormValue("currency_code")),
+		ExchangeRate:       rate,
+		Amount:             amount,
+		BankAccountID:      bankAccountID,
+		CreditAccountID:    creditAccountID,
+		PaymentMethod:      pm,
+		Reference:          strings.TrimSpace(c.FormValue("reference")),
+		Memo:               strings.TrimSpace(c.FormValue("memo")),
 	}
 }

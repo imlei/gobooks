@@ -58,6 +58,20 @@ func (s *Server) handleWriteOffNew(c *fiber.Ctx) error {
 	vm := pages.WriteOffDetailVM{HasCompany: true}
 	vm.WriteOff.WriteOffDate = time.Now()
 	vm.WriteOff.ExchangeRate = decimal.NewFromInt(1)
+
+	// Pre-fill from source invoice when deep-linked from Invoice detail.
+	// The uncollectible amount defaults to the invoice's current outstanding balance.
+	if invID := c.QueryInt("invoice_id", 0); invID > 0 {
+		var inv models.Invoice
+		if err := s.DB.Where("company_id = ? AND id = ?", companyID, uint(invID)).First(&inv).Error; err == nil {
+			vm.WriteOff.CustomerID = inv.CustomerID
+			iID := inv.ID
+			vm.WriteOff.InvoiceID = &iID
+			vm.WriteOff.CurrencyCode = inv.CurrencyCode
+			vm.WriteOff.Amount = inv.BalanceDue
+		}
+	}
+
 	s.loadWriteOffFormData(companyID, &vm)
 	return pages.WriteOffDetail(vm).Render(c.Context(), c)
 }

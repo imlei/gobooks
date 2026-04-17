@@ -78,9 +78,20 @@ templ bodyRefundDetail(vm RefundDetailVM) {
 }
 
 templ refundEditForm(vm RefundDetailVM) {
+	// Context banner — shown when the form was deep-linked from a source document
+	// (Credit Note → Convert to refund). Makes the linkage visible before save.
+	if vm.Refund.ID == 0 && vm.Refund.CreditNoteID != nil && *vm.Refund.CreditNoteID > 0 {
+		<div class="mt-4 rounded-md border border-primary bg-primary-soft p-4 text-body text-primary">
+			Converting credit note #{ fmt.Sprintf("%d", *vm.Refund.CreditNoteID) } to a cash refund. Adjust the amount below if only a partial refund is needed.
+		</div>
+	}
 	<form method="POST" action="/refunds/save" class="mt-6 space-y-5">
 		if vm.Refund.ID != 0 {
 			<input type="hidden" name="refund_id" value={ fmt.Sprintf("%d", vm.Refund.ID) }/>
+		}
+		// Preserve source document linkage on POST (carried from deep-linked entry).
+		if vm.Refund.CreditNoteID != nil && *vm.Refund.CreditNoteID > 0 {
+			<input type="hidden" name="credit_note_id" value={ fmt.Sprintf("%d", *vm.Refund.CreditNoteID) }/>
 		}
 
 		<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">

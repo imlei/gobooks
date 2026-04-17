@@ -58,6 +58,29 @@ func (s *Server) handleRefundNew(c *fiber.Ctx) error {
 	vm := pages.RefundDetailVM{HasCompany: true}
 	vm.Refund.RefundDate = time.Now()
 	vm.Refund.ExchangeRate = decimal.NewFromInt(1)
+	vm.Refund.SourceType = models.ARRefundSourceOther
+
+	// Pre-fill from source document when deep-linked from Invoice or Credit Note
+	// detail page. Credit Note takes precedence — it's the specific "Convert to
+	// refund" flow that needs amount + linkage carried through.
+	if cnID := c.QueryInt("credit_note_id", 0); cnID > 0 {
+		if cn, err := services.GetCreditNote(s.DB, companyID, uint(cnID)); err == nil {
+			vm.Refund.CustomerID = cn.CustomerID
+			vm.Refund.SourceType = models.ARRefundSourceCreditNote
+			cnIDUint := cn.ID
+			vm.Refund.CreditNoteID = &cnIDUint
+			vm.Refund.CurrencyCode = cn.CurrencyCode
+			vm.Refund.Amount = cn.BalanceRemaining
+		}
+	} else if invID := c.QueryInt("invoice_id", 0); invID > 0 {
+		var inv models.Invoice
+		if err := s.DB.Where("company_id = ? AND id = ?", companyID, uint(invID)).First(&inv).Error; err == nil {
+			vm.Refund.CustomerID = inv.CustomerID
+			vm.Refund.CurrencyCode = inv.CurrencyCode
+			vm.Refund.SourceType = models.ARRefundSourceOverpayment
+		}
+	}
+
 	s.loadRefundFormData(companyID, &vm)
 	return pages.RefundDetail(vm).Render(c.Context(), c)
 }
@@ -264,10 +287,21 @@ func parseRefundInput(c *fiber.Ctx) (services.ARRefundInput, error) {
 		pmeth = models.PaymentMethodOther
 	}
 
+	// Preserve source document linkage across round-trips (carried as a hidden
+	// field on the refund form when deep-linked from Credit Note detail).
+	var creditNoteID *uint
+	if raw := strings.TrimSpace(c.FormValue("credit_note_id")); raw != "" {
+		if id, err := strconv.ParseUint(raw, 10, 64); err == nil && id > 0 {
+			v := uint(id)
+			creditNoteID = &v
+		}
+	}
+
 	return services.ARRefundInput{
 		CustomerID:    uint(customerID),
 		BankAccountID: bankAccountID,
 		SourceType:    sourceType,
+		CreditNoteID:  creditNoteID,
 		RefundDate:    refundDate,
 		CurrencyCode:  strings.TrimSpace(c.FormValue("currency_code")),
 		ExchangeRate:  rate,

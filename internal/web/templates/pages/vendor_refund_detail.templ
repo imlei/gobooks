@@ -78,9 +78,19 @@ templ bodyVRFDetail(vm VendorRefundDetailVM) {
 }
 
 templ vrfEditForm(vm VendorRefundDetailVM) {
+	// Context banner for deep-linked "Convert to refund" flow from VCN detail.
+	if vm.Refund.ID == 0 && vm.Refund.VendorCreditNoteID != nil && *vm.Refund.VendorCreditNoteID > 0 {
+		<div class="mt-4 rounded-md border border-primary bg-primary-soft p-4 text-body text-primary">
+			Converting vendor credit note #{ fmt.Sprintf("%d", *vm.Refund.VendorCreditNoteID) } to a cash refund. Adjust the amount below if only a partial refund is needed.
+		</div>
+	}
 	<form method="POST" action="/vendor-refunds/save" class="mt-6 space-y-5">
 		if vm.Refund.ID != 0 {
 			<input type="hidden" name="refund_id" value={ fmt.Sprintf("%d", vm.Refund.ID) }/>
+		}
+		// Preserve source document linkage on POST.
+		if vm.Refund.VendorCreditNoteID != nil && *vm.Refund.VendorCreditNoteID > 0 {
+			<input type="hidden" name="vendor_credit_note_id" value={ fmt.Sprintf("%d", *vm.Refund.VendorCreditNoteID) }/>
 		}
 
 		<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
