@@ -220,26 +220,39 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 			}
 		</div>
 
-		<!-- Batch 16: Customer credit balance summary -->
-		if vm.CreditCount > 0 {
+		<!-- Credits & Refunds quick-view — show whenever either side has data.
+		     Links through to /customers/:id/credits, which hosts the full
+		     credit-note list + refund history table. -->
+		if vm.CreditCount > 0 || vm.RefundCount > 0 {
 			<div class="mt-8">
 				<div class="flex items-center justify-between mb-3">
-					<h2 class="text-section font-semibold text-text">Customer Credits</h2>
+					<h2 class="text-section font-semibold text-text">Credits & Refunds</h2>
 					<a
 						href={ templ.SafeURL("/customers/" + Uitoa(vm.Customer.ID) + "/credits") }
 						class="text-small text-primary hover:text-primary-hover hover:underline"
 					>
-						View all credits →
+						View all →
 					</a>
 				</div>
-				<div class="rounded-lg border border-border-default bg-background-muted px-5 py-4 inline-flex gap-8">
-					<div>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+					<div class="rounded-lg border border-border bg-background px-5 py-4">
 						<p class="text-small uppercase tracking-wider text-text-muted">Active Credits</p>
 						<p class="mt-2 text-section font-semibold text-text">{ Itoa(vm.CreditCount) }</p>
+						<p class="mt-1 text-small text-text-muted2">Credit notes with a positive balance remaining.</p>
 					</div>
-					<div>
+					<div class="rounded-lg border border-border bg-background px-5 py-4">
 						<p class="text-small uppercase tracking-wider text-text-muted">Available Balance</p>
-						<p class="mt-2 text-section font-semibold text-text">{ vm.CreditRemaining.StringFixed(2) }</p>
+						<p class="mt-2 text-section font-semibold text-text"><span data-numfmt>{ vm.CreditRemaining.StringFixed(2) }</span></p>
+						<p class="mt-1 text-small text-text-muted2">Sum of unapplied credit across all open credit notes.</p>
+					</div>
+					<div class="rounded-lg border border-border bg-background px-5 py-4">
+						<p class="text-small uppercase tracking-wider text-text-muted">Refunds Issued</p>
+						<p class="mt-2 text-section font-semibold text-text">{ Itoa(vm.RefundCount) }</p>
+						if vm.RefundCount > 0 {
+							<p class="mt-1 text-small text-text-muted2">Total: <span data-numfmt>{ vm.RefundTotal.StringFixed(2) }</span> (posted only).</p>
+						} else {
+							<p class="mt-1 text-small text-text-muted2">No refunds posted for this customer yet.</p>
+						}
 					</div>
 				</div>
 			</div>

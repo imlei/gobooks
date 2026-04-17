@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/shopspring/decimal"
 
 	"gobooks/internal/models"
 	"gobooks/internal/services"
@@ -91,6 +92,22 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		creditCount = len(activeCredits)
 	}
 
+	// Refund aggregates — posted-only so the count reflects actual cash
+	// that went back to the customer. Direct COUNT/SUM rather than fetching
+	// the full refund list and summing in Go.
+	var refundCount int64
+	s.DB.Model(&models.ARRefund{}).
+		Where("company_id = ? AND customer_id = ? AND status = ?",
+			companyID, uint(customerID64), models.ARRefundStatusPosted).
+		Count(&refundCount)
+
+	var refundTotalResult struct{ Total decimal.Decimal }
+	s.DB.Model(&models.ARRefund{}).
+		Select("COALESCE(SUM(amount), 0) AS total").
+		Where("company_id = ? AND customer_id = ? AND status = ?",
+			companyID, uint(customerID64), models.ARRefundStatusPosted).
+		Scan(&refundTotalResult)
+
 	// Phase 12: load currency policy data.
 	allowedCurrencies, _ := services.ListCustomerAllowedCurrencies(s.DB, companyID, uint(customerID64))
 	var company models.Company
@@ -110,6 +127,8 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		MostRecentInvoice:       workspace.MostRecentInvoice,
 		CreditCount:             creditCount,
 		CreditRemaining:         creditRemaining,
+		RefundCount:             int(refundCount),
+		RefundTotal:             refundTotalResult.Total,
 		AllowedCurrencies:       allowedCurrencies,
 		BaseCurrencyCode:        baseCurrencyCode,
 		CurrencyPolicySaved:     c.Query("policy_saved") == "1",

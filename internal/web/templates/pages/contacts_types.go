@@ -85,6 +85,13 @@ type CustomerDetailVM struct {
 	CreditCount     int
 	CreditRemaining decimal.Decimal
 
+	// Refund quick-view — count + sum of POSTED refunds for this customer.
+	// Draft / voided / reversed are excluded so the number reflects money
+	// that actually went back to the customer. Surfaced next to credits in
+	// the "Credits & Refunds" card strip.
+	RefundCount int
+	RefundTotal decimal.Decimal
+
 	// Phase 12: currency policy management
 	AllowedCurrencies []models.CustomerAllowedCurrency
 	BaseCurrencyCode  string
