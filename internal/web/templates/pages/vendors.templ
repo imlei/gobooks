@@ -121,7 +121,8 @@ templ vendorListTable(vm VendorsVM) {
 					<th class="py-2.5 pr-4 text-small font-semibold text-text-muted2">Phone</th>
 					<th class="py-2.5 pr-4 text-small font-semibold text-text-muted2">Currency</th>
 					<th class="py-2.5 pr-4 text-small font-semibold text-text-muted2">Payment Term</th>
-					<th class="py-2.5 text-small font-semibold text-text-muted2">Address / Notes</th>
+					<th class="py-2.5 pr-4 text-small font-semibold text-text-muted2">Address / Notes</th>
+					<th class="py-2.5 text-right text-small font-semibold text-text-muted2">Actions</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-border-subtle">
@@ -156,7 +157,7 @@ templ vendorListTable(vm VendorsVM) {
 								<span class="text-text-muted3">—</span>
 							}
 						</td>
-						<td class="max-w-xs py-2.5 text-small text-text-muted2">
+						<td class="max-w-xs py-2.5 pr-4 text-small text-text-muted2">
 							if v.Address != "" {
 								<span class="block line-clamp-1 whitespace-pre-wrap" title={ v.Address }>{ v.Address }</span>
 							}
@@ -166,6 +167,11 @@ templ vendorListTable(vm VendorsVM) {
 							if v.Address == "" && v.Notes == "" {
 								<span class="text-text-muted3">—</span>
 							}
+						</td>
+						<td class="py-2.5 text-right text-small">
+							<a href={ templ.SafeURL("/vendors/" + Uitoa(v.ID) + "/credits") } class="font-medium text-primary hover:underline">
+								Credits
+							</a>
 						</td>
 					</tr>
 				}
