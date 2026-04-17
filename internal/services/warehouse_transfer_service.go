@@ -8,8 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
-	"gobooks/internal/models"
 	"gorm.io/gorm"
+
+	"gobooks/internal/models"
+	"gobooks/internal/services/inventory"
 )
 
 // ── Errors ───────────────────────────────────────────────────────────────────
@@ -136,95 +138,37 @@ func PostTransfer(db *gorm.DB, companyID, id uint, actor string, actorID *uuid.U
 		return ErrTransferNotDraft
 	}
 
-	engine, err := ResolveCostingEngineForCompany(db, companyID)
-	if err != nil {
-		return fmt.Errorf("resolve costing engine: %w", err)
-	}
-
-	// Pre-flight: validate sufficient stock at source.
-	_, err = engine.PreviewOutbound(db, OutboundRequest{
-		CompanyID:    companyID,
-		ItemID:       t.ItemID,
-		Quantity:     t.Quantity,
-		MovementType: models.MovementTypeAdjustment,
-		WarehouseID:  &t.FromWarehouseID,
-	})
-	if err != nil {
-		return fmt.Errorf("insufficient stock at source warehouse: %w", err)
-	}
-
+	// Phase D.0 slice 6: delegate to inventory.TransferStock. The new API
+	// runs the issue leg first (which is what did the old PreviewOutbound
+	// check — insufficient stock surfaces as ErrInsufficientStock at that
+	// stage), then the receive leg with the same snapshot unit cost.
+	receivedDate := t.TransferDate
 	return db.Transaction(func(tx *gorm.DB) error {
-		// a. Outbound from source warehouse.
-		outResult, err := engine.ApplyOutbound(tx, OutboundRequest{
-			CompanyID:    companyID,
-			ItemID:       t.ItemID,
-			Quantity:     t.Quantity,
-			MovementType: models.MovementTypeAdjustment,
-			WarehouseID:  &t.FromWarehouseID,
-			Date:         t.TransferDate,
+		result, err := inventory.TransferStock(tx, inventory.TransferStockInput{
+			CompanyID:       companyID,
+			TransferID:      t.ID,
+			ItemID:          t.ItemID,
+			FromWarehouseID: t.FromWarehouseID,
+			ToWarehouseID:   t.ToWarehouseID,
+			Quantity:        t.Quantity,
+			ShippedDate:     t.TransferDate,
+			ReceivedDate:    &receivedDate,
+			IdempotencyKey:  fmt.Sprintf("warehouse_transfer:%d:v1", t.ID),
+			Memo:            fmt.Sprintf("Warehouse transfer #%d", t.ID),
 		})
 		if err != nil {
-			return fmt.Errorf("outbound from source: %w", err)
+			return fmt.Errorf("transfer stock: %w", translateInventoryErr(err))
+		}
+		if result.ReceiveMovementID == nil {
+			// Shouldn't happen — ReceivedDate was non-nil — but guard defensively.
+			return fmt.Errorf("warehouse transfer %d: receive leg produced no movement", t.ID)
 		}
 
-		outQtyNeg := t.Quantity.Neg()
-		outMov := models.InventoryMovement{
-			CompanyID:     companyID,
-			ItemID:        t.ItemID,
-			MovementType:  models.MovementTypeAdjustment,
-			QuantityDelta: outQtyNeg,
-			UnitCost:      &outResult.UnitCostUsed,
-			TotalCost:     &outResult.TotalCost,
-			SourceType:    "warehouse_transfer",
-			SourceID:      &t.ID,
-			ReferenceNote: fmt.Sprintf("Transfer out → WH#%d", t.ToWarehouseID),
-			WarehouseID:   &t.FromWarehouseID,
-			MovementDate:  t.TransferDate,
-		}
-		if err := tx.Create(&outMov).Error; err != nil {
-			return fmt.Errorf("create outbound movement: %w", err)
-		}
-
-		// b. Inbound to destination warehouse at the same unit cost (no cost change on transfers).
-		_, err = engine.ApplyInbound(tx, InboundRequest{
-			CompanyID:    companyID,
-			ItemID:       t.ItemID,
-			Quantity:     t.Quantity,
-			UnitCost:     outResult.UnitCostUsed,
-			MovementType: models.MovementTypeAdjustment,
-			WarehouseID:  &t.ToWarehouseID,
-			Date:         t.TransferDate,
-		})
-		if err != nil {
-			return fmt.Errorf("inbound to destination: %w", err)
-		}
-
-		totalCostPos := outResult.TotalCost
-		inMov := models.InventoryMovement{
-			CompanyID:     companyID,
-			ItemID:        t.ItemID,
-			MovementType:  models.MovementTypeAdjustment,
-			QuantityDelta: t.Quantity,
-			UnitCost:      &outResult.UnitCostUsed,
-			TotalCost:     &totalCostPos,
-			SourceType:    "warehouse_transfer",
-			SourceID:      &t.ID,
-			ReferenceNote: fmt.Sprintf("Transfer in ← WH#%d", t.FromWarehouseID),
-			WarehouseID:   &t.ToWarehouseID,
-			MovementDate:  t.TransferDate,
-		}
-		if err := tx.Create(&inMov).Error; err != nil {
-			return fmt.Errorf("create inbound movement: %w", err)
-		}
-
-		// c. Mark transfer as posted and link movements.
-		now := time.Now()
-		_ = now
 		return tx.Model(t).Updates(map[string]any{
 			"status":               string(models.TransferStatusPosted),
 			"posted_by_email":      actor,
-			"outbound_movement_id": outMov.ID,
-			"inbound_movement_id":  inMov.ID,
+			"outbound_movement_id": result.IssueMovementID,
+			"inbound_movement_id":  *result.ReceiveMovementID,
 			"updated_at":           time.Now(),
 		}).Error
 	})
