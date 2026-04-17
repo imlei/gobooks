@@ -53,7 +53,8 @@ templ bodyARAging(vm ARAgingVM) {
 								<th class="py-3 pr-4 text-right">31-60</th>
 								<th class="py-3 pr-4 text-right">61-90</th>
 								<th class="py-3 pr-4 text-right">91+</th>
-								<th class="py-3 pr-0 text-right">Total</th>
+								<th class="py-3 pr-4 text-right">Total</th>
+								<th class="py-3 pr-0"></th>
 							</tr>
 						</thead>
 						<tbody class="text-text">
@@ -65,12 +66,13 @@ templ bodyARAging(vm ARAgingVM) {
 									<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.Days31To60) }</td>
 									<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.Days61To90) }</td>
 									<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.Days91Plus) }</td>
-									<td class="py-3 pr-0 text-right tabular-nums font-semibold">{ Money(row.Total) }</td>
+									<td class="py-3 pr-4 text-right tabular-nums font-semibold">{ Money(row.Total) }</td>
+									<td class="py-3 pr-0"></td>
 								</tr>
 								for _, d := range row.DetailRows {
 									<tr class="border-b border-border-subtle bg-background">
 										<td class="py-2 pl-6 pr-4 text-small text-text-muted2">
-											{ d.InvoiceNumber }
+											<a href={ templ.SafeURL("/invoices/" + Uitoa(d.InvoiceID)) } class="text-primary hover:underline">{ d.InvoiceNumber }</a>
 											<span class="text-text-muted3"> · </span>
 											{ d.InvoiceDate.Format("2006-01-02") }
 											if d.DueDate != nil {
@@ -85,7 +87,18 @@ templ bodyARAging(vm ARAgingVM) {
 										<td class="py-2 pr-4 text-right tabular-nums text-small text-text-muted2">{ MoneyBlankZero(d.Days31To60) }</td>
 										<td class="py-2 pr-4 text-right tabular-nums text-small text-text-muted2">{ MoneyBlankZero(d.Days61To90) }</td>
 										<td class="py-2 pr-4 text-right tabular-nums text-small text-text-muted2">{ MoneyBlankZero(d.Days91Plus) }</td>
-										<td class="py-2 pr-0 text-right tabular-nums text-small font-medium text-text-muted2">{ Money(d.BalanceDue) }</td>
+										<td class="py-2 pr-4 text-right tabular-nums text-small font-medium text-text-muted2">{ Money(d.BalanceDue) }</td>
+										<td class="py-2 pr-0 text-right whitespace-nowrap">
+											// Write-off shortcut — only for aged rows (>30 days) where the
+											// decision to declare uncollectible is plausible.
+											if d.Days31To60.IsPositive() || d.Days61To90.IsPositive() || d.Days91Plus.IsPositive() {
+												<a
+													href={ templ.SafeURL("/write-offs/new?invoice_id=" + Uitoa(d.InvoiceID)) }
+													class="text-small font-medium text-danger hover:text-danger-hover hover:underline"
+													title="Mark this invoice as uncollectible"
+												>Write off</a>
+											}
+										</td>
 									</tr>
 								}
 							}
@@ -98,7 +111,8 @@ templ bodyARAging(vm ARAgingVM) {
 								<td class="py-3 pr-4 text-right font-semibold">{ Money(vm.Report.Totals.Days31To60) }</td>
 								<td class="py-3 pr-4 text-right font-semibold">{ Money(vm.Report.Totals.Days61To90) }</td>
 								<td class="py-3 pr-4 text-right font-semibold">{ Money(vm.Report.Totals.Days91Plus) }</td>
-								<td class="py-3 pr-0 text-right font-semibold">{ Money(vm.Report.Totals.Total) }</td>
+								<td class="py-3 pr-4 text-right font-semibold">{ Money(vm.Report.Totals.Total) }</td>
+								<td class="py-3 pr-0"></td>
 							</tr>
 						</tfoot>
 					</table>

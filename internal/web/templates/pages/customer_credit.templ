@@ -95,6 +95,63 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 			</div>
 		}
 
+		<!-- Refunds issued to this customer — shows CN→Refund history and direct refunds. -->
+		if len(vm.Refunds) > 0 {
+			<div class="mt-8">
+				<h2 class="text-body font-semibold mb-3">Refunds Issued</h2>
+				<div class="overflow-hidden rounded-lg border border-border">
+					<table class="w-full text-body">
+						<thead class="bg-surface-raised text-small uppercase tracking-wider text-text-muted">
+							<tr>
+								<th class="px-4 py-3 text-left">Refund #</th>
+								<th class="px-4 py-3 text-left">Date</th>
+								<th class="px-4 py-3 text-left">Source</th>
+								<th class="px-4 py-3 text-right">Amount</th>
+								<th class="px-4 py-3 text-left">Status</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-border">
+							for _, r := range vm.Refunds {
+								<tr>
+									<td class="px-4 py-3">
+										<a href={ templ.SafeURL(fmt.Sprintf("/refunds/%d", r.ID)) } class="text-primary hover:underline">
+											if r.RefundNumber != "" {
+												{ r.RefundNumber }
+											} else {
+												{ fmt.Sprintf("#%d", r.ID) }
+											}
+										</a>
+									</td>
+									<td class="px-4 py-3 text-text-muted2">{ r.RefundDate.Format("2006-01-02") }</td>
+									<td class="px-4 py-3 text-text-muted2">
+										switch r.SourceType {
+											case models.ARRefundSourceCreditNote:
+												Credit note
+												if r.CreditNoteID != nil {
+													<a href={ templ.SafeURL(fmt.Sprintf("/credit-notes/%d", *r.CreditNoteID)) } class="ml-1 text-primary hover:underline">
+														#{ fmt.Sprintf("%d", *r.CreditNoteID) }
+													</a>
+												}
+											case models.ARRefundSourceDeposit:
+												Deposit
+											case models.ARRefundSourceOverpayment:
+												Overpayment
+											default:
+												Other
+										}
+									</td>
+									<td class="px-4 py-3 text-right tabular-nums">
+										<span data-numfmt>{ r.Amount.StringFixed(2) }</span> { r.CurrencyCode }
+									</td>
+									<td class="px-4 py-3">{ models.ARRefundStatusLabel(r.Status) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+
 		<!-- Apply credit form — only shown when active credits and outstanding invoices exist -->
 		if len(vm.ActiveCredits) > 0 && len(vm.OutstandingInvoices) > 0 {
 			<div class="mt-8">

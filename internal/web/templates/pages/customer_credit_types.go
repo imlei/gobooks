@@ -26,6 +26,10 @@ type CustomerCreditsVM struct {
 	// TotalRemaining is the sum of remaining_amount across all active credits.
 	TotalRemaining decimal.Decimal
 
+	// Refunds issued to this customer (all statuses, newest first) — surfaces
+	// the outcome of "Convert to refund" flows next to the credit history.
+	Refunds []models.ARRefund
+
 	// Apply form state.
 	SelectedCreditID uint
 	SelectedInvoiceID uint

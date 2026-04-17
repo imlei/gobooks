@@ -41,6 +41,7 @@ func (s *Server) handleCustomerCredits(c *fiber.Ctx) error {
 	activeCredits, _ := services.ListActiveCustomerCredits(s.DB, companyID, customerID)
 	outstandingInvoices, _ := services.ListCustomerOutstandingInvoices(s.DB, companyID, customerID, 50)
 	total, _ := services.CustomerCreditTotalRemaining(s.DB, companyID, customerID)
+	refunds, _ := services.ListARRefunds(s.DB, companyID, "", customerID)
 
 	vm := pages.CustomerCreditsVM{
 		HasCompany:          true,
@@ -49,6 +50,7 @@ func (s *Server) handleCustomerCredits(c *fiber.Ctx) error {
 		ActiveCredits:       activeCredits,
 		OutstandingInvoices: outstandingInvoices,
 		TotalRemaining:      total,
+		Refunds:             refunds,
 		JustApplied:         c.Query("applied") == "1",
 		FormError:           strings.TrimSpace(c.Query("error")),
 	}
