@@ -509,6 +509,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/vendors", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendors)
 	app.Post("/vendors", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleVendorCreate)
 	app.Get("/vendors/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorDetail)
+	app.Post("/vendors/:id/update", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleVendorUpdate)
 	app.Get("/vendors/:id/credits", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorCredits)
 
 	// ── 用户档案 + 公司列表（仅需登录；不依赖公司成员资格，所有已认证用户均可访问）───

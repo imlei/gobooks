@@ -113,6 +113,32 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 		OverdueBillCount:        int(overdueCount),
 		CreditCount:             creditCount,
 		CreditRemaining:         creditRemaining,
+		Editing:                 c.Query("edit") == "1",
+		Saved:                   c.Query("saved") == "1",
 	}
+
+	// Edit mode needs dropdown data + form field seeds (pre-populated from
+	// the current vendor values on entry; overwritten on validation re-render).
+	if vm.Editing {
+		s.loadVendorEditFormData(companyID, &vm)
+		vm.FormName = vendor.Name
+		vm.FormEmail = vendor.Email
+		vm.FormPhone = vendor.Phone
+		vm.FormAddress = vendor.Address
+		vm.FormCurrencyCode = vendor.CurrencyCode
+		vm.FormNotes = vendor.Notes
+		vm.FormDefaultPaymentTermCode = vendor.DefaultPaymentTermCode
+	}
+
 	return pages.VendorDetail(vm).Render(c.Context(), c)
+}
+
+// loadVendorEditFormData populates dropdown data for the inline edit form —
+// active payment terms and (when multi-currency is enabled) the currency list.
+// Same data the create form on /vendors uses.
+func (s *Server) loadVendorEditFormData(companyID uint, vm *pages.VendorDetailVM) {
+	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).
+		Order("sort_order asc, code asc").
+		Find(&vm.PaymentTerms)
+	vm.MultiCurrency, vm.BaseCurrencyCode, vm.Currencies = s.vendorCurrencyInfo(companyID)
 }

@@ -33,4 +33,34 @@ type VendorDetailVM struct {
 	// hub page shows at the top.
 	CreditCount     int
 	CreditRemaining decimal.Decimal
+
+	// Edit mode — when Editing = true the detail page renders the vendor
+	// details card as an inline form instead of static values. Entered via
+	// `?edit=1` query; returned via re-render on validation error.
+	Editing bool
+
+	// Form state (only meaningful when Editing = true). On validation error
+	// these hold the user's posted values so the form preserves them.
+	// NameError / FormError drive field- and form-level error banners.
+	FormName                   string
+	FormEmail                  string
+	FormPhone                  string
+	FormAddress                string
+	FormCurrencyCode           string
+	FormNotes                  string
+	FormDefaultPaymentTermCode string
+
+	NameError string
+	FormError string
+
+	// Saved = true shows a green "Vendor saved" banner after a successful
+	// round-trip (POST -> redirect back to GET with ?saved=1).
+	Saved bool
+
+	// Dropdown data for the edit form — same shape the /vendors list uses
+	// for its inline create form.
+	PaymentTerms     []models.PaymentTerm
+	MultiCurrency    bool
+	BaseCurrencyCode string
+	Currencies       []models.Currency
 }

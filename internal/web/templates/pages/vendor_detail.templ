@@ -28,71 +28,31 @@ templ bodyVendorDetail(vm VendorDetailVM) {
 				<p class="mt-2 text-text-muted2">Operational view of this vendor's outstanding bills, credits and recent activity.</p>
 			</div>
 			<div class="flex shrink-0 flex-wrap items-center gap-2">
+				if !vm.Editing {
+					<a href={ templ.SafeURL(fmt.Sprintf("/vendors/%d?edit=1", vm.Vendor.ID)) } class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text hover:bg-background">
+						Edit
+					</a>
+				}
 				<a href="/vendors" class="text-body text-text-muted3 hover:text-text">Back to Vendors</a>
 			</div>
 		</div>
 
+		if vm.Saved {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">
+				Vendor saved.
+			</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
 		// ── Vendor Details + AP Summary ─────────────────────────────────────
 		<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-			<div class="rounded-lg border border-border bg-surface p-6">
-				<h2 class="text-section font-semibold text-text">Vendor Details</h2>
-				<div class="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
-					<div>
-						<p class="text-small font-medium uppercase tracking-wider text-text-muted">Name</p>
-						<p class="mt-1 text-body font-medium text-text">{ vm.Vendor.Name }</p>
-					</div>
-					<div>
-						<p class="text-small font-medium uppercase tracking-wider text-text-muted">Email</p>
-						if vm.Vendor.Email != "" {
-							<p class="mt-1 text-body text-text">
-								<a href={ templ.SafeURL("mailto:" + vm.Vendor.Email) } class="hover:underline">{ vm.Vendor.Email }</a>
-							</p>
-						} else {
-							<p class="mt-1 text-body text-text-muted2">-</p>
-						}
-					</div>
-					<div>
-						<p class="text-small font-medium uppercase tracking-wider text-text-muted">Phone</p>
-						if vm.Vendor.Phone != "" {
-							<p class="mt-1 text-body text-text">{ vm.Vendor.Phone }</p>
-						} else {
-							<p class="mt-1 text-body text-text-muted2">-</p>
-						}
-					</div>
-					<div>
-						<p class="text-small font-medium uppercase tracking-wider text-text-muted">Currency</p>
-						if vm.Vendor.CurrencyCode != "" {
-							<p class="mt-1 text-body text-text">{ vm.Vendor.CurrencyCode }</p>
-						} else {
-							<p class="mt-1 text-body text-text-muted2">Use company base</p>
-						}
-					</div>
-					<div class="md:col-span-2">
-						<p class="text-small font-medium uppercase tracking-wider text-text-muted">Address</p>
-						if vm.Vendor.Address != "" {
-							<p class="mt-1 whitespace-pre-wrap text-body text-text">{ vm.Vendor.Address }</p>
-						} else {
-							<p class="mt-1 text-body text-text-muted2">-</p>
-						}
-					</div>
-					<div>
-						<p class="text-small font-medium uppercase tracking-wider text-text-muted">Default Payment Term</p>
-						if vm.DefaultPaymentTermLabel != "" {
-							<p class="mt-1 text-body text-text">{ vm.DefaultPaymentTermLabel }</p>
-						} else if vm.Vendor.DefaultPaymentTermCode != "" {
-							<p class="mt-1 text-body text-text">{ vm.Vendor.DefaultPaymentTermCode }</p>
-						} else {
-							<p class="mt-1 text-body text-text-muted2">Use company default</p>
-						}
-					</div>
-					if vm.Vendor.Notes != "" {
-						<div class="md:col-span-2">
-							<p class="text-small font-medium uppercase tracking-wider text-text-muted">Notes</p>
-							<p class="mt-1 whitespace-pre-wrap text-body italic text-text-muted2">{ vm.Vendor.Notes }</p>
-						</div>
-					}
-				</div>
-			</div>
+			if vm.Editing {
+				@vendorEditCard(vm)
+			} else {
+				@vendorDisplayCard(vm)
+			}
 
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<h2 class="text-section font-semibold text-text">AP Summary</h2>
@@ -230,4 +190,142 @@ templ vendorQuickLink(href string, title string, desc string) {
 		<p class="text-body font-semibold text-text">{ title }</p>
 		<p class="mt-1 text-small text-text-muted2">{ desc }</p>
 	</a>
+}
+
+// vendorDisplayCard — read-only rendering of vendor profile fields. Used when
+// the detail page is not in edit mode.
+templ vendorDisplayCard(vm VendorDetailVM) {
+	<div class="rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text">Vendor Details</h2>
+		<div class="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
+			<div>
+				<p class="text-small font-medium uppercase tracking-wider text-text-muted">Name</p>
+				<p class="mt-1 text-body font-medium text-text">{ vm.Vendor.Name }</p>
+			</div>
+			<div>
+				<p class="text-small font-medium uppercase tracking-wider text-text-muted">Email</p>
+				if vm.Vendor.Email != "" {
+					<p class="mt-1 text-body text-text">
+						<a href={ templ.SafeURL("mailto:" + vm.Vendor.Email) } class="hover:underline">{ vm.Vendor.Email }</a>
+					</p>
+				} else {
+					<p class="mt-1 text-body text-text-muted2">-</p>
+				}
+			</div>
+			<div>
+				<p class="text-small font-medium uppercase tracking-wider text-text-muted">Phone</p>
+				if vm.Vendor.Phone != "" {
+					<p class="mt-1 text-body text-text">{ vm.Vendor.Phone }</p>
+				} else {
+					<p class="mt-1 text-body text-text-muted2">-</p>
+				}
+			</div>
+			<div>
+				<p class="text-small font-medium uppercase tracking-wider text-text-muted">Currency</p>
+				if vm.Vendor.CurrencyCode != "" {
+					<p class="mt-1 text-body text-text">{ vm.Vendor.CurrencyCode }</p>
+				} else {
+					<p class="mt-1 text-body text-text-muted2">Use company base</p>
+				}
+			</div>
+			<div class="md:col-span-2">
+				<p class="text-small font-medium uppercase tracking-wider text-text-muted">Address</p>
+				if vm.Vendor.Address != "" {
+					<p class="mt-1 whitespace-pre-wrap text-body text-text">{ vm.Vendor.Address }</p>
+				} else {
+					<p class="mt-1 text-body text-text-muted2">-</p>
+				}
+			</div>
+			<div>
+				<p class="text-small font-medium uppercase tracking-wider text-text-muted">Default Payment Term</p>
+				if vm.DefaultPaymentTermLabel != "" {
+					<p class="mt-1 text-body text-text">{ vm.DefaultPaymentTermLabel }</p>
+				} else if vm.Vendor.DefaultPaymentTermCode != "" {
+					<p class="mt-1 text-body text-text">{ vm.Vendor.DefaultPaymentTermCode }</p>
+				} else {
+					<p class="mt-1 text-body text-text-muted2">Use company default</p>
+				}
+			</div>
+			if vm.Vendor.Notes != "" {
+				<div class="md:col-span-2">
+					<p class="text-small font-medium uppercase tracking-wider text-text-muted">Notes</p>
+					<p class="mt-1 whitespace-pre-wrap text-body italic text-text-muted2">{ vm.Vendor.Notes }</p>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+// vendorEditCard — inline form replacement for vendorDisplayCard when
+// vm.Editing is true. POSTs to /vendors/:id/update; on validation failure
+// the handler re-renders this card with field errors + preserved values.
+templ vendorEditCard(vm VendorDetailVM) {
+	<div class="rounded-lg border border-border bg-surface p-6">
+		<h2 class="text-section font-semibold text-text">Edit Vendor</h2>
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/vendors/%d/update", vm.Vendor.ID)) } class="mt-4 space-y-4">
+			<div class="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
+				<div class="md:col-span-2">
+					<label class="block text-small font-medium text-text-muted">Name *</label>
+					<input
+						type="text"
+						name="name"
+						value={ vm.FormName }
+						required
+						class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text"
+					/>
+					if vm.NameError != "" {
+						<p class="mt-1 text-small text-danger">{ vm.NameError }</p>
+					}
+				</div>
+				<div>
+					<label class="block text-small font-medium text-text-muted">Email</label>
+					<input type="email" name="email" value={ vm.FormEmail } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text"/>
+				</div>
+				<div>
+					<label class="block text-small font-medium text-text-muted">Phone</label>
+					<input type="text" name="phone" value={ vm.FormPhone } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text"/>
+				</div>
+				<div class="md:col-span-2">
+					<label class="block text-small font-medium text-text-muted">Address</label>
+					<textarea name="address" rows="3" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text">{ vm.FormAddress }</textarea>
+				</div>
+				if vm.MultiCurrency {
+					<div>
+						<label class="block text-small font-medium text-text-muted">Currency</label>
+						<select name="currency_code" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text">
+							<option value="" selected?={ vm.FormCurrencyCode == "" }>— Use company base ({ vm.BaseCurrencyCode }) —</option>
+							for _, cur := range vm.Currencies {
+								<option value={ cur.Code } selected?={ vm.FormCurrencyCode == cur.Code }>{ cur.Code }</option>
+							}
+						</select>
+					</div>
+				}
+				<div>
+					<label class="block text-small font-medium text-text-muted">Default Payment Term</label>
+					<select name="payment_term" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text">
+						<option value="" selected?={ vm.FormDefaultPaymentTermCode == "" }>— Use company default —</option>
+						for _, pt := range vm.PaymentTerms {
+							<option value={ pt.Code } selected?={ vm.FormDefaultPaymentTermCode == pt.Code }>{ pt.Description }</option>
+						}
+					</select>
+				</div>
+				<div class="md:col-span-2">
+					<label class="block text-small font-medium text-text-muted">Notes</label>
+					<textarea name="notes" rows="3" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text">{ vm.FormNotes }</textarea>
+				</div>
+			</div>
+
+			<div class="flex gap-3 pt-2">
+				<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+					Save
+				</button>
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/vendors/%d", vm.Vendor.ID)) }
+					class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text hover:bg-background"
+				>
+					Cancel
+				</a>
+			</div>
+		</form>
+	</div>
 }
