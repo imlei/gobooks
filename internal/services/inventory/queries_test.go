@@ -302,15 +302,5 @@ func TestGetCostingPreview_FeasibleAndInfeasible(t *testing.T) {
 	}
 }
 
-// Phase D.1 stubs return ErrNotImplemented.
-func TestBOMStubs_NotImplementedUntilD1(t *testing.T) {
-	db := testDB(t)
-	_, err := ExplodeBOM(db, BOMExplodeQuery{})
-	if err != ErrNotImplemented {
-		t.Fatalf("ExplodeBOM: got %v want ErrNotImplemented", err)
-	}
-	_, _, err = GetAvailableForBuild(db, 1, 1, 1)
-	if err != ErrNotImplemented {
-		t.Fatalf("GetAvailableForBuild: got %v want ErrNotImplemented", err)
-	}
-}
+// (BOM stub test removed — both ExplodeBOM and GetAvailableForBuild are
+// fully implemented in Phase D.1; see bom_test.go for their real coverage.)

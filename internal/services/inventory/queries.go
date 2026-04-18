@@ -413,17 +413,233 @@ func GetCostingPreview(db *gorm.DB, q CostingPreviewQuery) (*CostingPreviewResul
 	}, nil
 }
 
-// ── Phase D.1 stubs ──────────────────────────────────────────────────────────
+// ── ExplodeBOM ───────────────────────────────────────────────────────────────
 
-// ExplodeBOM is declared for API stability. Implementation depends on the
-// product_components table landing in Phase D.1.
-func ExplodeBOM(_ *gorm.DB, _ BOMExplodeQuery) ([]BOMExplodeRow, error) {
-	return nil, ErrNotImplemented
+// bomExplodeMaxDepth caps recursion to guard against pathological BOMs and
+// any undetected cycles (belt + braces alongside the visited-set check).
+// Five levels comfortably covers "sub-assembly → component" chains; anything
+// deeper is a design smell worth surfacing as an error.
+const bomExplodeMaxDepth = 5
+
+// ExplodeBOM recursively expands a parent product into its components using
+// the item_components table. MultiLevel=false returns only direct children;
+// MultiLevel=true recurses until every row is a leaf (no further
+// item_components rows). Cycles are blocked with a visited-path set;
+// exceeding bomExplodeMaxDepth returns ErrBOMTooDeep.
+//
+// Optional enrichments:
+//   - IncludeCostEstimate populates EstimatedUnitCostBase /
+//     EstimatedTotalCostBase from the component's current weighted-average
+//     cost at whichever warehouse is keyed (or zero when WarehouseID nil).
+//   - IncludeAvailability populates AvailableQuantity and ShortBy against
+//     the target warehouse. Requires WarehouseID non-nil.
+func ExplodeBOM(db *gorm.DB, q BOMExplodeQuery) ([]BOMExplodeRow, error) {
+	if q.CompanyID == 0 || q.ParentItemID == 0 {
+		return nil, fmt.Errorf("inventory.ExplodeBOM: CompanyID and ParentItemID required")
+	}
+	if !q.Quantity.IsPositive() {
+		return nil, ErrNegativeQuantity
+	}
+	if q.IncludeAvailability && q.WarehouseID == nil {
+		return nil, fmt.Errorf("inventory.ExplodeBOM: WarehouseID required when IncludeAvailability=true")
+	}
+
+	rows := make([]BOMExplodeRow, 0, 4)
+	visited := map[uint]bool{q.ParentItemID: true}
+	path := []uint{q.ParentItemID}
+
+	if err := explodeWalk(db, q, q.ParentItemID, q.Quantity, 0, visited, path, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
-// GetAvailableForBuild depends on ExplodeBOM; same Phase D.1 gate.
-func GetAvailableForBuild(_ *gorm.DB, _, _, _ uint) (decimal.Decimal, uint, error) {
-	return decimal.Zero, 0, ErrNotImplemented
+// explodeWalk is the recursive step. It reads item_components rows for the
+// current parent and (depending on MultiLevel) either appends each component
+// as a leaf or recurses into it. visited/path are carried by value-ish:
+// visited is mutated on entry/exit to allow sibling branches to re-visit
+// products that appear in multiple sub-trees (only pure cycles are blocked).
+func explodeWalk(db *gorm.DB, q BOMExplodeQuery,
+	parentID uint, parentQty decimal.Decimal, depth int,
+	visited map[uint]bool, path []uint,
+	out *[]BOMExplodeRow,
+) error {
+	if depth >= bomExplodeMaxDepth {
+		return ErrBOMTooDeep
+	}
+
+	var comps []models.ItemComponent
+	err := db.Preload("ComponentItem").
+		Where("company_id = ? AND parent_item_id = ?", q.CompanyID, parentID).
+		Order("sort_order asc, id asc").
+		Find(&comps).Error
+	if err != nil {
+		return fmt.Errorf("inventory.ExplodeBOM: load components: %w", err)
+	}
+
+	for _, c := range comps {
+		if visited[c.ComponentItemID] {
+			return fmt.Errorf("%w: %d -> %d", ErrBOMCycle, parentID, c.ComponentItemID)
+		}
+
+		// Scrap is not yet on ItemComponent (it lives on the future
+		// product_components schema we no longer need — item_components is
+		// already the canonical table). Treat scrap as zero; when a scrap
+		// column is added to item_components this is the one place to read
+		// it.
+		scrap := decimal.Zero
+		effectiveQty := parentQty.Mul(c.Quantity)
+
+		childPath := append(append([]uint(nil), path...), c.ComponentItemID)
+		row := BOMExplodeRow{
+			ComponentItemID: c.ComponentItemID,
+			Depth:           depth,
+			Path:            childPath,
+			QuantityPerUnit: c.Quantity,
+			TotalQuantity:   effectiveQty,
+			ScrapPct:        scrap,
+		}
+
+		// Only recurse into this component when it's itself a parent with
+		// rows in item_components AND MultiLevel is enabled AND we haven't
+		// exhausted depth. Otherwise treat as a leaf and emit the row.
+		recurse := false
+		if q.MultiLevel {
+			var childCount int64
+			db.Model(&models.ItemComponent{}).
+				Where("company_id = ? AND parent_item_id = ?", q.CompanyID, c.ComponentItemID).
+				Count(&childCount)
+			recurse = childCount > 0
+		}
+
+		if recurse {
+			// Guard cycle detection: visit on descent, un-visit on return,
+			// so a component appearing in two sibling sub-trees doesn't
+			// spuriously trip as a cycle.
+			visited[c.ComponentItemID] = true
+			if err := explodeWalk(db, q, c.ComponentItemID, effectiveQty, depth+1, visited, childPath, out); err != nil {
+				return err
+			}
+			delete(visited, c.ComponentItemID)
+			continue
+		}
+
+		// Enrichments for leaf rows.
+		if q.IncludeCostEstimate || q.IncludeAvailability {
+			bal, err := lookupComponentBalance(db, q.CompanyID, c.ComponentItemID, q.WarehouseID)
+			if err != nil {
+				return err
+			}
+			if q.IncludeCostEstimate {
+				unit := bal.AverageCost
+				total := effectiveQty.Mul(unit).RoundBank(2)
+				row.EstimatedUnitCostBase = &unit
+				row.EstimatedTotalCostBase = &total
+			}
+			if q.IncludeAvailability {
+				avail := bal.QuantityOnHand
+				row.AvailableQuantity = &avail
+				if avail.LessThan(effectiveQty) {
+					short := effectiveQty.Sub(avail)
+					row.ShortBy = &short
+				}
+			}
+		}
+
+		*out = append(*out, row)
+	}
+	return nil
+}
+
+// lookupComponentBalance reads the balance for (company, item, warehouse).
+// When warehouseID is nil the balance is summed across warehouses so cost
+// estimates reflect blended company-level avg.
+func lookupComponentBalance(db *gorm.DB, companyID, itemID uint, warehouseID *uint) (models.InventoryBalance, error) {
+	if warehouseID != nil {
+		var bal models.InventoryBalance
+		err := db.Where("company_id = ? AND item_id = ? AND warehouse_id = ?",
+			companyID, itemID, *warehouseID).First(&bal).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.InventoryBalance{}, nil
+		}
+		return bal, err
+	}
+
+	// Aggregate across warehouses.
+	var balances []models.InventoryBalance
+	if err := db.Where("company_id = ? AND item_id = ?", companyID, itemID).
+		Find(&balances).Error; err != nil {
+		return models.InventoryBalance{}, err
+	}
+	var totalQty, totalValue decimal.Decimal
+	for _, b := range balances {
+		totalQty = totalQty.Add(b.QuantityOnHand)
+		totalValue = totalValue.Add(b.QuantityOnHand.Mul(b.AverageCost))
+	}
+	agg := models.InventoryBalance{CompanyID: companyID, ItemID: itemID, QuantityOnHand: totalQty}
+	if totalQty.IsPositive() {
+		agg.AverageCost = totalValue.Div(totalQty).Round(4)
+	}
+	return agg, nil
+}
+
+// ── GetAvailableForBuild ─────────────────────────────────────────────────────
+
+// GetAvailableForBuild reports the maximum quantity of parent_item that can
+// be built at warehouseID given current component stock. Returns the
+// bottleneck component — the one that caps the answer. Suitable for the
+// "build" UI to show "you can assemble N units; you'd need M more of
+// component X to reach the quantity you want".
+func GetAvailableForBuild(db *gorm.DB, companyID, parentItemID, warehouseID uint) (decimal.Decimal, uint, error) {
+	if companyID == 0 || parentItemID == 0 {
+		return decimal.Zero, 0, fmt.Errorf("inventory.GetAvailableForBuild: CompanyID and ParentItemID required")
+	}
+
+	var comps []models.ItemComponent
+	if err := db.
+		Where("company_id = ? AND parent_item_id = ?", companyID, parentItemID).
+		Find(&comps).Error; err != nil {
+		return decimal.Zero, 0, fmt.Errorf("inventory.GetAvailableForBuild: load components: %w", err)
+	}
+	if len(comps) == 0 {
+		return decimal.Zero, 0, fmt.Errorf("inventory.GetAvailableForBuild: parent %d has no components", parentItemID)
+	}
+
+	var whPtr *uint
+	if warehouseID != 0 {
+		id := warehouseID
+		whPtr = &id
+	}
+
+	var (
+		maxBuildable     decimal.Decimal
+		bottleneckItemID uint
+		first            = true
+	)
+	for _, c := range comps {
+		bal, err := lookupComponentBalance(db, companyID, c.ComponentItemID, whPtr)
+		if err != nil {
+			return decimal.Zero, 0, err
+		}
+		// Maximum parent units this component can support = on_hand / per_unit.
+		// Guard divide-by-zero on a misconfigured component row.
+		if !c.Quantity.IsPositive() {
+			continue
+		}
+		possible := bal.QuantityOnHand.Div(c.Quantity).Floor()
+		if first || possible.LessThan(maxBuildable) {
+			maxBuildable = possible
+			bottleneckItemID = c.ComponentItemID
+			first = false
+		}
+	}
+	if first {
+		return decimal.Zero, 0, fmt.Errorf("inventory.GetAvailableForBuild: no valid components with positive per-unit quantity")
+	}
+	if maxBuildable.IsNegative() {
+		maxBuildable = decimal.Zero
+	}
+	return maxBuildable, bottleneckItemID, nil
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
