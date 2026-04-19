@@ -1,0 +1,32 @@
+-- 068_company_receipt_required.sql
+-- Phase H slice H.1: company-level capability rail for Receipt-first inbound.
+--
+-- What this column is
+-- -------------------
+-- `receipt_required` is the second of four F.7 capability rails
+-- (after `tracking_enabled` in G.1). When FALSE (default), the company
+-- continues to run Phase G's Bill-forms-inventory path unchanged. When
+-- TRUE, the company has opted into the Phase H Receipt-first model
+-- where Receipt produces inventory truth and Bill only clears GR/IR.
+--
+-- What H.1 installs and what it deliberately does NOT install
+-- -----------------------------------------------------------
+-- H.1 installs the column and an audited admin surface
+-- (ChangeCompanyReceiptRequired). It is a DORMANT RAIL: no existing
+-- company is flipped, no handler reads the flag, no Bill/Receipt
+-- behavior changes. The rail exists so later slices (H.2 Receipt doc,
+-- H.3 Receipt post, H.4 Bill decoupling, H.5 matching + PPV) can
+-- branch on it once each is verified.
+--
+-- Operational enablement is explicitly blocked until Phase H.5 closes
+-- (see INVENTORY_MODULE_API.md §Phase H "Two hard borders" — Border 1).
+-- Flipping this flag on a real company before H.5 produces a
+-- half-bridged state (Receipt forms inventory, Bill cannot clear
+-- GR/IR) that is strictly worse than Phase G.
+--
+-- Default FALSE preserves byte-identical Phase G behavior for every
+-- existing company on migration. New companies also default FALSE;
+-- the default stays FALSE until Phase H.5 ships.
+
+ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS receipt_required BOOLEAN NOT NULL DEFAULT FALSE;

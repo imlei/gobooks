@@ -163,6 +163,26 @@ type Company struct {
 	// same shape: conservative default, audited flip, no UI shortcut.
 	TrackingEnabled bool `gorm:"not null;default:false"`
 
+	// ReceiptRequired is the company-level capability rail for the
+	// Phase H Receipt-first inbound model (slice H.1, migration 068).
+	//
+	// When FALSE (default), the company continues to run Phase G's
+	// Bill-forms-inventory path unchanged — Bill post produces
+	// inventory movements directly.
+	//
+	// When TRUE, the company has opted into the Phase H Receipt-first
+	// model: Receipt posting produces inventory truth and accrues
+	// Dr Inventory / Cr GR/IR; Bill posting handles AP only and
+	// clears GR/IR against matching Receipts (with PPV on price
+	// deltas).
+	//
+	// H.1 installs this field as a DORMANT RAIL. No handler reads it
+	// yet; no Bill/Receipt behavior branches on it. Later slices
+	// (H.3 Receipt post, H.4 Bill decoupling, H.5 matching + PPV)
+	// become its consumers. Operational enablement is blocked until
+	// H.5 closes — see INVENTORY_MODULE_API.md §Phase H Border 1.
+	ReceiptRequired bool `gorm:"not null;default:false"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
