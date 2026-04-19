@@ -106,6 +106,72 @@ func AdjustBillFragmentsForInventory(frags []PostingFragment, bill models.Bill) 
 	return frags
 }
 
+// AdjustBillFragmentsForGRIRClearing is the Phase H slice H.4 Bill-side
+// parallel of AdjustBillFragmentsForInventory. Used when
+// companies.receipt_required=true: instead of redirecting stock-item
+// debit from Expense → Inventory Asset, redirect it to the company's
+// GR/IR clearing account. Non-stock items are untouched.
+//
+// Why: under Phase H Receipt-first semantics, Receipt post has
+// already booked Dr Inventory / Cr GR/IR (H.3). Bill is now the
+// financial claim only. If Bill also debited Inventory, we would
+// double-count inventory asset. Instead Bill posts:
+//
+//	Dr GR/IR    (offsets Receipt's credit, at Bill line amount)
+//	Cr AP       (Bill remains financial claim)
+//
+// H.4 does this at aggregate level — Bill total debits GR/IR, not
+// per-Receipt matching. Any variance between Bill amount and the
+// Receipt aggregate sits in the GR/IR balance until H.5 introduces
+// receipt-specific matching and PPV.
+//
+// Shared-account note: this function mirrors AdjustBillFragmentsForInventory's
+// pre-aggregation redirect pattern (map of old→new by account ID). If a
+// stock line and a non-stock line happen to share the same expense
+// account, both fragments get redirected — a pre-existing limitation of
+// the legacy adjust function. Standard charts-of-accounts use distinct
+// expense accounts for stock vs non-stock items, so this aliasing does
+// not arise in practice; it is not introduced by H.4.
+func AdjustBillFragmentsForGRIRClearing(frags []PostingFragment, bill models.Bill, grirAccountID uint) []PostingFragment {
+	if grirAccountID == 0 {
+		return frags
+	}
+	redirect := map[uint]uint{}
+	for _, l := range bill.Lines {
+		if l.ProductService == nil || !l.ProductService.IsStockItem {
+			continue
+		}
+		if l.ExpenseAccountID == nil {
+			continue
+		}
+		redirect[*l.ExpenseAccountID] = grirAccountID
+	}
+	if len(redirect) == 0 {
+		return frags
+	}
+	for i := range frags {
+		if frags[i].Debit.IsPositive() {
+			if newID, ok := redirect[frags[i].AccountID]; ok {
+				frags[i].AccountID = newID
+			}
+		}
+	}
+	return frags
+}
+
+// billHasStockLine returns true if any Bill line is a stock item
+// (IsStockItem=true on the linked ProductService). Small helper used
+// by both the legacy inventory path and the H.4 receipt-required
+// branch in PostBill.
+func billHasStockLine(bill models.Bill) bool {
+	for _, l := range bill.Lines {
+		if l.ProductService != nil && l.ProductService.IsStockItem {
+			return true
+		}
+	}
+	return false
+}
+
 // ── Pre-flight stock validation (invoice) ────────────────────────────────────
 
 // ErrTrackedItemNotSupportedByInvoice — Phase G.2 guard. A tracked

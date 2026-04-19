@@ -103,10 +103,25 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		}
 	}
 
-	// ── 2b. Load company (needed for base currency code) ─────────────────────
+	// ── 2b. Load company (base currency + Phase H capability rails) ──────────
+	// Full row so receipt_required and gr_ir_clearing_account_id are
+	// available for the H.4 flag branch.
 	var company models.Company
-	if err := db.Select("id", "base_currency_code").First(&company, companyID).Error; err != nil {
+	if err := db.First(&company, companyID).Error; err != nil {
 		return fmt.Errorf("load company: %w", err)
+	}
+
+	// ── 2b1. Phase H.4 capability gate (receipt_required) ────────────────────
+	// When receipt_required=true and the bill carries any stock-backed line,
+	// Bill post must NOT form inventory (Receipt owns that) and must route
+	// the stock-line debit to the company's GR/IR clearing account. If GR/IR
+	// is not configured, fail loud with the same sentinel Receipt uses —
+	// so the configuration requirement is symmetric across the two post
+	// paths (no half-configured half-bridged state).
+	stockOnBill := billHasStockLine(bill)
+	billUsesGRIRClearing := company.ReceiptRequired && stockOnBill
+	if billUsesGRIRClearing && company.GRIRClearingAccountID == nil {
+		return ErrGRIRAccountNotConfigured
 	}
 
 	// ── 2c. Determine exchange rate ───────────────────────────────────────────
@@ -171,8 +186,16 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		return fmt.Errorf("build bill fragments: %w", err)
 	}
 
-	// ── 4b. For inventory items, redirect expense debit → inventory asset debit.
-	frags = AdjustBillFragmentsForInventory(frags, bill)
+	// ── 4b. Redirect stock-line expense debits.
+	// Legacy path (receipt_required=false): Expense → Inventory Asset
+	// (inventory-forming). Phase H.4 (receipt_required=true with stock
+	// lines): Expense → GR/IR Clearing (Bill is financial-only; Receipt
+	// owns inventory formation). Non-stock lines untouched on both paths.
+	if billUsesGRIRClearing {
+		frags = AdjustBillFragmentsForGRIRClearing(frags, bill, *company.GRIRClearingAccountID)
+	} else {
+		frags = AdjustBillFragmentsForInventory(frags, bill)
+	}
 
 	// ── 5. Aggregate by account + side ────────────────────────────────────────
 	// Lines sharing the same expense account are merged. ITC lines sharing the
@@ -274,9 +297,17 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 			return fmt.Errorf("project to ledger: %w", err)
 		}
 
-		// e. Record inventory purchase movements for stock items (same transaction).
-		if err := CreatePurchaseMovements(tx, companyID, bill, billWarehouseID); err != nil {
-			return fmt.Errorf("inventory purchase movements: %w", err)
+		// e. Record inventory purchase movements for stock items.
+		// Phase H.4 gate: under receipt_required=true, Bill does NOT form
+		// inventory — Receipt (H.3) owns that side. Skipping the call
+		// entirely keeps source_type='bill' movements absent from
+		// inventory_movements so queries, valuation reports, and
+		// reversals see a clean separation between pre-H and post-H
+		// receiving histories within the same company.
+		if !company.ReceiptRequired {
+			if err := CreatePurchaseMovements(tx, companyID, bill, billWarehouseID); err != nil {
+				return fmt.Errorf("inventory purchase movements: %w", err)
+			}
 		}
 
 		// f. Update bill: mark posted, cache grand total (document-currency), link journal entry,
