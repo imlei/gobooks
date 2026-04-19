@@ -859,6 +859,7 @@ func (c *smokeCtx) cleanup() error {
 			"DELETE FROM invoice_lines                  WHERE company_id = ?",
 			"DELETE FROM invoices                       WHERE company_id = ?",
 			"DELETE FROM journal_lines                  WHERE company_id = ?",
+			"DELETE FROM ledger_entries                 WHERE company_id = ?",
 			"DELETE FROM journal_entries                WHERE company_id = ?",
 			"DELETE FROM audit_logs                     WHERE company_id = ?",
 			"DELETE FROM product_services               WHERE company_id = ?",
