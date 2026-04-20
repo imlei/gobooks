@@ -103,10 +103,23 @@ func resolveBillLineMatchingContext(tx *gorm.DB, bill models.Bill) (map[uint]bil
 				ErrBillLineReceiptRefInvalid, line.ID)
 		}
 
-		// Load the referenced receipt line + its receipt (status check).
+		// Load the referenced receipt line with a row-level write lock
+		// (SELECT ... FOR UPDATE on PostgreSQL; no-op on SQLite). This
+		// is the H-hardening-1 fix: two concurrent PostBill calls that
+		// both reference the same receipt line must serialise here so
+		// each computes its `available` qty against the other's
+		// already-committed bill_line, rather than racing on a shared
+		// pre-commit snapshot and both over-matching.
+		//
+		// Without this lock, the bug manifests as: receipt_line qty=10,
+		// Bill A matches 6, Bill B matches 6 concurrently — both
+		// succeed because each reads prior_matched=0 before the other
+		// commits, producing a cumulative 12 > 10. With the lock, Bill
+		// B blocks on this SELECT until Bill A commits, then sees the
+		// correct prior_matched=6 and computes available=4.
 		var rl models.ReceiptLine
-		if err := tx.Preload("ProductService").
-			Where("id = ?", *line.ReceiptLineID).
+		if err := applyLockForUpdate(tx.Preload("ProductService").
+			Where("id = ?", *line.ReceiptLineID)).
 			First(&rl).Error; err != nil {
 			return nil, fmt.Errorf("%w: receipt line %d: %s",
 				ErrBillLineReceiptRefInvalid, *line.ReceiptLineID, err.Error())

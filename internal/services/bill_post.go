@@ -242,22 +242,18 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 			return ErrAlreadyPosted
 		}
 
-		// a2. H.5 matching transform (when engaged): preload ReceiptLine
-		// rows, compute per-line match context, and split the relevant
-		// fragments into precise GR/IR + PPV + blind-GR/IR shapes.
+		// a2. H.5 matching transform (when engaged): resolve per-line
+		// match context and split the relevant fragments into precise
+		// GR/IR + PPV + blind-GR/IR shapes. resolveBillLineMatchingContext
+		// takes the necessary row-level write lock on each referenced
+		// receipt_line (H-hardening-1) so concurrent PostBills targeting
+		// the same receipt line serialise through this path.
+		//
+		// (The previous pre-matching preload of ReceiptLine onto each
+		// bill.Lines[i] has been removed: it loaded without a lock and
+		// was not actually consumed downstream. The matching function
+		// re-loads under lock and owns the authoritative copy.)
 		if billUsesGRIRClearing && hasReceiptRef {
-			for i := range bill.Lines {
-				if bill.Lines[i].ReceiptLineID == nil || *bill.Lines[i].ReceiptLineID == 0 {
-					continue
-				}
-				var rl models.ReceiptLine
-				if err := tx.Preload("ProductService").
-					First(&rl, *bill.Lines[i].ReceiptLineID).Error; err != nil {
-					return fmt.Errorf("preload receipt line %d: %w",
-						*bill.Lines[i].ReceiptLineID, err)
-				}
-				bill.Lines[i].ReceiptLine = &rl
-			}
 			matchingCtx, err := resolveBillLineMatchingContext(tx, bill)
 			if err != nil {
 				return err
