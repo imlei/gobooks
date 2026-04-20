@@ -342,7 +342,16 @@ templ soReadOnlyView(vm SalesOrderDetailVM) {
 				<tbody class="text-text">
 					for _, line := range vm.Order.Lines {
 						<tr class="border-b border-border-subtle">
-							<td class="py-2 pr-4">{ line.Description }</td>
+							<td class="py-2 pr-4">
+								if line.ProductService != nil {
+									<div class="font-medium text-text">{ line.ProductService.Name }</div>
+									if line.Description != "" {
+										<div class="text-small text-text-muted">{ line.Description }</div>
+									}
+								} else {
+									{ line.Description }
+								}
+							</td>
 							<td class="py-2 pr-4 text-right font-mono" data-numfmt>{ line.Quantity.StringFixed(2) }</td>
 							<td class="py-2 pr-4 text-right font-mono text-text-muted2" data-numfmt>{ line.InvoicedQty.StringFixed(2) }</td>
 							<td class="py-2 pr-4 text-right font-mono" data-numfmt>{ line.UnitPrice.StringFixed(2) }</td>

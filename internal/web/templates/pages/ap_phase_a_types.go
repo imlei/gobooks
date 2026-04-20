@@ -26,6 +26,16 @@ type PurchaseOrderDetailVM struct {
 	Accounts      []models.Account
 	Products      []models.ProductService
 	TaxCodes      []models.TaxCode
+
+	// Currency selector support. Mirrors the bill-editor pattern so
+	// the PO form doesn't invent a second convention for the same
+	// picker. Base currency is always the fallback option; the
+	// extended list only appears when the company has enabled
+	// multi-currency in Settings → Company → Currency.
+	MultiCurrencyEnabled bool
+	BaseCurrencyCode     string
+	CompanyCurrencies    []models.CompanyCurrency
+
 	FormError     string
 	Saved         bool
 	Confirmed     bool

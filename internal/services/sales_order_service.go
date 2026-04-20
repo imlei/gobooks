@@ -157,7 +157,7 @@ func CreateSalesOrder(db *gorm.DB, companyID uint, in SalesOrderInput) (*models.
 // GetSalesOrder loads a sales order with its lines for the given company.
 func GetSalesOrder(db *gorm.DB, companyID, orderID uint) (*models.SalesOrder, error) {
 	var so models.SalesOrder
-	err := db.Preload("Lines").Preload("Customer").
+	err := db.Preload("Lines.ProductService").Preload("Customer").
 		Where("id = ? AND company_id = ?", orderID, companyID).
 		First(&so).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

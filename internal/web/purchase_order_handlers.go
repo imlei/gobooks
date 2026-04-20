@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/shopspring/decimal"
 
+	"gobooks/internal/models"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
@@ -242,6 +243,19 @@ func (s *Server) loadPOFormData(companyID uint, vm *pages.PurchaseOrderDetailVM)
 	s.DB.Where("company_id = ? AND is_active = true", companyID).Order("code asc").Find(&vm.Accounts)
 	s.DB.Where("company_id = ? AND is_active = true", companyID).Order("name asc").Find(&vm.Products)
 	s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vm.TaxCodes)
+
+	// Multi-currency: mirror bills_handlers.loadBillFormData so the
+	// PO currency dropdown reads from the same source of truth.
+	var company models.Company
+	if err := s.DB.Select("id", "base_currency_code", "multi_currency_enabled").
+		First(&company, companyID).Error; err == nil {
+		vm.MultiCurrencyEnabled = company.MultiCurrencyEnabled
+		vm.BaseCurrencyCode = company.BaseCurrencyCode
+		if company.MultiCurrencyEnabled {
+			ccs, _ := services.ListCompanyCurrencies(s.DB, companyID)
+			vm.CompanyCurrencies = ccs
+		}
+	}
 }
 
 func parsePOInput(c *fiber.Ctx) (services.POInput, error) {
