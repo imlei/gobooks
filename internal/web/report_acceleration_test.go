@@ -241,8 +241,9 @@ func ptrTime(v time.Time) *time.Time {
 func TestReportCacheInvalidatedAfterInvoicePostAndVoid(t *testing.T) {
 	db := testEditorFlowDB(t)
 	// VoidInvoice walks payment transactions, settlement allocations,
-	// inventory ledger, and credit note applications — all of which must
-	// exist or the void returns an error and the handler redirects to
+	// inventory ledger, credit note applications, and (Phase I.5) the
+	// waiting_for_invoice operational queue — all of which must exist
+	// or the void returns an error and the handler redirects to
 	// ?voiderror=1 without invalidating the report cache.
 	if err := db.AutoMigrate(
 		&models.PaymentTransaction{},
@@ -252,6 +253,7 @@ func TestReportCacheInvalidatedAfterInvoicePostAndVoid(t *testing.T) {
 		&models.InventoryCostLayer{},
 		&models.InventoryLayerConsumption{},
 		&models.CreditNoteApplication{},
+		&models.WaitingForInvoiceItem{},
 	); err != nil {
 		t.Fatal(err)
 	}

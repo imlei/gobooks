@@ -183,6 +183,15 @@ func VoidInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return fmt.Errorf("reverse inventory movements: %w", err)
 		}
 
+		// g.I.5. Reopen any waiting_for_invoice rows this invoice closed
+		//        (Phase I slice I.5). No-op when the invoice was under
+		//        flag=false (no WFI linkage existed) or when the WFI
+		//        rows were already voided by an intervening Shipment
+		//        void. Safe to call unconditionally — Phase I agnostic.
+		if err := reopenWaitingForInvoiceMatchesOnVoid(tx, companyID, inv.ID); err != nil {
+			return fmt.Errorf("reopen waiting_for_invoice: %w", err)
+		}
+
 		// g2. Reverse any credit note applications against this invoice.
 		// The CreditNote's BalanceRemaining was reduced when each application was created;
 		// voiding the invoice restores those balances so credits can be reused.

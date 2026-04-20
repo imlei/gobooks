@@ -391,6 +391,17 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return fmt.Errorf("project to ledger: %w", err)
 		}
 
+		// g.I.5. Match invoice lines back to Shipment lines and close
+		//        the corresponding waiting_for_invoice queue items.
+		//        Runs only under shipment_required=true — the only
+		//        branch where WFI rows exist. Flag-off invoices have
+		//        no meaningful shipment_line_id and we refuse those
+		//        (fail loud) so the column can't drift into the legacy
+		//        flow and create orphan linkages.
+		if err := closeWaitingForInvoiceMatches(tx, companyID, inv, company.ShipmentRequired); err != nil {
+			return err
+		}
+
 		// f. Update invoice: mark issued (posted), link journal entry, snapshot base amounts.
 		// Phase 4: also set balance_due = Amount and balance_due_base = amountBase so
 		// FX settlement can pro-rate the carrying value correctly across partial payments.

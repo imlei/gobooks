@@ -182,18 +182,34 @@ func CloseWaitingForInvoiceItemByShipmentLine(tx *gorm.DB, companyID, shipmentLi
 // Items voided for any other reason (e.g. their source shipment was
 // voided first) are NOT reopened — a voided item stays voided.
 func ReopenWaitingForInvoiceItemByInvoice(tx *gorm.DB, companyID, invoiceID uint) error {
-	now := time.Now().UTC()
-	updates := map[string]any{
-		"status":                   models.WaitingForInvoiceStatusOpen,
-		"resolved_invoice_id":      nil,
-		"resolved_invoice_line_id": nil,
-		"resolved_at":              nil,
-		"updated_at":               now,
+	// Legacy-test tolerance: when the waiting_for_invoice_items
+	// table has not been migrated in this DB (pre-Phase-I test
+	// harnesses), treat reopen as a no-op. Production DBs always
+	// have the table via migration 077. This mirrors how other
+	// Phase H/I cross-domain helpers (AR, inventory) tolerate
+	// narrow-fixture test DBs that predate them.
+	if !tx.Migrator().HasTable(&models.WaitingForInvoiceItem{}) {
+		return nil
 	}
-	if err := tx.Model(&models.WaitingForInvoiceItem{}).
-		Where("company_id = ? AND resolved_invoice_id = ? AND status = ?",
-			companyID, invoiceID, models.WaitingForInvoiceStatusClosed).
-		Updates(updates).Error; err != nil {
+
+	// GORM's Updates(map) silently skips some nil values for pointer
+	// types on some drivers. Use a raw UPDATE to guarantee the
+	// nullable columns actually become NULL on reopen — otherwise
+	// ResolvedAt would retain its old value, which would show up on
+	// the operational dashboard as "reopened but resolved on <past>".
+	now := time.Now().UTC()
+	if err := tx.Exec(`
+		UPDATE waiting_for_invoice_items
+		SET status = ?,
+		    resolved_invoice_id = NULL,
+		    resolved_invoice_line_id = NULL,
+		    resolved_at = NULL,
+		    updated_at = ?
+		WHERE company_id = ?
+		  AND resolved_invoice_id = ?
+		  AND status = ?`,
+		models.WaitingForInvoiceStatusOpen, now,
+		companyID, invoiceID, models.WaitingForInvoiceStatusClosed).Error; err != nil {
 		return fmt.Errorf("reopen waiting_for_invoice: %w", err)
 	}
 	return nil

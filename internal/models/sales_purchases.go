@@ -247,6 +247,16 @@ type InvoiceLine struct {
 	LineTax   decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
 	LineTotal decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
 
+	// ShipmentLineID — Phase I slice I.5 identity link back to the
+	// ShipmentLine that this invoice line is invoicing. Nullable:
+	// unused under companies.shipment_required=false, and even under
+	// flag=true an Invoice may carry non-stock service/fee lines that
+	// were never shipped (those leave this field NULL). No FK at the
+	// schema layer (migration 078); service-layer guard enforces
+	// (same company, posted Shipment, open waiting_for_invoice row)
+	// at Invoice post time.
+	ShipmentLineID *uint `gorm:"index"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
