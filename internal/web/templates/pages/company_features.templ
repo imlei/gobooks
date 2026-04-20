@@ -1,0 +1,325 @@
+// 遵循project_guide.md
+package pages
+
+import "fmt"
+import "gobooks/internal/web/templates/layout"
+import "gobooks/internal/web/templates/ui"
+
+templ CompanyFeatures(vm CompanyFeaturesVM) {
+	@layout.Layout(
+		"GoBooks - Features",
+		ui.SidebarVM{Active: "Company Features", HasCompany: vm.HasCompany},
+		bodyCompanyFeatures(vm),
+	)
+}
+
+templ bodyCompanyFeatures(vm CompanyFeaturesVM) {
+	<div class="max-w-[95%]" x-data={ featureModalsState(vm) }>
+		@SettingsBreadcrumb(vm.Breadcrumb)
+		<h1 class="text-title font-semibold">Features</h1>
+		<p class="mt-2 max-w-3xl text-text-muted2">
+			Product feature families available for this company. Alpha features are gated behind
+			self-serve enablement and require owner sign-off before they become active. Disabling
+			an alpha feature later does not rewrite historical records.
+		</p>
+
+		if vm.Flash.Success != "" {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
+				{ vm.Flash.Success }
+			</div>
+		}
+		if vm.Flash.Error != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
+				{ vm.Flash.Error }
+			</div>
+		}
+
+		if !vm.CanManage {
+			<div class="mt-6 rounded-md border border-border bg-background p-4 text-small text-text-muted2">
+				Only the company owner can enable or disable features. You can view the current state here.
+			</div>
+		}
+
+		<div class="mt-8 grid grid-cols-1 gap-4">
+			for _, feat := range vm.Features {
+				@featureCard(feat, vm.CanManage)
+			}
+		</div>
+
+		// Modals (only rendered for self-serve features that the
+		// current user can manage).
+		for _, feat := range vm.Features {
+			if feat.SelfServeEnable && !feat.IsEnabled() && vm.CanManage {
+				@featureEnableModal(feat)
+			}
+			if feat.SelfServeEnable && feat.IsEnabled() && vm.CanManage {
+				@featureDisableModal(feat)
+			}
+		}
+	</div>
+}
+
+// featureModalsState builds the Alpine x-data object for the page.
+// Keeps one boolean per (feature, action) — e.g. enable_inventory,
+// disable_inventory. Non-self-serve features get no entries.
+func featureModalsState(vm CompanyFeaturesVM) string {
+	out := "{"
+	for i, feat := range vm.Features {
+		if !feat.SelfServeEnable || !vm.CanManage {
+			continue
+		}
+		if i > 0 {
+			out += ","
+		}
+		out += fmt.Sprintf(" enable_%s: false, disable_%s: false", feat.Key, feat.Key)
+	}
+	out += " }"
+	return out
+}
+
+templ featureCard(feat FeatureCardVM, canManage bool) {
+	<div class="rounded-lg border border-border bg-surface p-6 shadow-sm">
+		<div class="flex flex-wrap items-center justify-between gap-4">
+			<div class="flex flex-wrap items-center gap-3">
+				<h2 class="text-section font-semibold text-text">{ feat.Label }</h2>
+				@featureMaturityBadge(feat)
+				@featureStatusBadge(feat)
+			</div>
+			<div>
+				@featureActionButton(feat, canManage)
+			</div>
+		</div>
+		<p class="mt-3 max-w-3xl text-body text-text-muted2">{ feat.Description }</p>
+		if feat.FitDescription != "" {
+			<p class="mt-2 max-w-3xl text-small text-text-muted">{ feat.FitDescription }</p>
+		}
+		if feat.IsEnabled() && feat.EnabledAt != nil {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-3 py-2 text-small text-success-hover">
+				Enabled { feat.EnabledAt.Format("2006-01-02 15:04 MST") }
+				if feat.ReasonCode != "" {
+					<span class="ml-2 text-text-muted2">
+						· reason: { string(feat.ReasonCode) }
+					</span>
+				}
+			</div>
+		}
+	</div>
+}
+
+templ featureMaturityBadge(feat FeatureCardVM) {
+	if feat.IsComingSoon() {
+		<span class="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-0.5 text-small font-medium uppercase tracking-wide text-text-muted2">
+			{ feat.MaturityBadgeText() }
+		</span>
+	} else {
+		<span class="inline-flex items-center rounded-full border border-warning-border bg-warning-soft px-2.5 py-0.5 text-small font-medium uppercase tracking-wide text-warning-hover">
+			{ feat.MaturityBadgeText() }
+		</span>
+	}
+}
+
+templ featureStatusBadge(feat FeatureCardVM) {
+	if feat.IsEnabled() {
+		<span class="inline-flex items-center rounded-full border border-success-border bg-success-soft px-2.5 py-0.5 text-small font-medium text-success-hover">
+			Enabled
+		</span>
+	} else if feat.IsComingSoon() {
+		<span class="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-0.5 text-small font-medium text-text-muted2">
+			Unavailable
+		</span>
+	} else {
+		<span class="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-0.5 text-small font-medium text-text-muted">
+			Off
+		</span>
+	}
+}
+
+templ featureActionButton(feat FeatureCardVM, canManage bool) {
+	if !canManage {
+		if feat.IsComingSoon() {
+			<button type="button" disabled class="inline-flex cursor-not-allowed items-center rounded-md border border-border bg-background px-3 py-1.5 text-small font-medium text-text-muted2">
+				Not yet available
+			</button>
+		} else if feat.IsEnabled() {
+			<span class="text-small text-text-muted2">Enabled</span>
+		} else {
+			<span class="text-small text-text-muted2">Owner-only</span>
+		}
+	} else {
+		if feat.IsComingSoon() {
+			<button type="button" disabled class="inline-flex cursor-not-allowed items-center rounded-md border border-border bg-background px-3 py-1.5 text-small font-medium text-text-muted2">
+				Not yet available
+			</button>
+		} else if feat.IsEnabled() {
+			<button
+				type="button"
+				x-on:click={ fmt.Sprintf("disable_%s = true", feat.Key) }
+				class="inline-flex items-center rounded-md border border-border-danger bg-surface px-3 py-1.5 text-small font-medium text-danger-hover hover:bg-danger-soft"
+			>
+				Disable
+			</button>
+		} else {
+			<button
+				type="button"
+				x-on:click={ fmt.Sprintf("enable_%s = true", feat.Key) }
+				class="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-small font-medium text-white hover:bg-primary-hover"
+			>
+				Enable { feat.MaturityBadgeText() }
+			</button>
+		}
+	}
+}
+
+templ featureEnableModal(feat FeatureCardVM) {
+	<div
+		x-show={ fmt.Sprintf("enable_%s", feat.Key) }
+		x-cloak
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+		style="display:none"
+	>
+		<div
+			x-data={ fmt.Sprintf("{ typed: '', acks: [%s] }", ackInitList(len(feat.RequiredAcks))) }
+			class="mx-4 w-full max-w-2xl rounded-lg border border-border bg-surface shadow-xl"
+		>
+			<form method="POST" action="/settings/company/features/enable" class="p-6">
+				<input type="hidden" name="feature_key" value={ string(feat.Key) }/>
+				<input type="hidden" name="ack_version" value={ feat.AckVersion }/>
+
+				<div class="flex items-center justify-between">
+					<h2 class="text-section font-semibold text-text">
+						Enable { feat.Label } ({ feat.MaturityBadgeText() })
+					</h2>
+					<button
+						type="button"
+						x-on:click={ fmt.Sprintf("enable_%s = false", feat.Key) }
+						class="text-text-muted2 hover:text-text"
+					>×</button>
+				</div>
+
+				<div class="mt-6 space-y-5">
+					<!-- Reason -->
+					<div>
+						<label class="text-small font-medium text-text">Why are you enabling this?</label>
+						<select name="reason_code" required class="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text">
+							<option value="" disabled selected>— Select a reason —</option>
+							for _, opt := range feat.ReasonCodeOptions {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						</select>
+						<label class="mt-3 block text-small font-medium text-text">
+							Additional context (optional)
+						</label>
+						<textarea
+							name="reason_note"
+							rows="2"
+							class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text"
+							placeholder="One or two sentences the team can refer to later."
+						></textarea>
+					</div>
+
+					<!-- Risk copy -->
+					<div class="rounded-md border border-warning-border bg-warning-soft p-4 text-small text-text">
+						<p class="font-semibold">Before you enable:</p>
+						<ul class="mt-2 list-disc space-y-1 pl-5">
+							<li>This feature is in Alpha and is still being validated.</li>
+							<li>It is intended for businesses with physical inventory workflows, such as retail, wholesale, and light manufacturing.</li>
+							<li>Enabling it changes how future inventory-related activity is processed.</li>
+							<li>Disabling it later will not rewrite historical records.</li>
+							<li>Some situations may still require manual reconciliation or operational support.</li>
+						</ul>
+					</div>
+
+					<!-- Acknowledgements -->
+					<div class="space-y-2">
+						for i, ackText := range feat.RequiredAcks {
+							<label class="flex items-start gap-2 text-small text-text">
+								<input
+									type="checkbox"
+									name="ack"
+									value="true"
+									x-model={ fmt.Sprintf("acks[%d]", i) }
+									class="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+								/>
+								<span>{ ackText }</span>
+							</label>
+						}
+					</div>
+
+					<!-- Typed confirmation -->
+					<div>
+						<label class="text-small font-medium text-text">
+							Type <code class="rounded bg-background px-1 py-0.5 text-text">{ feat.TypedConfirmText }</code> to confirm
+						</label>
+						<input
+							type="text"
+							name="typed_confirmation"
+							x-model="typed"
+							required
+							class="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 font-mono text-body text-text"
+							placeholder={ feat.TypedConfirmText }
+						/>
+					</div>
+				</div>
+
+				<div class="mt-6 flex items-center justify-end gap-3">
+					<button
+						type="button"
+						x-on:click={ fmt.Sprintf("enable_%s = false", feat.Key) }
+						class="rounded-md border border-border bg-surface px-3 py-2 text-small font-medium text-text hover:bg-background"
+					>Cancel</button>
+					<button
+						type="submit"
+						x-bind:disabled={ fmt.Sprintf("!(acks.every(v => v) && typed === '%s')", feat.TypedConfirmText) }
+						x-bind:class={ fmt.Sprintf("(acks.every(v => v) && typed === '%s') ? 'bg-primary hover:bg-primary-hover' : 'bg-primary/40 cursor-not-allowed'", feat.TypedConfirmText) }
+						class="rounded-md px-4 py-2 text-small font-medium text-white"
+					>Enable { feat.Label } Alpha</button>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+templ featureDisableModal(feat FeatureCardVM) {
+	<div
+		x-show={ fmt.Sprintf("disable_%s", feat.Key) }
+		x-cloak
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+		style="display:none"
+	>
+		<form
+			method="POST"
+			action="/settings/company/features/disable"
+			class="mx-4 w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-xl"
+		>
+			<input type="hidden" name="feature_key" value={ string(feat.Key) }/>
+			<h2 class="text-section font-semibold text-text">Disable { feat.Label }?</h2>
+			<div class="mt-4 space-y-2 text-small text-text-muted2">
+				<p>Disabling gates future { feat.Label } activity back off for this company.</p>
+				<p><strong class="text-text">Historical records remain unchanged.</strong> Previously posted documents, journal entries, and inventory movements keep their existing shape.</p>
+			</div>
+			<div class="mt-6 flex items-center justify-end gap-3">
+				<button
+					type="button"
+					x-on:click={ fmt.Sprintf("disable_%s = false", feat.Key) }
+					class="rounded-md border border-border bg-surface px-3 py-2 text-small font-medium text-text hover:bg-background"
+				>Cancel</button>
+				<button type="submit" class="rounded-md border border-border-danger bg-surface px-4 py-2 text-small font-medium text-danger-hover hover:bg-danger-soft">
+					Disable
+				</button>
+			</div>
+		</form>
+	</div>
+}
+
+// ackInitList renders "false,false,false" for the Alpine array
+// initialiser. Count is small (≤5); a slow-path loop is acceptable.
+func ackInitList(n int) string {
+	out := ""
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			out += ","
+		}
+		out += "false"
+	}
+	return out
+}

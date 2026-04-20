@@ -26,6 +26,14 @@ func breadcrumbSettingsCompanyTemplates() []pages.SettingsBreadcrumbPart {
 	}
 }
 
+func breadcrumbSettingsCompanyFeatures() []pages.SettingsBreadcrumbPart {
+	return []pages.SettingsBreadcrumbPart{
+		{Label: "Settings", Href: "/settings"},
+		{Label: "Company", Href: "/settings/company"},
+		{Label: "Features", Href: ""},
+	}
+}
+
 func breadcrumbSettingsCompanySalesTax() []pages.SettingsBreadcrumbPart {
 	return []pages.SettingsBreadcrumbPart{
 		{Label: "Settings", Href: "/settings"},

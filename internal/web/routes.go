@@ -3,6 +3,8 @@ package web
 
 import (
 	"github.com/gofiber/fiber/v2"
+
+	"gobooks/internal/models"
 )
 
 func (s *Server) registerRoutes(app *fiber.App) {
@@ -39,6 +41,14 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/settings/company/profile/logo", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleCompanyLogoUpload)
 	app.Get("/company/logo", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyLogoServe)
 	app.Get("/settings/company/templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyTemplatesGet)
+	// Features — self-serve enablement of product feature families
+	// (Inventory Alpha, Task coming_soon, …). GET is open to any
+	// member (read-only for non-owners); POST enable/disable is
+	// owner-only via RequireRole, matching the prompt's backend-
+	// guard requirement.
+	app.Get("/settings/company/features", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanyFeaturesGet)
+	app.Post("/settings/company/features/enable", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequireRole(models.CompanyRoleOwner), s.handleCompanyFeatureEnable)
+	app.Post("/settings/company/features/disable", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequireRole(models.CompanyRoleOwner), s.handleCompanyFeatureDisable)
 	app.Get("/settings/company/sales-tax", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleCompanySalesTaxGet)
 	app.Post("/settings/company/sales-tax", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleTaxCodeCreate)
 	app.Post("/settings/company/sales-tax/update", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleTaxCodeUpdate)
