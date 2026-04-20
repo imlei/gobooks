@@ -1,5 +1,5 @@
 // expense_form.js — Alpine component for the multi-line expense entry form.
-// v=3
+// v=4
 //
 // State read from data-* attributes on the form element:
 //   data-base-currency      — company base currency code (e.g. "CAD")
@@ -7,8 +7,10 @@
 //   data-expense-accounts   — JSON [{id, code, name}]
 //   data-tax-codes          — JSON [{id, code, name, rate}]  rate is fraction e.g. "0.05"
 //   data-tasks              — JSON [{id, title, customer_name}]
-//   data-initial-lines      — JSON [{expense_account_id, description, amount, tax_code_id,
-//                                    line_tax, line_total, task_id, is_billable, error}]
+//   data-products           — JSON [{id, sku, name, kind}]  kind is "stock"|"service"
+//   data-initial-lines      — JSON [{expense_account_id, product_service_id, description,
+//                                    amount, tax_code_id, line_tax, line_total, task_id,
+//                                    is_billable, error}]
 //
 function gobooksExpenseForm() {
   return {
@@ -18,6 +20,7 @@ function gobooksExpenseForm() {
     accounts:      [],   // [{id, code, name}]
     taxCodes:      [],   // [{id, code, name, rate}]  rate = fraction string
     tasks:         [],   // [{id, title, customer_name}]
+    products:      [],   // [{id, sku, name, kind}]   kind: "stock"|"service"
 
     // ── State ─────────────────────────────────────────────────────────────────
     currency: "",
@@ -36,11 +39,13 @@ function gobooksExpenseForm() {
       this.accounts      = JSON.parse(el.dataset.expenseAccounts || "[]");
       this.taxCodes      = JSON.parse(el.dataset.taxCodes        || "[]");
       this.tasks         = JSON.parse(el.dataset.tasks           || "[]");
+      this.products      = JSON.parse(el.dataset.products        || "[]");
 
       const initial = JSON.parse(el.dataset.initialLines || "[]");
       if (initial.length > 0) {
         this.lines = initial.map(l => ({
           expense_account_id: String(l.expense_account_id || ""),
+          product_service_id: String(l.product_service_id || ""),
           description:        String(l.description || ""),
           amount:             String(l.amount || "0.00"),
           tax_code_id:        String(l.tax_code_id || ""),
@@ -67,6 +72,7 @@ function gobooksExpenseForm() {
     addLine() {
       this.lines.push({
         expense_account_id: "",
+        product_service_id: "",
         description:        "",
         amount:             "0.00",
         tax_code_id:        "",

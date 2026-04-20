@@ -274,35 +274,44 @@ func parseQuoteInput(c *fiber.Ctx) (services.QuoteInput, error) {
 
 	for _, l := range lines {
 		in.Lines = append(in.Lines, services.QuoteLineInput{
-			TaxCodeID:   l.TaxCodeID,
-			Description: l.Description,
-			Quantity:    l.Quantity,
-			UnitPrice:   l.UnitPrice,
+			ProductServiceID: l.ProductServiceID,
+			TaxCodeID:        l.TaxCodeID,
+			Description:      l.Description,
+			Quantity:         l.Quantity,
+			UnitPrice:        l.UnitPrice,
 		})
 	}
 	return in, nil
 }
 
 // documentLine is an internal helper for parsing form line items.
+// Shared across Quote and SalesOrder handlers; extending it
+// propagates to both call sites at once. ProductServiceID is
+// optional — the downstream service layers (QuoteLineInput,
+// SalesOrderLineInput) already carry the field; this helper simply
+// surfaces the form value they both need.
 type documentLine struct {
-	Description string
-	Quantity    decimal.Decimal
-	UnitPrice   decimal.Decimal
-	TaxCodeID   *uint
+	ProductServiceID *uint
+	Description      string
+	Quantity         decimal.Decimal
+	UnitPrice        decimal.Decimal
+	TaxCodeID        *uint
 }
 
-// parseDocumentLines scans form values for line_description_N / line_qty_N / line_price_N / line_tax_N.
+// parseDocumentLines scans form values for
+// line_product_service_id_N / line_description_N / line_qty_N /
+// line_price_N / line_tax_N. A line is considered present when any
+// of product / description / qty / price is non-empty; trailing
+// empty rows are silently skipped so the UI can submit slots for
+// removed rows without polluting the document.
 func parseDocumentLines(c *fiber.Ctx) []documentLine {
 	var lines []documentLine
 	for i := 0; i < 200; i++ {
+		psIDStr := strings.TrimSpace(c.FormValue("line_product_service_id_" + strconv.Itoa(i)))
 		desc := strings.TrimSpace(c.FormValue("line_description_" + strconv.Itoa(i)))
 		qtyStr := strings.TrimSpace(c.FormValue("line_qty_" + strconv.Itoa(i)))
 		priceStr := strings.TrimSpace(c.FormValue("line_price_" + strconv.Itoa(i)))
-		if desc == "" && qtyStr == "" && priceStr == "" {
-			// Gap in numbering — skip but continue (could be a removed row)
-			if i > 0 {
-				// Check if there are any more rows; simple heuristic: break after 10 consecutive empties
-			}
+		if psIDStr == "" && desc == "" && qtyStr == "" && priceStr == "" {
 			continue
 		}
 
@@ -323,11 +332,20 @@ func parseDocumentLines(c *fiber.Ctx) []documentLine {
 			}
 		}
 
+		var productServiceID *uint
+		if psIDStr != "" {
+			if id, err := strconv.ParseUint(psIDStr, 10, 64); err == nil && id > 0 {
+				uid := uint(id)
+				productServiceID = &uid
+			}
+		}
+
 		lines = append(lines, documentLine{
-			Description: desc,
-			Quantity:    qty,
-			UnitPrice:   price,
-			TaxCodeID:   taxCodeID,
+			ProductServiceID: productServiceID,
+			Description:      desc,
+			Quantity:         qty,
+			UnitPrice:        price,
+			TaxCodeID:        taxCodeID,
 		})
 	}
 	return lines

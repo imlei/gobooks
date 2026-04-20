@@ -242,6 +242,9 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 			if l.ExpenseAccountID != nil {
 				lineVM.ExpenseAccountID = fmt.Sprintf("%d", *l.ExpenseAccountID)
 			}
+			if l.ProductServiceID != nil {
+				lineVM.ProductServiceID = fmt.Sprintf("%d", *l.ProductServiceID)
+			}
 			if l.TaxCodeID != nil {
 				lineVM.TaxCodeID = fmt.Sprintf("%d", *l.TaxCodeID)
 			}
@@ -306,6 +309,7 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 
 	type parsedLine struct {
 		ExpenseAccountID *uint
+		ProductServiceID *uint
 		Description      string
 		Amount           decimal.Decimal // pre-tax net
 		TaxCodeIDRaw     string
@@ -319,6 +323,7 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	for i := 0; i < lineCount; i++ {
 		key := func(field string) string { return fmt.Sprintf("%s[%d]", field, i) }
 		accIDRaw := strings.TrimSpace(c.FormValue(key("line_expense_account_id")))
+		psIDRaw := strings.TrimSpace(c.FormValue(key("line_product_service_id")))
 		desc := strings.TrimSpace(c.FormValue(key("line_description")))
 		amtRaw := strings.TrimSpace(c.FormValue(key("line_amount")))
 		tcIDRaw := strings.TrimSpace(c.FormValue(key("line_tax_code_id")))
@@ -330,14 +335,16 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 			amt = decimal.Zero
 		}
 
-		// Skip fully blank placeholder rows (no account, no description, zero amount, no task).
-		if accIDRaw == "" && desc == "" && taskIDRaw == "" && tcIDRaw == "" &&
+		// Skip fully blank placeholder rows (no account, no product,
+		// no description, zero amount, no task).
+		if accIDRaw == "" && psIDRaw == "" && desc == "" && taskIDRaw == "" && tcIDRaw == "" &&
 			(amtRaw == "" || amtRaw == "0.00" || amtRaw == "0") {
 			continue
 		}
 
 		lVM := pages.ExpenseLineFormVM{
 			ExpenseAccountID: accIDRaw,
+			ProductServiceID: psIDRaw,
 			Description:      desc,
 			Amount:           amt.StringFixed(2),
 			TaxCodeID:        tcIDRaw,
@@ -349,6 +356,10 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		if id64, err := strconv.ParseUint(accIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
 			pl.ExpenseAccountID = &id
+		}
+		if id64, err := strconv.ParseUint(psIDRaw, 10, 64); err == nil && id64 > 0 {
+			id := uint(id64)
+			pl.ProductServiceID = &id
 		}
 		if id64, err := strconv.ParseUint(tcIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
@@ -501,6 +512,7 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 			Description:      cl.Description,
 			Amount:           cl.LineNet,
 			ExpenseAccountID: cl.ExpenseAccountID,
+			ProductServiceID: cl.ProductServiceID,
 			TaxCodeID:        cl.TaxCodeID,
 			LineTax:          cl.LineTax,
 			LineTotal:        cl.LineTotal,
@@ -618,7 +630,45 @@ func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM)
 	}
 	vm.TaxCodesJSON = buildExpenseTaxCodesJSON(taxCodes)
 
+	// Pre-load active catalog products for the per-line item picker.
+	// Matches PO detail's catalog loader: active rows only, ordered
+	// by name. Both stock and service items are listed — the picker
+	// displays the kind inline so operators choose deliberately.
+	var products []models.ProductService
+	if err := s.DB.
+		Where("company_id = ? AND is_active = true", companyID).
+		Order("name ASC").
+		Find(&products).Error; err != nil {
+		return err
+	}
+	vm.ProductsJSON = buildExpenseProductsJSON(products)
+
 	return nil
+}
+
+type expenseProductJSONItem struct {
+	ID   uint   `json:"id"`
+	SKU  string `json:"sku"`
+	Name string `json:"name"`
+	Kind string `json:"kind"` // "stock" | "service"
+}
+
+func buildExpenseProductsJSON(products []models.ProductService) string {
+	items := make([]expenseProductJSONItem, 0, len(products))
+	for _, p := range products {
+		kind := "service"
+		if p.IsStockItem {
+			kind = "stock"
+		}
+		items = append(items, expenseProductJSONItem{
+			ID:   p.ID,
+			SKU:  p.SKU,
+			Name: p.Name,
+			Kind: kind,
+		})
+	}
+	b, _ := json.Marshal(items)
+	return string(b)
 }
 
 type expenseAccountJSONItem struct {

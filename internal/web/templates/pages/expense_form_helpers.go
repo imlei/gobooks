@@ -10,6 +10,7 @@ import "encoding/json"
 func expenseInitialLinesJSON(vm ExpenseFormVM) string {
 	type lineJSON struct {
 		ExpenseAccountID string `json:"expense_account_id"`
+		ProductServiceID string `json:"product_service_id"`
 		Description      string `json:"description"`
 		Amount           string `json:"amount"`
 		TaxCodeID        string `json:"tax_code_id"`
@@ -27,6 +28,7 @@ func expenseInitialLinesJSON(vm ExpenseFormVM) string {
 		}
 		items = append(items, lineJSON{
 			ExpenseAccountID: l.ExpenseAccountID,
+			ProductServiceID: l.ProductServiceID,
 			Description:      l.Description,
 			Amount:           l.Amount,
 			TaxCodeID:        l.TaxCodeID,

@@ -42,6 +42,7 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 			data-expense-accounts={ vm.ExpenseAccountsJSON }
 			data-tax-codes={ vm.TaxCodesJSON }
 			data-tasks={ vm.SelectableTasksJSON }
+			data-products={ vm.ProductsJSON }
 			data-initial-lines={ expenseInitialLinesJSON(vm) }
 			@gobooks-picker-select="onPickerSelect($event)"
 		>
@@ -252,6 +253,25 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 							</svg>
 						</button>
 					</div>
+
+					<!-- Row 1b: optional catalog item picker -->
+					<!-- Empty string = expense-only; selecting an item lets
+					     Task reinvoice / catalog-driven reports see what the
+					     line is actually for, parallel to the PO line picker. -->
+					<select
+						:name="'line_product_service_id[' + idx + ']'"
+						x-model="line.product_service_id"
+						class="block w-full rounded border border-border-input bg-surface px-2 py-1.5 text-small text-text outline-none focus:ring-2 focus:ring-primary-focus"
+					>
+						<option value="">— Item (optional): expense only, no catalog link —</option>
+						<template x-for="p in products" :key="p.id">
+							<option
+								:value="String(p.id)"
+								:selected="String(line.product_service_id) === String(p.id)"
+								x-text="(p.sku ? p.sku + ' — ' : '') + p.name + ' · ' + p.kind"
+							></option>
+						</template>
+					</select>
 
 					<!-- Row 2: Description -->
 					<input

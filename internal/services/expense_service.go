@@ -35,6 +35,11 @@ type ExpenseLineInput struct {
 	Description      string
 	Amount           decimal.Decimal // pre-tax net
 	ExpenseAccountID *uint
+	// ProductServiceID is the optional catalog linkage. Lets an
+	// expense line reference a product or service in the catalog
+	// alongside its GL ExpenseAccountID; nil means the line is a
+	// pure cost-category entry with no catalog attachment.
+	ProductServiceID *uint
 	TaxCodeID        *uint
 	LineTax          decimal.Decimal
 	LineTotal        decimal.Decimal // Amount + LineTax
@@ -224,6 +229,7 @@ func upsertExpense(db *gorm.DB, expenseID uint, in ExpenseInput) (*models.Expens
 					Description:      strings.TrimSpace(l.Description),
 					Amount:           l.Amount.RoundBank(2),
 					ExpenseAccountID: l.ExpenseAccountID,
+					ProductServiceID: l.ProductServiceID,
 					TaxCodeID:        l.TaxCodeID,
 					LineTax:          l.LineTax.RoundBank(2),
 					LineTotal:        l.LineTotal.RoundBank(2),

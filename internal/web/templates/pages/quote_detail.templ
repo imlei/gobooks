@@ -160,6 +160,7 @@ templ quoteEditForm(vm QuoteDetailVM) {
 				<table class="w-full text-left text-body" id="quote-lines-table">
 					<thead class="text-small uppercase tracking-wider text-text-muted">
 						<tr class="border-b border-border">
+							<th class="py-2 pr-3 w-56">Item</th>
 							<th class="py-2 pr-3">Description</th>
 							<th class="py-2 pr-3 w-28">Qty</th>
 							<th class="py-2 pr-3 w-36">Unit Price</th>
@@ -213,28 +214,80 @@ templ quoteEditForm(vm QuoteDetailVM) {
 	</form>
 
 	<script>
-	let quoteLineCount = document.querySelectorAll('#quote-lines-body tr').length;
-	function quoteAddLine() {
-		const tbody = document.getElementById('quote-lines-body');
-		const i = quoteLineCount++;
-		const row = document.createElement('tr');
-		row.className = 'border-b border-border-subtle';
-		row.innerHTML = `
-			<td class="py-2 pr-3"><input type="text" name="line_description_${i}" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus" placeholder="Description"/></td>
-			<td class="py-2 pr-3"><input type="number" name="line_qty_${i}" value="1" step="0.0001" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"/></td>
-			<td class="py-2 pr-3"><input type="number" name="line_price_${i}" value="0" step="0.0001" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"/></td>
-			<td class="py-2 pr-3"><select name="line_tax_${i}" class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"><option value="">No Tax</option></select></td>
-			<td class="py-2 pr-3 text-right font-mono text-text-muted">—</td>
-			<td class="py-2"><button type="button" onclick="this.closest('tr').remove()" class="text-danger hover:text-danger-hover">✕</button></td>
-		`;
-		tbody.appendChild(row);
-	}
+	// Add-line for the Quote editor. Clones the first existing row
+	// so the Item <select> and Tax <select> options come along for
+	// free (keeps the JS decoupled from the server-rendered catalog
+	// list). Resets user-entered values and reindexes all inputs so
+	// the handler's sequential parser has no gaps.
+	(function(){
+		function reindexRow(row, idx) {
+			row.querySelectorAll('[name^="line_"]').forEach(function(el){
+				el.setAttribute('name', el.getAttribute('name').replace(/_(\d+)$/, '_' + idx));
+			});
+		}
+		window.quoteAddLine = function() {
+			const tbody = document.getElementById('quote-lines-body');
+			const first = tbody.querySelector('tr');
+			if (!first) return;
+			const clone = first.cloneNode(true);
+			clone.querySelectorAll('input[type="text"]').forEach(function(inp){ inp.value = ''; });
+			clone.querySelectorAll('input[type="number"]').forEach(function(inp){
+				if (inp.name.indexOf('line_qty_') === 0) { inp.value = '1'; return; }
+				inp.value = '0';
+			});
+			clone.querySelectorAll('select').forEach(function(sel){ sel.selectedIndex = 0; });
+			tbody.appendChild(clone);
+			Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function(tr, i){
+				reindexRow(tr, i);
+			});
+		};
+	})();
 	</script>
+}
+
+// documentLineItemSelect is the shared product/service picker used
+// by both Quote and SalesOrder line rows. Rendering it from a single
+// templ means the Quote + SO pages show the same option labelling
+// as the PO line picker, keeping operator mental model uniform across
+// all three sales-side / purchase-side documents.
+templ documentLineItemSelect(fieldName string, currentID *uint, products []models.ProductService) {
+	<select
+		name={ fieldName }
+		class="w-full rounded border border-border-input bg-surface px-2 py-1 text-body outline-none focus:ring-1 focus:ring-primary-focus"
+	>
+		<option value="">— No item —</option>
+		for _, p := range products {
+			if currentID != nil && *currentID == p.ID {
+				<option value={ Uitoa(p.ID) } selected>{ documentLineItemLabel(p) }</option>
+			} else {
+				<option value={ Uitoa(p.ID) }>{ documentLineItemLabel(p) }</option>
+			}
+		}
+	</select>
+}
+
+// documentLineItemLabel formats the option label as
+// "<SKU — ><Name> · <kind>" where kind is "stock" or "service".
+// Mirrors the PO line picker so all three document surfaces read
+// the same to operators.
+func documentLineItemLabel(p models.ProductService) string {
+	kind := "service"
+	if p.IsStockItem {
+		kind = "stock"
+	}
+	name := p.Name
+	if p.SKU != "" {
+		name = p.SKU + " — " + p.Name
+	}
+	return name + " · " + kind
 }
 
 // quoteLineRow renders one editable line row.
 templ quoteLineRow(i int, line models.QuoteLine, vm QuoteDetailVM) {
 	<tr class="border-b border-border-subtle">
+		<td class="py-2 pr-3">
+			@documentLineItemSelect("line_product_service_id_"+Itoa(i), line.ProductServiceID, vm.ProductServices)
+		</td>
 		<td class="py-2 pr-3">
 			<input
 				type="text"

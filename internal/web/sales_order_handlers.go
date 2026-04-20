@@ -218,10 +218,11 @@ func parseSalesOrderInput(c *fiber.Ctx) (services.SalesOrderInput, error) {
 
 	for _, l := range lines {
 		in.Lines = append(in.Lines, services.SalesOrderLineInput{
-			TaxCodeID:   l.TaxCodeID,
-			Description: l.Description,
-			Quantity:    l.Quantity,
-			UnitPrice:   l.UnitPrice,
+			ProductServiceID: l.ProductServiceID,
+			TaxCodeID:        l.TaxCodeID,
+			Description:      l.Description,
+			Quantity:         l.Quantity,
+			UnitPrice:        l.UnitPrice,
 		})
 	}
 	return in, nil

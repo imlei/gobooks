@@ -23,6 +23,15 @@ type ExpenseLine struct {
 	ExpenseAccountID *uint    `gorm:"index"`
 	ExpenseAccount   *Account `gorm:"foreignKey:ExpenseAccountID"`
 
+	// Optional link to the product/service catalog. Unlike
+	// ExpenseAccountID which is a GL categorisation, this points at
+	// a concrete catalog row so Task reinvoice and future catalog-
+	// driven reports can see what the expense was actually for.
+	// Nullable: many expenses remain pure cost-category with no
+	// catalog item attached.
+	ProductServiceID *uint           `gorm:"index"`
+	ProductService   *ProductService `gorm:"foreignKey:ProductServiceID"`
+
 	// Optional per-line tax.
 	TaxCodeID *uint     `gorm:"index"`
 	TaxCode   *TaxCode  `gorm:"foreignKey:TaxCodeID"`

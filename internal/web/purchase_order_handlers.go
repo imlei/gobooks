@@ -267,23 +267,41 @@ func parsePOInput(c *fiber.Ctx) (services.POInput, error) {
 		rate = decimal.NewFromInt(1)
 	}
 
-	// Parse lines from form: lines[0][description], lines[0][qty], lines[0][unit_price]
+	// Parse lines from form. Name pattern:
+	//   lines[<i>][product_service_id]
+	//   lines[<i>][description]
+	//   lines[<i>][qty]
+	//   lines[<i>][unit_price]
+	// A line is considered present when any of its four fields is
+	// non-empty; empty rows terminate the sequence so the UI can
+	// submit blank trailing rows without polluting the PO.
 	var lines []services.POLineInput
 	for i := 0; i < 100; i++ {
 		prefix := "lines[" + strconv.Itoa(i) + "]"
+		itemStr := strings.TrimSpace(c.FormValue(prefix + "[product_service_id]"))
 		desc := strings.TrimSpace(c.FormValue(prefix + "[description]"))
 		qtyStr := strings.TrimSpace(c.FormValue(prefix + "[qty]"))
 		priceStr := strings.TrimSpace(c.FormValue(prefix + "[unit_price]"))
-		if desc == "" && qtyStr == "" && priceStr == "" {
+		if itemStr == "" && desc == "" && qtyStr == "" && priceStr == "" {
 			break
 		}
 		qty, _ := decimal.NewFromString(qtyStr)
 		price, _ := decimal.NewFromString(priceStr)
+
+		var productServiceID *uint
+		if itemStr != "" {
+			if id, err := strconv.ParseUint(itemStr, 10, 64); err == nil && id > 0 {
+				pid := uint(id)
+				productServiceID = &pid
+			}
+		}
+
 		lines = append(lines, services.POLineInput{
-			SortOrder:   uint(i + 1),
-			Description: desc,
-			Qty:         qty,
-			UnitPrice:   price,
+			SortOrder:        uint(i + 1),
+			ProductServiceID: productServiceID,
+			Description:      desc,
+			Qty:              qty,
+			UnitPrice:        price,
 		})
 	}
 

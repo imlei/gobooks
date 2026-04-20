@@ -21,6 +21,10 @@ type ExpenseListVM struct {
 // and as the shape for JS data-initial-lines JSON.
 type ExpenseLineFormVM struct {
 	ExpenseAccountID string
+	// ProductServiceID is the stringified optional catalog linkage.
+	// Empty string means no product/service is linked — the line is
+	// a pure cost-category entry.
+	ProductServiceID string
 	Description      string
 	Amount           string // pre-tax net
 	TaxCodeID        string
@@ -48,6 +52,13 @@ type ExpenseFormVM struct {
 	// ExpenseAccountsJSON is the JSON-encoded list of expense accounts for the
 	// line-item category <select>. Shape: [{id, code, name}].
 	ExpenseAccountsJSON string
+
+	// ProductsJSON is the JSON-encoded list of active catalog
+	// ProductService rows for the per-line optional item picker.
+	// Shape: [{id, sku, name, kind}] where kind is "stock" or
+	// "service" — matches the PO line-item picker so both surfaces
+	// present the same labelling to operators.
+	ProductsJSON string
 
 	// SelectableTasksJSON is the JSON-encoded list of selectable tasks for the
 	// per-line task <select>. Shape: [{id, title, customer_name}].
