@@ -1548,6 +1548,331 @@ slices for "simplicity" is rejected by this border.
   tracking columns live on the same clock: transitional home, not
   long-term home.
 
+### Phase I — Shipment-first fulfillment  *(scope locked, I.0 pinned)*
+
+**Current Phase I scope selection is Phase I.B**: shipment-first
+fulfillment, shipment-recognized cost, invoice-recognized revenue.
+
+I.B is a scope choice, not a roadmap phase name. Any future work
+that evolves the sell-side accounting model (e.g. introducing
+revenue-at-shipment / contract asset / SNI bridge) lands as a
+subsequent scope selection within Phase I, not as a renamed
+top-level phase. The `shipment_required` capability rail stays the
+same across any scope evolution; only the accounting overlay may
+change.
+
+Phase I is the sell-side mirror of Phase H in document shape and
+physical truth, but not yet a full accounting mirror.
+
+Under `shipment_required=true`:
+
+- Shipment becomes the authoritative sell-side fulfillment
+  document.
+- Shipment posting creates ship truth and recognizes cost, but
+  does not recognize revenue.
+- Invoice narrows to the revenue-and-AR document only.
+- A posted Shipment also creates an AR operational item
+  `waiting_for_invoice`, so billing can see shipped-but-not-yet-
+  invoiced work immediately.
+
+This is a deliberate practical-conservative design. It restores
+shipment truth as a first-class sell-side document, removes
+inventory / COGS responsibility from Invoice, and improves
+operational billing visibility, without yet introducing a
+shipped-not-invoiced revenue bridge such as contract asset / SNI.
+
+Phase I is triggered before Phase H pilot stabilisation closes.
+Rationale: end-to-end stock-level semantics cannot be validated
+with only the receive side instrumented — on-hand quantity, cost
+layer consumption, and tracked-lot depletion all require a
+working outbound path. Running Phase I engineering in parallel
+with Phase H pilot is permitted; enabling BOTH capability rails
+on the same real company is not, until both sides close per their
+own pilots.
+
+#### Scope item — Shipment posting semantics
+
+Shipment posting produces:
+
+1. **Ship truth.** Shipment is the only authoritative entry point
+   for sell-side physical outbound truth when
+   `shipment_required=true`.
+
+2. **Inventory / cost recognition.** Shipment post must issue
+   stock through the inventory module and post:
+
+   ```
+   Dr COGS / Cr Inventory
+   ```
+
+   using the authoritative cost returned by `IssueStock`.
+
+3. **AR operational reminder.** Shipment post creates a
+   `waiting_for_invoice` operational item on the AR dashboard.
+
+Shipment post does **not** recognize revenue in Phase I.B.
+
+#### Scope item — Invoice semantics under `shipment_required=true`
+
+Under `shipment_required=true`, Invoice becomes the
+revenue-and-AR document only.
+
+Invoice posting must:
+
+- derive billable quantity from shipped-eligible quantity, not
+  raw Sales Order quantity
+- post:
+
+  ```
+  Dr Accounts Receivable / Cr Revenue
+  ```
+
+Invoice posting must **not**:
+
+- create inventory movements
+- recognize COGS
+- act as the authoritative outbound tracking / fulfillment truth
+
+Tracked sales remain shipment-driven. Lot / serial selection
+happens at Shipment time, not Invoice time.
+
+#### Non-scope clarification
+
+Phase I.B explicitly does **not** add:
+
+- revenue-at-shipment recognition
+- contract asset / SNI / unbilled revenue bridge
+- sales price variance routing
+- customer return accounting in the same slice
+
+Those belong to later follow-on decisions or slices.
+
+Additional non-scope carried from the Phase H framing:
+
+- **Receive-side anything**: Phase H owns it.
+- **Multi-warehouse split shipments**: one Shipment lives in one
+  company, lands against one warehouse. Splitting a sales order
+  across warehouses produces multiple Shipments; no
+  single-shipment-multi-warehouse shape.
+- **UI admin toggle for `shipment_required`**: engineering-only
+  until I.5 locks safety.
+- **SO → Invoice direct bypass**: Phase I deliberately does NOT
+  reintroduce a direct-conversion shortcut that skips Shipment.
+  Under `shipment_required=true`, Invoice always derives from
+  Shipment. Under flag=false, legacy Invoice posts COGS directly
+  — unchanged.
+- **Manufacturing / assembly / work-order**: Phase K.
+- **`inventory_costing_method` changes**: FIFO / moving-average
+  semantics untouched.
+- **Permission catalog implementation**: `shipment.*` and
+  `return.*` permission strings reserved; enforcement lands in
+  Phase J.
+- **Bulk backfill of historical Invoices into synthetic
+  Shipments**: legacy history stays on Invoice. Phase I is
+  forward-looking.
+
+#### Hard rules (non-negotiable)
+
+**Rule 1 — Shipment is the only ship-truth entry point.**
+When `shipment_required=true`, sell-side physical truth must
+enter through Shipment, not Invoice.
+
+**Rule 2 — Shipment recognizes cost; Invoice does not.**
+Shipment post must create `Dr COGS / Cr Inventory`. Invoice must
+not create inventory / COGS effects in the shipment-required
+path.
+
+**Rule 3 — Invoice recognizes revenue only against shipped
+quantity.** Invoice may bill only shipped-eligible quantity. It
+must not bypass Shipment and become fulfillment truth again.
+
+Supporting constraint (extending Phase H.3's Hard Rule #3): the
+`internal/services/inventory` module stays production-import-free
+of accounting, chart-of-accounts, and journal-entry packages. All
+revenue and AR journals live in the business-document layer
+(`invoice_post.go`, `shipment_post.go`).
+
+#### Waiting-for-invoice operational queue
+
+A posted Shipment must create an AR operational item
+`waiting_for_invoice`.
+
+Its purpose is:
+
+- to surface shipped-but-not-yet-invoiced activity to billing /
+  finance
+- to support operational follow-up and cash-flow discipline
+- to make sell-side lag visible without using Shipment itself as
+  an AR document
+
+`waiting_for_invoice` is:
+
+- an operational queue item
+- **not** a journal entry
+- **not** a substitute for Shipment
+- **not** a substitute for Invoice
+- **not** an accounting truth bucket
+
+The queue item is cleared (resolved) when an Invoice line links
+back to the originating Shipment line via the identity chain
+below.
+
+#### Price rule
+
+For Phase I.B, no sales price variance mechanism is introduced.
+
+Invoice remains the commercial price authority in this phase.
+Accordingly:
+
+- Phase I.B does not create an SPV account.
+- Phase I.B does not add shipment-vs-invoice price variance
+  posting.
+
+If post-shipment commercial price adjustment is needed later, it
+must be introduced as its own explicit slice, not as hidden
+drift inside Phase I.B.
+
+#### Identity chain
+
+The authoritative sell-side identity chain becomes:
+
+```
+SO line → Shipment line → Sales-Issue → Invoice line
+```
+
+Invoice lines are linked only to shipped truth (via a nullable FK
+`invoice_lines.shipment_line_id`, mirror of Phase H.5's
+`bill_lines.receipt_line_id`), never used as the origin of that
+truth. Cumulative invoiced qty is computed dynamically from
+posted invoice lines grouped by `shipment_line_id` — no cached
+counter on ShipmentLine, matching Phase H.5's choice.
+
+#### Accounting summary
+
+Phase I.B accounting is intentionally split as follows:
+
+| Surface | Responsibility |
+|---|---|
+| **Shipment** | fulfillment truth + inventory issue + COGS recognition (`Dr COGS / Cr Inventory`) |
+| **Invoice** | AR recognition + revenue recognition (`Dr AR / Cr Revenue`) |
+| **`waiting_for_invoice`** | operational reminder only; no accounting effect |
+
+This means Phase I.B is shipment-first operationally and for cost
+recognition, while revenue remains invoice-recognized.
+
+#### Capability-gate rule
+
+Entering Phase I engineering does not enable
+`shipment_required=true` for any company.
+
+As with Phase H:
+
+- engineering may build the rail first
+- the rail remains dormant by default
+- real-company enablement happens only after Phase I
+  stabilisation criteria and its own pilot discipline are
+  satisfied
+
+Any PR flipping a real company's `shipment_required` before I.5
+close and a clean pilot observation is rejected on sight. Code
+cannot distinguish "test company" from "real company"; the rule
+lives in this spec and in review.
+
+#### Exit conditions (all must hold before Phase I closes under the I.B scope)
+
+1. `shipments` + `shipment_lines` tables persisted, CRUD surfaced,
+   lifecycle tested (draft → posted, posted → voided).
+2. `shipment_required` rail present, audited on flip, and NOT
+   flipped ON for any real company — dormant by design until I.5.
+3. Under `shipment_required=true` (test companies only, during
+   engineering verification):
+   - Shipment posting forms inventory movements with
+     `source_type='shipment'` and a business-document-layer
+     journal `Dr COGS / Cr Inventory`.
+   - Shipment posting creates a `waiting_for_invoice` operational
+     item linked to the Shipment.
+   - Invoice posting forms AR only; `IssueStock` is not called by
+     the invoice path; no inventory movement, no COGS journal
+     line from Invoice. Invoice line billable qty ≤ shipped-
+     eligible qty per identity-chain matching.
+   - `waiting_for_invoice` items resolve (clear from queue) when
+     an Invoice line links to the Shipment line.
+4. Under `shipment_required=false` (legacy default, every existing
+   company), Phase G + H + invoice behavior is byte-identical —
+   no regression.
+5. Smoke suite covers: happy Shipment → matching Invoice; partial
+   invoice (part of a Shipment billed); multiple Shipments for
+   one Invoice (cumulative matching); unmatched-Shipment aging
+   (persistent `waiting_for_invoice`); tracked Shipment (lot +
+   expiry + serial).
+6. Only after all of the above, `shipment_required=true` becomes
+   a permitted operational state.
+
+#### Slice plan (binding)
+
+| Slice | Scope | Entry gate |
+|---|---|---|
+| **I.0** | This spec section. Phase I current scope selection (I.B) / hard rules / accounting split / identity chain pinned. | — |
+| **I.1** | `companies.shipment_required BOOLEAN NOT NULL DEFAULT FALSE` column + `ChangeCompanyShipmentRequired(companyID, required, actor)` audited admin surface, F.7 capability-gate pattern. Dormant rail. | I.0 approved |
+| **I.2** | `shipments` + `shipment_lines` tables. `models.Shipment`, `models.ShipmentLine`. Minimum lifecycle (draft/posted/voided). CRUD in services. SO-line source-identity reservation fields. No inventory formation yet, no matching yet. | I.1 shipped |
+| **I.3** | `IssueStockFromShipment` inventory service. Shipment post → inventory movements (through existing `IssueStock` path, tracked selections read from `shipment_lines`) + business-document-layer journal `Dr COGS / Cr Inventory` + `waiting_for_invoice` queue item creation. Inventory module stays GL-agnostic. Tracked sales become supported on the `flag=true` path — ShipmentLine carries lot_selections / serial_selections. | I.2 shipped |
+| **I.4** | Invoice decoupling. Under `shipment_required=true`, the invoice post's COGS path is a no-op for inventory and for any COGS fragment. Invoice narrows to `Dr AR / Cr Revenue`. Under flag=false, Phase G + H behavior is byte-identical. The Phase G.2 tracked-invoice guard is bypassed on the flag=true path (tracking lives on ShipmentLine). | I.3 shipped |
+| **I.5** | Invoice ↔ Shipment matching via `invoice_lines.shipment_line_id`. Invoice billable qty constrained to shipped-eligible qty. `waiting_for_invoice` queue item resolution on Invoice post. No SPV in this slice. **Operational enablement unlocked only at I.5 close.** | I.4 shipped |
+
+#### Cross-phase relationship with Phase H
+
+Phase H and Phase I are **independent capability rails** on
+independent sides of the inventory cycle. A company may be in any
+of four states:
+
+| `receipt_required` | `shipment_required` | Meaning |
+|---|---|---|
+| `false` | `false` | Fully legacy: Bill forms inventory, Invoice posts COGS. |
+| `true` | `false` | Phase H only: Receipt-first inbound, legacy outbound. |
+| `false` | `true` | Phase I (current scope I.B) only: legacy inbound, Shipment-first outbound. |
+| `true` | `true` | Both-sides-first: the eventual target state. |
+
+*Revenue-recognition timing may still evolve in later slices; this
+row (and the matrix overall) describes capability state, not the
+final accounting overlay.*
+
+Posture on concurrent enablement:
+
+- H and I engineering work may proceed in parallel.
+- Both rails remain dormant by default.
+- A real company should not run both rails enabled until each has
+  passed its own pilot stabilisation.
+- Enabling either rail is an independent capability decision;
+  completion of one rail does not automatically open the other.
+
+Phase G.2's guard on tracked items
+(`ErrTrackedItemNotSupportedByInvoice`) is retained under
+`shipment_required=false` and bypassed under
+`shipment_required=true` (tracked items route through Shipment).
+
+#### Deliberately-deferred-to-later-phase
+
+- **Revenue-at-shipment recognition.** Phase I.B recognizes
+  revenue at Invoice time only. A future slice may introduce
+  ASC 606-style control-transfer accrual with a contract asset
+  (SNI / unbilled revenue) bridge. Decision belongs to a later,
+  explicit slice.
+- **Sales price variance.** If post-shipment commercial price
+  adjustment becomes needed, it ships as its own slice, not as
+  hidden drift inside Phase I.B.
+- **Phase I.6** — customer return workflow (return receive,
+  inspect, disposition, return-to-vendor). Scheduled as a
+  dedicated follow-on after I.5; not blocking I.5's close.
+- **Phase J** — permission catalog enforcement (the `shipment.*`
+  / `return.*` strings become real permissions with assignable
+  roles).
+- **Phase K** — manufacturing: Build / work-order / assembly with
+  tracked components.
+- **Legacy off-ramp.** Companies that run
+  `shipment_required=false` indefinitely stay supported until a
+  dedicated retirement slice — same transitional-compatibility
+  framing as the Bill-forms-inventory path.
+
 ---
 
 ## 8. Open questions — status after Phase D / E / F
