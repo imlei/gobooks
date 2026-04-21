@@ -15,14 +15,19 @@ templ ExpenseForm(vm ExpenseFormVM) {
 
 templ expenseFormBody(vm ExpenseFormVM) {
 	@bodyExpenseForm(vm)
-	<script src="/static/expense_form.js?v=3"></script>
+	<script src="/static/expense_form.js?v=4"></script>
 }
 
 templ bodyExpenseForm(vm ExpenseFormVM) {
 	<div class="max-w-[95%] space-y-5">
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div>
-				<h1 class="text-title font-semibold text-text">{ expenseFormTitle(vm) }</h1>
+				<div class="flex items-center gap-3">
+					<h1 class="text-title font-semibold text-text">{ expenseFormTitle(vm) }</h1>
+					if vm.IsEdit {
+						@expenseStatusBadge(vm.Status)
+					}
+				</div>
 				if vm.IsEdit && vm.ExpenseNumber != "" {
 					<p class="mt-1 font-mono text-small text-text-muted">Reference: { vm.ExpenseNumber }</p>
 				}
@@ -33,6 +38,15 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 
 		if vm.FormError != "" {
 			@ui.AlertError(vm.FormError)
+		}
+
+		// IN.2 controlled-mode warning: when the company runs on
+		// receipt_required=true, any stock-item line will cause Post
+		// to reject loudly (ErrExpenseStockItemRequiresReceipt). Warn
+		// the operator up-front so they don't discover it only at
+		// post time — and reroute through Receipt per Rule #4 Q2.
+		if vm.ReceiptRequired {
+			@expenseControlledModeWarning()
 		}
 
 		<form
@@ -63,7 +77,56 @@ templ bodyExpenseForm(vm ExpenseFormVM) {
 				}
 			</div>
 		</form>
+
+		// IN.2: Post / Void buttons are SIBLINGS of the save form,
+		// never nested (HTML5 forbids nested <form> elements; a
+		// nested form silently falls through to the enclosing form's
+		// action — same class of bug that broke the PO Confirm button
+		// earlier).
+		if vm.IsEdit && vm.Status == "draft" {
+			<div class="mt-3 flex gap-3 border-t border-border pt-4">
+				<form method="post" action={ templ.SafeURL("/expenses/" + Uitoa(vm.EditingID) + "/post") }>
+					@ui.ButtonPrimary("Post Expense", "submit", false)
+				</form>
+			</div>
+		}
+		if vm.IsEdit && vm.Status == "posted" {
+			<div class="mt-3 flex gap-3 border-t border-border pt-4">
+				<form method="post" action={ templ.SafeURL("/expenses/" + Uitoa(vm.EditingID) + "/void") }>
+					<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
+						Void Expense
+					</button>
+				</form>
+			</div>
+		}
 	</div>
+}
+
+// expenseControlledModeWarning renders the Rule #4 Q2 banner for
+// companies running receipt_required=true. Extracted to its own
+// templ function so the inline HTML doesn't collide with templ's
+// if-block parser in the caller.
+templ expenseControlledModeWarning() {
+	<div class="rounded-md border border-warning-border bg-warning-soft p-3 text-body text-warning-hover">
+		<strong>Receipt-first mode is active for this company.</strong>
+		Expense lines that pick a stock item will be
+		<strong>rejected</strong> at post — inbound inventory must
+		route through a Receipt. Stock-item purchases should be
+		entered as a Receipt (and matching Bill), not an Expense.
+	</div>
+}
+
+// expenseStatusBadge renders a small pill showing the expense's
+// IN.2 lifecycle state. Colour keyed to the same tokens PO / Bill
+// detail views use.
+templ expenseStatusBadge(status string) {
+	if status == "posted" {
+		<span class="rounded bg-success-soft px-2 py-0.5 text-small font-semibold text-success">Posted</span>
+	} else if status == "voided" {
+		<span class="rounded bg-danger-soft px-2 py-0.5 text-small font-semibold text-danger">Voided</span>
+	} else {
+		<span class="rounded bg-background px-2 py-0.5 text-small font-semibold text-text-muted">Draft</span>
+	}
 }
 
 // expenseHeaderSection renders the top header row:
@@ -171,6 +234,19 @@ templ expenseHeaderSection(vm ExpenseFormVM) {
 			/>
 		</div>
 
+		<!-- Warehouse (IN.2 Q3): header routing for any stock-item
+		     expense lines. Empty = company default warehouse. -->
+		<div>
+			<label class="block text-body font-medium text-text">Warehouse</label>
+			<select name="warehouse_id" class={ taskInputClass(false) }>
+				<option value="">— Company default —</option>
+				for _, w := range vm.Warehouses {
+					<option value={ Uitoa(w.ID) } selected?={ Uitoa(w.ID) == vm.WarehouseID }>{ w.Name } ({ w.Code })</option>
+				}
+			</select>
+			<p class="mt-1 text-small text-text-muted2">Stock-item expense lines route inventory to the selected warehouse on post.</p>
+		</div>
+
 	</div>
 }
 
@@ -216,16 +292,18 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 							</select>
 						</div>
 
-						<!-- Amount -->
+						<!-- Amount: readonly when an item is picked (computed as qty × unit_price) -->
 						<input
 							type="text"
 							:name="'line_amount[' + idx + ']'"
 							x-model="line.amount"
+							:readonly="Boolean(line.product_service_id)"
 							inputmode="decimal"
 							placeholder="0.00"
 							@blur="onAmountBlur(idx)"
 							@input="onAmountInput(idx)"
 							class="w-28 shrink-0 rounded border border-border-input bg-surface px-2 py-1.5 text-right font-mono text-small text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus tabular-nums"
+							:class="line.product_service_id ? 'opacity-70' : ''"
 						/>
 
 						<!-- Tax code -->
@@ -257,24 +335,56 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 						</button>
 					</div>
 
-					<!-- Row 1b: optional catalog item picker -->
-					<!-- Empty string = expense-only; selecting an item lets
-					     Task reinvoice / catalog-driven reports see what the
-					     line is actually for, parallel to the PO line picker. -->
-					<select
-						:name="'line_product_service_id[' + idx + ']'"
-						x-model="line.product_service_id"
-						class="block w-full rounded border border-border-input bg-surface px-2 py-1.5 text-small text-text outline-none focus:ring-2 focus:ring-primary-focus"
-					>
-						<option value="">— Item (optional): expense only, no catalog link —</option>
-						<template x-for="p in products" :key="p.id">
-							<option
-								:value="String(p.id)"
-								:selected="String(line.product_service_id) === String(p.id)"
-								x-text="(p.sku ? p.sku + ' — ' : '') + p.name + ' · ' + p.kind"
-							></option>
-						</template>
-					</select>
+					<!-- Row 1b: optional catalog item picker + Qty/UnitPrice
+					     (IN.2 Rule #4). Empty string = expense-only; selecting
+					     an item with IsStockItem=true routes the post through
+					     inventory.ReceiveStock under legacy mode and is
+					     rejected loudly under controlled mode
+					     (receipt_required=true). Qty × UnitPrice becomes the
+					     authoritative Amount when an item is picked. -->
+					<div class="flex items-center gap-2">
+						<div class="min-w-0 flex-1">
+							<select
+								:name="'line_product_service_id[' + idx + ']'"
+								x-model="line.product_service_id"
+								@change="onProductChange(idx)"
+								class="block w-full rounded border border-border-input bg-surface px-2 py-1.5 text-small text-text outline-none focus:ring-2 focus:ring-primary-focus"
+							>
+								<option value="">— Expense only (no item) —</option>
+								<template x-for="p in products" :key="p.id">
+									<option
+										:value="String(p.id)"
+										:selected="String(line.product_service_id) === String(p.id)"
+										x-text="(p.sku ? p.sku + ' — ' : '') + p.name + ' · ' + p.kind"
+									></option>
+								</template>
+							</select>
+						</div>
+						<!-- Qty: authoritative when item picked; disabled otherwise -->
+						<input
+							type="text"
+							:name="'line_qty[' + idx + ']'"
+							x-model="line.qty"
+							:disabled="!line.product_service_id"
+							@input="onQtyOrPriceInput(idx)"
+							@blur="onQtyBlur(idx)"
+							inputmode="decimal"
+							placeholder="Qty"
+							class="w-20 shrink-0 rounded border border-border-input bg-surface px-2 py-1.5 text-right font-mono text-small text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus tabular-nums disabled:opacity-40"
+						/>
+						<!-- Unit Price: authoritative when item picked -->
+						<input
+							type="text"
+							:name="'line_unit_price[' + idx + ']'"
+							x-model="line.unit_price"
+							:disabled="!line.product_service_id"
+							@input="onQtyOrPriceInput(idx)"
+							@blur="onUnitPriceBlur(idx)"
+							inputmode="decimal"
+							placeholder="Unit price"
+							class="w-28 shrink-0 rounded border border-border-input bg-surface px-2 py-1.5 text-right font-mono text-small text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus tabular-nums disabled:opacity-40"
+						/>
+					</div>
 
 					<!-- Row 2: Description -->
 					<input

@@ -757,10 +757,13 @@ func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM)
 }
 
 type expenseProductJSONItem struct {
-	ID   uint   `json:"id"`
-	SKU  string `json:"sku"`
-	Name string `json:"name"`
-	Kind string `json:"kind"` // "stock" | "service"
+	ID                 uint   `json:"id"`
+	SKU                string `json:"sku"`
+	Name               string `json:"name"`
+	Kind               string `json:"kind"` // "stock" | "service"
+	IsStockItem        bool   `json:"is_stock_item"`
+	InventoryAccountID uint   `json:"inventory_account_id"`
+	COGSAccountID      uint   `json:"cogs_account_id"`
 }
 
 func buildExpenseProductsJSON(products []models.ProductService) string {
@@ -770,12 +773,20 @@ func buildExpenseProductsJSON(products []models.ProductService) string {
 		if p.IsStockItem {
 			kind = "stock"
 		}
-		items = append(items, expenseProductJSONItem{
-			ID:   p.ID,
-			SKU:  p.SKU,
-			Name: p.Name,
-			Kind: kind,
-		})
+		item := expenseProductJSONItem{
+			ID:          p.ID,
+			SKU:         p.SKU,
+			Name:        p.Name,
+			Kind:        kind,
+			IsStockItem: p.IsStockItem,
+		}
+		if p.InventoryAccountID != nil {
+			item.InventoryAccountID = *p.InventoryAccountID
+		}
+		if p.COGSAccountID != nil {
+			item.COGSAccountID = *p.COGSAccountID
+		}
+		items = append(items, item)
 	}
 	b, _ := json.Marshal(items)
 	return string(b)

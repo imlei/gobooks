@@ -47,6 +47,11 @@ function gobooksExpenseForm() {
           expense_account_id: String(l.expense_account_id || ""),
           product_service_id: String(l.product_service_id || ""),
           description:        String(l.description || ""),
+          // IN.2 Rule #4 fields: authoritative when product_service_id
+          // is set; otherwise cosmetic (server falls back to Qty=1,
+          // UnitPrice=Amount).
+          qty:                String(l.qty || "1"),
+          unit_price:         String(l.unit_price || "0.00"),
           amount:             String(l.amount || "0.00"),
           tax_code_id:        String(l.tax_code_id || ""),
           line_tax:           String(l.line_tax || "0.00"),
@@ -74,6 +79,8 @@ function gobooksExpenseForm() {
         expense_account_id: "",
         product_service_id: "",
         description:        "",
+        qty:                "1",
+        unit_price:         "0.00",
         amount:             "0.00",
         tax_code_id:        "",
         line_tax:           "0.00",
@@ -102,7 +109,83 @@ function gobooksExpenseForm() {
       line.error = "";
     },
 
+    // IN.2: when operator picks an item, auto-fill category from the
+    // product's inventory_account_id → cogs_account_id chain (same
+    // priority as server-side derivePOLineExpenseAccountID) and seed
+    // description. Amount becomes qty × unit_price thereafter.
+    onProductChange(idx) {
+      const line = this.lines[idx];
+      if (!line) return;
+      if (!line.product_service_id) {
+        // Deselect: stop computing amount; let operator type it again.
+        line.error = "";
+        this._recalcAll();
+        return;
+      }
+      const p = this.products.find(x => String(x.id) === String(line.product_service_id));
+      if (!p) return;
+      if (!line.description.trim()) line.description = p.name || "";
+      if (!line.expense_account_id) {
+        if (p.inventory_account_id) {
+          line.expense_account_id = String(p.inventory_account_id);
+        } else if (p.cogs_account_id) {
+          line.expense_account_id = String(p.cogs_account_id);
+        }
+      }
+      if (!line.qty || line.qty === "0") line.qty = "1";
+      if (!line.unit_price) line.unit_price = "0.00";
+      this._recomputeAmountFromQtyPrice(idx);
+      line.error = "";
+      this._recalcLine(idx);
+      this._recalcAll();
+    },
+
+    onQtyOrPriceInput(idx) {
+      const line = this.lines[idx];
+      if (!line || !line.product_service_id) return;
+      this._recomputeAmountFromQtyPrice(idx);
+      this._recalcLine(idx);
+      this._recalcAll();
+    },
+
+    onQtyBlur(idx) {
+      const line = this.lines[idx];
+      if (!line) return;
+      const n = parseFloat(line.qty);
+      line.qty = (isNaN(n) || n <= 0) ? "1" : String(n);
+      if (line.product_service_id) {
+        this._recomputeAmountFromQtyPrice(idx);
+        this._recalcLine(idx);
+        this._recalcAll();
+      }
+    },
+
+    onUnitPriceBlur(idx) {
+      const line = this.lines[idx];
+      if (!line) return;
+      const n = parseFloat(line.unit_price);
+      line.unit_price = (isNaN(n) || n < 0) ? "0.00" : n.toFixed(2);
+      if (line.product_service_id) {
+        this._recomputeAmountFromQtyPrice(idx);
+        this._recalcLine(idx);
+        this._recalcAll();
+      }
+    },
+
+    _recomputeAmountFromQtyPrice(idx) {
+      const line = this.lines[idx];
+      if (!line || !line.product_service_id) return;
+      const q = parseFloat(line.qty) || 0;
+      const u = parseFloat(line.unit_price) || 0;
+      line.amount = (q * u).toFixed(2);
+    },
+
     onAmountInput(idx) {
+      // When an item is picked, Amount is computed from qty × unit_price;
+      // skip the recalc pass so the typed input doesn't fight the
+      // computed value.
+      const line = this.lines[idx];
+      if (line && line.product_service_id) return;
       this._recalcLine(idx);
       this._recalcAll();
     },
@@ -110,6 +193,7 @@ function gobooksExpenseForm() {
     onAmountBlur(idx) {
       const line = this.lines[idx];
       if (!line) return;
+      if (line.product_service_id) return; // computed; don't reformat
       const n = parseFloat(line.amount);
       line.amount = (isNaN(n) || n < 0) ? "0.00" : n.toFixed(2);
       this._recalcLine(idx);
