@@ -174,6 +174,25 @@ func (s *Server) prefillBillFromPO(companyID, poID uint, vm *pages.BillEditorVM)
 	// (qty × unit_price). Bill form is amount-based; tax is applied
 	// at bill time so we deliberately do NOT carry over a TaxCode —
 	// the operator picks the vendor's actual tax when billing.
+	//
+	// ExpenseAccountID (Bill's "Category" column) derivation, in
+	// priority order — first non-zero hit wins:
+	//   1. The PO line's explicit ExpenseAccountID. PurchaseOrderLine
+	//      has the field today (model + preload), but the current PO
+	//      editor doesn't expose it as a column, so this branch only
+	//      fires for lines whose account was set programmatically /
+	//      via API. Future: add Category column to the PO editor.
+	//   2. ProductService.InventoryAccountID for stock items. Bill
+	//      posting's AdjustBillFragmentsForInventory (legacy flag=off)
+	//      / AdjustBillFragmentsForGRIRClearing (Phase H flag=on)
+	//      both redirect away from the asset account at post time, so
+	//      using it here as the "category" is safe — the routing
+	//      lands in the right GL place regardless of the rail state.
+	//   3. ProductService.COGSAccountID as a fallback for items that
+	//      have no inventory account configured.
+	//   4. nil — leave the Category dropdown on "-- None --" so the
+	//      operator picks. Service items with no account hint and
+	//      free-form lines fall through here.
 	rows := make([]pages.BillLineFormRow, 0, len(po.Lines))
 	for _, pl := range po.Lines {
 		desc := strings.TrimSpace(pl.Description)
@@ -184,15 +203,44 @@ func (s *Server) prefillBillFromPO(companyID, poID uint, vm *pages.BillEditorVM)
 		if pl.LineNet.IsZero() && pl.Qty.GreaterThan(decimal.Zero) && pl.UnitPrice.GreaterThan(decimal.Zero) {
 			amount = pl.Qty.Mul(pl.UnitPrice).RoundBank(2).StringFixed(2)
 		}
+		expenseAcctID := derivePOLineExpenseAccountID(pl)
+		expenseAcctStr := ""
+		if expenseAcctID != 0 {
+			expenseAcctStr = strconv.FormatUint(uint64(expenseAcctID), 10)
+		}
 		rows = append(rows, pages.BillLineFormRow{
-			Description: desc,
-			Amount:      amount,
+			ExpenseAccountID: expenseAcctStr,
+			Description:      desc,
+			Amount:           amount,
 		})
 	}
 	if len(rows) > 0 {
 		vm.Lines = rows
 	}
 	return true
+}
+
+// derivePOLineExpenseAccountID picks the best account to pre-populate
+// the Bill's "Category" cell from a PO line. Returns 0 when no signal
+// is available (operator picks).
+//
+// See prefillBillFromPO for the priority order rationale. Kept as a
+// private helper so future hints (e.g. vendor-default expense, COA
+// system_key fallback) can be added in one spot.
+func derivePOLineExpenseAccountID(pl models.PurchaseOrderLine) uint {
+	if pl.ExpenseAccountID != nil && *pl.ExpenseAccountID != 0 {
+		return *pl.ExpenseAccountID
+	}
+	if pl.ProductService == nil {
+		return 0
+	}
+	if pl.ProductService.InventoryAccountID != nil && *pl.ProductService.InventoryAccountID != 0 {
+		return *pl.ProductService.InventoryAccountID
+	}
+	if pl.ProductService.COGSAccountID != nil && *pl.ProductService.COGSAccountID != 0 {
+		return *pl.ProductService.COGSAccountID
+	}
+	return 0
 }
 
 // handleBillEdit renders the editor pre-filled with an existing draft bill.
