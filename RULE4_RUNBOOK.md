@@ -305,12 +305,243 @@ Do NOT escalate for:
 
 ---
 
-## 10. Change log
+## 10a. Credit Note path (IN.5)
+
+IN.5 extended Rule #4 to the AR-return side. Before IN.5, a customer
+credit note for a returned stock item booked only the revenue-side
+reversal (Dr Revenue / Cr AR) but never restored inventory or
+reversed COGS — a silent-swallow **and** an accounting imbalance
+(P&L showed $N of COGS against $0 of net revenue for the returned
+goods).
+
+### Legacy mode (`shipment_required=false`)
+
+Credit Note is the movement owner for stock-line returns. On post:
+
+1. Every CreditNoteLine with a stock item **must** carry
+   `OriginalInvoiceLineID` — the specific InvoiceLine this return
+   applies to. That FK is the cost-trace key.
+2. The service looks up the original invoice's inventory_movement
+   for that invoice_line, reads its `unit_cost_base` (authoritative
+   original cost — March's COGS at March's cost, never today's avg),
+   and books a fresh ReceiveStock movement at the return qty ×
+   original cost.
+3. JE gains `Dr Inventory / Cr COGS` per stock line at that same
+   amount, balancing per line.
+4. Partial returns supported: if the customer returns 4 of 10 sold,
+   the Dr Inventory is 4 × $3 (not 10 × $3).
+
+### Controlled mode (`shipment_required=true`)
+
+Credit Note is **not** the outbound-return owner under controlled
+mode. Stock-item credit notes are rejected at post with
+`ErrCreditNoteStockItemRequiresReturnReceipt`. Phase I.6 Return
+Receipt is the planned owner; until I.6 ships, the operator should
+adjust inventory via a manual journal entry or wait for I.6.
+
+### Triage additions
+
+| Symptom | Bug or by-design? | What to say |
+|---|---|---|
+| Customer returned goods, ledger shows revenue reversal but inventory didn't increase | **Pre-IN.5 behaviour — confirm post date.** | Credit notes posted BEFORE IN.5 shipped did not form inventory returns. Void + repost under the new path to get the inventory-side reversal (customer-facing AR balance stays the same; internal COGS / Inventory accounts correct). |
+| `ErrCreditNoteStockItemRequiresInvoice` on credit note post | **Operator error.** | Standalone credit notes (no Invoice linkage) cannot carry a stock-item line — there is no original sale to trace cost from. Either link to the originating invoice OR remove the stock item and use a pure-service credit line. |
+| `ErrCreditNoteStockItemRequiresOriginalLine` on credit note post | **Operator error (or pre-IN.5 data).** | The stock line needs `original_invoice_line_id` set — the specific invoice line being reversed. If operator needs help picking: match item + customer + ship date on the invoice. |
+| `ErrCreditNoteStockItemRequiresReturnReceipt` on credit note post | **Q2 controlled-mode rejection.** | Not a bug. Phase I.6 Return Receipt is the correct path; until it ships, customer needs a manual adjustment JE or deferred processing. |
+| `ErrCreditNoteOriginalLineMismatch` on credit note post | **Data integrity.** | The `original_invoice_line_id` points at a line that isn't on the credit note's linked invoice (or isn't a stock line, or was never invoiced). Operator must re-pick; escalate if the data looks corrupt. |
+
+### Void semantics
+
+VoidCreditNote on a CN that had IN.5 inventory returns now also
+reverses those returns — inventory goes back to the post-invoice
+state. Note: the pre-existing CN rule "cannot void after
+application to an invoice" still applies; if the CN has already
+been applied to reduce AR balance, the application must be
+removed first by a separate action.
+
+### What is still NOT supported under IN.5
+
+- **Multi-line partial returns where customer returns several
+  different items on one credit note**: each line traces to its
+  own OriginalInvoiceLineID. Supported, not special.
+- **Return of a bundle-component item**: trace to the bundle's
+  component movement; OriginalInvoiceLineID on the credit-note
+  line matches the header invoice-line, not the bundle-expansion
+  pseudo-line. If bundle returns are required, trace resolution
+  is more complex; raise as a dedicated slice.
+- **Cost-adjusted returns** (customer returns 4 of 10 but says "the
+  cost was actually $X, not what's on the original movement"):
+  not supported — IN.5 always uses the original snapshot. If
+  costs need correction, use a separate inventory adjustment.
+
+---
+
+## 10b. Vendor Credit Note path (IN.6a)
+
+IN.6a mirrors IN.5 on the AP-return side. Before IN.6a, a vendor
+credit note for a stock-item return booked only the AP-side
+adjustment (Dr AP / Cr Purchase Returns) but never decremented
+inventory — a silent-swallow **and** an accounting imbalance
+(inventory overstated by the value of goods physically sent back
+to the vendor, with no matching asset reduction).
+
+IN.6a is the first slice in AP-side Rule #4 work. It establishes
+the line-level data model for Vendor Credit Notes (a new
+`vendor_credit_note_lines` table) and wires stock-line returns
+through `inventory.ReverseMovement` on the originating Bill
+movement. The UI editor still captures a header amount only; line-
+level entry lands in IN.6b. Until IN.6b ships, line-based VCNs are
+reachable via API / tests; end-user UI flows continue to produce
+header-only VCNs (see "Header-only legacy path" below).
+
+### Legacy mode (`receipt_required=false`)
+
+Vendor Credit Note is the movement owner for stock-line returns.
+On post:
+
+1. Every VendorCreditNoteLine with a stock item **must** carry
+   `OriginalBillLineID` — the specific BillLine this return
+   applies to. That FK is the cost-trace key.
+2. The service locates the original Bill's inventory_movement for
+   that bill_line, verifies the VCN line qty equals the original
+   movement qty (full-qty return), and calls
+   `inventory.ReverseMovement` on it. ReverseMovement reads the
+   original `unit_cost_base` and writes a negative-delta row at
+   that cost — inventory out, at the cost we paid.
+3. JE gains `Dr OffsetAccount / Cr Inventory` per stock line at
+   the traced cost. The Offset account's original credit (from
+   the header `Dr AP / Cr Offset` fragment) is aggregated with
+   the appended debit so the stock portion nets to `Dr AP /
+   Cr Inventory`, the correct shape for a physical return.
+4. Partial returns **not** supported (see "What is still NOT
+   supported" below).
+
+### Controlled mode (`receipt_required=true`)
+
+Vendor Credit Note is **not** the AP-return owner under controlled
+mode. Stock-item VCN lines are rejected at post with
+`ErrVendorCreditNoteStockItemRequiresReturnReceipt`. A future
+Vendor Return Receipt slice (parallel to AR Phase I.6) will own
+that path; until then, operators should adjust inventory via a
+manual journal entry and keep the VCN for pure price-adjustment
+credits.
+
+### Header-only legacy path
+
+VCNs created without any lines (all pre-IN.6a VCNs, and the current
+UI editor which has no line grid yet) continue through the
+original `Dr AP / Cr Offset` two-line JE unchanged. Treat these as
+price-adjustment credits, not physical stock returns. If an
+operator needs to record a physical stock return for inventory
+purposes, they must use the line-based flow (currently API/test
+only; IN.6b will expose it in the UI).
+
+### Triage additions
+
+| Symptom | Bug or by-design? | What to say |
+|---|---|---|
+| Vendor Credit Note posted, AP reduced but inventory stayed up | **Header-only legacy path OR pre-IN.6a.** | If the VCN has zero lines, it's a price adjustment — inventory is correct to stay. For a physical return, the VCN must carry a stock line with `original_bill_line_id`. Use IN.6b UI (when shipped) or the line-based API. |
+| `ErrVendorCreditNoteStockItemRequiresReturnReceipt` on VCN post | **Q-parity controlled-mode rejection.** | Not a bug. Controlled mode requires the future Vendor Return Receipt; until it ships, use a manual JE (Dr AP / Cr Inventory at original cost) and keep the VCN as draft or remove the stock line. |
+| `ErrVendorCreditNoteStockItemRequiresBill` on VCN post | **Operator error.** | Standalone VCN (no linked Bill) cannot carry a stock-item line — there's no original purchase to trace cost from. Either link to the originating Bill OR remove the stock line. |
+| `ErrVendorCreditNoteStockItemRequiresOriginalLine` on VCN post | **Operator error (or pre-IN.6a data).** | The stock line needs `original_bill_line_id` set. If operator needs help picking: match item + vendor + receive date on the Bill. |
+| `ErrVendorCreditNotePartialReturnNotSupported` on VCN post | **Q-scope limitation in IN.6a.** | Not a bug. The inventory module's outflow verbs don't accept a caller-supplied cost, so partial returns of stock items are deferred. Workarounds: split the original Bill into smaller lines, return each in full; OR use a manual JE for the partial-return portion. |
+| `ErrVendorCreditNoteOriginalLineMismatch` on VCN post | **Data integrity.** | The `original_bill_line_id` points at a line that isn't on the VCN's linked Bill (or the Bill movement doesn't exist — e.g. the Bill was posted under controlled mode which skips movement formation). Operator must re-pick; escalate if the data looks corrupt. |
+
+### Void semantics
+
+VoidVendorCreditNote today only handles draft VCNs. Posted VCNs
+cannot be voided — this is the pre-IN.6a constraint and IN.6a does
+not change it. Consequence: an IN.6a stock-line return's inventory
+reversal is permanent once posted. If operators post in error,
+they must create a compensating inbound adjustment manually. A
+future slice could extend void to posted VCNs with symmetric
+movement reversal; not in IN.6a.
+
+### What is still NOT supported under IN.6a
+
+- **Partial-qty stock returns** (return 4 of 10 purchased): the
+  inventory module's IssueStock verb intentionally does not accept
+  a caller-supplied unit cost ("callers never pass a cost on
+  outflow"). Extending it with a `UnitCostOverride` for traced-
+  cost outflow is scope beyond IN.6a and would need its own
+  design review. Workaround: split the original Bill into smaller
+  lines.
+- **Posted-void of VCN with inventory effect**: deferred;
+  see "Void semantics" above.
+- **UI line entry**: deferred to IN.6b. End-user VCNs remain
+  header-only until that slice ships.
+- **Standalone / cross-Bill stock credits**: VCN must link to a
+  single Bill; a VCN cannot span multiple Bills for stock lines.
+
+---
+
+## 10c. Refunds are exempt from Rule #4
+
+An audit (2026-04-21) concluded that both **ARRefund** (customer
+refund, [ar_refund.go](internal/models/ar_refund.go)) and **VendorRefund**
+(vendor refund, [ap_vendor_refund.go](internal/models/ap_vendor_refund.go))
+are **out of scope** for Rule #4. This section documents the
+decision so future audits don't re-open the question.
+
+### Why they're exempt
+
+Both are pure cash-movement documents:
+
+- **Header-only by design.** No line-item tables (no `ARRefundLine`
+  or `VendorRefundLine`). No `ProductServiceID` fields anywhere on
+  the model.
+- **Two-line JE, cash ↔ AR/AP/Deposit only.** `PostARRefund`
+  ([ar_refund_service.go:215](internal/services/ar_refund_service.go))
+  emits `Dr DebitAccount / Cr BankAccount`. `PostVendorRefund`
+  ([vendor_refund_service.go:192](internal/services/vendor_refund_service.go))
+  emits `Dr BankAccount / Cr CreditAccount`. Neither path touches
+  Inventory or COGS accounts.
+- **Zero inventory module calls.** No `inventory.ReceiveStock`,
+  `IssueStock`, `ReverseMovement`, etc., in either post path. No
+  `inventory_movements` rows produced.
+
+### Where the inventory effect actually lives (if any)
+
+A refund that's linked to a CreditNote / VendorCreditNote is the
+**cash settlement** of a credit that already posted. The inventory
+restoration / reversal happened at the credit note's post time
+(IN.5 for AR, IN.6a for AP). The refund just moves the
+balance out of the AR/AP/Credit account and into the bank.
+
+Standalone refunds (no linked credit — e.g. refunding an
+overpayment or a vendor prepayment) touch only liability /
+prepayment accounts. There is no stock nexus by construction.
+
+### When to revisit
+
+If a future slice adds a `refund_lines` table or a
+`ProductServiceID` field to either refund model, **this exemption
+is void** and Rule #4 must be re-evaluated. Watch for:
+
+- A feature request for "refund with partial stock return detail"
+  (operator wants to record which items were physically returned
+  when issuing the refund).
+- A merge of `VendorReturn` + `VendorRefund` semantics that adds
+  item-level detail to the refund.
+
+Either pattern should open a fresh audit slice rather than
+smuggle inventory exposure into a refund post path.
+
+---
+
+## 11. Change log
 
 | Date | Change |
 |---|---|
 | 2026-04-21 | Initial draft covering IN.1–IN.3 behaviour. Complements Phase H / Phase I runbooks. |
+| 2026-04-21 | Added §10a Credit Note (IN.5) — AR return path inventory restoration at authoritative original cost. |
+| 2026-04-21 | Added §10b Vendor Credit Note (IN.6a) — AP return path inventory reversal via ReverseMovement at authoritative original cost; full-qty only. |
+| 2026-04-21 | IN.6b shipped — Vendor Credit Note editor exposes stock-return lines in the UI (+ handler wiring tests). |
+| 2026-04-21 | Added §10c — ARRefund / VendorRefund audited and exempted from Rule #4 (cash-movement documents, no stock nexus). |
 | (future) | Update §3 triage table when a tracked-on-Bill or per-line-warehouse slice ships. |
+| (future) | Replace §10a controlled-mode rejection guidance with Phase I.6 Return Receipt workflow when that slice ships. |
+| (future) | Replace §10b partial-return limitation when an inventory outflow verb with caller-supplied cost ships. |
+| (future) | Replace §10b controlled-mode rejection guidance with Vendor Return Receipt workflow when that slice ships. |
+| (future) | Revisit §10c if a refund document gains line-item granularity or ProductServiceID. |
 
 ---
 
