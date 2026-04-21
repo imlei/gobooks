@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
 	"gobooks/internal/models"
@@ -229,12 +231,20 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 		return vm, err
 	}
 
+	// IN.2: carry lifecycle status + header warehouse into the VM.
+	vm.Status = string(exp.Status)
+	if exp.WarehouseID != nil {
+		vm.WarehouseID = fmt.Sprintf("%d", *exp.WarehouseID)
+	}
+
 	// Rehydrate line items from the expense's Lines slice (preloaded by GetExpenseByID).
 	if len(exp.Lines) > 0 {
 		vm.Lines = make([]pages.ExpenseLineFormVM, 0, len(exp.Lines))
 		for _, l := range exp.Lines {
 			lineVM := pages.ExpenseLineFormVM{
 				Description: l.Description,
+				Qty:         l.Qty.StringFixed(4),
+				UnitPrice:   l.UnitPrice.StringFixed(4),
 				Amount:      l.Amount.StringFixed(2),
 				LineTax:     l.LineTax.StringFixed(2),
 				LineTotal:   l.LineTotal.StringFixed(2),
@@ -312,6 +322,8 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		ExpenseAccountID *uint
 		ProductServiceID *uint
 		Description      string
+		Qty              decimal.Decimal // IN.2: authoritative when ProductServiceID set
+		UnitPrice        decimal.Decimal // IN.2: authoritative when ProductServiceID set
 		Amount           decimal.Decimal // pre-tax net
 		TaxCodeIDRaw     string
 		TaxCodeID        *uint
@@ -326,6 +338,8 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		accIDRaw := strings.TrimSpace(c.FormValue(key("line_expense_account_id")))
 		psIDRaw := strings.TrimSpace(c.FormValue(key("line_product_service_id")))
 		desc := strings.TrimSpace(c.FormValue(key("line_description")))
+		qtyRaw := strings.TrimSpace(c.FormValue(key("line_qty")))
+		unitPriceRaw := strings.TrimSpace(c.FormValue(key("line_unit_price")))
 		amtRaw := strings.TrimSpace(c.FormValue(key("line_amount")))
 		tcIDRaw := strings.TrimSpace(c.FormValue(key("line_tax_code_id")))
 		taskIDRaw := strings.TrimSpace(c.FormValue(key("line_task_id")))
@@ -347,6 +361,8 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 			ExpenseAccountID: accIDRaw,
 			ProductServiceID: psIDRaw,
 			Description:      desc,
+			Qty:              qtyRaw,
+			UnitPrice:        unitPriceRaw,
 			Amount:           amt.StringFixed(2),
 			TaxCodeID:        tcIDRaw,
 			TaskID:           taskIDRaw,
@@ -361,6 +377,26 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		if id64, err := strconv.ParseUint(psIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
 			pl.ProductServiceID = &id
+		}
+		// IN.2: parse Qty + UnitPrice; service layer falls back to
+		// Qty=1 / UnitPrice=Amount when ProductServiceID is nil.
+		if pl.ProductServiceID != nil {
+			if q, qErr := decimal.NewFromString(qtyRaw); qErr == nil && q.IsPositive() {
+				pl.Qty = q
+			} else {
+				pl.Qty = decimal.NewFromInt(1)
+			}
+			if up, upErr := decimal.NewFromString(unitPriceRaw); upErr == nil && !up.IsNegative() {
+				pl.UnitPrice = up
+			} else {
+				pl.UnitPrice = decimal.Zero
+			}
+			// When an item is picked, Amount is authoritative = qty * unit_price.
+			// Override whatever the form submitted for Amount so the service
+			// layer never sees a desynced row.
+			pl.Amount = pl.Qty.Mul(pl.UnitPrice).RoundBank(2)
+			amt = pl.Amount
+			lVM.Amount = pl.Amount.StringFixed(2)
 		}
 		if id64, err := strconv.ParseUint(tcIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
@@ -512,6 +548,8 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		input.Lines = append(input.Lines, services.ExpenseLineInput{
 			Description:      cl.Description,
 			Amount:           cl.LineNet,
+			Qty:              cl.Qty,
+			UnitPrice:        cl.UnitPrice,
 			ExpenseAccountID: cl.ExpenseAccountID,
 			ProductServiceID: cl.ProductServiceID,
 			TaxCodeID:        cl.TaxCodeID,
@@ -572,9 +610,70 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		id := uint(id64)
 		input.PaymentAccountID = &id
 	}
+	// IN.2: header warehouse is form-driven with fallback to company
+	// default at post time.
+	if id64, err := services.ParseUint(vm.WarehouseID); err == nil && id64 > 0 {
+		id := uint(id64)
+		input.WarehouseID = &id
+	}
 	input.PaymentMethod = models.PaymentMethod(vm.PaymentMethod)
 	input.PaymentReference = vm.PaymentReference
 	return vm, input, hasErr
+}
+
+// handleExpensePost flips a draft expense to posted.
+func (s *Server) handleExpensePost(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	id, err := parseIDParam(c)
+	if err != nil {
+		return c.Redirect("/expenses", fiber.StatusSeeOther)
+	}
+	actor := ""
+	var actorUserID *uuid.UUID
+	if u := UserFromCtx(c); u != nil {
+		actor = u.Email
+		uid := u.ID
+		actorUserID = &uid
+	}
+	if _, pErr := services.PostExpense(s.DB, companyID, id, actor, actorUserID); pErr != nil {
+		// Carry the error back via the edit page so the operator can
+		// fix (missing payment account / receipt_required rejection /
+		// stock item without warehouse).
+		return c.Redirect(
+			fmt.Sprintf("/expenses/%d/edit?post_error=%s", id,
+				url.QueryEscape(pErr.Error())),
+			fiber.StatusSeeOther)
+	}
+	return c.Redirect(fmt.Sprintf("/expenses/%d/edit?posted=1", id), fiber.StatusSeeOther)
+}
+
+// handleExpenseVoid reverses a posted expense's JE + inventory.
+func (s *Server) handleExpenseVoid(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	id, err := parseIDParam(c)
+	if err != nil {
+		return c.Redirect("/expenses", fiber.StatusSeeOther)
+	}
+	actor := ""
+	var actorUserID *uuid.UUID
+	if u := UserFromCtx(c); u != nil {
+		actor = u.Email
+		uid := u.ID
+		actorUserID = &uid
+	}
+	if _, vErr := services.VoidExpense(s.DB, companyID, id, actor, actorUserID); vErr != nil {
+		return c.Redirect(
+			fmt.Sprintf("/expenses/%d/edit?void_error=%s", id,
+				url.QueryEscape(vErr.Error())),
+			fiber.StatusSeeOther)
+	}
+	return c.Redirect(fmt.Sprintf("/expenses/%d/edit?voided=1", id), fiber.StatusSeeOther)
 }
 
 func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM) error {
@@ -587,11 +686,14 @@ func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM)
 	vm.SelectableTasksJSON = buildExpenseTasksJSON(selectableTasks)
 
 	var company models.Company
-	if err := s.DB.Select("id", "base_currency_code", "multi_currency_enabled").First(&company, companyID).Error; err != nil {
+	if err := s.DB.Select("id", "base_currency_code", "multi_currency_enabled", "receipt_required").First(&company, companyID).Error; err != nil {
 		return err
 	}
 	vm.BaseCurrencyCode = company.BaseCurrencyCode
 	vm.MultiCurrency = company.MultiCurrencyEnabled
+	// IN.2: surface controlled-mode state so the editor can warn the
+	// operator that stock-item lines will be rejected at post.
+	vm.ReceiptRequired = company.ReceiptRequired
 	vm.CurrencyOptions = []string{company.BaseCurrencyCode}
 	if company.MultiCurrencyEnabled {
 		ccs, err := services.ListCompanyCurrencies(s.DB, companyID)
@@ -643,6 +745,13 @@ func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM)
 		return err
 	}
 	vm.ProductsJSON = buildExpenseProductsJSON(products)
+
+	// IN.2: header warehouse dropdown — active warehouses for this
+	// company. Default selection rehydrated by the caller from the
+	// expense row when editing; on new-form the company default
+	// warehouse seeds the dropdown preselection.
+	warehouses, _ := services.ListWarehouses(s.DB, companyID)
+	vm.Warehouses = warehouses
 
 	return nil
 }

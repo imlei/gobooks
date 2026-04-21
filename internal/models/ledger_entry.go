@@ -74,6 +74,14 @@ const (
 	// (LedgerSourceInvoice), so the two sources stay distinct in
 	// source-document drilldown reports.
 	LedgerSourceShipment LedgerSourceType = "shipment"
+	// LedgerSourceExpense is used by IN.2 Expense post — Dr per-line
+	// ExpenseAccount (or InventoryAccount for stock lines under Rule
+	// #4) / Cr PaymentAccount. Stock-item lines on Expense under
+	// legacy mode also form inventory_movements with source_type='expense';
+	// under controlled mode (receipt_required=true) Expense post
+	// rejects stock lines entirely so Receipt remains the only
+	// inbound-inventory surface.
+	LedgerSourceExpense LedgerSourceType = "expense"
 )
 
 // LedgerEntry is one row in the accounting fact layer.

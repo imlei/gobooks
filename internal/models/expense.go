@@ -7,6 +7,31 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// ExpenseStatus tracks the IN.2 lifecycle of an Expense.
+//
+//	draft   — created but not posted; no JE, no inventory effect
+//	posted  — PostExpense wrote a JE (and, for stock lines under
+//	          legacy mode, inventory movements)
+//	voided  — post reversed; JE reversed + inventory restored
+//
+// Pre-IN.2 rows migrate in as 'draft'. Terminal state is voided.
+type ExpenseStatus string
+
+const (
+	ExpenseStatusDraft  ExpenseStatus = "draft"
+	ExpenseStatusPosted ExpenseStatus = "posted"
+	ExpenseStatusVoided ExpenseStatus = "voided"
+)
+
+// AllExpenseStatuses returns expense statuses in logical order.
+func AllExpenseStatuses() []ExpenseStatus {
+	return []ExpenseStatus{
+		ExpenseStatusDraft,
+		ExpenseStatusPosted,
+		ExpenseStatusVoided,
+	}
+}
+
 // ExpenseLine is a single cost-category row within an Expense.
 // An expense may have one or more lines; the sum of line amounts equals the
 // parent Expense.Amount (maintained by the service layer).
@@ -20,6 +45,15 @@ type ExpenseLine struct {
 	Description string          `gorm:"type:text;not null;default:''"`
 	Amount      decimal.Decimal `gorm:"type:numeric(18,2);not null;default:0"`
 
+	// IN.2 (Rule #4): Qty + UnitPrice are authoritative when
+	// ProductServiceID is set and the item is a stock item. They
+	// drive the inventory.ReceiveStock call at post time. For
+	// pure-expense (amount-only) lines these stay at the column
+	// defaults (Qty=1, UnitPrice=0) and the service layer falls
+	// back to Amount as the sole cost signal (legacy behavior).
+	Qty       decimal.Decimal `gorm:"type:numeric(10,4);not null;default:1"`
+	UnitPrice decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
+
 	ExpenseAccountID *uint    `gorm:"index"`
 	ExpenseAccount   *Account `gorm:"foreignKey:ExpenseAccountID"`
 
@@ -29,6 +63,11 @@ type ExpenseLine struct {
 	// driven reports can see what the expense was actually for.
 	// Nullable: many expenses remain pure cost-category with no
 	// catalog item attached.
+	//
+	// IN.2: when ProductServiceID is set AND the linked item has
+	// IsStockItem=true, this line becomes a Rule #4 stock line —
+	// expense post forms an inventory movement (legacy mode) or
+	// rejects the post (controlled mode).
 	ProductServiceID *uint           `gorm:"index"`
 	ProductService   *ProductService `gorm:"foreignKey:ProductServiceID"`
 
@@ -65,9 +104,44 @@ type ExpenseLine struct {
 //
 // invoice_id / invoice_line_id are quick-lookup cache columns.
 // The authoritative linkage record lives in task_invoice_sources.
+//
+// IN.2 lifecycle (migration 079): Status + JournalEntryID + WarehouseID
+// + PostedAt/VoidedAt promote Expense from a save-only memo to a
+// first-class posted business document. Status transitions:
+//
+//	draft    → posted  (via PostExpense; books JE + optional inventory)
+//	posted   → voided  (via VoidExpense; reverses JE + inventory)
+//
+// Terminal: voided. Pre-IN.2 rows migrate in as status='draft'; they
+// do not retroactively post.
 type Expense struct {
 	ID        uint `gorm:"primaryKey"`
 	CompanyID uint `gorm:"not null;index"`
+
+	// Status carries the IN.2 lifecycle. Default 'draft' on create
+	// (column default matches migration 079). Only PostExpense flips
+	// to posted; only VoidExpense flips to voided. Handlers do not
+	// set this directly.
+	Status ExpenseStatus `gorm:"type:text;not null;default:'draft';index"`
+
+	// WarehouseID is the header-level warehouse used for routing
+	// stock-line inventory movements at post time (Q3 decision:
+	// header, defaulted but visible/editable). Nullable — for
+	// pure-expense (no stock line) expenses it is ignored. For
+	// expenses with stock lines, post-time validation requires it
+	// (or falls back to the company default warehouse).
+	WarehouseID *uint      `gorm:"index"`
+	Warehouse   *Warehouse `gorm:"foreignKey:WarehouseID"`
+
+	// JournalEntryID links the posted JE (nil = not yet posted, or
+	// a pre-IN.2 record that never posted). Set once at post time;
+	// cleared implicitly when VoidExpense reverses (the original JE
+	// flips to status=reversed rather than being disassociated).
+	JournalEntryID *uint         `gorm:"index"`
+	JournalEntry   *JournalEntry `gorm:"foreignKey:JournalEntryID"`
+
+	PostedAt *time.Time
+	VoidedAt *time.Time
 
 	// Task linkage (optional).
 	TaskID   *uint `gorm:"index"`

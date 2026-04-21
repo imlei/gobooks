@@ -26,13 +26,19 @@ type ExpenseLineFormVM struct {
 	// a pure cost-category entry.
 	ProductServiceID string
 	Description      string
-	Amount           string // pre-tax net
-	TaxCodeID        string
-	LineTax          string
-	LineTotal        string
-	TaskID           string
-	IsBillable       bool
-	Error            string
+	// Qty + UnitPrice are IN.2 authoritative fields when
+	// ProductServiceID is set. For pure-expense (ProductServiceID="")
+	// they may be blank and the service falls back to Qty=1,
+	// UnitPrice=Amount.
+	Qty       string
+	UnitPrice string
+	Amount    string // pre-tax net
+	TaxCodeID string
+	LineTax   string
+	LineTotal string
+	TaskID    string
+	IsBillable bool
+	Error      string
 }
 
 type ExpenseFormVM struct {
@@ -74,11 +80,26 @@ type ExpenseFormVM struct {
 	// Shape: [{id, code, name, rate}] where rate is a fraction string e.g. "0.05".
 	TaxCodesJSON string
 
-	// Payment settlement fields (all optional).
+	// Payment settlement fields (all optional for draft save;
+	// PaymentAccountID required at post time per IN.2).
 	PaymentAccountID    string
 	PaymentAccountLabel string // human-readable label for SmartPicker rehydration
 	PaymentMethod       string
 	PaymentReference    string
+
+	// IN.2 lifecycle + Rule #4 support.
+	// Status is the IN.2 expense lifecycle: "draft" | "posted" | "voided".
+	// Controls which action buttons show on the detail view.
+	Status string
+	// WarehouseID is the header warehouse string for stock-line routing
+	// (Q3). Empty = fall back to company default at post time.
+	WarehouseID string
+	// Warehouses is the dropdown source for the header warehouse field.
+	Warehouses []models.Warehouse
+	// ReceiptRequired indicates the company's controlled-mode state.
+	// When true, the template warns the operator that stock-item lines
+	// will be rejected at post (Q2 invariant).
+	ReceiptRequired bool
 
 	// Error fields for service-layer feedback.
 	ExpenseAccountError   string

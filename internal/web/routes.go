@@ -520,6 +520,8 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/expenses", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleExpenseCreate)
 	app.Get("/expenses/:id/edit", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillUpdate), s.handleExpenseEdit)
 	app.Post("/expenses/:id/edit", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillUpdate), s.handleExpenseUpdate)
+	app.Post("/expenses/:id/post", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillUpdate), s.handleExpensePost)
+	app.Post("/expenses/:id/void", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillUpdate), s.handleExpenseVoid)
 	app.Get("/vendors", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendors)
 	app.Post("/vendors", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleVendorCreate)
 	app.Get("/vendors/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorDetail)
