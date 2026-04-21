@@ -295,6 +295,22 @@ func Migrate(db *gorm.DB) error {
 		// dedicated narrow traced-cost outflow verb from I.6b.2a).
 		&models.VendorReturnShipment{},
 		&models.VendorReturnShipmentLine{},
+		// IN.7 (2026-04-21) — defense-in-depth: register the physical-
+		// truth inventory documents (Phase H Receipt, Phase I Shipment,
+		// Phase I waiting_for_invoice queue). These were historically
+		// relying on SQL migrations ONLY, which missed
+		// `shipments.journal_entry_id` at I.3 wiring time and blocked
+		// `shipment_required=true` pilot in production. Registering
+		// them here ensures future column additions on the model are
+		// applied via AutoMigrate on fresh installs + dev DBs even if
+		// a dedicated SQL migration is omitted. Companion migration
+		// 084_shipments_add_journal_entry_id.sql closes the production
+		// gap for pre-IN.7 DBs.
+		&models.Receipt{},
+		&models.ReceiptLine{},
+		&models.Shipment{},
+		&models.ShipmentLine{},
+		&models.WaitingForInvoiceItem{},
 	); err != nil {
 		return err
 	}
