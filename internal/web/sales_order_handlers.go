@@ -86,6 +86,21 @@ func (s *Server) handleSalesOrderDetail(c *fiber.Ctx) error {
 		Cancelled:  c.Query("cancelled") == "1",
 	}
 	s.loadSOFormData(companyID, &vm)
+
+	// Load invoices raised against this SO (migration 085 link).
+	// Best-effort — an error here logs but doesn't block rendering.
+	// Shown only on the read-only view of non-draft SOs; for Draft
+	// SOs the list is always empty so querying is a no-op anyway.
+	if so.Status != models.SalesOrderStatusDraft {
+		var linked []models.Invoice
+		if err := s.DB.
+			Where("company_id = ? AND sales_order_id = ?", companyID, so.ID).
+			Order("invoice_date desc, id desc").
+			Find(&linked).Error; err == nil {
+			vm.LinkedInvoices = linked
+		}
+	}
+
 	return pages.SalesOrderDetail(vm).Render(c.Context(), c)
 }
 

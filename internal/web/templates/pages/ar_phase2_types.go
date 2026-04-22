@@ -60,4 +60,11 @@ type SalesOrderDetailVM struct {
 	Saved           bool
 	Confirmed       bool
 	Cancelled       bool
+
+	// LinkedInvoices are invoices raised against this SalesOrder.
+	// Populated via invoices.sales_order_id (migration 085).
+	// Ordered by invoice_date desc, id desc — most recent first.
+	// Empty for Draft SOs and for Confirmed SOs without any
+	// invoices yet. Rendered in a table on the read-only view.
+	LinkedInvoices []models.Invoice
 }
