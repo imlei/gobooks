@@ -495,6 +495,22 @@ templ soActionButtons(vm SalesOrderDetailVM) {
 						Cancel Order
 					</button>
 				</form>
+			case models.SalesOrderStatusPartiallyInvoiced:
+				// "Create Invoice" for the REMAINING qty. Pre-fill
+				// logic in handleInvoiceNew/prefillInvoiceFromSalesOrder
+				// subtracts InvoicedQty per line, so the next invoice
+				// opens with just the uninvoiced portion. No Cancel
+				// Order button here: a partially-invoiced SO already
+				// has posted invoices referencing it — cancelling
+				// would leave those invoices pointing at a cancelled
+				// SO. Operator must void the invoices first if they
+				// want to roll the SO all the way back.
+				<a
+					href={ templ.SafeURL("/invoices/new?sales_order_id=" + Uitoa(vm.Order.ID)) }
+					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+				>
+					Create Invoice for Remaining
+				</a>
 		}
 	</div>
 }

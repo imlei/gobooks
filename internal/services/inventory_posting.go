@@ -424,9 +424,51 @@ func issueSaleLine(tx *gorm.DB, companyID uint, inv models.Invoice, itemID uint,
 
 	result, err := inventory.IssueStock(tx, in)
 	if err != nil {
-		return nil, fmt.Errorf("issue stock for item %d: %w", itemID, translateInventoryErr(err))
+		translated := translateInventoryErr(err)
+		// Friendlier insufficient-stock error: enrich with the
+		// product name and on-hand qty the operator needs to see to
+		// act. Keeps the wrapped sentinel so `errors.Is(_, ErrInsufficientStock)`
+		// continues to match for callers that care.
+		if errors.Is(translated, ErrInsufficientStock) {
+			return nil, wrapInsufficientStockErr(tx, companyID, itemID, warehouseID, qty)
+		}
+		return nil, fmt.Errorf("issue stock for item %d: %w", itemID, translated)
 	}
 	return result, nil
+}
+
+// wrapInsufficientStockErr loads the product name + on-hand qty for
+// the (item, warehouse) pair and returns an ErrInsufficientStock-
+// wrapped error whose message points operators at the specific
+// item they need to replenish before the invoice can post.
+// Best-effort on the lookups — missing product name / balance row
+// falls back to safe defaults so the core "not enough stock"
+// signal still surfaces.
+func wrapInsufficientStockErr(tx *gorm.DB, companyID, itemID uint, warehouseID *uint, requestedQty decimal.Decimal) error {
+	name := fmt.Sprintf("item #%d", itemID)
+	var ps models.ProductService
+	if err := tx.Select("name").
+		Where("id = ? AND company_id = ?", itemID, companyID).
+		First(&ps).Error; err == nil && ps.Name != "" {
+		name = ps.Name
+	}
+
+	onHand := decimal.Zero
+	q := tx.Model(&models.InventoryBalance{}).
+		Select("quantity_on_hand").
+		Where("company_id = ? AND item_id = ?", companyID, itemID)
+	if warehouseID != nil && *warehouseID != 0 {
+		q = q.Where("warehouse_id = ?", *warehouseID)
+	} else {
+		q = q.Where("warehouse_id IS NULL")
+	}
+	var bal models.InventoryBalance
+	if err := q.First(&bal).Error; err == nil {
+		onHand = bal.QuantityOnHand
+	}
+
+	return fmt.Errorf("%w: %q only has %s on hand — not enough stock to fulfill requested %s",
+		ErrInsufficientStock, name, onHand.String(), requestedQty.String())
 }
 
 // CreatePurchaseMovements books inventory receipts for each stock-item line
