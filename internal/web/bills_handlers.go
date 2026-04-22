@@ -308,9 +308,20 @@ func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 	}
 
 	for _, l := range bill.Lines {
+		// Rule #4 / IN.1: ProductServiceID, Qty and UnitPrice MUST
+		// round-trip through the form reload. A prior revision only
+		// persisted ExpenseAccountID / Description / Amount — which
+		// silently turned every item-aware line into a "— Expense only
+		// —" row on reload, dropping the stock-item flag and reducing
+		// Qty to the default 1 / UnitPrice to 0. Submit would then
+		// either re-save garbage or fail the post with no stack trace
+		// visible to the operator.
 		vm.Lines = append(vm.Lines, pages.BillLineFormRow{
+			ProductServiceID: optUintStr(l.ProductServiceID),
 			ExpenseAccountID: optUintStr(l.ExpenseAccountID),
 			Description:      l.Description,
+			Qty:              l.Qty.String(),
+			UnitPrice:        l.UnitPrice.StringFixed(4),
 			Amount:           l.LineNet.StringFixed(2),
 			TaxCodeID:        optUintStr(l.TaxCodeID),
 			TaskID:           optUintStr(l.TaskID),
@@ -908,7 +919,15 @@ func (s *Server) handleBillPost(c *fiber.Ctx) error {
 	}
 
 	if err := services.PostBill(s.DB, companyID, billID, actor, uid); err != nil {
-		return redirectErr(c, fmt.Sprintf("/bills/%d/edit?locked=1", billID), "Could not submit bill.")
+		// Surface the service's underlying message so the operator
+		// can see WHY the post failed (missing COGS account on a
+		// stock item, insufficient stock, warehouse ambiguity, etc.)
+		// A prior revision collapsed everything to the opaque string
+		// "Could not submit bill." — operators then had no actionable
+		// cue and had to guess. The raw err.Error() is already
+		// formatted by PostBill for human consumption.
+		return redirectErr(c, fmt.Sprintf("/bills/%d/edit?locked=1", billID),
+			"Could not submit bill: "+err.Error())
 	}
 	s.ReportCache.InvalidateCompany(companyID)
 
