@@ -186,7 +186,7 @@ func seedOneSettlement(t *testing.T, db *gorm.DB, base payoutBase, amount decima
 // override the gateway account ID (used for cross-gateway tests).
 func seedOneSettlementWithGateway(t *testing.T, db *gorm.DB, base payoutBase, gwID uint, amount decimal.Decimal) models.GatewaySettlement {
 	t.Helper()
-	tag := fmt.Sprintf("%d", time.Now().UnixNano())
+	tag := uniqueTestTag()
 
 	cust := models.Customer{CompanyID: base.companyID, Name: "C" + tag}
 	db.Create(&cust)
@@ -272,7 +272,10 @@ func defaultPayoutInput(base payoutBase, settlementIDs []uint) CreateGatewayPayo
 	return CreateGatewayPayoutInput{
 		CompanyID:        base.companyID,
 		GatewayAccountID: base.gatewayID,
-		ProviderPayoutID: fmt.Sprintf("po_%d", time.Now().UnixNano()),
+		// Routed through uniqueTestTag() so concurrent /
+		// same-nanosecond calls never collide — see
+		// test_helpers_unique_tag_test.go for the flake history.
+		ProviderPayoutID: "po_" + uniqueTestTag(),
 		PayoutDate:       time.Now(),
 		FeeAmount:        decimal.NewFromFloat(2.50),
 		BankAccountID:    base.bankID,
@@ -762,7 +765,7 @@ func TestGatewayPayout_ConcurrentSameSettlements_ExactlyOnce(t *testing.T) {
 // override the currency code. Used for multi-currency rejection tests.
 func seedOneSettlementWithCurrency(t *testing.T, db *gorm.DB, base payoutBase, currency string, amount decimal.Decimal) models.GatewaySettlement {
 	t.Helper()
-	tag := fmt.Sprintf("%d", time.Now().UnixNano())
+	tag := uniqueTestTag()
 
 	cust := models.Customer{CompanyID: base.companyID, Name: "C" + tag}
 	db.Create(&cust)

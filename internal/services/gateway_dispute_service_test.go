@@ -172,7 +172,7 @@ func seedDisputeBase(t *testing.T, db *gorm.DB) disputeBase {
 // a PostedJournalEntryID set (simulating a posted charge). Returns the txn.
 func seedPostedCharge(t *testing.T, db *gorm.DB, base disputeBase, amount decimal.Decimal) models.PaymentTransaction {
 	t.Helper()
-	tag := fmt.Sprintf("%d", time.Now().UnixNano())
+	tag := uniqueTestTag()
 
 	cust := models.Customer{CompanyID: base.companyID, Name: "C" + tag}
 	db.Create(&cust)
@@ -229,7 +229,7 @@ func seedPostedCharge(t *testing.T, db *gorm.DB, base disputeBase, amount decima
 // seedUnpostedCharge creates a charge without a PostedJournalEntryID.
 func seedUnpostedCharge(t *testing.T, db *gorm.DB, base disputeBase, amount decimal.Decimal) models.PaymentTransaction {
 	t.Helper()
-	tag := fmt.Sprintf("%d", time.Now().UnixNano())
+	tag := uniqueTestTag()
 
 	cust := models.Customer{CompanyID: base.companyID, Name: "C" + tag}
 	db.Create(&cust)
@@ -700,7 +700,7 @@ func TestDisputeOpen_WrongType_Refund(t *testing.T) {
 	base := seedDisputeBase(t, db)
 
 	// Seed a posted refund transaction (not charge/capture).
-	tag := fmt.Sprintf("%d", time.Now().UnixNano())
+	tag := uniqueTestTag()
 	cust := models.Customer{CompanyID: base.companyID, Name: "CRef" + tag}
 	db.Create(&cust)
 	inv := models.Invoice{
@@ -766,7 +766,7 @@ func TestDisputeOpen_WrongType_Chargeback(t *testing.T) {
 	base := seedDisputeBase(t, db)
 
 	// Create a posted chargeback (simulates result of a prior dispute_lost).
-	tag := fmt.Sprintf("%d", time.Now().UnixNano())
+	tag := uniqueTestTag()
 	je := models.JournalEntry{
 		CompanyID: base.companyID, EntryDate: time.Now(),
 		JournalNo: "CB-" + tag, Status: models.JournalEntryStatusPosted,
