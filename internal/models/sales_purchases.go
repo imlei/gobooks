@@ -205,6 +205,16 @@ type Invoice struct {
 	PrincipalAccountNameSnapshot string `gorm:"not null;default:''"`
 	PrincipalAccountCodeSnapshot string `gorm:"not null;default:''"`
 
+	// SalesOrderID — migration 085 back-link to the SalesOrder that
+	// sourced this invoice. Populated when an invoice is created via
+	// the "Create Invoice" shortcut on a Confirmed SO's detail page.
+	// NULL for standalone invoices. The post path reads this to
+	// increment SO.InvoicedAmount + per-SO-line InvoicedQty; void
+	// reverses those deltas. No DB-level FK constraint — service-
+	// layer handles cross-tenant + existence checks.
+	SalesOrderID *uint       `gorm:"index"`
+	SalesOrder   *SalesOrder `gorm:"foreignKey:SalesOrderID"`
+
 	Lines []InvoiceLine `gorm:"foreignKey:InvoiceID"`
 
 	CreatedAt time.Time
@@ -256,6 +266,17 @@ type InvoiceLine struct {
 	// (same company, posted Shipment, open waiting_for_invoice row)
 	// at Invoice post time.
 	ShipmentLineID *uint `gorm:"index"`
+
+	// SalesOrderLineID — migration 085 back-link to the
+	// SalesOrderLine this invoice line is billing against.
+	// Populated server-side at save time by matching
+	// ProductServiceID + FIFO-remaining when the invoice header
+	// carries a SalesOrderID. NULL for lines without an SO source
+	// (standalone invoices, operator-added lines beyond the SO's
+	// scope). The Invoice post path uses this to increment
+	// SalesOrderLine.InvoicedQty; void reverses it. No DB-level
+	// FK — matches the ShipmentLineID convention.
+	SalesOrderLineID *uint `gorm:"index"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

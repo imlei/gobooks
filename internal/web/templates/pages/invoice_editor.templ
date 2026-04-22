@@ -73,6 +73,15 @@ templ bodyInvoiceEditor(vm InvoiceEditorVM) {
 			if vm.IsEdit {
 				<input type="hidden" name="invoice_id" value={ Uitoa(vm.EditingID) }/>
 			}
+			// SO↔Invoice tracking: when the editor was opened via
+			// the "Create Invoice" shortcut on a Sales Order detail
+			// page (or saved with a SO link previously), carry the
+			// sales_order_id through form submits so the save path
+			// can persist it + the server can match invoice lines
+			// back to SO lines for InvoicedQty tracking.
+			if vm.SalesOrderID != 0 {
+				<input type="hidden" name="sales_order_id" value={ Uitoa(vm.SalesOrderID) }/>
+			}
 
 			// Wrapper div — JS adds 'ie-reviewing' class to lock fields.
 			// TaskGeneratedReadOnly uses field-level disabled?= instead of the fieldset,

@@ -237,6 +237,16 @@ func VoidInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return fmt.Errorf("release task invoice sources: %w", err)
 		}
 
+		// SO↔Invoice tracking: if this invoice was raised from a
+		// SalesOrder, reverse its line qtys from the SO's per-line
+		// InvoicedQty and header InvoicedAmount. Status rolls back
+		// from fully_invoiced → partially_invoiced or
+		// partially_invoiced → confirmed as applicable. No-op for
+		// standalone invoices.
+		if err := ReverseInvoicePostOnSalesOrder(tx, inv); err != nil {
+			return fmt.Errorf("reverse invoice on sales order tracking: %w", err)
+		}
+
 		// h. Audit log.
 		cid := companyID
 		return WriteAuditLogWithContextDetails(tx, "invoice.voided", "invoice", inv.ID, actor,

@@ -34,6 +34,17 @@ type InvoiceEditorVM struct {
 	DueDate       string
 	Memo          string
 
+	// SalesOrderID — when non-zero, the editor renders a hidden
+	// input `sales_order_id` that the save path persists onto the
+	// invoice. Populated on pre-fill via
+	// `/invoices/new?sales_order_id=X` and carried forward on
+	// draft re-saves. Used by the SO↔Invoice tracking chain
+	// (services/sales_order_invoice_tracking.go).
+	SalesOrderID uint
+	// SalesOrderNumber is displayed as a "from Sales Order" badge
+	// when SalesOrderID is set; purely decorative.
+	SalesOrderNumber string
+
 	// Header errors.
 	InvoiceNumberError string
 	CustomerError      string

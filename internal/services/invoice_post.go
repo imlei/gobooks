@@ -442,6 +442,15 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			return err
 		}
 
+		// SO↔Invoice tracking: if this invoice was raised from a
+		// SalesOrder, apply its line qtys against the SO's
+		// per-line InvoicedQty and the header InvoicedAmount;
+		// flip SO.Status to partially_invoiced or fully_invoiced
+		// as appropriate. No-op for standalone invoices.
+		if err := ApplyInvoicePostToSalesOrder(tx, inv); err != nil {
+			return fmt.Errorf("apply invoice to sales order tracking: %w", err)
+		}
+
 		// f. Audit log.
 		cid := companyID
 		return WriteAuditLogWithContextDetails(tx, "invoice.posted", "invoice", inv.ID, actor,

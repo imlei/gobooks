@@ -218,6 +218,8 @@ func (s *Server) prefillInvoiceFromSalesOrder(companyID, soID uint, vm *pages.In
 
 	vm.CustomerID = strconv.FormatUint(uint64(so.CustomerID), 10)
 	vm.CurrencyCode = so.CurrencyCode
+	vm.SalesOrderID = so.ID
+	vm.SalesOrderNumber = so.OrderNumber
 	if so.Memo != "" {
 		vm.Memo = so.Memo
 	}
@@ -283,6 +285,19 @@ func (s *Server) handleInvoiceEdit(c *fiber.Ctx) error {
 		CurrencyCode:          inv.CurrencyCode,
 		ExchangeRate:          displayDocumentExchangeRate(inv.CurrencyCode, inv.ExchangeRate),
 	}
+	// SO↔Invoice tracking: preserve the sales_order_id link on
+	// re-render so form re-save keeps the SO-sourced provenance.
+	// Looks up the SO's OrderNumber for the "from SO" hint strip
+	// on the template.
+	if inv.SalesOrderID != nil && *inv.SalesOrderID != 0 {
+		vm.SalesOrderID = *inv.SalesOrderID
+		var so models.SalesOrder
+		if err := s.DB.Select("id", "order_number").
+			Where("id = ? AND company_id = ?", *inv.SalesOrderID, companyID).
+			First(&so).Error; err == nil {
+			vm.SalesOrderNumber = so.OrderNumber
+		}
+	}
 	if CanFromCtx(c, ActionInvoiceApprove) {
 		vm.SubmitPath = fmt.Sprintf("/invoices/%d/issue", invoiceID)
 	}
@@ -343,6 +358,19 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 	warehouseIDRaw := strings.TrimSpace(c.FormValue("warehouse_id"))
 	lineCountRaw := strings.TrimSpace(c.FormValue("line_count"))
 	taxAdjCountRaw := strings.TrimSpace(c.FormValue("tax_adj_count"))
+	// SO↔Invoice tracking: if the form carries a sales_order_id
+	// (set by the "Create Invoice" shortcut on SO detail), persist
+	// it on the invoice header + server-side match lines to SO
+	// lines at insertion time. NULL / "0" / bad value = standalone
+	// invoice (no tracking). Validation of same-company lives in
+	// the helper called after insertion.
+	var invoiceSalesOrderID *uint
+	if raw := strings.TrimSpace(c.FormValue("sales_order_id")); raw != "" {
+		if v, err := strconv.ParseUint(raw, 10, 64); err == nil && v > 0 {
+			u := uint(v)
+			invoiceSalesOrderID = &u
+		}
+	}
 
 	isEdit := invoiceIDRaw != "" && invoiceIDRaw != "0"
 	var editingID uint
@@ -721,6 +749,12 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 			inv.CustomerNameSnapshot = customer.Name
 			inv.CustomerEmailSnapshot = customer.Email
 			inv.CustomerAddressSnapshot = customer.FormattedAddress()
+			// SO tracking: on re-save of a draft, re-apply the
+			// sales_order_id carried on the form. Operator can edit
+			// the hidden field out or leave it — we persist whatever
+			// arrives. Null means they deliberately detached the SO
+			// link. (Pre-filled drafts carry it forward on re-save.)
+			inv.SalesOrderID = invoiceSalesOrderID
 			if err := tx.Save(&inv).Error; err != nil {
 				return err
 			}
@@ -754,6 +788,7 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 				CustomerNameSnapshot:    customer.Name,
 				CustomerEmailSnapshot:   customer.Email,
 				CustomerAddressSnapshot: customer.FormattedAddress(),
+				SalesOrderID:            invoiceSalesOrderID,
 			}
 			// Auto-assign company active default template on new invoice creation.
 			// Best-effort: if no default template exists the invoice starts unbound (nil),
@@ -796,6 +831,16 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 			if err := tx.Create(&line).Error; err != nil {
 				return err
 			}
+		}
+
+		// SO tracking — if the invoice carries a SalesOrderID,
+		// match each invoice line to a SalesOrderLine by
+		// (ProductServiceID + FIFO-remaining) and persist
+		// `sales_order_line_id` on the matched rows. Idempotent
+		// on re-save: MatchInvoiceLinesToSalesOrder clears stale
+		// links first. No-op when SalesOrderID is nil.
+		if err := services.MatchInvoiceLinesToSalesOrder(tx, companyID, inv.ID); err != nil {
+			return err
 		}
 
 		action := "invoice.created"
