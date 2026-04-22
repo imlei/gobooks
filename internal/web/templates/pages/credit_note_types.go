@@ -14,6 +14,19 @@ type CreditNoteFormVM struct {
 	TaxCodes   []models.TaxCode
 	FormError  string
 	Reasons    []models.CreditNoteReason
+	// InitialLinesJSON — JSON array consumed by Alpine's x-data
+	// initializer to pre-fill lines. Populated when navigating
+	// from /credit-notes/new?invoice_id=X so stock-item CNs
+	// automatically inherit the invoice's lines (including
+	// OriginalInvoiceLineID — the IN.5 cost-trace key, without
+	// which stock-line CN post fails with
+	// ErrCreditNoteStockItemRequiresOriginalLine). Blank for
+	// standalone CNs; the Alpine init falls back to an empty
+	// row in that case.
+	InitialLinesJSON string
+	// InvoiceNumber is shown in a "from Invoice X" breadcrumb
+	// when InvoiceID is set; decorative only.
+	InvoiceNumber string
 }
 
 // creditNoteHasStockLine reports whether the CN carries at least one

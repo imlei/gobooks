@@ -2,6 +2,7 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -54,7 +55,82 @@ func (s *Server) handleCreditNoteNewGet(c *fiber.Ctx) error {
 		companyID, "purchase").Find(&taxCodes)
 
 	vm := buildCreditNoteFormVM(companyID, uint(customerID), uint(invoiceID), customers, accounts, taxCodes, "", nil)
+
+	// Invoice → CN pre-fill. When operators click "Issue credit
+	// note" on an invoice's More menu, they arrive here with
+	// ?invoice_id=X. Without pre-fill they'd have to re-enter every
+	// line AND (critically for stock items) the OriginalInvoiceLineID
+	// the IN.5 post path requires — a field the UI never surfaces.
+	// Result: stock-line CNs have been effectively unusable via UI.
+	// This block loads the invoice + lines and serialises them to
+	// InitialLinesJSON so Alpine can hydrate the editor with every
+	// field the post path needs.
+	if invoiceID > 0 {
+		s.prefillCreditNoteFromInvoice(companyID, uint(invoiceID), &vm)
+	}
+
 	return pages.CreditNoteForm(vm).Render(c.Context(), c)
+}
+
+// prefillCreditNoteFromInvoice loads the invoice (scoped to company)
+// and populates vm.InitialLinesJSON with one entry per invoice line.
+// Silent no-op on missing / cross-tenant invoice — form renders
+// blank in that case rather than surfacing a confusing error.
+// Also sets vm.CustomerID from the invoice and captures the number
+// for the breadcrumb hint.
+func (s *Server) prefillCreditNoteFromInvoice(companyID, invoiceID uint, vm *pages.CreditNoteFormVM) {
+	var inv models.Invoice
+	if err := s.DB.Preload("Lines.ProductService").
+		Where("id = ? AND company_id = ?", invoiceID, companyID).
+		First(&inv).Error; err != nil {
+		return
+	}
+	// Override customer + invoice number with truth from the row
+	// (query params could lie).
+	vm.CustomerID = inv.CustomerID
+	vm.InvoiceID = inv.ID
+	vm.InvoiceNumber = inv.InvoiceNumber
+
+	type initLine struct {
+		Description           string `json:"description"`
+		RevenueAccountID      string `json:"revenue_account_id"`
+		Qty                   string `json:"qty"`
+		UnitPrice             string `json:"unit_price"`
+		TaxCodeID             string `json:"tax_code_id"`
+		ProductServiceID      string `json:"product_service_id"`
+		OriginalInvoiceLineID string `json:"original_invoice_line_id"`
+	}
+	lines := make([]initLine, 0, len(inv.Lines))
+	for _, l := range inv.Lines {
+		// Revenue account source preference:
+		//   1. ProductService.RevenueAccountID (the product's default)
+		//   2. Blank — operator will pick from dropdown
+		// (InvoiceLine doesn't carry RevenueAccountID directly.)
+		revAcct := ""
+		if l.ProductService != nil && l.ProductService.RevenueAccountID != 0 {
+			revAcct = strconv.FormatUint(uint64(l.ProductService.RevenueAccountID), 10)
+		}
+		psID := ""
+		if l.ProductServiceID != nil && *l.ProductServiceID != 0 {
+			psID = strconv.FormatUint(uint64(*l.ProductServiceID), 10)
+		}
+		taxID := ""
+		if l.TaxCodeID != nil && *l.TaxCodeID != 0 {
+			taxID = strconv.FormatUint(uint64(*l.TaxCodeID), 10)
+		}
+		lines = append(lines, initLine{
+			Description:           l.Description,
+			RevenueAccountID:      revAcct,
+			Qty:                   l.Qty.String(),
+			UnitPrice:             l.UnitPrice.StringFixed(4),
+			TaxCodeID:             taxID,
+			ProductServiceID:      psID,
+			OriginalInvoiceLineID: strconv.FormatUint(uint64(l.ID), 10),
+		})
+	}
+	if b, err := json.Marshal(lines); err == nil {
+		vm.InitialLinesJSON = string(b)
+	}
 }
 
 // POST /credit-notes/new
@@ -89,6 +165,13 @@ func (s *Server) handleCreditNoteNewPost(c *fiber.Ctx) error {
 	prices := c.Request().PostArgs().PeekMulti("unit_price[]")
 	revAccts := c.Request().PostArgs().PeekMulti("revenue_account_id[]")
 	taxCodeIDs := c.Request().PostArgs().PeekMulti("tax_code_id[]")
+	// product_service_id[] + original_invoice_line_id[] are emitted
+	// as hidden inputs by the Invoice→CN pre-fill path. Without them
+	// stock-line CNs fail post with ErrCreditNoteStockItemRequiresOriginalLine
+	// (IN.5). Blank/absent for standalone CNs — the parse below
+	// treats empty strings as nil.
+	psIDs := c.Request().PostArgs().PeekMulti("product_service_id[]")
+	origLineIDs := c.Request().PostArgs().PeekMulti("original_invoice_line_id[]")
 
 	lineInputs := make([]services.CreditNoteLineInput, 0, len(descriptions))
 	for i := range descriptions {
@@ -107,13 +190,29 @@ func (s *Server) handleCreditNoteNewPost(c *fiber.Ctx) error {
 				taxCodeID = &uid
 			}
 		}
+		var psIDPtr *uint
+		if i < len(psIDs) {
+			if pid, err := strconv.ParseUint(strings.TrimSpace(string(psIDs[i])), 10, 64); err == nil && pid > 0 {
+				uid := uint(pid)
+				psIDPtr = &uid
+			}
+		}
+		var origLineIDPtr *uint
+		if i < len(origLineIDs) {
+			if oid, err := strconv.ParseUint(strings.TrimSpace(string(origLineIDs[i])), 10, 64); err == nil && oid > 0 {
+				uid := uint(oid)
+				origLineIDPtr = &uid
+			}
+		}
 		lineInputs = append(lineInputs, services.CreditNoteLineInput{
-			Description:      desc,
-			Qty:              qty,
-			UnitPrice:        price,
-			RevenueAccountID: uint(revAcctID),
-			TaxCodeID:        taxCodeID,
-			SortOrder:        uint(i + 1),
+			Description:           desc,
+			Qty:                   qty,
+			UnitPrice:             price,
+			RevenueAccountID:      uint(revAcctID),
+			TaxCodeID:             taxCodeID,
+			ProductServiceID:      psIDPtr,
+			OriginalInvoiceLineID: origLineIDPtr,
+			SortOrder:             uint(i + 1),
 		})
 	}
 

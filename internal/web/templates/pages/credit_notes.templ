@@ -344,8 +344,18 @@ templ CreditNoteForm(vm CreditNoteFormVM) {
 
 templ bodyCreditNoteForm(vm CreditNoteFormVM) {
 	<div class="max-w-3xl">
-		<div class="mb-6 text-small text-text-muted2"><a href="/credit-notes" class="hover:underline text-primary">Credit Notes</a> / New</div>
+		<div class="mb-6 text-small text-text-muted2">
+			<a href="/credit-notes" class="hover:underline text-primary">Credit Notes</a> / New
+			if vm.InvoiceNumber != "" {
+				<span> — from <a href={ templ.SafeURL(fmt.Sprintf("/invoices/%d", vm.InvoiceID)) } class="hover:underline text-primary">Invoice { vm.InvoiceNumber }</a></span>
+			}
+		</div>
 		<h1 class="text-title font-semibold">New Credit Note</h1>
+		if vm.InvoiceNumber != "" {
+			<div class="mt-4 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-body text-text">
+				Pre-filled from Invoice { vm.InvoiceNumber }. Adjust qty/price to reflect the portion being credited. Stock items retain their original-line link so inventory is refunded at snapshot cost.
+			</div>
+		}
 		if vm.FormError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
 		}
@@ -385,7 +395,11 @@ templ bodyCreditNoteForm(vm CreditNoteFormVM) {
 			</div>
 
 			<!-- Lines -->
-			<div x-data={ creditNoteFormData() }>
+			<div
+				x-data={ creditNoteFormData() }
+				x-init="initFromDataset()"
+				data-initial-lines={ vm.InitialLinesJSON }
+			>
 				<div class="flex items-center justify-between">
 					<h2 class="text-lg font-semibold">Lines</h2>
 					<button type="button" @click="addLine()" class="text-small text-primary hover:underline">+ Add Line</button>
@@ -421,6 +435,16 @@ templ bodyCreditNoteForm(vm CreditNoteFormVM) {
 							<div class="col-span-1 flex items-center justify-end pt-1">
 								<button type="button" @click="removeLine(idx)" class="text-danger hover:text-danger-hover">✕</button>
 							</div>
+							<!-- Hidden inputs carrying the IN.5 trace keys.
+							     ProductServiceID + OriginalInvoiceLineID are
+							     required when the CN is later posted and the
+							     line points at a stock item — without them
+							     PostCreditNote returns
+							     ErrCreditNoteStockItemRequiresOriginalLine.
+							     Populated by the Invoice→CN pre-fill; blank
+							     for standalone CNs (server treats "" as nil). -->
+							<input type="hidden" name="product_service_id[]" :value="line.product_service_id || ''"/>
+							<input type="hidden" name="original_invoice_line_id[]" :value="line.original_invoice_line_id || ''"/>
 						</div>
 					</template>
 				</div>
@@ -434,9 +458,42 @@ templ bodyCreditNoteForm(vm CreditNoteFormVM) {
 	</div>
 }
 
-// creditNoteFormData returns the Alpine.js x-data initializer for the credit note line editor.
+// creditNoteFormData returns the Alpine.js x-data initializer for the
+// credit note line editor. The optional data-initial-lines attribute
+// (JSON array) is consumed by initFromDataset() so the Invoice→CN
+// pre-fill can carry ProductServiceID / OriginalInvoiceLineID — the
+// IN.5 trace keys that PostCreditNote requires for stock-line posts.
+// Falls back to a single empty row when the attribute is blank.
 func creditNoteFormData() string {
-	return `{ lines: [{ description: '', revenue_account_id: '', qty: 1, unit_price: 0, tax_code_id: '' }], addLine() { this.lines.push({ description: '', revenue_account_id: '', qty: 1, unit_price: 0, tax_code_id: '' }); }, removeLine(idx) { if (this.lines.length > 1) this.lines.splice(idx, 1); } }`
+	return `{
+		lines: [{ description: '', revenue_account_id: '', qty: 1, unit_price: 0, tax_code_id: '', product_service_id: '', original_invoice_line_id: '' }],
+		initFromDataset() {
+			var raw = this.$el.dataset.initialLines || '';
+			if (!raw) return;
+			try {
+				var arr = JSON.parse(raw);
+				if (Array.isArray(arr) && arr.length > 0) {
+					this.lines = arr.map(function(l) {
+						return {
+							description: l.description || '',
+							revenue_account_id: l.revenue_account_id || '',
+							qty: l.qty || 1,
+							unit_price: l.unit_price || 0,
+							tax_code_id: l.tax_code_id || '',
+							product_service_id: l.product_service_id || '',
+							original_invoice_line_id: l.original_invoice_line_id || ''
+						};
+					});
+				}
+			} catch (e) { /* leave default empty row */ }
+		},
+		addLine() {
+			this.lines.push({ description: '', revenue_account_id: '', qty: 1, unit_price: 0, tax_code_id: '', product_service_id: '', original_invoice_line_id: '' });
+		},
+		removeLine(idx) {
+			if (this.lines.length > 1) this.lines.splice(idx, 1);
+		}
+	}`
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
