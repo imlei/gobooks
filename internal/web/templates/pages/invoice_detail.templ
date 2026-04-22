@@ -284,6 +284,37 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 					<p class="text-small font-medium text-text-muted uppercase tracking-wider">Balance Due</p>
 					<p class="mt-1 text-body text-text font-semibold">{ Money(vm.Invoice.BalanceDue) }</p>
 				</div>
+				if vm.Invoice.CustomerPONumber != "" {
+					<div>
+						<p class="text-small font-medium text-text-muted uppercase tracking-wider">Customer PO#</p>
+						<p class="mt-1 text-body text-text font-medium">{ vm.Invoice.CustomerPONumber }</p>
+					</div>
+				}
+				if vm.Invoice.SalesOrderID != nil {
+					<div>
+						<p class="text-small font-medium text-text-muted uppercase tracking-wider">SO Number</p>
+						<p class="mt-1 text-body">
+							<a href={ templ.SafeURL("/sales-orders/" + Uitoa(*vm.Invoice.SalesOrderID)) } class="text-primary hover:text-primary-hover hover:underline">
+								if vm.Invoice.SalesOrder != nil && vm.Invoice.SalesOrder.OrderNumber != "" {
+									{ vm.Invoice.SalesOrder.OrderNumber } ↗
+								} else {
+									#{ Uitoa(*vm.Invoice.SalesOrderID) } ↗
+								}
+							</a>
+						</p>
+					</div>
+				}
+				if vm.Invoice.ShipToSnapshot != "" {
+					<div class="col-span-2 sm:col-span-3 lg:col-span-2">
+						<p class="text-small font-medium text-text-muted uppercase tracking-wider">
+							Ship To
+							if vm.Invoice.ShipToLabel != "" {
+								<span class="ml-1 normal-case text-text-muted3">· { vm.Invoice.ShipToLabel }</span>
+							}
+						</p>
+						<p class="mt-1 text-body whitespace-pre-line text-text">{ vm.Invoice.ShipToSnapshot }</p>
+					</div>
+				}
 				if vm.Invoice.JournalEntryID != nil {
 					<div>
 						<p class="text-small font-medium text-text-muted uppercase tracking-wider">Journal Entry</p>

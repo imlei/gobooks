@@ -45,6 +45,7 @@ func (s *Server) handleInvoiceDetail(c *fiber.Ctx) error {
 		Preload("Lines.ProductService").
 		Preload("Lines.TaxCode").
 		Preload("JournalEntry").
+		Preload("SalesOrder").
 		Where("id = ? AND company_id = ?", uint(id64), companyID).
 		First(&inv).Error
 	if err != nil {
