@@ -1,5 +1,5 @@
 // invoice_editor.js — Alpine component for the invoice line-items editor.
-// v=17
+// v=18
 //
 // Composes gobooksLineItems() for line-array management (addLine / removeLine /
 // auto-grow) and layers Invoice-specific state on top: tax-code breakdown,
@@ -670,9 +670,14 @@ function gobooksItemPicker(line, idx) {
       if (this.items.length === 0 && !this.loading) this._fetch();
     },
 
-    async onInput() {
+    // onInput opens the dropdown immediately (don't wait for the debounced
+    // fetch — the dropdown should appear the moment the user starts typing,
+    // showing "Searching…" while the request is in flight). Fetch itself
+    // is debounced internally so we don't fire on every keystroke.
+    onInput() {
       this.open = true;
-      await this._fetch();
+      if (this._inputDebounce) clearTimeout(this._inputDebounce);
+      this._inputDebounce = setTimeout(() => this._fetch(), 250);
     },
 
     async _fetch() {

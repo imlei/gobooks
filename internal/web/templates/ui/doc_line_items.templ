@@ -40,7 +40,11 @@ templ DocLineItems(vm DocLineItemsVM, headerRow templ.Component, bodyRow templ.C
 		if vm.Title != "" {
 			<h2 class="text-section font-semibold text-text">{ vm.Title }</h2>
 		}
-		<div class="mt-4 overflow-x-auto">
+		// overflow-visible (not overflow-x-auto) so per-row absolute-positioned
+		// pickers (e.g. invoice item picker dropdown) can escape the table
+		// bounds. The trade-off is the table won't get an internal scroll bar
+		// on narrow screens — page-level scroll handles overflow instead.
+		<div class="mt-4 overflow-visible">
 			<table class="w-full text-left text-body">
 				<thead class="text-small uppercase tracking-wider text-text-muted">
 					<tr class="border-b border-border">

@@ -94,7 +94,7 @@ templ invoiceEditorContent(vm InvoiceEditorVM) {
 		@invoiceContactUpdateDialog()
 		@invoiceCustomerQuickCreateDrawer(vm)
 
-		<script src="/static/invoice_editor.js?v=17"></script>
+		<script src="/static/invoice_editor.js?v=18"></script>
 		<script>
 			function ieExitReview() {
 				var fieldset = document.getElementById('ie-fields');
@@ -353,7 +353,7 @@ templ invoiceLineItemPicker() {
 			placeholder="Item / service…"
 			x-model="query"
 			@focus="onFocus()"
-			@input.debounce.250ms="onInput()"
+			@input="onInput()"
 			:disabled="taskReadOnly && line.locked"
 			class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-60 disabled:cursor-not-allowed"
 		/>
