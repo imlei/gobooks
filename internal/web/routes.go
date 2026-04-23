@@ -226,6 +226,14 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/bills/:id/pdf-v2",            s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBillPDFV2)
 	app.Get("/purchase-orders/:id/pdf-v2",  s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePurchaseOrderPDFV2)
 	app.Get("/shipments/:id/pdf-v2",        s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleShipmentPDFV2)
+	// Phase 3 G6: PDF template management page (list / clone / set-default / delete / preview).
+	// Editing the schema_json itself is G7 — this commit only exposes the
+	// "pick which template renders" surface area.
+	app.Get("/pdf-templates",                 s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatesList)
+	app.Get("/pdf-templates/:id/preview",     s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatePreview)
+	app.Post("/pdf-templates/:id/clone",      s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateClone)
+	app.Post("/pdf-templates/:id/set-default", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateSetDefault)
+	app.Post("/pdf-templates/:id/delete",     s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateDelete)
 
 	// Invoice lifecycle management (issue → send → mark paid / void)
 	app.Post("/invoices/:id/save-task-draft", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleInvoiceSaveTaskDraft)
