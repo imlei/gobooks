@@ -1,7 +1,11 @@
 // 遵循project_guide.md
 package admintmpl
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
 
 // adminInt converts an int to string for use in templ expressions.
 func adminInt(n int) string {
@@ -26,6 +30,47 @@ func adminClassActionCaution() string {
 
 func adminClassActionPositive() string {
 	return adminRowActionBase + "border-border-input bg-surface text-text hover:border-success-border hover:bg-success-soft hover:text-success"
+}
+
+// adminFmtRowCount formats a row count with thousands separators for the
+// search-rebuild summary table — easier to read large totals at a glance
+// (e.g. "1,205" vs "1205").
+func adminFmtRowCount(n int) string {
+	if n < 1000 {
+		return strconv.Itoa(n)
+	}
+	s := strconv.Itoa(n)
+	// Walk right-to-left inserting commas every 3 digits.
+	out := make([]byte, 0, len(s)+len(s)/3)
+	for i, c := range []byte(s) {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			out = append(out, ',')
+		}
+		out = append(out, c)
+	}
+	return string(out)
+}
+
+// adminFmtDuration renders a Duration in the most compact human-readable
+// form for the rebuild card. Sub-second uses ms; longer uses seconds with
+// one decimal. Avoids time.Duration's default "1.234567s" precision.
+func adminFmtDuration(d time.Duration) string {
+	if d <= 0 {
+		return "0ms"
+	}
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	if d < time.Minute {
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	}
+	return fmt.Sprintf("%dm%ds", int(d.Minutes()), int(d.Seconds())%60)
+}
+
+// adminFmtDurationMs is the int64-millisecond variant — used for per-family
+// rows where we already have ms from FamilyResult.Duration.Milliseconds().
+func adminFmtDurationMs(ms int64) string {
+	return adminFmtDuration(time.Duration(ms) * time.Millisecond)
 }
 
 func adminClassActionLink() string {

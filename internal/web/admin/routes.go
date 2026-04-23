@@ -68,6 +68,9 @@ func (s *Server) RegisterRoutes(app *fiber.App) {
 	app.Post("/admin/system/maintenance/enable", auth(s.handleAdminMaintenanceEnable)...)
 	app.Post("/admin/system/maintenance/disable", auth(s.handleAdminMaintenanceDisable)...)
 	app.Post("/admin/system/restart", auth(s.handleAdminRestartStub)...)
+	// Phase 5: rebuild the search_documents projection from canonical
+	// business tables. Idempotent + safe under live traffic; runs async.
+	app.Post("/admin/system/search-rebuild", auth(s.handleAdminSearchRebuild)...)
 
 	// 系统设置：通知与安全
 	app.Get("/admin/settings/notifications", auth(s.handleAdminNotificationsGet)...)

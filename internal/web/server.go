@@ -77,7 +77,7 @@ func NewServer(cfg config.Config, db *gorm.DB) *fiber.App {
 	s.registerRoutes(app)
 
 	// SysAdmin 路由：独立认证链，挂载在 /admin/* 下
-	adminSrv := admin.NewServer(cfg, db)
+	adminSrv := admin.NewServer(cfg, db, projector)
 	adminSrv.RegisterRoutes(app)
 
 	return app

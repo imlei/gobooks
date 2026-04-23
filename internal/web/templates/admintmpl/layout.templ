@@ -288,6 +288,18 @@ templ adminFlashBanner(flash string) {
 		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
 			SysAdmin account has been reactivated.
 		</div>
+	} else if flash == "search_rebuild_started" {
+		<div class="mb-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success">
+			Search index rebuild started. The sweep runs in the background — refresh this page in a minute to see progress.
+		</div>
+	} else if flash == "search_rebuild_already_running" {
+		<div class="mb-4 rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-body text-warning">
+			A search index rebuild is already in progress. Wait for it to finish before triggering another.
+		</div>
+	} else if flash == "search_rebuild_disabled" {
+		<div class="mb-4 rounded-md border border-border border-l-4 border-l-danger bg-surface px-4 py-3 text-body text-danger-hover">
+			Search projection is not initialised on this process. Check the server logs for ent client init errors.
+		</div>
 	}
 }
 

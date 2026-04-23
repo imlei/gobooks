@@ -8,13 +8,44 @@ import (
 	"gobooks/internal/web/templates/admintmpl"
 )
 
-// handleAdminSystem 显示系统控制页面（维护模式开关、重启 stub）。
+// handleAdminSystem 显示系统控制页面（维护模式开关、重启 stub、
+// Rebuild search index）。Snapshot of the rebuild status is read once
+// per render — no polling, the operator refreshes the page if they want
+// updated counts.
 func (s *Server) handleAdminSystem(c *fiber.Ctx) error {
-	return admintmpl.AdminSystem(admintmpl.AdminSystemVM{
+	running, lastTriggered, lastResult := s.searchRebuildState.Snapshot()
+	vm := admintmpl.AdminSystemVM{
 		AdminEmail:      AdminUserFromCtx(c).Email,
 		MaintenanceMode: IsMaintenanceMode(),
 		Flash:           c.Query("flash"),
-	}).Render(c.Context(), c)
+		SearchRebuild: admintmpl.AdminSearchRebuildVM{
+			Available:     s.SearchProjector != nil,
+			Running:       running,
+			LastTriggered: lastTriggered,
+		},
+	}
+	if lastResult != nil {
+		vm.SearchRebuild.HasLastRun = true
+		vm.SearchRebuild.LastStarted = lastResult.Started
+		vm.SearchRebuild.LastCompleted = lastResult.Completed
+		vm.SearchRebuild.LastTotalRows = lastResult.TotalRows()
+		if err := lastResult.FirstErr(); err != nil {
+			vm.SearchRebuild.LastErr = err.Error()
+		}
+		vm.SearchRebuild.LastFamilies = make([]admintmpl.AdminSearchRebuildFamilyVM, 0, len(lastResult.Families))
+		for _, fr := range lastResult.Families {
+			row := admintmpl.AdminSearchRebuildFamilyVM{
+				Family:     string(fr.Family),
+				Rows:       fr.Rows,
+				DurationMs: fr.Duration.Milliseconds(),
+			}
+			if fr.Err != nil {
+				row.Err = fr.Err.Error()
+			}
+			vm.SearchRebuild.LastFamilies = append(vm.SearchRebuild.LastFamilies, row)
+		}
+	}
+	return admintmpl.AdminSystem(vm).Render(c.Context(), c)
 }
 
 // handleAdminMaintenanceEnable 开启维护模式（持久化到 DB 并更新内存缓存）。
