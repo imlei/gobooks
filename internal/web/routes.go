@@ -324,6 +324,11 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/deposits/:id/post", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDepositPost)
 	app.Post("/deposits/:id/apply", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDepositApply)
 	app.Post("/deposits/:id/void", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDepositVoid)
+	// Unified Sales Transactions page — merges invoices / quotes / SOs /
+	// receipts / credit notes / returns into one chronological feed with
+	// QuickBooks-style KPI strip.
+	app.Get("/sales-transactions", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesTransactions)
+
 	// Customer Receipts (Phase 4)
 	app.Get("/receipts", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleReceipts)
 	app.Get("/receipts/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleReceiptNew)

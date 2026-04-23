@@ -77,7 +77,7 @@ func bodyGatewayDisputeNew(vm GatewayDisputeNewVM) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if vm.ErrorMsg != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mb-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error-hover\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mb-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -108,7 +108,7 @@ func bodyGatewayDisputeNew(vm GatewayDisputeNewVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"mt-2 block w-48 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div></div><div class=\"mt-6 flex items-center gap-4\"><button type=\"submit\" class=\"rounded-md bg-primary px-6 py-2 text-body font-medium text-white hover:bg-primary-hover\">Open Dispute</button> <a href=\"/settings/payment-gateways/disputes\" class=\"text-body text-text-muted2 hover:underline\">Cancel</a></div></form></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"mt-2 block w-48 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus\"></div></div><div class=\"mt-6 flex items-center gap-4\"><button type=\"submit\" class=\"rounded-md bg-primary px-6 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover\">Open Dispute</button> <a href=\"/settings/payment-gateways/disputes\" class=\"text-body text-text-muted2 hover:underline\">Cancel</a></div></form></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -298,7 +298,7 @@ func bodyBillDetail(vm BillDetailVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><div class=\"mt-8 overflow-hidden rounded-lg border border-border\"><table class=\"w-full text-body\"><thead class=\"bg-surface-raised\"><tr><th class=\"px-4 py-3 text-left font-medium text-text-muted\">Description</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Amount</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Tax</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Total</th></tr></thead> <tbody class=\"divide-y divide-border\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><div class=\"mt-8 overflow-hidden rounded-lg border border-border\"><table class=\"w-full text-body\"><thead class=\"bg-surface-tableHeader\"><tr><th class=\"px-4 py-3 text-left font-medium text-text-muted\">Description</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Amount</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Tax</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Total</th></tr></thead> <tbody class=\"divide-y divide-border\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -360,7 +360,7 @@ func bodyBillDetail(vm BillDetailVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</tbody><tfoot class=\"border-t border-border bg-surface-raised\"><tr><td colspan=\"3\" class=\"px-4 py-3 text-right font-medium\">Subtotal</td><td class=\"px-4 py-3 text-right tabular-nums\" data-numfmt>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</tbody><tfoot class=\"border-t border-border bg-surface-tableHeader\"><tr><td colspan=\"3\" class=\"px-4 py-3 text-right font-medium\">Subtotal</td><td class=\"px-4 py-3 text-right tabular-nums\" data-numfmt>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

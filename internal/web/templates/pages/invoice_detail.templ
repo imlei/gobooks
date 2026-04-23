@@ -605,7 +605,7 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 						<a href="/settings/payment-gateways/settlement-review" class="hover:underline">View all pending settlements</a>
 					</p>
 				} else if vm.GatewaySettlementStatus == "failed" {
-					<div class="mt-3 rounded-md border border-error-border bg-error-soft px-3 py-2 text-body text-error-hover">
+					<div class="mt-3 rounded-md border border-border-danger bg-danger-soft px-3 py-2 text-body text-danger-hover">
 						<p class="font-medium">Settlement failed — requires investigation</p>
 						if vm.GatewaySettlementReason != "" {
 							<p class="mt-1 text-small">Error: { vm.GatewaySettlementReason }</p>
@@ -918,7 +918,7 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 									type="button"
 									@click="aiEmailAssist()"
 									:disabled="emailAssist.loading || emailAssist.visible"
-									class="flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
+									class="flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
 								>
 									<span>✦ AI Draft</span>
 									<span x-show="emailAssist.loading" x-cloak class="text-text-muted2">…</span>
@@ -948,12 +948,12 @@ templ bodyInvoiceDetail(vm InvoiceDetailVM) {
 										<button
 											type="button"
 											@click="applyEmailSuggestion()"
-											class="rounded-md bg-primary px-3 py-1 text-small font-medium text-white hover:bg-primary-hover"
+											class="rounded-md bg-primary px-3 py-1 text-small font-medium text-onPrimary hover:bg-primary-hover"
 										>Apply</button>
 										<button
 											type="button"
 											@click="dismissEmailAssist()"
-											class="rounded-md border border-border px-3 py-1 text-small text-text hover:bg-surface-hover"
+											class="rounded-md border border-border px-3 py-1 text-small text-text hover:bg-background"
 										>Dismiss</button>
 									</div>
 								</div>

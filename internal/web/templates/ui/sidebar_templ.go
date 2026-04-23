@@ -244,15 +244,15 @@ func sidebarShell(vm SidebarVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			templ_7745c5c3_Err = navItem("/sales-transactions", "Sales Transactions", "invoice", vm.Active == "Sales Transactions").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			templ_7745c5c3_Err = navItem("/quotes", "Quotes", "invoice", vm.Active == "Quotes").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = navItem("/sales-orders", "Sales Orders", "invoice", vm.Active == "Sales Orders").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/receipts", "Customer Receipts", "receive", vm.Active == "Customer Receipts").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

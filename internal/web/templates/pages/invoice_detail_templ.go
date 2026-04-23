@@ -1410,7 +1410,7 @@ func bodyInvoiceDetail(vm InvoiceDetailVM) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else if vm.GatewaySettlementStatus == "failed" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 146, "<div class=\"mt-3 rounded-md border border-error-border bg-error-soft px-3 py-2 text-body text-error-hover\"><p class=\"font-medium\">Settlement failed — requires investigation</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 146, "<div class=\"mt-3 rounded-md border border-border-danger bg-danger-soft px-3 py-2 text-body text-danger-hover\"><p class=\"font-medium\">Settlement failed — requires investigation</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1979,7 +1979,7 @@ func bodyInvoiceDetail(vm InvoiceDetailVM) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "</label> <button type=\"button\" @click=\"aiEmailAssist()\" :disabled=\"emailAssist.loading || emailAssist.visible\" class=\"flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed\"><span>✦ AI Draft</span> <span x-show=\"emailAssist.loading\" x-cloak class=\"text-text-muted2\">…</span></button></div><textarea id=\"sendBody\" name=\"body\" rows=\"9\" x-ref=\"emailBody\" @input=\"onBodyEdited()\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 font-mono text-small text-text outline-none focus:ring-2 focus:ring-primary-focus\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "</label> <button type=\"button\" @click=\"aiEmailAssist()\" :disabled=\"emailAssist.loading || emailAssist.visible\" class=\"flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed\"><span>✦ AI Draft</span> <span x-show=\"emailAssist.loading\" x-cloak class=\"text-text-muted2\">…</span></button></div><textarea id=\"sendBody\" name=\"body\" rows=\"9\" x-ref=\"emailBody\" @input=\"onBodyEdited()\" class=\"w-full rounded-md border border-border-input bg-surface px-3 py-2 font-mono text-small text-text outline-none focus:ring-2 focus:ring-primary-focus\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1992,7 +1992,7 @@ func bodyInvoiceDetail(vm InvoiceDetailVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "</textarea><div x-show=\"emailAssist.visible && !emailAssist.loading\" x-cloak class=\"mt-2 rounded-md border border-border bg-surface p-3 text-body\" style=\"display:none\"><div x-show=\"emailAssist.error\" x-cloak class=\"text-small text-danger\" x-text=\"emailAssist.error\"></div><div x-show=\"!emailAssist.error && emailAssist.empty\" x-cloak class=\"text-small text-text-muted2\">No draft available right now.</div><div x-show=\"!emailAssist.error && emailAssist.suggestion\" x-cloak><p class=\"text-text-muted2 text-[11px] mb-1\">AI-drafted email body:</p><pre class=\"whitespace-pre-wrap font-mono text-small text-text\" x-text=\"emailAssist.suggestion\"></pre><div class=\"mt-2 flex gap-2\"><button type=\"button\" @click=\"applyEmailSuggestion()\" class=\"rounded-md bg-primary px-3 py-1 text-small font-medium text-white hover:bg-primary-hover\">Apply</button> <button type=\"button\" @click=\"dismissEmailAssist()\" class=\"rounded-md border border-border px-3 py-1 text-small text-text hover:bg-surface-hover\">Dismiss</button></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "</textarea><div x-show=\"emailAssist.visible && !emailAssist.loading\" x-cloak class=\"mt-2 rounded-md border border-border bg-surface p-3 text-body\" style=\"display:none\"><div x-show=\"emailAssist.error\" x-cloak class=\"text-small text-danger\" x-text=\"emailAssist.error\"></div><div x-show=\"!emailAssist.error && emailAssist.empty\" x-cloak class=\"text-small text-text-muted2\">No draft available right now.</div><div x-show=\"!emailAssist.error && emailAssist.suggestion\" x-cloak><p class=\"text-text-muted2 text-[11px] mb-1\">AI-drafted email body:</p><pre class=\"whitespace-pre-wrap font-mono text-small text-text\" x-text=\"emailAssist.suggestion\"></pre><div class=\"mt-2 flex gap-2\"><button type=\"button\" @click=\"applyEmailSuggestion()\" class=\"rounded-md bg-primary px-3 py-1 text-small font-medium text-onPrimary hover:bg-primary-hover\">Apply</button> <button type=\"button\" @click=\"dismissEmailAssist()\" class=\"rounded-md border border-border px-3 py-1 text-small text-text hover:bg-background\">Dismiss</button></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

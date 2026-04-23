@@ -103,7 +103,7 @@ templ bodyBillDetail(vm BillDetailVM) {
 		// Lines table
 		<div class="mt-8 overflow-hidden rounded-lg border border-border">
 			<table class="w-full text-body">
-				<thead class="bg-surface-raised">
+				<thead class="bg-surface-tableHeader">
 					<tr>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Description</th>
 						<th class="px-4 py-3 text-right font-medium text-text-muted">Amount</th>
@@ -121,7 +121,7 @@ templ bodyBillDetail(vm BillDetailVM) {
 						</tr>
 					}
 				</tbody>
-				<tfoot class="border-t border-border bg-surface-raised">
+				<tfoot class="border-t border-border bg-surface-tableHeader">
 					<tr>
 						<td colspan="3" class="px-4 py-3 text-right font-medium">Subtotal</td>
 						<td class="px-4 py-3 text-right tabular-nums" data-numfmt>{ vm.Bill.Subtotal.StringFixed(2) }</td>

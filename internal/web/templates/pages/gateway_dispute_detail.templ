@@ -98,7 +98,7 @@ templ bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) {
 					<form method="POST" action={ templ.SafeURL("/settings/payment-gateways/disputes/" + Uitoa(vm.Dispute.ID) + "/lose") }>
 						<button
 							type="submit"
-							class="rounded-md bg-error-soft border border-error-border px-5 py-2 text-body font-medium text-error-hover hover:bg-error-soft"
+							class="rounded-md bg-danger-soft border border-border-danger px-5 py-2 text-body font-medium text-danger-hover hover:bg-danger-soft"
 							onclick="return confirm('Mark this dispute as Lost? A chargeback transaction will be created that must be posted and applied to restore the invoice balance.')"
 						>
 							Mark Lost (Chargeback)

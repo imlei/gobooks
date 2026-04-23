@@ -58,9 +58,7 @@ templ bodyReceiptDetail(vm ReceiptDetailVM) {
 		if vm.Voided {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">Receipt voided.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		// Status badge for existing receipts
 		if vm.Receipt.ID != 0 {

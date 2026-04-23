@@ -87,12 +87,10 @@ templ bodyARReturnReceiptsList(vm ARReturnReceiptsListVM) {
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">Return Receipt saved.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		<div class="mt-6 overflow-hidden rounded-lg border border-border">
 			<table class="w-full text-body">
-				<thead class="bg-surface-raised">
+				<thead class="bg-surface-tableHeader">
 					<tr>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Number</th>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Customer</th>
@@ -108,7 +106,7 @@ templ bodyARReturnReceiptsList(vm ARReturnReceiptsListVM) {
 						</tr>
 					}
 					for _, r := range vm.Rows {
-						<tr class="hover:bg-surface-raised">
+						<tr class="hover:bg-surface-rowHover">
 							<td class="px-4 py-3 font-medium">
 								<a href={ templ.SafeURL(fmt.Sprintf("/ar-return-receipts/%d", r.ID)) } class="text-primary hover:underline">
 									if r.ReturnReceiptNumber == "" {
@@ -197,9 +195,7 @@ templ bodyARReturnReceiptDetail(vm ARReturnReceiptDetailVM) {
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">Saved.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<!-- Header info grid -->
 		<div class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-4">
@@ -232,7 +228,7 @@ templ bodyARReturnReceiptDetail(vm ARReturnReceiptDetailVM) {
 		</div>
 
 		if vm.ReturnReceipt.CreditNoteID != nil {
-			<div class="mt-4 rounded-md border border-border bg-surface-raised px-4 py-3 text-body">
+			<div class="mt-4 rounded-md border border-border bg-surface-tableHeader px-4 py-3 text-body">
 				Linked Credit Note:
 				<a href={ templ.SafeURL(fmt.Sprintf("/credit-notes/%d", *vm.ReturnReceipt.CreditNoteID)) } class="ml-1 text-primary hover:underline">
 					if vm.ReturnReceipt.CreditNote != nil && vm.ReturnReceipt.CreditNote.CreditNoteNumber != "" {
@@ -262,7 +258,7 @@ templ bodyARReturnReceiptDetail(vm ARReturnReceiptDetailVM) {
 			<h2 class="text-section font-semibold text-text">Lines</h2>
 			<div class="mt-3 overflow-hidden rounded-lg border border-border">
 				<table class="w-full text-body">
-					<thead class="bg-surface-raised">
+					<thead class="bg-surface-tableHeader">
 						<tr>
 							<th class="px-4 py-3 text-left font-medium text-text-muted">#</th>
 							<th class="px-4 py-3 text-left font-medium text-text-muted">Item</th>
@@ -342,9 +338,7 @@ templ bodyARReturnReceiptForm(vm ARReturnReceiptFormVM) {
 			}
 		</div>
 		<h1 class="text-title font-semibold">New Return Receipt</h1>
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		<form method="POST" action="/ar-return-receipts/save" class="mt-6 space-y-6">
 			if vm.CreditNoteID != 0 {
 				<input type="hidden" name="credit_note_id" value={ fmt.Sprintf("%d", vm.CreditNoteID) }/>
@@ -397,13 +391,13 @@ templ bodyARReturnReceiptForm(vm ARReturnReceiptFormVM) {
 			<div>
 				<h2 class="text-section font-semibold text-text">Lines</h2>
 				if len(vm.PrefilledLines) == 0 {
-					<div class="mt-2 rounded-md border border-border bg-surface-raised px-4 py-3 text-body text-text-muted2">
+					<div class="mt-2 rounded-md border border-border bg-surface-tableHeader px-4 py-3 text-body text-text-muted2">
 						No lines to return. Use the "Create matching Return Receipt" button on a Credit Note's detail page to pre-fill this form with its stock-item lines.
 					</div>
 				} else {
 					<div class="mt-3 overflow-hidden rounded-lg border border-border">
 						<table class="w-full text-body">
-							<thead class="bg-surface-raised">
+							<thead class="bg-surface-tableHeader">
 								<tr>
 									<th class="px-3 py-2 text-left font-medium text-text-muted">Item</th>
 									<th class="px-3 py-2 text-left font-medium text-text-muted">Description</th>
@@ -455,12 +449,12 @@ templ bodyARReturnReceiptForm(vm ARReturnReceiptFormVM) {
 templ arrStatusBadge(status models.ARReturnReceiptStatus) {
 	switch status {
 		case models.ARReturnReceiptStatusDraft:
-			<span class="inline-flex rounded-full bg-surface-raised px-2 py-0.5 text-small text-text-muted">Draft</span>
+			<span class="inline-flex rounded-full bg-surface-tableHeader px-2 py-0.5 text-small text-text-muted">Draft</span>
 		case models.ARReturnReceiptStatusPosted:
 			<span class="inline-flex rounded-full bg-success-soft px-2 py-0.5 text-small text-success-hover">Posted</span>
 		case models.ARReturnReceiptStatusVoided:
 			<span class="inline-flex rounded-full bg-danger-soft px-2 py-0.5 text-small text-danger-hover">Voided</span>
 		default:
-			<span class="inline-flex rounded-full bg-surface-raised px-2 py-0.5 text-small">{ string(status) }</span>
+			<span class="inline-flex rounded-full bg-surface-tableHeader px-2 py-0.5 text-small">{ string(status) }</span>
 	}
 }

@@ -128,7 +128,7 @@ func bodyAdminSystem(vm AdminSystemVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<form method=\"post\" action=\"/admin/system/maintenance/enable\" onsubmit=\"return confirm('Enable maintenance mode? All business users will be locked out immediately.');\"><button type=\"submit\" class=\"w-full min-h-[44px] rounded-md bg-danger px-5 py-3 text-body font-semibold text-white shadow-sm hover:bg-danger-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-danger-focus\">Enable maintenance mode</button><p class=\"mt-2 text-center text-xs text-text-muted2 sm:text-left\">Locks out all business users until disabled.</p></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<form method=\"post\" action=\"/admin/system/maintenance/enable\" onsubmit=\"return confirm('Enable maintenance mode? All business users will be locked out immediately.');\"><button type=\"submit\" class=\"w-full min-h-[44px] rounded-md bg-danger px-5 py-3 text-body font-semibold text-onPrimary shadow-sm hover:bg-danger-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-danger-focus\">Enable maintenance mode</button><p class=\"mt-2 text-center text-xs text-text-muted2 sm:text-left\">Locks out all business users until disabled.</p></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

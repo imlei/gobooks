@@ -19,9 +19,7 @@ templ bodyPaymentGateways(vm PaymentGatewaysVM) {
 		if vm.Created {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Gateway account created.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<form method="post" action="/settings/payment-gateways/processors" class="mt-6 rounded-lg border border-border bg-surface p-6">
 			<h2 class="text-section font-semibold text-text">Add Gateway</h2>
@@ -104,9 +102,7 @@ templ bodyPaymentMappings(vm PaymentMappingsVM) {
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Mapping saved.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		for _, gw := range vm.GatewayAccounts {
 			<form method="post" action="/settings/payment-gateways/mappings" class="mt-6 rounded-lg border border-border bg-surface p-6">
 				<input type="hidden" name="gateway_account_id" value={ Uitoa(gw.ID) }/>
@@ -175,9 +171,7 @@ templ bodyPaymentRequests(vm PaymentRequestsVM) {
 		if vm.Created {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payment request created.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		<form method="post" action="/settings/payment-gateways/requests" class="mt-6 rounded-lg border border-border bg-surface p-6">
 			<h2 class="text-section font-semibold text-text">Create Request</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -268,9 +262,7 @@ templ bodyPaymentTransactions(vm PaymentTransactionsVM) {
 		if vm.JustReverseAllocApplied {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Reverse allocation applied — invoice balances restored proportionally.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		<form method="post" action="/settings/payment-gateways/transactions" class="mt-6 rounded-lg border border-border bg-surface p-6">
 			<h2 class="text-section font-semibold text-text">Record Transaction</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
@@ -371,7 +363,7 @@ templ bodyPaymentTransactions(vm PaymentTransactionsVM) {
 											}
 											if st.CanChargebackApply {
 												<form method="post" action={ "/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback" } class="inline ml-1">
-													<button type="submit" class="text-small font-medium text-error-hover hover:underline" onclick="return confirm('Apply chargeback and restore invoice balance?');">CB Apply</button>
+													<button type="submit" class="text-small font-medium text-danger-hover hover:underline" onclick="return confirm('Apply chargeback and restore invoice balance?');">CB Apply</button>
 												</form>
 											}
 											if st.CanRefundReverseAllocate {
@@ -381,7 +373,7 @@ templ bodyPaymentTransactions(vm PaymentTransactionsVM) {
 											}
 											if st.CanChargebackReverseAllocate {
 												<form method="post" action={ "/settings/payment-gateways/transactions/" + Uitoa(t.ID) + "/apply-chargeback-multialloc" } class="inline ml-1">
-													<button type="submit" class="text-small font-medium text-error-hover hover:underline" onclick="return confirm('Apply chargeback across all allocated invoices?');">CB Alloc</button>
+													<button type="submit" class="text-small font-medium text-danger-hover hover:underline" onclick="return confirm('Apply chargeback across all allocated invoices?');">CB Alloc</button>
 												</form>
 											}
 											if st.IsReverseAllocated {

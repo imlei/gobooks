@@ -55,9 +55,7 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 				Customer reactivated.
 			</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		if vm.LifecycleErr != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.LifecycleErr }</div>
 		}
@@ -152,9 +150,17 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 					<p class="text-body font-semibold text-text">View Tasks</p>
 					<p class="mt-1 text-small text-text-muted2">Open the task list filtered to this customer.</p>
 				</a>
+				<a href={ "/sales-transactions?customer_id=" + Uitoa(vm.Customer.ID) } class="rounded-md border border-border bg-background p-4 hover:border-primary-soft hover:bg-primary-soft/30">
+					<p class="text-body font-semibold text-text">Sales Transactions</p>
+					<p class="mt-1 text-small text-text-muted2">Full feed: quotes, sales orders, invoices, receipts, credits.</p>
+				</a>
 				<a href={ "/invoices?customer_id=" + Uitoa(vm.Customer.ID) } class="rounded-md border border-border bg-background p-4 hover:border-primary-soft hover:bg-primary-soft/30">
 					<p class="text-body font-semibold text-text">View Invoices</p>
 					<p class="mt-1 text-small text-text-muted2">Open the invoice list filtered to this customer.</p>
+				</a>
+				<a href={ "/receipts?customer_id=" + Uitoa(vm.Customer.ID) } class="rounded-md border border-border bg-background p-4 hover:border-primary-soft hover:bg-primary-soft/30">
+					<p class="text-body font-semibold text-text">Customer Receipts</p>
+					<p class="mt-1 text-small text-text-muted2">Payments received from this customer.</p>
 				</a>
 			</div>
 		</div>
@@ -250,7 +256,7 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 				</div>
 				<div class="mt-4 overflow-hidden rounded-lg border border-border">
 					<table class="w-full text-body">
-						<thead class="bg-surface-raised text-small uppercase tracking-wider text-text-muted">
+						<thead class="bg-surface-tableHeader text-small uppercase tracking-wider text-text-muted">
 							<tr>
 								<th class="px-4 py-3 text-left">Quote #</th>
 								<th class="px-4 py-3 text-left">Date</th>
@@ -301,7 +307,7 @@ templ bodyCustomerDetail(vm CustomerDetailVM) {
 				</div>
 				<div class="mt-4 overflow-hidden rounded-lg border border-border">
 					<table class="w-full text-body">
-						<thead class="bg-surface-raised text-small uppercase tracking-wider text-text-muted">
+						<thead class="bg-surface-tableHeader text-small uppercase tracking-wider text-text-muted">
 							<tr>
 								<th class="px-4 py-3 text-left">Order #</th>
 								<th class="px-4 py-3 text-left">Date</th>
@@ -444,7 +450,7 @@ templ customerCurrencyPolicySection(vm CustomerDetailVM) {
 						for _, ac := range vm.AllowedCurrencies {
 							<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/currency-policy/remove", vm.Customer.ID)) } class="inline">
 								<input type="hidden" name="currency_code" value={ ac.CurrencyCode }/>
-								<span class="inline-flex items-center gap-1 rounded bg-surface-raised border border-border px-2 py-0.5 text-small text-text">
+								<span class="inline-flex items-center gap-1 rounded bg-surface-tableHeader border border-border px-2 py-0.5 text-small text-text">
 									{ ac.CurrencyCode }
 									<button type="submit" class="text-text-muted hover:text-danger leading-none" title="Remove">×</button>
 								</span>
@@ -467,7 +473,7 @@ templ customerCurrencyPolicyBadge(p models.CustomerCurrencyPolicy) {
 		case models.CustomerCurrencyPolicyMultiAllowed:
 			<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-success-soft text-success">Multi-currency</span>
 		default:
-			<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-surface-raised text-text-muted">Single currency</span>
+			<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-surface-tableHeader text-text-muted">Single currency</span>
 	}
 }
 
@@ -649,7 +655,7 @@ templ customerShippingAddressesCard(vm CustomerDetailVM) {
 									<div class="flex items-center justify-end gap-2">
 										if !addr.IsDefault {
 											<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/shipping-addresses/%d/set-default", vm.Customer.ID, addr.ID)) } class="inline">
-												<button type="submit" class="rounded px-2 py-1 text-small text-primary hover:bg-surface-hover">Set default</button>
+												<button type="submit" class="rounded px-2 py-1 text-small text-primary hover:bg-background">Set default</button>
 											</form>
 										}
 										<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/shipping-addresses/%d/delete", vm.Customer.ID, addr.ID)) } class="inline" onsubmit="return confirm('Delete this shipping address? Historical documents that used it keep their snapshot.')">

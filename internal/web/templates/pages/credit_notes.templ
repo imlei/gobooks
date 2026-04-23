@@ -57,7 +57,7 @@ templ bodyCreditNotesList(vm CreditNotesListVM) {
 		}
 		<div class="mt-6 overflow-hidden rounded-lg border border-border">
 			<table class="w-full text-body">
-				<thead class="bg-surface-raised">
+				<thead class="bg-surface-tableHeader">
 					<tr>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Number</th>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Customer</th>
@@ -74,7 +74,7 @@ templ bodyCreditNotesList(vm CreditNotesListVM) {
 						</tr>
 					}
 					for _, cn := range vm.CreditNotes {
-						<tr class="hover:bg-surface-raised">
+						<tr class="hover:bg-surface-rowHover">
 							<td class="px-4 py-3 font-medium">
 								<a href={ templ.SafeURL("/credit-notes/" + Uitoa(cn.ID)) } class="text-primary hover:underline">{ cn.CreditNoteNumber }</a>
 							</td>
@@ -150,9 +150,7 @@ templ bodyCreditNoteDetail(vm CreditNoteDetailVM) {
 			</div>
 		</div>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		if vm.Removed {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">Credit application removed.</div>
@@ -184,7 +182,7 @@ templ bodyCreditNoteDetail(vm CreditNoteDetailVM) {
 		<!-- Lines table -->
 		<div class="mt-8 overflow-hidden rounded-lg border border-border">
 			<table class="w-full text-body">
-				<thead class="bg-surface-raised">
+				<thead class="bg-surface-tableHeader">
 					<tr>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Description</th>
 						<th class="px-4 py-3 text-right font-medium text-text-muted">Qty</th>
@@ -206,7 +204,7 @@ templ bodyCreditNoteDetail(vm CreditNoteDetailVM) {
 						</tr>
 					}
 				</tbody>
-				<tfoot class="border-t border-border bg-surface-raised">
+				<tfoot class="border-t border-border bg-surface-tableHeader">
 					<tr>
 						<td colspan="5" class="px-4 py-3 text-right font-medium">Total</td>
 						<td class="px-4 py-3 text-right font-semibold" data-numfmt>{ vm.CreditNote.Amount.StringFixed(2) }</td>
@@ -224,7 +222,7 @@ templ bodyCreditNoteDetail(vm CreditNoteDetailVM) {
 			<h2 class="mt-8 text-lg font-semibold">Applications</h2>
 			<div class="mt-3 overflow-hidden rounded-lg border border-border">
 				<table class="w-full text-body">
-					<thead class="bg-surface-raised">
+					<thead class="bg-surface-tableHeader">
 						<tr>
 							<th class="px-4 py-3 text-left font-medium text-text-muted">Invoice</th>
 							<th class="px-4 py-3 text-right font-medium text-text-muted">Amount Applied</th>
@@ -356,9 +354,7 @@ templ bodyCreditNoteForm(vm CreditNoteFormVM) {
 				Pre-filled from Invoice { vm.InvoiceNumber }. Adjust qty/price to reflect the portion being credited. Stock items retain their original-line link so inventory is refunded at snapshot cost.
 			</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		<form method="POST" action="/credit-notes/new" class="mt-6 space-y-6">
 			<div class="grid grid-cols-2 gap-4">
 				<div>

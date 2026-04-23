@@ -13,600 +13,439 @@ templ BillEditor(vm BillEditorVM) {
 }
 
 templ bodyBillEditor(vm BillEditorVM) {
-	<div class="max-w-[95%]">
-		<div class="flex flex-wrap items-center justify-between gap-4">
-			<div>
-				<h1 class="text-title font-semibold">{ BillEditorTitle(vm) }</h1>
-				<p class="mt-1 text-text-muted2">
-					if vm.IsEdit {
-						Edit draft bill. Changes are saved as a draft until posted.
-					} else {
-						Create a new bill. Save as draft to review before posting.
-					}
-				</p>
-			</div>
-			<a href="/bills" class="text-body text-text-muted3 hover:text-text">← Back to Bills</a>
+	@ui.DocEditorShell(billEditorShellVM(vm), billEditorContent(vm))
+}
+
+templ billEditorContent(vm BillEditorVM) {
+	<form
+		method="post"
+		action="/bills/save-draft"
+		class="space-y-6"
+		x-data="billEditor()"
+		data-accounts={ vm.AccountsJSON }
+		data-tax-codes={ vm.TaxCodesJSON }
+		data-tasks={ vm.TasksJSON }
+		data-products={ vm.ProductsJSON }
+		data-initial-lines={ vm.InitialLinesJSON }
+		data-payment-terms={ vm.PaymentTermsJSON }
+		data-contact-terms={ vm.VendorsTermsJSON }
+		data-initial-terms={ vm.TermCode }
+		data-initial-date={ vm.BillDate }
+		data-initial-due-date={ vm.DueDate }
+	>
+		if vm.IsEdit {
+			<input type="hidden" name="bill_id" value={ Uitoa(vm.EditingID) }/>
+		}
+
+		<fieldset id="be-fields" disabled?={ vm.ReviewLocked }>
+			@ui.DocHeaderGrid(
+				"Bill Details",
+				billHeaderLeft(vm),
+				billHeaderRight(vm),
+				nil,
+			)
+			@billLineItemsCard(vm)
+		</fieldset>
+
+		<div
+			id="be-review-banner"
+			style={ editorDisplay(vm.ReviewLocked) }
+			class="rounded-md border border-border bg-background px-4 py-3 text-body text-text-muted2"
+		>
+			if vm.Saved {
+				<span class="font-semibold text-text">Draft saved.</span>
+				<span> </span>
+			}
+			Review your bill. If everything looks correct, click <strong class="text-text">Submit</strong> to save — or click <strong class="text-text">← Edit</strong> to make changes.
 		</div>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
-				{ vm.FormError }
-			</div>
-		}
-		if vm.LinesError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">
-				{ vm.LinesError }
-			</div>
-		}
+		@ui.DocEditorFooter(billEditorFooterVM(vm))
 
-		<form
-			method="post"
-			action="/bills/save-draft"
-			class="mt-6 space-y-6"
-			x-data="billEditor()"
-			data-accounts={ vm.AccountsJSON }
-			data-tax-codes={ vm.TaxCodesJSON }
-			data-tasks={ vm.TasksJSON }
-			data-products={ vm.ProductsJSON }
-			data-initial-lines={ vm.InitialLinesJSON }
-			data-payment-terms={ vm.PaymentTermsJSON }
-			data-contact-terms={ vm.VendorsTermsJSON }
-			data-initial-terms={ vm.TermCode }
-			data-initial-date={ vm.BillDate }
-			data-initial-due-date={ vm.DueDate }
-		>
-			if vm.IsEdit {
-				<input type="hidden" name="bill_id" value={ Uitoa(vm.EditingID) }/>
+		<script src="/static/bill_editor.js?v=8"></script>
+		<script>
+			function beExitReview() {
+				var fieldset = document.getElementById('be-fields');
+				var submitBtn = document.getElementById('be-submit-btn');
+				if (fieldset) fieldset.disabled = false;
+				document.getElementById('be-review-banner').style.display = 'none';
+				document.getElementById('be-cancel-link').style.display = '';
+				document.getElementById('be-edit-btn').style.display = 'none';
+				document.getElementById('be-save-btn').style.display = '';
+				if (submitBtn) submitBtn.style.display = 'none';
 			}
+		</script>
+	</form>
+}
 
-			// Wrapper div — JS adds disabled state to lock fields on review
-			<fieldset id="be-fields" disabled?={ vm.ReviewLocked }>
+// billHeaderLeft is the vendor / billing column of the header grid.
+templ billHeaderLeft(vm BillEditorVM) {
+	<div>
+		<label class={ compactLabelClass() }>Vendor *</label>
+		<select
+			name="vendor_id"
+			@change="onContactChange($event.target.value)"
+			class={ fieldClass(vm.VendorError != "") }
+		>
+			<option value="">— Select vendor —</option>
+			for _, v := range vm.Vendors {
+				<option value={ Uitoa(v.ID) } selected?={ Uitoa(v.ID) == vm.VendorID }>{ v.Name }</option>
+			}
+		</select>
+		@fieldError(vm.VendorError)
+	</div>
+	<div>
+		<label class={ compactLabelClass() }>Memo</label>
+		<input
+			type="text"
+			name="memo"
+			value={ vm.Memo }
+			placeholder="Internal note or reference"
+			autocomplete="off"
+			class={ fieldClass(false) }
+		/>
+	</div>
+	if len(vm.Warehouses) == 1 {
+		<div>
+			<label class={ compactLabelClass() }>Warehouse</label>
+			<div class="mt-2 flex items-center rounded-md border border-border bg-background px-3 py-2 text-body text-text">
+				<span class="font-medium">{ vm.Warehouses[0].Name }</span>
+				<span class="ml-2 text-text-muted2">({ vm.Warehouses[0].Code })</span>
+			</div>
+			<input type="hidden" name="warehouse_id" value={ Uitoa(vm.Warehouses[0].ID) }/>
+			<p class={ compactHintClass() }>Inventory received from this bill will be routed here.</p>
+		</div>
+	} else if len(vm.Warehouses) > 1 {
+		@billWarehouseCombobox(vm)
+	}
+}
 
-			// ── Header ──────────────────────────────────────────────────────────
-			<div class="rounded-lg border border-border bg-surface p-6">
-				<h2 class="text-section font-semibold text-text">Bill Details</h2>
-				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
+// billHeaderRight is the bill metadata column (number / date / terms / FX).
+templ billHeaderRight(vm BillEditorVM) {
+	<div class="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">
+		<div>
+			<label class={ compactLabelClass() }>Bill Number</label>
+			<input
+				type="text"
+				name="bill_number"
+				value={ vm.BillNumber }
+				placeholder="e.g. BILL001"
+				autocomplete="off"
+				class={ fieldClass(vm.BillNumberError != "") }
+			/>
+			@fieldError(vm.BillNumberError)
+		</div>
+		<div>
+			<label class={ compactLabelClass() }>Bill Date *</label>
+			<input
+				type="date"
+				name="bill_date"
+				value={ vm.BillDate }
+				x-model="billDate"
+				@change="onDateChange($event.target.value)"
+				style="color-scheme: dark;"
+				class={ fieldClass(vm.DateError != "") }
+			/>
+			@fieldError(vm.DateError)
+		</div>
+		<div>
+			<label class={ compactLabelClass() }>Terms</label>
+			<select
+				name="terms"
+				x-model="terms"
+				@change="onTermsChange($event.target.value)"
+				class={ fieldClass(false) }
+			>
+				<option value="">— Select —</option>
+				for _, pt := range vm.PaymentTerms {
+					<option value={ pt.Code } selected?={ pt.Code == vm.TermCode }>{ pt.DropdownLabel() }</option>
+				}
+			</select>
+		</div>
+		<div>
+			<label class={ compactLabelClass() }>Due Date</label>
+			<input
+				type="date"
+				name="due_date"
+				x-model="dueDate"
+				style="color-scheme: dark;"
+				:readonly="!dueDateEditable"
+				:class="dueDateEditable
+					? 'mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus'
+					: 'mt-2 block w-full cursor-not-allowed rounded-md border border-border-input bg-background px-3 py-2 text-body text-text-muted2 outline-none'"
+			/>
+			<p x-cloak x-show="!dueDateEditable" class={ compactHintClass() }>Auto-computed from terms and bill date.</p>
+		</div>
+		if vm.MultiCurrencyEnabled {
+			<div>
+				<label class={ compactLabelClass() }>Currency</label>
+				<select
+					name="currency_code"
+					class={ fieldClass(vm.CurrencyError != "") }
+				>
+					<option value="">{ vm.BaseCurrencyCode } (base)</option>
+					for _, cc := range vm.CompanyCurrencies {
+						<option value={ cc.CurrencyCode } selected?={ cc.CurrencyCode == vm.CurrencyCode }>{ cc.CurrencyCode }</option>
+					}
+				</select>
+				@fieldError(vm.CurrencyError)
+			</div>
+			<div>
+				<label class={ compactLabelClass() }>Exchange Rate</label>
+				<input
+					type="text"
+					name="exchange_rate"
+					value={ vm.ExchangeRate }
+					placeholder="auto-lookup"
+					autocomplete="off"
+					inputmode="decimal"
+					class={ fieldClass(vm.ExchangeRateError != "") }
+				/>
+				@fieldError(vm.ExchangeRateError)
+			</div>
+		}
+	</div>
+}
 
-					// Bill Number
-					<div>
-						<label class="block text-body font-medium text-text">Bill Number <span class="font-normal text-text-muted2">(optional)</span></label>
-						if vm.BillNumberError != "" {
-							<input
-								type="text"
-								name="bill_number"
-								value={ vm.BillNumber }
-								placeholder="e.g. BILL001"
-								autocomplete="off"
-								class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-danger-focus"
-							/>
-							<div class="mt-1 text-body text-danger">{ vm.BillNumberError }</div>
-						} else {
-							<input
-								type="text"
-								name="bill_number"
-								value={ vm.BillNumber }
-								placeholder="e.g. BILL001"
-								autocomplete="off"
-								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus"
-							/>
-						}
-					</div>
+// billLineItemsCard is the Bill editor's line-items table. Bill is wider
+// than the other editors (10 cols: Item / Category / Description / Qty /
+// Unit Price / Amount / Tax / Task / Billable / Remove) and has its own
+// per-line state machine (Item picked → qty+price authoritative; otherwise
+// amount editable). Kept in its own card with overflow-x-auto so narrow
+// screens can scroll the table without breaking the page layout.
+templ billLineItemsCard(vm BillEditorVM) {
+	<div class={ ui.SectionCardChromeClass() }>
+		<div class="flex items-center justify-between">
+			<div>
+				<h2 class="text-section font-semibold text-text">Line Items</h2>
+				<p class="mt-1 text-small text-text-muted2">Task-linked lines inherit billable customer from the selected task. Only open or completed tasks can be chosen.</p>
+			</div>
+			<button
+				type="button"
+				@click="addLine()"
+				class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background"
+			>
+				+ Add Line
+			</button>
+		</div>
 
-					// Vendor
-					<div>
-						<label class="block text-body font-medium text-text">Vendor *</label>
-						if vm.VendorError != "" {
-							<select
-								name="vendor_id"
-								@change="onContactChange($event.target.value)"
-								class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
-							>
-								<option value="">-- Select --</option>
-								for _, v := range vm.Vendors {
-									<option value={ Uitoa(v.ID) } selected?={ Uitoa(v.ID) == vm.VendorID }>{ v.Name }</option>
-								}
-							</select>
-							<div class="mt-1 text-body text-danger">{ vm.VendorError }</div>
-						} else {
-							<select
-								name="vendor_id"
-								@change="onContactChange($event.target.value)"
-								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-							>
-								<option value="">-- Select --</option>
-								for _, v := range vm.Vendors {
-									<option value={ Uitoa(v.ID) } selected?={ Uitoa(v.ID) == vm.VendorID }>{ v.Name }</option>
-								}
-							</select>
-						}
-					</div>
+		<p class="mt-1 text-small text-text-muted2">
+			Pick an <strong>Item</strong> on any line you want to track in inventory
+			— stock items route through the inventory ledger on bill post. Leave
+			Item blank on pure expense lines (utilities, fees, labour) and enter
+			the Amount directly.
+		</p>
 
-					// Bill Date (Alpine-managed for due date calc)
-					<div>
-						<label class="block text-body font-medium text-text">Bill Date *</label>
-						if vm.DateError != "" {
-							<input
-								type="date"
-								name="bill_date"
-								value={ vm.BillDate }
-								x-model="billDate"
-								@change="onDateChange($event.target.value)"
-								style="color-scheme: dark;"
-								class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-danger-focus"
-							/>
-							<div class="mt-1 text-body text-danger">{ vm.DateError }</div>
-						} else {
-							<input
-								type="date"
-								name="bill_date"
-								value={ vm.BillDate }
-								x-model="billDate"
-								@change="onDateChange($event.target.value)"
-								style="color-scheme: dark;"
-								class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"
-							/>
-						}
-					</div>
+		<div class="mt-4 overflow-x-auto">
+			<table class="w-full text-left text-body">
+				<thead class="text-small uppercase tracking-wider text-text-muted">
+					<tr class="border-b border-border">
+						<th class="py-2 pr-3 w-48">Item</th>
+						<th class="py-2 pr-3 w-44">Category</th>
+						<th class="py-2 pr-3">Description</th>
+						<th class="py-2 pr-3 w-20">Qty</th>
+						<th class="py-2 pr-3 w-28">Unit Price</th>
+						<th class="py-2 pr-3 w-28">Amount</th>
+						<th class="py-2 pr-3 w-32">Tax</th>
+						<th class="py-2 pr-3 w-44">Task</th>
+						<th class="py-2 pr-3 w-24">Billing</th>
+						<th class="py-2 w-10"></th>
+					</tr>
+				</thead>
+				<tbody>
+					<template x-for="(line, idx) in lines" :key="idx">
+						<tr class="border-b border-border-subtle align-top">
+							<td class="py-2 pr-3">
+								<select
+									:name="'line_product_service_id[' + idx + ']'"
+									x-model="line.product_service_id"
+									@change="onProductChange(idx, $event.target.value)"
+									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+								>
+									<option value="">— Expense only (no item) —</option>
+									<template x-for="p in products" :key="p.id">
+										<option :value="p.id" :selected="String(line.product_service_id) === String(p.id)" x-text="productLabel(p)"></option>
+									</template>
+								</select>
+							</td>
+							<td class="py-2 pr-3">
+								<select
+									:name="'line_expense_account_id[' + idx + ']'"
+									x-model="line.expense_account_id"
+									@change="onExpenseAccountChange(idx, $event.target.value)"
+									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+								>
+									<option value="">— None —</option>
+									<template x-for="a in accounts" :key="a.id">
+										<option :value="a.id" :selected="String(line.expense_account_id) === String(a.id)" x-text="a.code + ' ' + a.name"></option>
+									</template>
+								</select>
+							</td>
+							<td class="py-2 pr-3">
+								<input
+									type="text"
+									:name="'line_description[' + idx + ']'"
+									x-model="line.description"
+									placeholder="Description"
+									autocomplete="off"
+									@input="calcLine(idx)"
+									class="block w-full rounded-md bg-surface px-2 py-1.5 text-body text-text placeholder:text-text-muted2 outline-none"
+									:class="line.error
+										? 'border border-danger focus:ring-2 focus:ring-danger-focus'
+										: 'border border-border-input focus:ring-2 focus:ring-primary-focus'"
+								/>
+								<p
+									x-cloak
+									x-show="line.error"
+									x-text="line.error"
+									class="mt-1 text-small text-danger"
+								></p>
+							</td>
+							<td class="py-2 pr-3">
+								<input
+									type="text"
+									:name="'line_qty[' + idx + ']'"
+									x-model="line.qty"
+									:disabled="!line.product_service_id"
+									@input="onQtyOrPriceInput(idx)"
+									@blur="onQtyBlur(idx)"
+									inputmode="decimal"
+									placeholder="1"
+									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40"
+								/>
+							</td>
+							<td class="py-2 pr-3">
+								<input
+									type="text"
+									:name="'line_unit_price[' + idx + ']'"
+									x-model="line.unit_price"
+									:disabled="!line.product_service_id"
+									@input="onQtyOrPriceInput(idx)"
+									@blur="onUnitPriceBlur(idx)"
+									inputmode="decimal"
+									placeholder="0.00"
+									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40"
+								/>
+							</td>
+							<input type="hidden" :name="'line_unit[' + idx + ']'" :value="line.unit || ''"/>
+							<td class="py-2 pr-3">
+								<input
+									type="text"
+									:name="'line_amount[' + idx + ']'"
+									x-model="line.amount"
+									:readonly="Boolean(line.product_service_id)"
+									@input="calcLine(idx)"
+									@blur="onAmountBlur(idx)"
+									inputmode="decimal"
+									placeholder="0.00"
+									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus"
+									:class="line.product_service_id ? 'opacity-70' : ''"
+								/>
+							</td>
+							<td class="py-2 pr-3">
+								<select
+									:name="'line_tax_code_id[' + idx + ']'"
+									x-model="line.tax_code_id"
+									@change="onTaxCodeChange(idx)"
+									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+								>
+									<option value="">— None —</option>
+									<template x-for="tc in taxCodes" :key="tc.id">
+										<option :value="tc.id" :selected="String(line.tax_code_id) === String(tc.id)" x-text="tc.code + ' — ' + tc.name"></option>
+									</template>
+								</select>
+							</td>
+							<td class="py-2 pr-3">
+								<select
+									:name="'line_task_id[' + idx + ']'"
+									x-model="line.task_id"
+									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
+								>
+									<option value="">— No task —</option>
+									<template x-for="task in tasks" :key="task.id">
+										<option :value="task.id" :selected="String(line.task_id) === String(task.id)" x-text="task.title + ' — ' + task.customer_name"></option>
+									</template>
+								</select>
+							</td>
+							<td class="py-2 pr-3">
+								<label class="inline-flex items-center gap-2 text-body text-text">
+									<input
+										type="checkbox"
+										:name="'line_is_billable[' + idx + ']'"
+										value="1"
+										x-model="line.is_billable"
+										class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
+									/>
+									<span>Billable</span>
+								</label>
+							</td>
+							<td class="py-2 text-center">
+								<button
+									type="button"
+									@click="removeLine(idx)"
+									:disabled="lines.length === 1"
+									class="rounded p-1 text-text-muted3 hover:text-danger disabled:opacity-30"
+									title="Remove line"
+								>
+									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+									</svg>
+								</button>
+							</td>
+						</tr>
+					</template>
+				</tbody>
+			</table>
+		</div>
 
-					// Terms
-					<div>
-						<label class="block text-body font-medium text-text">Terms</label>
-						<select
-							name="terms"
-							x-model="terms"
-							@change="onTermsChange($event.target.value)"
-							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-						>
-							<option value="">-- Select --</option>
-							for _, pt := range vm.PaymentTerms {
-								<option value={ pt.Code } selected?={ pt.Code == vm.TermCode }>{ pt.DropdownLabel() }</option>
-							}
-						</select>
-					</div>
+		<input type="hidden" name="line_count" :value="lines.length"/>
 
-					// Due Date
-					<div>
-						<label class="block text-body font-medium text-text">Due Date</label>
-						<input
-							type="date"
-							name="due_date"
-							x-model="dueDate"
-							style="color-scheme: dark;"
-							:readonly="!dueDateEditable"
-							:class="dueDateEditable
-								? 'mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus'
-								: 'mt-2 block w-full cursor-not-allowed rounded-md border border-border-input bg-background px-3 py-2 text-body text-text-muted2 outline-none'"
-						/>
-						<p class="mt-1 text-small text-text-muted2" x-show="!dueDateEditable">Auto-computed from terms and bill date.</p>
-						<p class="mt-1 text-small text-text-muted2" x-show="dueDateEditable" x-cloak>Enter the custom due date.</p>
-					</div>
+		<div class="mt-4 flex justify-end">
+			<div class="w-72 space-y-1 text-body">
+				<div class="flex items-center justify-between">
+					<span class="text-text-muted">Pre-tax subtotal</span>
+					<span class="tabular-nums text-text" x-text="subtotal()"></span>
+				</div>
 
-					// Memo
-					<div>
-						<label class="block text-body font-medium text-text">Memo</label>
+				<template x-for="tc in taxBreakdown()" :key="tc.id">
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-small text-text-muted truncate" x-text="tc.code + ' @ ' + (tc.rate * 100).toFixed(2).replace(/\.?0+$/, '') + '%'"></span>
 						<input
 							type="text"
-							name="memo"
-							value={ vm.Memo }
-							placeholder="Internal note or reference"
-							autocomplete="off"
-							class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus"
+							inputmode="decimal"
+							:value="taxAdjValue(tc.id)"
+							@input="onTaxAdjInput(tc.id, $event.target.value)"
+							@blur="if (!$event.target.value.trim()) { $event.target.value = taxAdjValue(tc.id) }"
+							class="w-24 rounded-md border border-border-input bg-surface px-2 py-0.5 text-right text-body text-text tabular-nums outline-none focus:ring-2 focus:ring-primary-focus"
 						/>
 					</div>
+				</template>
 
-					if len(vm.Warehouses) == 1 {
-						// Single-warehouse companies: no picker needed.
-						// The sole warehouse is auto-bound via hidden
-						// input; stock lines on this bill route there
-						// on post. Shown as a read-only pill so the
-						// operator can still see where stock will land.
-						<div>
-							<label class="block text-body font-medium text-text">Warehouse</label>
-							<div class="mt-2 flex items-center rounded-md border border-border bg-background px-3 py-2 text-body text-text">
-								<span class="font-medium">{ vm.Warehouses[0].Name }</span>
-								<span class="ml-2 text-text-muted2">({ vm.Warehouses[0].Code })</span>
-							</div>
-							<input type="hidden" name="warehouse_id" value={ Uitoa(vm.Warehouses[0].ID) }/>
-							<p class="mt-1 text-small text-text-muted2">Inventory received from this bill will be routed here.</p>
-						</div>
-					} else if len(vm.Warehouses) > 1 {
-						// Multi-warehouse: required combobox. Type-ahead
-						// matches against code, name, description, and
-						// address fields so "Ma"→"main", "bur"→Burnaby
-						// warehouse all work.
-						@billWarehouseCombobox(vm)
-					}
-
-					if vm.MultiCurrencyEnabled {
-						// Currency
-						<div>
-							<label class="block text-body font-medium text-text">Currency</label>
-							if vm.CurrencyError != "" {
-								<select
-									name="currency_code"
-									class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-danger-focus"
-								>
-									<option value="">{ vm.BaseCurrencyCode } (base)</option>
-									for _, cc := range vm.CompanyCurrencies {
-										<option value={ cc.CurrencyCode } selected?={ cc.CurrencyCode == vm.CurrencyCode }>{ cc.CurrencyCode }</option>
-									}
-								</select>
-								<div class="mt-1 text-body text-danger">{ vm.CurrencyError }</div>
-							} else {
-								<select
-									name="currency_code"
-									class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-								>
-									<option value="">{ vm.BaseCurrencyCode } (base)</option>
-									for _, cc := range vm.CompanyCurrencies {
-										<option value={ cc.CurrencyCode } selected?={ cc.CurrencyCode == vm.CurrencyCode }>{ cc.CurrencyCode }</option>
-									}
-								</select>
-							}
-						</div>
-
-						// Exchange Rate
-						<div>
-							<label class="block text-body font-medium text-text">Exchange Rate</label>
-							if vm.ExchangeRateError != "" {
-								<input
-									type="text"
-									name="exchange_rate"
-									value={ vm.ExchangeRate }
-									placeholder="e.g. 1.3500 (leave blank to auto-lookup)"
-									autocomplete="off"
-									inputmode="decimal"
-									class="mt-2 block w-full rounded-md border border-danger bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-danger-focus"
-								/>
-								<div class="mt-1 text-body text-danger">{ vm.ExchangeRateError }</div>
-							} else {
-								<input
-									type="text"
-									name="exchange_rate"
-									value={ vm.ExchangeRate }
-									placeholder="e.g. 1.3500 (leave blank to auto-lookup)"
-									autocomplete="off"
-									inputmode="decimal"
-									class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus"
-								/>
-							}
-							<p class="mt-1 text-small text-text-muted2">Base units per 1 foreign unit. Leave blank to auto-lookup from exchange rates.</p>
-						</div>
-					}
-				</div>
-			</div>
-
-			// ── Line Items (Alpine-driven) ────────────────────────────────────────
-			<div
-				class="rounded-lg border border-border bg-surface p-6"
-			>
-				<div class="flex items-center justify-between">
-					<div>
-						<h2 class="text-section font-semibold text-text">Line Items</h2>
-						<p class="mt-1 text-small text-text-muted2">Task-linked lines inherit billable customer from the selected task. Only open or completed tasks can be chosen.</p>
-					</div>
-					<button
-						type="button"
-						@click="addLine()"
-						class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background"
-					>
-						+ Add Line
-					</button>
-				</div>
-
-				<p class="mt-1 text-small text-text-muted2">
-					Pick an <strong>Item</strong> on any line you want to track in inventory
-					— stock items route through the inventory ledger on bill post. Leave
-					Item blank on pure expense lines (utilities, fees, labour) and enter
-					the Amount directly.
-				</p>
-
-				<div class="mt-4 overflow-x-auto">
-					<table class="w-full text-left text-body">
-						<thead class="text-small uppercase tracking-wider text-text-muted">
-							<tr class="border-b border-border">
-								<th class="py-2 pr-3 w-48">Item</th>
-								<th class="py-2 pr-3 w-44">Category</th>
-								<th class="py-2 pr-3">Description</th>
-								<th class="py-2 pr-3 w-20">Qty</th>
-								<th class="py-2 pr-3 w-28">Unit Price</th>
-								<th class="py-2 pr-3 w-28">Amount</th>
-								<th class="py-2 pr-3 w-32">Tax</th>
-								<th class="py-2 pr-3 w-44">Task</th>
-								<th class="py-2 pr-3 w-24">Billing</th>
-								<th class="py-2 w-10"></th>
-							</tr>
-						</thead>
-						<tbody>
-							<template x-for="(line, idx) in lines" :key="idx">
-								<tr class="border-b border-border-subtle align-top">
-									// Item picker (IN.1 / Rule #4)
-									<td class="py-2 pr-3">
-										<select
-											:name="'line_product_service_id[' + idx + ']'"
-											x-model="line.product_service_id"
-											@change="onProductChange(idx, $event.target.value)"
-											class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-										>
-											<option value="">— Expense only (no item) —</option>
-											<template x-for="p in products" :key="p.id">
-												<option :value="p.id" :selected="String(line.product_service_id) === String(p.id)" x-text="productLabel(p)"></option>
-											</template>
-										</select>
-									</td>
-									// Category (expense account)
-									<td class="py-2 pr-3">
-										<select
-											:name="'line_expense_account_id[' + idx + ']'"
-											x-model="line.expense_account_id"
-											@change="onExpenseAccountChange(idx, $event.target.value)"
-											class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-										>
-											<option value="">-- None --</option>
-											<template x-for="a in accounts" :key="a.id">
-												<option :value="a.id" :selected="String(line.expense_account_id) === String(a.id)" x-text="a.code + ' ' + a.name"></option>
-											</template>
-										</select>
-									</td>
-									// Description
-									<td class="py-2 pr-3">
-										<input
-											type="text"
-											:name="'line_description[' + idx + ']'"
-											x-model="line.description"
-											placeholder="Description"
-											autocomplete="off"
-											@input="calcLine(idx)"
-											class="block w-full rounded-md bg-surface px-2 py-1.5 text-body text-text placeholder:text-text-muted2 outline-none"
-											:class="line.error
-												? 'border border-danger focus:ring-2 focus:ring-danger-focus'
-												: 'border border-border-input focus:ring-2 focus:ring-primary-focus'"
-										/>
-										<p
-											x-cloak
-											x-show="line.error"
-											x-text="line.error"
-											class="mt-1 text-small text-danger"
-										></p>
-									</td>
-									// Qty (Rule #4: authoritative when Item picked; disabled otherwise)
-									<td class="py-2 pr-3">
-										<input
-											type="text"
-											:name="'line_qty[' + idx + ']'"
-											x-model="line.qty"
-											:disabled="!line.product_service_id"
-											@input="onQtyOrPriceInput(idx)"
-											@blur="onQtyBlur(idx)"
-											inputmode="decimal"
-											placeholder="1"
-											class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40"
-										/>
-									</td>
-									// Unit Price (Rule #4: authoritative when Item picked)
-									<td class="py-2 pr-3">
-										<input
-											type="text"
-											:name="'line_unit_price[' + idx + ']'"
-											x-model="line.unit_price"
-											:disabled="!line.product_service_id"
-											@input="onQtyOrPriceInput(idx)"
-											@blur="onUnitPriceBlur(idx)"
-											inputmode="decimal"
-											placeholder="0.00"
-											class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40"
-										/>
-									</td>
-									// Unit hidden passthrough (currently unused; reserved for catalog-driven unit display)
-									<input type="hidden" :name="'line_unit[' + idx + ']'" :value="line.unit || ''"/>
-									// Amount (read-only when Item picked; editable otherwise)
-									<td class="py-2 pr-3">
-										<input
-											type="text"
-											:name="'line_amount[' + idx + ']'"
-											x-model="line.amount"
-											:readonly="Boolean(line.product_service_id)"
-											@input="calcLine(idx)"
-											@blur="onAmountBlur(idx)"
-											inputmode="decimal"
-											placeholder="0.00"
-											class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus"
-											:class="line.product_service_id ? 'opacity-70' : ''"
-										/>
-									</td>
-									// Sales Tax
-									<td class="py-2 pr-3">
-										<select
-											:name="'line_tax_code_id[' + idx + ']'"
-											x-model="line.tax_code_id"
-											@change="onTaxCodeChange(idx)"
-											class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-										>
-											<option value="">-- None --</option>
-											<template x-for="tc in taxCodes" :key="tc.id">
-												<option :value="tc.id" :selected="String(line.tax_code_id) === String(tc.id)" x-text="tc.code + ' — ' + tc.name"></option>
-											</template>
-										</select>
-									</td>
-									// Task
-									<td class="py-2 pr-3">
-										<select
-											:name="'line_task_id[' + idx + ']'"
-											x-model="line.task_id"
-											class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-										>
-											<option value="">-- No task --</option>
-											<template x-for="task in tasks" :key="task.id">
-												<option :value="task.id" :selected="String(line.task_id) === String(task.id)" x-text="task.title + ' — ' + task.customer_name"></option>
-											</template>
-										</select>
-									</td>
-									// Billing
-									<td class="py-2 pr-3">
-										<label class="inline-flex items-center gap-2 text-body text-text">
-											<input
-												type="checkbox"
-												:name="'line_is_billable[' + idx + ']'"
-												value="1"
-												x-model="line.is_billable"
-												class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"
-											/>
-											<span>Billable</span>
-										</label>
-									</td>
-									// Remove
-									<td class="py-2 text-center">
-										<button
-											type="button"
-											@click="removeLine(idx)"
-											:disabled="lines.length === 1"
-											class="rounded p-1 text-text-muted3 hover:text-danger disabled:opacity-30"
-											title="Remove line"
-										>
-											<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-												<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-											</svg>
-										</button>
-									</td>
-								</tr>
-							</template>
-						</tbody>
-					</table>
-				</div>
-
-				// hidden line_count — read by handler
-				<input type="hidden" name="line_count" :value="lines.length"/>
-
-				// ── Totals ───────────────────────────────────────────────────────
-				<div class="mt-4 flex justify-end">
-					<div class="w-72 space-y-1 text-body">
-						// Pre-tax subtotal
-						<div class="flex items-center justify-between">
-							<span class="text-text-muted">Pre-tax subtotal</span>
-							<span class="tabular-nums text-text" x-text="subtotal()"></span>
-						</div>
-
-						// Per-tax-code breakdown (editable)
-						<template x-for="tc in taxBreakdown()" :key="tc.id">
-							<div class="flex items-center justify-between gap-2">
-								<span class="text-small text-text-muted truncate" x-text="tc.code + ' @ ' + (tc.rate * 100).toFixed(2).replace(/\.?0+$/, '') + '%'"></span>
-								<input
-									type="text"
-									inputmode="decimal"
-									:value="taxAdjValue(tc.id)"
-									@input="onTaxAdjInput(tc.id, $event.target.value)"
-									@blur="if (!$event.target.value.trim()) { $event.target.value = taxAdjValue(tc.id) }"
-									class="w-24 rounded-md border border-border-input bg-surface px-2 py-0.5 text-right text-body text-text tabular-nums outline-none focus:ring-2 focus:ring-primary-focus"
-								/>
-							</div>
-						</template>
-
-						// Hidden inputs submitted with the form
-						<template x-if="taxBreakdown().length > 0">
+				<template x-if="taxBreakdown().length > 0">
+					<span>
+						<input type="hidden" name="tax_adj_count" :value="taxBreakdown().length"/>
+						<template x-for="(tc, i) in taxBreakdown()" :key="tc.id">
 							<span>
-								<input type="hidden" name="tax_adj_count" :value="taxBreakdown().length"/>
-								<template x-for="(tc, i) in taxBreakdown()" :key="tc.id">
-									<span>
-										<input type="hidden" :name="'tax_adj_id[' + i + ']'" :value="tc.id"/>
-										<input type="hidden" :name="'tax_adj_amount[' + i + ']'" :value="taxAdjValue(tc.id)"/>
-									</span>
-								</template>
+								<input type="hidden" :name="'tax_adj_id[' + i + ']'" :value="tc.id"/>
+								<input type="hidden" :name="'tax_adj_amount[' + i + ']'" :value="taxAdjValue(tc.id)"/>
 							</span>
 						</template>
+					</span>
+				</template>
 
-						// Grand total
-						<div class="flex items-center justify-between border-t border-border pt-2 font-semibold">
-							<span>Total</span>
-							<span class="tabular-nums" x-text="grandTotal()"></span>
-						</div>
-					</div>
+				<div class="flex items-center justify-between border-t border-border pt-2 font-semibold">
+					<span>Total</span>
+					<span class="tabular-nums" x-text="grandTotal()"></span>
 				</div>
-
-				<script src="/static/bill_editor.js?v=8"></script>
 			</div>
-
-			</fieldset>
-
-			// ── Review banner ─────────────────────────────────────────────────
-			<div
-				id="be-review-banner"
-				style={ editorDisplay(vm.ReviewLocked) }
-				class="rounded-md border border-border bg-background px-4 py-3 text-body text-text-muted2"
-			>
-				if vm.Saved {
-					<span class="font-semibold text-text">Draft saved.</span>
-					<span> </span>
-				}
-				Review your bill. If everything looks correct, click <strong class="text-text">Submit</strong> to save — or click <strong class="text-text">← Edit</strong> to make changes.
-			</div>
-
-			// ── Actions ──────────────────────────────────────────────────────────
-			<div class="flex flex-wrap items-center justify-end gap-3">
-				<a
-					id="be-cancel-link"
-					href="/bills"
-					style={ editorDisplay(!vm.ReviewLocked) }
-					class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
-				>
-					Cancel
-				</a>
-				<button
-					id="be-edit-btn"
-					style={ editorDisplay(vm.ReviewLocked) }
-					type="button"
-					onclick="beExitReview()"
-					class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text-muted3 hover:bg-background hover:text-text"
-				>
-					← Edit
-				</button>
-				<button
-					id="be-save-btn"
-					style={ editorDisplay(!vm.ReviewLocked) }
-					type="submit"
-					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
-				>
-					Save Draft
-				</button>
-				if vm.SubmitPath != "" {
-					<button
-						id="be-submit-btn"
-						style={ editorDisplay(vm.ReviewLocked) }
-						type="submit"
-						formmethod="post"
-						formaction={ vm.SubmitPath }
-						class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
-					>
-						Submit
-					</button>
-				}
-			</div>
-
-			<script>
-				function beExitReview() {
-					var fieldset = document.getElementById('be-fields');
-					var submitBtn = document.getElementById('be-submit-btn');
-					if (fieldset) fieldset.disabled = false;
-					document.getElementById('be-review-banner').style.display = 'none';
-					document.getElementById('be-cancel-link').style.display = '';
-					document.getElementById('be-edit-btn').style.display = 'none';
-					document.getElementById('be-save-btn').style.display = '';
-					if (submitBtn) submitBtn.style.display = 'none';
-				}
-			</script>
-		</form>
+		</div>
 	</div>
 }
 
 // billWarehouseCombobox renders the multi-warehouse type-ahead picker
-// consumed by the Bill editor when the company has 2+ active
-// warehouses. Progressive enhancement is not attempted — the feature
-// exists because the plain <select> scaled poorly past ~5 rows and a
-// no-JS fallback wouldn't meet the operator need this is addressing.
-// The hidden warehouse_id input still carries the committed value so
-// form submits work; required on the input for HTML5 validation.
+// consumed by the Bill editor when the company has 2+ active warehouses.
 templ billWarehouseCombobox(vm BillEditorVM) {
 	<div>
-		<label class="block text-body font-medium text-text">Warehouse <span class="text-danger">*</span></label>
+		<label class={ compactLabelClass() }>Warehouse <span class="text-danger">*</span></label>
 		<div
 			x-data={ billWarehouseComboboxData() }
 			x-init="init()"
@@ -632,10 +471,6 @@ templ billWarehouseCombobox(vm BillEditorVM) {
 				role="combobox"
 				class="block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus"
 			/>
-			// Hidden field carries the committed ID. Kept in sync with
-			// selectedId — cleared to '' whenever the query no longer
-			// matches the committed label, so the form cannot submit
-			// a stale ID when the operator keeps typing past a pick.
 			<input type="hidden" name="warehouse_id" :value="selectedId" required/>
 			<div
 				x-show="open"
@@ -659,13 +494,13 @@ templ billWarehouseCombobox(vm BillEditorVM) {
 				<div x-show="filtered.length === 0" class="px-3 py-2 text-body text-text-muted2">No matching warehouse.</div>
 			</div>
 		</div>
-		<p class="mt-1 text-small text-text-muted2">Inventory received from this bill will be routed to the selected warehouse.</p>
+		<p class={ compactHintClass() }>Inventory received from this bill will be routed to the selected warehouse.</p>
 	</div>
 }
 
 // billWarehouseComboboxData returns the Alpine x-data body. Pulled
-// out into its own Go helper so the backtick string doesn't choke
-// the templ parser (same shape as creditNoteFormData).
+// out into its own Go helper so the backtick string doesn't choke the
+// templ parser (same shape as creditNoteFormData).
 func billWarehouseComboboxData() string {
 	return `{
 		warehouses: [],

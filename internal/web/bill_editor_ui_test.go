@@ -52,7 +52,9 @@ func TestBillEditor_UsesDarkSurfaceInputsAndSingleInit(t *testing.T) {
 		`name="memo"`,
 		`name="exchange_rate"`,
 		`style="color-scheme: dark;"`,
-		`border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus`,
+		// Header inputs now go through pages.fieldClass() (same dark-surface
+		// shape as Invoice / Quote / SO after the unified-shell migration).
+		`border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("expected bill editor HTML to contain %q", want)

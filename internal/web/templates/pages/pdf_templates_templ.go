@@ -268,7 +268,7 @@ func pdfTemplatesGroup(docType models.PDFDocumentType, rows []models.PDFTemplate
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" target=\"_blank\" class=\"rounded px-2 py-1 text-small text-primary hover:bg-surface-hover\">Preview</a> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" target=\"_blank\" class=\"rounded px-2 py-1 text-small text-primary hover:bg-background\">Preview</a> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -286,7 +286,7 @@ func pdfTemplatesGroup(docType models.PDFDocumentType, rows []models.PDFTemplate
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" class=\"rounded px-2 py-1 text-small text-text hover:bg-surface-hover\">View</a><form method=\"POST\" action=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" class=\"rounded px-2 py-1 text-small text-text hover:bg-background\">View</a><form method=\"POST\" action=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -299,7 +299,7 @@ func pdfTemplatesGroup(docType models.PDFDocumentType, rows []models.PDFTemplate
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" class=\"inline\"><button type=\"submit\" class=\"rounded px-2 py-1 text-small text-text hover:bg-surface-hover\">Clone</button></form>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" class=\"inline\"><button type=\"submit\" class=\"rounded px-2 py-1 text-small text-text hover:bg-background\">Clone</button></form>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -317,7 +317,7 @@ func pdfTemplatesGroup(docType models.PDFDocumentType, rows []models.PDFTemplate
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" class=\"rounded px-2 py-1 text-small text-primary hover:bg-surface-hover\">Edit</a> ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" class=\"rounded px-2 py-1 text-small text-primary hover:bg-background\">Edit</a> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -335,7 +335,7 @@ func pdfTemplatesGroup(docType models.PDFDocumentType, rows []models.PDFTemplate
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" class=\"inline\"><button type=\"submit\" class=\"rounded px-2 py-1 text-small text-primary hover:bg-surface-hover\">Set default</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" class=\"inline\"><button type=\"submit\" class=\"rounded px-2 py-1 text-small text-primary hover:bg-background\">Set default</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

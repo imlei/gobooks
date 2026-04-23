@@ -138,7 +138,7 @@ func stockReportEmptyState() templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"mt-8 rounded-lg border border-border bg-surface p-12 text-center\"><div class=\"mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft\"><svg class=\"h-6 w-6 text-primary\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0v10l-8 4m8-14l-8 4m0 0L4 7m8 4v10\"></path></svg></div><h2 class=\"mt-4 text-lg font-semibold text-text\">No stock on hand yet</h2><p class=\"mt-1 text-body text-text-muted2\">Post a bill with an inventory item — or record a Receipt — to populate this report.</p><div class=\"mt-4 flex items-center justify-center gap-3\"><a href=\"/bills/new\" class=\"rounded-md border border-border-input px-4 py-2 text-body text-text hover:bg-surface-raised\">New Bill</a> <a href=\"/product-services\" class=\"rounded-md border border-border-input px-4 py-2 text-body text-text hover:bg-surface-raised\">Manage Items</a></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"mt-8 rounded-lg border border-border bg-surface p-12 text-center\"><div class=\"mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft\"><svg class=\"h-6 w-6 text-primary\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0v10l-8 4m8-14l-8 4m0 0L4 7m8 4v10\"></path></svg></div><h2 class=\"mt-4 text-lg font-semibold text-text\">No stock on hand yet</h2><p class=\"mt-1 text-body text-text-muted2\">Post a bill with an inventory item — or record a Receipt — to populate this report.</p><div class=\"mt-4 flex items-center justify-center gap-3\"><a href=\"/bills/new\" class=\"rounded-md border border-border-input px-4 py-2 text-body text-text hover:bg-surface-rowHover\">New Bill</a> <a href=\"/product-services\" class=\"rounded-md border border-border-input px-4 py-2 text-body text-text hover:bg-surface-rowHover\">Manage Items</a></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -356,7 +356,7 @@ func stockReportTable(report *services.StockReport) templ.Component {
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"mt-6 overflow-hidden rounded-lg border border-border\"><table class=\"w-full text-body\"><thead class=\"bg-surface-raised\"><tr><th class=\"px-4 py-3 text-left font-medium text-text-muted\">Item</th><th class=\"px-4 py-3 text-left font-medium text-text-muted\">Location</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Qty on hand</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Avg cost</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Line value</th></tr></thead> <tbody class=\"divide-y divide-border\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"mt-6 overflow-hidden rounded-lg border border-border\"><table class=\"w-full text-body\"><thead class=\"bg-surface-tableHeader\"><tr><th class=\"px-4 py-3 text-left font-medium text-text-muted\">Item</th><th class=\"px-4 py-3 text-left font-medium text-text-muted\">Location</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Qty on hand</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Avg cost</th><th class=\"px-4 py-3 text-right font-medium text-text-muted\">Line value</th></tr></thead> <tbody class=\"divide-y divide-border\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -366,7 +366,7 @@ func stockReportTable(report *services.StockReport) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</tbody><tfoot class=\"border-t border-border bg-surface-raised\"><tr><td colspan=\"4\" class=\"px-4 py-3 text-right font-medium text-text\">Total Inventory Value</td><td class=\"px-4 py-3 text-right font-semibold text-text tabular-nums\" data-numfmt>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</tbody><tfoot class=\"border-t border-border bg-surface-tableHeader\"><tr><td colspan=\"4\" class=\"px-4 py-3 text-right font-medium text-text\">Total Inventory Value</td><td class=\"px-4 py-3 text-right font-semibold text-text tabular-nums\" data-numfmt>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -413,7 +413,7 @@ func stockReportGroup(group stockItemGroup) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		for i, row := range group.Rows {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<tr class=\"hover:bg-surface-raised\"><td class=\"px-4 py-3\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<tr class=\"hover:bg-surface-rowHover\"><td class=\"px-4 py-3\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -494,7 +494,7 @@ func stockReportGroup(group stockItemGroup) templ.Component {
 			}
 		}
 		if len(group.Rows) > 1 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<tr class=\"bg-surface-raised/40\"><td class=\"px-4 py-2\"></td><td class=\"px-4 py-2 text-small uppercase tracking-wide text-text-muted\">Item subtotal</td><td class=\"px-4 py-2 text-right text-small tabular-nums text-text-muted\" data-numfmt>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<tr class=\"bg-surface-tableHeader/40\"><td class=\"px-4 py-2\"></td><td class=\"px-4 py-2 text-small uppercase tracking-wide text-text-muted\">Item subtotal</td><td class=\"px-4 py-2 text-right text-small tabular-nums text-text-muted\" data-numfmt>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -554,7 +554,7 @@ func stockLocationChip(row services.StockRow) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if row.WarehouseID != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<span class=\"inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-2.5 py-0.5 text-small\"><span class=\"h-1.5 w-1.5 rounded-full bg-primary\"></span> <span class=\"font-medium text-text\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<span class=\"inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-tableHeader px-2.5 py-0.5 text-small\"><span class=\"h-1.5 w-1.5 rounded-full bg-primary\"></span> <span class=\"font-medium text-text\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -615,7 +615,7 @@ func stockLocationChip(row services.StockRow) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			case models.LocationTypeThirdParty:
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span class=\"inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-2.5 py-0.5 text-small\"><span class=\"h-1.5 w-1.5 rounded-full bg-text-muted2\"></span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span class=\"inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-tableHeader px-2.5 py-0.5 text-small\"><span class=\"h-1.5 w-1.5 rounded-full bg-text-muted2\"></span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -638,7 +638,7 @@ func stockLocationChip(row services.StockRow) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			default:
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<span class=\"inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-2.5 py-0.5 text-small text-text-muted\"><span class=\"h-1.5 w-1.5 rounded-full bg-text-muted3\"></span> Internal (unrouted)</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<span class=\"inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-tableHeader px-2.5 py-0.5 text-small text-text-muted\"><span class=\"h-1.5 w-1.5 rounded-full bg-text-muted3\"></span> Internal (unrouted)</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -19,9 +19,7 @@ templ bodyPayoutReconciliationOverview(vm PayoutReconciliationOverviewVM) {
 		<h1 class="text-title font-semibold">Payout Reconciliation</h1>
 		<p class="mt-1 text-body text-text-muted2">Match gateway payouts to bank deposits. Only 1:1 exact-amount matching is supported.</p>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		if vm.JustMatched {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payout matched to bank entry successfully.</div>
 		}
@@ -179,9 +177,7 @@ templ bodyPayoutMatchForm(vm PayoutMatchFormVM) {
 		</div>
 		<h1 class="text-title font-semibold">Match Payout to Bank Entry</h1>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<!-- Payout summary -->
 		if vm.Payout != nil {
@@ -296,7 +292,7 @@ templ bodyPayoutMatchForm(vm PayoutMatchFormVM) {
 				</div>
 				<div class="mt-4 flex justify-end gap-3">
 					<a href="/settings/payment-gateways/payout-reconciliation"
-						class="rounded-md border border-border px-4 py-2 text-body text-text hover:bg-surface-hover">Cancel</a>
+						class="rounded-md border border-border px-4 py-2 text-body text-text hover:bg-background">Cancel</a>
 					@ui.ButtonPrimary("Confirm Match", "submit", false)
 				</div>
 			</form>

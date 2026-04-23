@@ -57,7 +57,7 @@ templ transferEditForm(vm WarehouseTransferDetailVM) {
 							class="input input-bordered" placeholder="e.g. TRF-0001"/>
 					</div>
 					<div class="form-control">
-						<label class="label"><span class="label-text">Date <span class="text-error">*</span></span></label>
+						<label class="label"><span class="label-text">Date <span class="text-danger">*</span></span></label>
 						<input type="date" name="transfer_date" value={ transferDateVal(vm.Transfer) }
 							class="input input-bordered" required/>
 					</div>
@@ -65,7 +65,7 @@ templ transferEditForm(vm WarehouseTransferDetailVM) {
 
 				<div class="grid grid-cols-2 gap-4 mt-4">
 					<div class="form-control">
-						<label class="label"><span class="label-text">From Warehouse <span class="text-error">*</span></span></label>
+						<label class="label"><span class="label-text">From Warehouse <span class="text-danger">*</span></span></label>
 						<select name="from_warehouse_id" class="select select-bordered" required>
 							<option value="">— select —</option>
 							for _, w := range vm.Warehouses {
@@ -80,7 +80,7 @@ templ transferEditForm(vm WarehouseTransferDetailVM) {
 						</select>
 					</div>
 					<div class="form-control">
-						<label class="label"><span class="label-text">To Warehouse <span class="text-error">*</span></span></label>
+						<label class="label"><span class="label-text">To Warehouse <span class="text-danger">*</span></span></label>
 						<select name="to_warehouse_id" class="select select-bordered" required>
 							<option value="">— select —</option>
 							for _, w := range vm.Warehouses {
@@ -98,7 +98,7 @@ templ transferEditForm(vm WarehouseTransferDetailVM) {
 
 				<div class="grid grid-cols-2 gap-4 mt-4">
 					<div class="form-control">
-						<label class="label"><span class="label-text">Item <span class="text-error">*</span></span></label>
+						<label class="label"><span class="label-text">Item <span class="text-danger">*</span></span></label>
 						<select name="item_id" class="select select-bordered" required>
 							<option value="">— select —</option>
 							for _, p := range vm.Items {
@@ -111,7 +111,7 @@ templ transferEditForm(vm WarehouseTransferDetailVM) {
 						</select>
 					</div>
 					<div class="form-control">
-						<label class="label"><span class="label-text">Quantity <span class="text-error">*</span></span></label>
+						<label class="label"><span class="label-text">Quantity <span class="text-danger">*</span></span></label>
 						<input type="number" name="quantity" value={ vm.Transfer.Quantity.String() }
 							class="input input-bordered" step="0.0001" min="0.0001" required/>
 					</div>

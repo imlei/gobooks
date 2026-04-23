@@ -50,7 +50,7 @@ templ bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) {
 			</div>
 		}
 		if vm.RetryError != "" {
-			<div class="mt-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error-hover">
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">
 				{ vm.RetryError }
 			</div>
 		}
@@ -174,7 +174,7 @@ templ settlementStatusBadge(status string) {
 	} else if status == "pending_review" {
 		<span class="inline-flex items-center rounded-full border border-warning-border bg-warning-soft px-2 py-0.5 text-[11px] font-semibold text-warning-hover">pending review</span>
 	} else if status == "failed" {
-		<span class="inline-flex items-center rounded-full border border-error-border bg-error-soft px-2 py-0.5 text-[11px] font-semibold text-error-hover">failed</span>
+		<span class="inline-flex items-center rounded-full border border-border-danger bg-danger-soft px-2 py-0.5 text-[11px] font-semibold text-danger-hover">failed</span>
 	} else {
 		<span class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted2">{ status }</span>
 	}

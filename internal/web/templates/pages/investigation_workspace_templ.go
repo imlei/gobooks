@@ -293,7 +293,7 @@ func bodyInvestigationWorkspace(vm InvestigationWorkspaceVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, ">Has Linked Payout</option></select></div><button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-small font-medium text-white hover:bg-primary-hover\">Apply</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, ">Has Linked Payout</option></select></div><button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-small font-medium text-onPrimary hover:bg-primary-hover\">Apply</button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

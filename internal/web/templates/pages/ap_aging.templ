@@ -23,9 +23,7 @@ templ bodyAPAging(vm APAgingVM) {
 			</div>
 		</div>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<!-- As-of date picker -->
 		<form method="GET" action="/ap-aging" class="mt-4 flex flex-wrap items-end gap-3">

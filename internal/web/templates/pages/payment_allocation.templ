@@ -21,9 +21,7 @@ templ bodyPaymentAllocation(vm PaymentAllocationVM) {
 		<h1 class="text-title font-semibold">Allocate Payment to Invoices</h1>
 		<p class="mt-1 text-body text-text-muted2">Distribute this payment across multiple invoices for the same customer.</p>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		if vm.Success {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Allocation saved successfully.</div>
 		}
@@ -114,7 +112,7 @@ templ bodyPaymentAllocation(vm PaymentAllocationVM) {
 					</table>
 				</div>
 				<div class="mt-4 flex justify-end gap-3">
-					<a href="/settings/payment-gateways/transactions" class="rounded-md border border-border px-4 py-2 text-body text-text hover:bg-surface-hover">Cancel</a>
+					<a href="/settings/payment-gateways/transactions" class="rounded-md border border-border px-4 py-2 text-body text-text hover:bg-background">Cancel</a>
 					@ui.ButtonPrimary("Save Allocation", "submit", false)
 				</div>
 			</form>
@@ -146,9 +144,7 @@ templ bodyCreditAllocation(vm CreditAllocationVM) {
 		<h1 class="text-title font-semibold">Allocate Credit to Invoices</h1>
 		<p class="mt-1 text-body text-text-muted2">Apply this credit balance across multiple invoices for the same customer.</p>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		if vm.Success {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Credit allocation saved successfully.</div>
 		}
@@ -239,7 +235,7 @@ templ bodyCreditAllocation(vm CreditAllocationVM) {
 					</table>
 				</div>
 				<div class="mt-4 flex justify-end gap-3">
-					<a href={ templ.SafeURL(fmt.Sprintf("/customers/%d/credits", vm.CustomerID)) } class="rounded-md border border-border px-4 py-2 text-body text-text hover:bg-surface-hover">Cancel</a>
+					<a href={ templ.SafeURL(fmt.Sprintf("/customers/%d/credits", vm.CustomerID)) } class="rounded-md border border-border px-4 py-2 text-body text-text hover:bg-background">Cancel</a>
 					@ui.ButtonPrimary("Save Allocation", "submit", false)
 				</div>
 			</form>

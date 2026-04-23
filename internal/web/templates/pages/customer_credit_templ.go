@@ -145,7 +145,7 @@ func bodyCustomerCredits(vm CustomerCreditsVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"rounded-md border border-border-default px-4 py-2 text-body hover:bg-background-muted\">Back to Customer</a></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"rounded-md border border-border px-4 py-2 text-body hover:bg-background\">Back to Customer</a></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -156,7 +156,7 @@ func bodyCustomerCredits(vm CustomerCreditsVM) templ.Component {
 			}
 		}
 		if vm.FormError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"mt-2 mb-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"mt-2 mb-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -197,12 +197,12 @@ func bodyCustomerCredits(vm CustomerCreditsVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"mt-4 overflow-x-auto rounded-lg border border-border-default\"><table class=\"w-full text-body\"><thead class=\"border-b border-border-default bg-background-muted text-small font-semibold text-text-muted2\"><tr><th class=\"px-4 py-3 text-left\">ID</th><th class=\"px-4 py-3 text-left\">Source</th><th class=\"px-4 py-3 text-right\">Original</th><th class=\"px-4 py-3 text-right\">Remaining</th><th class=\"px-4 py-3 text-left\">Status</th><th class=\"px-4 py-3 text-right\">Actions</th></tr></thead> <tbody class=\"divide-y divide-border-default\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"mt-4 overflow-x-auto rounded-lg border border-border\"><table class=\"w-full text-body\"><thead class=\"border-b border-border bg-background text-small font-semibold text-text-muted2\"><tr><th class=\"px-4 py-3 text-left\">ID</th><th class=\"px-4 py-3 text-left\">Source</th><th class=\"px-4 py-3 text-right\">Original</th><th class=\"px-4 py-3 text-right\">Remaining</th><th class=\"px-4 py-3 text-left\">Status</th><th class=\"px-4 py-3 text-right\">Actions</th></tr></thead> <tbody class=\"divide-y divide-border-default\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, c := range vm.Credits {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<tr class=\"hover:bg-background-muted\"><td class=\"px-4 py-3 text-text-muted2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<tr class=\"hover:bg-background\"><td class=\"px-4 py-3 text-text-muted2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -305,7 +305,7 @@ func bodyCustomerCredits(vm CustomerCreditsVM) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(vm.Refunds) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"mt-8\"><h2 class=\"text-body font-semibold mb-3\">Refunds Issued</h2><div class=\"overflow-hidden rounded-lg border border-border\"><table class=\"w-full text-body\"><thead class=\"bg-surface-raised text-small uppercase tracking-wider text-text-muted\"><tr><th class=\"px-4 py-3 text-left\">Refund #</th><th class=\"px-4 py-3 text-left\">Date</th><th class=\"px-4 py-3 text-left\">Source</th><th class=\"px-4 py-3 text-right\">Amount</th><th class=\"px-4 py-3 text-left\">Status</th></tr></thead> <tbody class=\"divide-y divide-border\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"mt-8\"><h2 class=\"text-body font-semibold mb-3\">Refunds Issued</h2><div class=\"overflow-hidden rounded-lg border border-border\"><table class=\"w-full text-body\"><thead class=\"bg-surface-tableHeader text-small uppercase tracking-wider text-text-muted\"><tr><th class=\"px-4 py-3 text-left\">Refund #</th><th class=\"px-4 py-3 text-left\">Date</th><th class=\"px-4 py-3 text-left\">Source</th><th class=\"px-4 py-3 text-right\">Amount</th><th class=\"px-4 py-3 text-left\">Status</th></tr></thead> <tbody class=\"divide-y divide-border\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -486,7 +486,7 @@ func bodyCustomerCredits(vm CustomerCreditsVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" class=\"rounded-lg border border-border-default bg-background-muted p-5 max-w-xl\"><div class=\"space-y-4\"><div><label class=\"block text-small font-medium text-text-muted2 mb-1\">Credit</label> <select name=\"credit_id\" class=\"w-full rounded-md border border-border-default bg-white px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary\" required><option value=\"\">— select credit —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" class=\"rounded-lg border border-border bg-background p-5 max-w-xl\"><div class=\"space-y-4\"><div><label class=\"block text-small font-medium text-text-muted2 mb-1\">Credit</label> <select name=\"credit_id\" class=\"w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text focus:outline-none focus:ring-2 focus:ring-primary\" required><option value=\"\">— select credit —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -532,7 +532,7 @@ func bodyCustomerCredits(vm CustomerCreditsVM) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</select></div><div><label class=\"block text-small font-medium text-text-muted2 mb-1\">Invoice</label> <select name=\"invoice_id\" class=\"w-full rounded-md border border-border-default bg-white px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary\" required><option value=\"\">— select invoice —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</select></div><div><label class=\"block text-small font-medium text-text-muted2 mb-1\">Invoice</label> <select name=\"invoice_id\" class=\"w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text focus:outline-none focus:ring-2 focus:ring-primary\" required><option value=\"\">— select invoice —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -591,7 +591,7 @@ func bodyCustomerCredits(vm CustomerCreditsVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" step=\"0.01\" min=\"0.01\" placeholder=\"0.00\" class=\"w-full rounded-md border border-border-default px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary\" required></div><button type=\"submit\" class=\"rounded-md bg-primary px-5 py-2 text-body font-medium text-white hover:bg-primary-hover\">Apply Credit</button></div></form></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" step=\"0.01\" min=\"0.01\" placeholder=\"0.00\" class=\"w-full rounded-md border border-border px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary\" required></div><button type=\"submit\" class=\"rounded-md bg-primary px-5 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover\">Apply Credit</button></div></form></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

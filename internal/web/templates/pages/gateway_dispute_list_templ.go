@@ -73,7 +73,7 @@ func bodyGatewayDisputeList(vm GatewayDisputeListVM) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-[95%]\"><div class=\"flex items-center justify-between\"><div><h1 class=\"text-title font-semibold\">Payment Disputes</h1><p class=\"mt-1 text-small text-text-muted2\">Track cardholder disputes. Mark won (no financial effect) or lost (creates chargeback transaction).</p></div><a href=\"/settings/payment-gateways/disputes/new\" class=\"rounded-md bg-primary px-4 py-2 text-body font-medium text-white hover:bg-primary-hover\">Open Dispute</a></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-[95%]\"><div class=\"flex items-center justify-between\"><div><h1 class=\"text-title font-semibold\">Payment Disputes</h1><p class=\"mt-1 text-small text-text-muted2\">Track cardholder disputes. Mark won (no financial effect) or lost (creates chargeback transaction).</p></div><a href=\"/settings/payment-gateways/disputes/new\" class=\"rounded-md bg-primary px-4 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover\">Open Dispute</a></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -226,7 +226,7 @@ func disputeStatusBadge(status models.GatewayDisputeStatus) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		case models.DisputeStatusLost:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"rounded bg-error-soft px-2 py-0.5 text-small text-error-hover border border-error-border\">Lost</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"rounded bg-danger-soft px-2 py-0.5 text-small text-danger-hover border border-border-danger\">Lost</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

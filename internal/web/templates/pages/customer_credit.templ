@@ -29,7 +29,7 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 			</div>
 			<a
 				href={ templ.SafeURL(fmt.Sprintf("/customers/%d", vm.Customer.ID)) }
-				class="rounded-md border border-border-default px-4 py-2 text-body hover:bg-background-muted"
+				class="rounded-md border border-border px-4 py-2 text-body hover:bg-background"
 			>
 				Back to Customer
 			</a>
@@ -41,7 +41,7 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 			</div>
 		}
 		if vm.FormError != "" {
-			<div class="mt-2 mb-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error">
+			<div class="mt-2 mb-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger">
 				{ vm.FormError }
 			</div>
 		}
@@ -54,9 +54,9 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 		if len(vm.Credits) == 0 {
 			<p class="text-body text-text-muted2 mt-4">No credits on file for this customer.</p>
 		} else {
-			<div class="mt-4 overflow-x-auto rounded-lg border border-border-default">
+			<div class="mt-4 overflow-x-auto rounded-lg border border-border">
 				<table class="w-full text-body">
-					<thead class="border-b border-border-default bg-background-muted text-small font-semibold text-text-muted2">
+					<thead class="border-b border-border bg-background text-small font-semibold text-text-muted2">
 						<tr>
 							<th class="px-4 py-3 text-left">ID</th>
 							<th class="px-4 py-3 text-left">Source</th>
@@ -68,7 +68,7 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 					</thead>
 					<tbody class="divide-y divide-border-default">
 						for _, c := range vm.Credits {
-							<tr class="hover:bg-background-muted">
+							<tr class="hover:bg-background">
 								<td class="px-4 py-3 text-text-muted2">{ Uitoa(c.ID) }</td>
 								<td class="px-4 py-3">{ string(c.SourceType) }</td>
 								<td class="px-4 py-3 text-right font-mono">{ c.OriginalAmount.StringFixed(2) }</td>
@@ -101,7 +101,7 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 				<h2 class="text-body font-semibold mb-3">Refunds Issued</h2>
 				<div class="overflow-hidden rounded-lg border border-border">
 					<table class="w-full text-body">
-						<thead class="bg-surface-raised text-small uppercase tracking-wider text-text-muted">
+						<thead class="bg-surface-tableHeader text-small uppercase tracking-wider text-text-muted">
 							<tr>
 								<th class="px-4 py-3 text-left">Refund #</th>
 								<th class="px-4 py-3 text-left">Date</th>
@@ -159,12 +159,12 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 				<form
 					method="post"
 					action={ templ.SafeURL(fmt.Sprintf("/customers/%d/credits/apply", vm.Customer.ID)) }
-					class="rounded-lg border border-border-default bg-background-muted p-5 max-w-xl"
+					class="rounded-lg border border-border bg-background p-5 max-w-xl"
 				>
 					<div class="space-y-4">
 						<div>
 							<label class="block text-small font-medium text-text-muted2 mb-1">Credit</label>
-							<select name="credit_id" class="w-full rounded-md border border-border-default bg-white px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary" required>
+							<select name="credit_id" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text focus:outline-none focus:ring-2 focus:ring-primary" required>
 								<option value="">— select credit —</option>
 								for _, c := range vm.ActiveCredits {
 									<option value={ Uitoa(c.ID) } selected?={ vm.SelectedCreditID == c.ID }>
@@ -175,7 +175,7 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 						</div>
 						<div>
 							<label class="block text-small font-medium text-text-muted2 mb-1">Invoice</label>
-							<select name="invoice_id" class="w-full rounded-md border border-border-default bg-white px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary" required>
+							<select name="invoice_id" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text focus:outline-none focus:ring-2 focus:ring-primary" required>
 								<option value="">— select invoice —</option>
 								for _, inv := range vm.OutstandingInvoices {
 									<option value={ Uitoa(inv.ID) } selected?={ vm.SelectedInvoiceID == inv.ID }>
@@ -193,13 +193,13 @@ templ bodyCustomerCredits(vm CustomerCreditsVM) {
 								step="0.01"
 								min="0.01"
 								placeholder="0.00"
-								class="w-full rounded-md border border-border-default px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary"
+								class="w-full rounded-md border border-border px-3 py-2 text-body focus:outline-none focus:ring-2 focus:ring-primary"
 								required
 							/>
 						</div>
 						<button
 							type="submit"
-							class="rounded-md bg-primary px-5 py-2 text-body font-medium text-white hover:bg-primary-hover"
+							class="rounded-md bg-primary px-5 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover"
 						>
 							Apply Credit
 						</button>

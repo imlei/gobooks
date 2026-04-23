@@ -163,6 +163,19 @@
   box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
 }
 
+/* ── Native form widget theme ─────────────────────────────────────────────
+   `color-scheme` tells the browser whether to render native widgets (date
+   pickers, scrollbars, file uploaders, default button chrome) in light or
+   dark variants. Setting it on the root makes every <input type="date">
+   inherit automatically — no per-element style="color-scheme:dark" needed.
+   ─────────────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
 /* Alpine: hide elements until x-show is applied (avoids flash before JS runs). */
 [x-cloak] {
   display: none !important;

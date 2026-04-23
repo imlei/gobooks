@@ -162,7 +162,7 @@ templ featureActionButton(feat FeatureCardVM, canManage bool) {
 			<button
 				type="button"
 				x-on:click={ fmt.Sprintf("enable_%s = true", feat.Key) }
-				class="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-small font-medium text-white hover:bg-primary-hover"
+				class="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-small font-medium text-onPrimary hover:bg-primary-hover"
 			>
 				Enable { feat.MaturityBadgeText() }
 			</button>
@@ -271,7 +271,7 @@ templ featureEnableModal(feat FeatureCardVM) {
 						type="submit"
 						x-bind:disabled={ fmt.Sprintf("!(acks.every(v => v) && typed === '%s')", feat.TypedConfirmText) }
 						x-bind:class={ fmt.Sprintf("(acks.every(v => v) && typed === '%s') ? 'bg-primary hover:bg-primary-hover' : 'bg-primary/40 cursor-not-allowed'", feat.TypedConfirmText) }
-						class="rounded-md px-4 py-2 text-small font-medium text-white"
+						class="rounded-md px-4 py-2 text-small font-medium text-onPrimary"
 					>Enable { feat.Label } Alpha</button>
 				</div>
 			</form>

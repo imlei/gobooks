@@ -92,7 +92,7 @@ func bodyGatewayPayoutNew(vm GatewayPayoutNewVM) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if vm.ErrorMsg != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mb-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error-hover\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mb-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -349,7 +349,7 @@ func bodyGatewayPayoutNew(vm GatewayPayoutNewVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select><p class=\"mt-1 text-small text-text-muted2\">The bank account that receives the net deposit (Dr Bank).</p></div></div><div class=\"mt-6 flex items-center gap-4\"><button type=\"submit\" class=\"rounded-md bg-primary px-6 py-2 text-body font-medium text-white hover:bg-primary-hover\">Create Payout Bridge</button> <a href=\"/settings/payment-gateways/payouts\" class=\"text-body text-text-muted2 hover:underline\">Cancel</a></div></form></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select><p class=\"mt-1 text-small text-text-muted2\">The bank account that receives the net deposit (Dr Bank).</p></div></div><div class=\"mt-6 flex items-center gap-4\"><button type=\"submit\" class=\"rounded-md bg-primary px-6 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover\">Create Payout Bridge</button> <a href=\"/settings/payment-gateways/payouts\" class=\"text-body text-text-muted2 hover:underline\">Cancel</a></div></form></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

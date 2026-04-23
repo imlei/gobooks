@@ -73,7 +73,7 @@ func bodyGatewayPayoutsList(vm GatewayPayoutsListVM) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-[95%]\"><div class=\"flex items-center justify-between\"><div><h1 class=\"text-title font-semibold\">Gateway Payouts</h1><p class=\"mt-1 text-small text-text-muted2\">Bridge verified gateway clearing to your bank account and fee expense.</p></div><div class=\"flex items-center gap-3\"><a href=\"/settings/payment-gateways/payout-reconciliation\" class=\"rounded-md border border-border px-4 py-2 text-body font-medium text-text hover:bg-surface-hover\">Reconciliation</a> <a href=\"/settings/payment-gateways/payouts/new\" class=\"rounded-md bg-primary px-4 py-2 text-body font-medium text-white hover:bg-primary-hover\">New Payout Bridge</a></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"max-w-[95%]\"><div class=\"flex items-center justify-between\"><div><h1 class=\"text-title font-semibold\">Gateway Payouts</h1><p class=\"mt-1 text-small text-text-muted2\">Bridge verified gateway clearing to your bank account and fee expense.</p></div><div class=\"flex items-center gap-3\"><a href=\"/settings/payment-gateways/payout-reconciliation\" class=\"rounded-md border border-border px-4 py-2 text-body font-medium text-text hover:bg-background\">Reconciliation</a> <a href=\"/settings/payment-gateways/payouts/new\" class=\"rounded-md bg-primary px-4 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover\">New Payout Bridge</a></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

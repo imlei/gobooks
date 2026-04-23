@@ -61,9 +61,7 @@ templ bodyVRDetail(vm VendorReturnDetailVM) {
 		if vm.Processed {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Return marked as processed.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		if vm.Return.ID != 0 {
 			<div class="mt-4 flex items-center gap-3">
@@ -170,7 +168,7 @@ templ vrEditForm(vm VendorReturnDetailVM) {
 			</button>
 			if vm.Return.ID != 0 {
 				<form method="POST" action={ templ.SafeURL("/vendor-returns/" + fmt.Sprintf("%d", vm.Return.ID) + "/submit") }>
-					<button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-body font-semibold text-white hover:bg-blue-700">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
 						Submit
 					</button>
 				</form>

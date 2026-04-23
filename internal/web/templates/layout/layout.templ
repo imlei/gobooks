@@ -70,6 +70,8 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 			<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 			<script src="/static/smart_picker.js?v=9" defer></script>
 			<script src="/static/doc_line_items.js?v=3" defer></script>
+			<script src="/static/doc_item_picker.js?v=1" defer></script>
+			<script src="/static/doc_transaction_editor.js?v=1" defer></script>
 			<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 			<script src="/static/num-format.js?v=1" defer></script>
 			<script>
@@ -194,7 +196,7 @@ templ Layout(title string, sidebar ui.SidebarVM, content templ.Component) {
 												<div class="flex items-center justify-between gap-2 px-3 py-2 hover:bg-background">
 													<div class="flex min-w-0 items-center gap-2">
 														if row.IsActive {
-															<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+															<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
 																<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
 															</svg>
 														} else {

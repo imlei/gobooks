@@ -58,9 +58,7 @@ templ bodyVRFDetail(vm VendorRefundDetailVM) {
 		if vm.Reversed {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">Vendor refund reversed.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		if vm.Refund.ID != 0 {
 			<div class="mt-4 flex items-center gap-3">

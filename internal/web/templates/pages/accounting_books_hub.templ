@@ -44,14 +44,12 @@ templ bodyAccountingBooksHub(vm AccountingBooksVM) {
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">Book created successfully.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<!-- Books table -->
 		<div class="mt-6 overflow-hidden rounded-lg border border-border">
 			<table class="w-full text-body">
-				<thead class="bg-surface-raised">
+				<thead class="bg-surface-tableHeader">
 					<tr>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Type</th>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Functional Currency</th>
@@ -67,7 +65,7 @@ templ bodyAccountingBooksHub(vm AccountingBooksVM) {
 						</tr>
 					}
 					for _, b := range vm.Books {
-						<tr class="hover:bg-surface-raised">
+						<tr class="hover:bg-surface-rowHover">
 							<td class="px-4 py-3">
 								@bookTypeBadge(b.BookType)
 							</td>

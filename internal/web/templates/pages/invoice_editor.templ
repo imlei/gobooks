@@ -252,7 +252,7 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 		<div>
 			<label class={ compactLabelClass() }>SO Number</label>
 			if vm.SalesOrderID != 0 {
-				<a href={ templ.SafeURL(invoiceSalesOrderLink(vm.SalesOrderID)) } class="mt-2 block rounded-md border border-border-input bg-background px-3 py-2 text-body text-primary hover:bg-surface-hover">
+				<a href={ templ.SafeURL(invoiceSalesOrderLink(vm.SalesOrderID)) } class="mt-2 block rounded-md border border-border-input bg-background px-3 py-2 text-body text-primary hover:bg-background">
 					{ vm.SalesOrderNumber } <span class="text-text-muted3">↗</span>
 				</a>
 			} else {
@@ -323,13 +323,6 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 	</div>
 }
 
-// fieldError renders the standard inline error message under a form field.
-templ fieldError(msg string) {
-	if msg != "" {
-		<div class="mt-1 text-body text-danger">{ msg }</div>
-	}
-}
-
 // invoiceLineItemPicker is the per-row product/service picker rendered inside
 // the DocLineItems x-for scope. Uses the gobooksItemPicker() Alpine factory
 // (which captures `line` + `idx` from the surrounding scope at construction)
@@ -337,7 +330,7 @@ templ fieldError(msg string) {
 // line_product_service_id[idx] alongside the normal form fields.
 templ invoiceLineItemPicker() {
 	<div
-		x-data="gobooksItemPicker(line, idx)"
+		x-data="gobooksItemPicker(line, idx, { context: 'invoice_line_item' })"
 		class="relative"
 		@click.outside="close()"
 		@keydown="onKeydown($event)"
@@ -511,7 +504,7 @@ templ invoiceMemoCard(vm InvoiceEditorVM) {
 					type="button"
 					@click="aiMemoAssist()"
 					:disabled="invoiceId === 0 || memoAssist.loading || memoAssist.visible"
-					class="flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
+					class="flex items-center gap-1 rounded px-2 py-0.5 text-small text-primary hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					<span>✦ AI Assist</span>
 					<span x-show="memoAssist.loading" x-cloak class="text-text-muted2">…</span>
@@ -548,12 +541,12 @@ templ invoiceMemoCard(vm InvoiceEditorVM) {
 						<button
 							type="button"
 							@click="applyMemoSuggestion()"
-							class="rounded-md bg-primary px-3 py-1 text-small font-medium text-white hover:bg-primary-hover"
+							class="rounded-md bg-primary px-3 py-1 text-small font-medium text-onPrimary hover:bg-primary-hover"
 						>Apply</button>
 						<button
 							type="button"
 							@click="dismissMemoAssist()"
-							class="rounded-md border border-border px-3 py-1 text-small text-text hover:bg-surface-hover"
+							class="rounded-md border border-border px-3 py-1 text-small text-text hover:bg-background"
 						>Dismiss</button>
 					</div>
 				</div>

@@ -259,7 +259,7 @@ func bodyGatewayDisputeDetail(vm GatewayDisputeDetailVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"><button type=\"submit\" class=\"rounded-md bg-error-soft border border-error-border px-5 py-2 text-body font-medium text-error-hover hover:bg-error-soft\" onclick=\"return confirm('Mark this dispute as Lost? A chargeback transaction will be created that must be posted and applied to restore the invoice balance.')\">Mark Lost (Chargeback)</button></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"><button type=\"submit\" class=\"rounded-md bg-danger-soft border border-border-danger px-5 py-2 text-body font-medium text-danger-hover hover:bg-danger-soft\" onclick=\"return confirm('Mark this dispute as Lost? A chargeback transaction will be created that must be posted and applied to restore the invoice balance.')\">Mark Lost (Chargeback)</button></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

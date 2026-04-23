@@ -14,92 +14,70 @@ templ ExpenseForm(vm ExpenseFormVM) {
 }
 
 templ expenseFormBody(vm ExpenseFormVM) {
-	@bodyExpenseForm(vm)
+	@ui.DocEditorShell(expenseFormShellVM(vm), expenseFormShellContent(vm))
 	<script src="/static/expense_form.js?v=4"></script>
 }
 
-templ bodyExpenseForm(vm ExpenseFormVM) {
-	<div class="max-w-[95%] space-y-5">
-		<div class="flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<div class="flex items-center gap-3">
-					<h1 class="text-title font-semibold text-text">{ expenseFormTitle(vm) }</h1>
-					if vm.IsEdit {
-						@expenseStatusBadge(vm.Status)
-					}
-				</div>
-				if vm.IsEdit && vm.ExpenseNumber != "" {
-					<p class="mt-1 font-mono text-small text-text-muted">Reference: { vm.ExpenseNumber }</p>
-				}
-				<p class="mt-1 text-small text-text-muted2">Capture standalone costs and optionally attach them to a customer task.</p>
-			</div>
-			@ui.ButtonLink("← Back to Expenses", "/expenses")
+templ expenseFormShellContent(vm ExpenseFormVM) {
+	if vm.IsEdit {
+		<div class="flex items-center gap-3">
+			@expenseStatusBadge(vm.Status)
 		</div>
+	}
 
-		if vm.FormError != "" {
-			@ui.AlertError(vm.FormError)
-		}
+	// IN.2 controlled-mode warning: when the company runs on
+	// receipt_required=true, any stock-item line will cause Post
+	// to reject loudly (ErrExpenseStockItemRequiresReceipt). Warn
+	// the operator up-front so they don't discover it only at
+	// post time — and reroute through Receipt per Rule #4 Q2.
+	if vm.ReceiptRequired {
+		@expenseControlledModeWarning()
+	}
 
-		// IN.2 controlled-mode warning: when the company runs on
-		// receipt_required=true, any stock-item line will cause Post
-		// to reject loudly (ErrExpenseStockItemRequiresReceipt). Warn
-		// the operator up-front so they don't discover it only at
-		// post time — and reroute through Receipt per Rule #4 Q2.
-		if vm.ReceiptRequired {
-			@expenseControlledModeWarning()
-		}
-
-		<form
-			method="post"
-			action={ expenseFormAction(vm) }
-			class="space-y-5"
-			x-data="gobooksExpenseForm()"
-			data-base-currency={ vm.BaseCurrencyCode }
-			data-multi-currency={ expenseBoolAttr(vm.MultiCurrency) }
-			data-expense-accounts={ vm.ExpenseAccountsJSON }
-			data-tax-codes={ vm.TaxCodesJSON }
-			data-tasks={ vm.SelectableTasksJSON }
-			data-products={ vm.ProductsJSON }
-			data-initial-lines={ expenseInitialLinesJSON(vm) }
-			@gobooks-picker-select="onPickerSelect($event)"
-		>
-			@ui.SectionCard("Expense Header", "", expenseHeaderSection(vm))
-			@expenseFXStrip(vm)
-			@ui.SectionCard("Line Items", "Each row is one cost category. The total is the sum of all lines.", expenseLinesSection(vm))
-			@ui.SectionCard("Notes", "", expenseNotesSection(vm))
-
-			<div class="flex items-center justify-between border-t border-border pt-4">
-				@ui.ButtonLink("Cancel", "/expenses")
-				if vm.IsEdit {
-					@ui.ButtonPrimary("Save Changes", "submit", false)
-				} else {
-					@ui.ButtonPrimary("Save Expense", "submit", false)
-				}
-			</div>
-		</form>
+	<form
+		method="post"
+		action={ expenseFormAction(vm) }
+		class="space-y-5"
+		x-data="gobooksExpenseForm()"
+		data-base-currency={ vm.BaseCurrencyCode }
+		data-multi-currency={ expenseBoolAttr(vm.MultiCurrency) }
+		data-expense-accounts={ vm.ExpenseAccountsJSON }
+		data-tax-codes={ vm.TaxCodesJSON }
+		data-tasks={ vm.SelectableTasksJSON }
+		data-products={ vm.ProductsJSON }
+		data-initial-lines={ expenseInitialLinesJSON(vm) }
+		@gobooks-picker-select="onPickerSelect($event)"
+	>
+		@ui.SectionCard("Expense Header", "", expenseHeaderSection(vm))
+		@expenseFXStrip(vm)
+		@ui.SectionCard("Line Items", "Each row is one cost category. The total is the sum of all lines.", expenseLinesSection(vm))
+		@ui.SectionCard("Notes", "", expenseNotesSection(vm))
 
 		// IN.2: Post / Void buttons are SIBLINGS of the save form,
 		// never nested (HTML5 forbids nested <form> elements; a
 		// nested form silently falls through to the enclosing form's
 		// action — same class of bug that broke the PO Confirm button
-		// earlier).
-		if vm.IsEdit && vm.Status == "draft" {
-			<div class="mt-3 flex gap-3 border-t border-border pt-4">
-				<form method="post" action={ templ.SafeURL("/expenses/" + Uitoa(vm.EditingID) + "/post") }>
-					@ui.ButtonPrimary("Post Expense", "submit", false)
-				</form>
-			</div>
-		}
-		if vm.IsEdit && vm.Status == "posted" {
-			<div class="mt-3 flex gap-3 border-t border-border pt-4">
-				<form method="post" action={ templ.SafeURL("/expenses/" + Uitoa(vm.EditingID) + "/void") }>
-					<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
-						Void Expense
-					</button>
-				</form>
-			</div>
-		}
-	</div>
+		// earlier). Rendered above the sticky footer so Save lives in
+		// the unified action bar at the page bottom.
+		@ui.DocEditorFooter(expenseFormFooterVM(vm))
+	</form>
+
+	if vm.IsEdit && vm.Status == "draft" {
+		<div class="flex gap-3">
+			<form method="post" action={ templ.SafeURL("/expenses/" + Uitoa(vm.EditingID) + "/post") }>
+				@ui.ButtonPrimary("Post Expense", "submit", false)
+			</form>
+		</div>
+	}
+	if vm.IsEdit && vm.Status == "posted" {
+		<div class="flex gap-3">
+			<form method="post" action={ templ.SafeURL("/expenses/" + Uitoa(vm.EditingID) + "/void") }>
+				<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
+					Void Expense
+				</button>
+			</form>
+		</div>
+	}
 }
 
 // expenseControlledModeWarning renders the Rule #4 Q2 banner for

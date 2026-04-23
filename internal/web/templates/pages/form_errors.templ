@@ -1,0 +1,40 @@
+// 遵循project_guide.md
+package pages
+
+import "gobooks/internal/web/templates/ui"
+
+// fieldError renders the standard inline error message under a form field.
+// Empty string is a no-op so callers can pass through VM error fields without
+// guarding at each call site.
+//
+// Usage:
+//   <input name="foo" class={ fieldClass(vm.FooError != "") } .../>
+//   @fieldError(vm.FooError)
+//
+// Previously defined inside invoice_editor.templ; moved here so every page
+// can use the same helper without the invoice package dependency.
+templ fieldError(msg string) {
+	if msg != "" {
+		<div class="mt-1 text-body text-danger">{ msg }</div>
+	}
+}
+
+// formErrorBanner renders the standard page-top form error banner. Thin
+// wrapper over ui.AlertError that's safe to call with an empty string
+// (renders nothing), so page templates don't need to guard at every
+// call site:
+//
+//   @formErrorBanner(vm.FormError)
+//
+// Replaces the scattered
+//   if vm.FormError != "" {
+//       <div class="rounded-md border border-border-danger bg-danger-soft ...">
+//         { vm.FormError }
+//       </div>
+//   }
+// blocks that used to live in every page's body template.
+templ formErrorBanner(msg string) {
+	if msg != "" {
+		@ui.AlertError(msg)
+	}
+}

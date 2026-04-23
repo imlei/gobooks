@@ -80,9 +80,7 @@ templ bodyVCNDetail(vm VendorCreditNoteDetailVM) {
 		if vm.Removed {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Credit application removed.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		if vm.ApplyError != "" {
 			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.ApplyError }</div>
 		}

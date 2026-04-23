@@ -38,9 +38,7 @@ templ bodyBills(vm BillsVM) {
 		if vm.Voided {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Bill voided and accounting reversed.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<form method="get" action="/bills" class="mt-6 rounded-lg border border-border bg-surface p-6">
 			<h2 class="text-section font-semibold text-text">Filter</h2>

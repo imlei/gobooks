@@ -52,13 +52,11 @@ templ bodyARAPControlHub(vm ARAPControlVM) {
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">Saved.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<div class="mt-6 overflow-hidden rounded-lg border border-border">
 			<table class="w-full text-body">
-				<thead class="bg-surface-raised">
+				<thead class="bg-surface-tableHeader">
 					<tr>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Document Type</th>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Side</th>
@@ -80,7 +78,7 @@ templ bodyARAPControlHub(vm ARAPControlVM) {
 						</tr>
 					}
 					for _, m := range vm.Mappings {
-						<tr class="hover:bg-surface-raised">
+						<tr class="hover:bg-surface-rowHover">
 							<td class="px-4 py-3 font-medium">{ arapDocTypeLabel(m.DocumentType) }</td>
 							<td class="px-4 py-3">@arapSideBadge(m.DocumentType)</td>
 							<td class="px-4 py-3 font-mono text-small">
@@ -119,7 +117,7 @@ templ bodyARAPControlHub(vm ARAPControlVM) {
 
 		<!-- Resolution order explanation -->
 		<details class="mt-6 rounded-lg border border-border">
-			<summary class="cursor-pointer px-4 py-3 text-body font-medium hover:bg-surface-raised">
+			<summary class="cursor-pointer px-4 py-3 text-body font-medium hover:bg-surface-rowHover">
 				How control account resolution works
 			</summary>
 			<div class="px-4 py-3 text-small text-text-muted2 space-y-1 border-t border-border">

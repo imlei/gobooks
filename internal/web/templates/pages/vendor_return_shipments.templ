@@ -83,12 +83,10 @@ templ bodyVRSList(vm VRSListVM) {
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">Return to Vendor saved.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		<div class="mt-6 overflow-hidden rounded-lg border border-border">
 			<table class="w-full text-body">
-				<thead class="bg-surface-raised">
+				<thead class="bg-surface-tableHeader">
 					<tr>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Number</th>
 						<th class="px-4 py-3 text-left font-medium text-text-muted">Vendor</th>
@@ -104,7 +102,7 @@ templ bodyVRSList(vm VRSListVM) {
 						</tr>
 					}
 					for _, r := range vm.Rows {
-						<tr class="hover:bg-surface-raised">
+						<tr class="hover:bg-surface-rowHover">
 							<td class="px-4 py-3 font-medium">
 								<a href={ templ.SafeURL(fmt.Sprintf("/vendor-return-shipments/%d", r.ID)) } class="text-primary hover:underline">
 									if r.VendorReturnShipmentNumber == "" {
@@ -193,9 +191,7 @@ templ bodyVRSDetail(vm VRSDetailVM) {
 		if vm.Saved {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft px-4 py-3 text-body text-success-hover">Saved.</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<div class="mt-6 grid grid-cols-2 gap-6 md:grid-cols-4">
 			<div>
@@ -227,7 +223,7 @@ templ bodyVRSDetail(vm VRSDetailVM) {
 		</div>
 
 		if vm.ReturnShipment.VendorCreditNoteID != nil {
-			<div class="mt-4 rounded-md border border-border bg-surface-raised px-4 py-3 text-body">
+			<div class="mt-4 rounded-md border border-border bg-surface-tableHeader px-4 py-3 text-body">
 				Linked Vendor Credit Note:
 				<a href={ templ.SafeURL(fmt.Sprintf("/vendor-credit-notes/%d", *vm.ReturnShipment.VendorCreditNoteID)) } class="ml-1 text-primary hover:underline">
 					if vm.ReturnShipment.VendorCreditNote != nil && vm.ReturnShipment.VendorCreditNote.CreditNoteNumber != "" {
@@ -256,7 +252,7 @@ templ bodyVRSDetail(vm VRSDetailVM) {
 			<h2 class="text-section font-semibold text-text">Lines</h2>
 			<div class="mt-3 overflow-hidden rounded-lg border border-border">
 				<table class="w-full text-body">
-					<thead class="bg-surface-raised">
+					<thead class="bg-surface-tableHeader">
 						<tr>
 							<th class="px-4 py-3 text-left font-medium text-text-muted">#</th>
 							<th class="px-4 py-3 text-left font-medium text-text-muted">Item</th>
@@ -335,9 +331,7 @@ templ bodyVRSForm(vm VRSFormVM) {
 			}
 		</div>
 		<h1 class="text-title font-semibold">New Return to Vendor</h1>
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 		<form method="POST" action="/vendor-return-shipments/save" class="mt-6 space-y-6">
 			if vm.VendorCreditNoteID != 0 {
 				<input type="hidden" name="vendor_credit_note_id" value={ fmt.Sprintf("%d", vm.VendorCreditNoteID) }/>
@@ -389,13 +383,13 @@ templ bodyVRSForm(vm VRSFormVM) {
 			<div>
 				<h2 class="text-section font-semibold text-text">Lines</h2>
 				if len(vm.PrefilledLines) == 0 {
-					<div class="mt-2 rounded-md border border-border bg-surface-raised px-4 py-3 text-body text-text-muted2">
+					<div class="mt-2 rounded-md border border-border bg-surface-tableHeader px-4 py-3 text-body text-text-muted2">
 						No lines to return. Use the "Create Return to Vendor" button on a Vendor Credit Note's detail page to pre-fill this form with its stock-item lines.
 					</div>
 				} else {
 					<div class="mt-3 overflow-hidden rounded-lg border border-border">
 						<table class="w-full text-body">
-							<thead class="bg-surface-raised">
+							<thead class="bg-surface-tableHeader">
 								<tr>
 									<th class="px-3 py-2 text-left font-medium text-text-muted">Item</th>
 									<th class="px-3 py-2 text-left font-medium text-text-muted">Description</th>
@@ -447,12 +441,12 @@ templ bodyVRSForm(vm VRSFormVM) {
 templ vrsStatusBadge(status models.VendorReturnShipmentStatus) {
 	switch status {
 		case models.VendorReturnShipmentStatusDraft:
-			<span class="inline-flex rounded-full bg-surface-raised px-2 py-0.5 text-small text-text-muted">Draft</span>
+			<span class="inline-flex rounded-full bg-surface-tableHeader px-2 py-0.5 text-small text-text-muted">Draft</span>
 		case models.VendorReturnShipmentStatusPosted:
 			<span class="inline-flex rounded-full bg-success-soft px-2 py-0.5 text-small text-success-hover">Posted</span>
 		case models.VendorReturnShipmentStatusVoided:
 			<span class="inline-flex rounded-full bg-danger-soft px-2 py-0.5 text-small text-danger-hover">Voided</span>
 		default:
-			<span class="inline-flex rounded-full bg-surface-raised px-2 py-0.5 text-small">{ string(status) }</span>
+			<span class="inline-flex rounded-full bg-surface-tableHeader px-2 py-0.5 text-small">{ string(status) }</span>
 	}
 }

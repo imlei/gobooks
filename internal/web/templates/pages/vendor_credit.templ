@@ -33,7 +33,7 @@ templ bodyVendorCredits(vm VendorCreditsVM) {
 					Every open vendor credit note and refund for this vendor, in one place. Apply a credit to an open bill from the credit note's detail page.
 				</p>
 			</div>
-			<a href="/vendors" class="rounded-md border border-border-default px-4 py-2 text-body hover:bg-background-muted">
+			<a href="/vendors" class="rounded-md border border-border px-4 py-2 text-body hover:bg-background">
 				Back to Vendors
 			</a>
 		</div>
@@ -46,9 +46,9 @@ templ bodyVendorCredits(vm VendorCreditsVM) {
 		if len(vm.CreditNotes) == 0 {
 			<p class="text-body text-text-muted2 mt-4">No credit notes on file for this vendor.</p>
 		} else {
-			<div class="mt-4 overflow-x-auto rounded-lg border border-border-default">
+			<div class="mt-4 overflow-x-auto rounded-lg border border-border">
 				<table class="w-full text-body">
-					<thead class="border-b border-border-default bg-background-muted text-small font-semibold text-text-muted2">
+					<thead class="border-b border-border bg-background text-small font-semibold text-text-muted2">
 						<tr>
 							<th class="px-4 py-3 text-left">Credit Note</th>
 							<th class="px-4 py-3 text-left">Date</th>
@@ -60,7 +60,7 @@ templ bodyVendorCredits(vm VendorCreditsVM) {
 					</thead>
 					<tbody class="divide-y divide-border-default">
 						for _, cn := range vm.CreditNotes {
-							<tr class="hover:bg-background-muted">
+							<tr class="hover:bg-background">
 								<td class="px-4 py-3">
 									<a href={ templ.SafeURL(fmt.Sprintf("/vendor-credit-notes/%d", cn.ID)) } class="text-primary hover:underline">
 										if cn.CreditNoteNumber != "" {
@@ -99,7 +99,7 @@ templ bodyVendorCredits(vm VendorCreditsVM) {
 				<h2 class="text-body font-semibold mb-3">Refunds Received</h2>
 				<div class="overflow-hidden rounded-lg border border-border">
 					<table class="w-full text-body">
-						<thead class="bg-surface-raised text-small uppercase tracking-wider text-text-muted">
+						<thead class="bg-surface-tableHeader text-small uppercase tracking-wider text-text-muted">
 							<tr>
 								<th class="px-4 py-3 text-left">Refund #</th>
 								<th class="px-4 py-3 text-left">Date</th>

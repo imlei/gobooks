@@ -90,7 +90,7 @@ func bodyCompanies(vm CompaniesVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><a href=\"/setup\" class=\"inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-semibold text-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4v16m8-8H4\"></path></svg> New Company</a></div><!-- Company list --><div class=\"mt-6 space-y-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><a href=\"/setup\" class=\"inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4v16m8-8H4\"></path></svg> New Company</a></div><!-- Company list --><div class=\"mt-6 space-y-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

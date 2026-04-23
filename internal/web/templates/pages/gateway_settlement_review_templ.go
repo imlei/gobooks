@@ -102,7 +102,7 @@ func bodyGatewaySettlementReview(vm GatewaySettlementReviewVM) templ.Component {
 			}
 		}
 		if vm.RetryError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"mt-4 rounded-md border border-error-border bg-error-soft px-4 py-3 text-body text-error-hover\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"mt-4 rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-body text-danger-hover\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -416,7 +416,7 @@ func settlementStatusBadge(status string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else if status == "failed" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<span class=\"inline-flex items-center rounded-full border border-error-border bg-error-soft px-2 py-0.5 text-[11px] font-semibold text-error-hover\">failed</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<span class=\"inline-flex items-center rounded-full border border-border-danger bg-danger-soft px-2 py-0.5 text-[11px] font-semibold text-danger-hover\">failed</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

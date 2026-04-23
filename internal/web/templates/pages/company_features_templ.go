@@ -514,7 +514,7 @@ func featureActionButton(feat FeatureCardVM, canManage bool) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" class=\"inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-small font-medium text-white hover:bg-primary-hover\">Enable ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" class=\"inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-small font-medium text-onPrimary hover:bg-primary-hover\">Enable ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -786,7 +786,7 @@ func featureEnableModal(feat FeatureCardVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" class=\"rounded-md px-4 py-2 text-small font-medium text-white\">Enable ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" class=\"rounded-md px-4 py-2 text-small font-medium text-onPrimary\">Enable ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

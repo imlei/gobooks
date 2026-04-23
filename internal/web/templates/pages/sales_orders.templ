@@ -39,9 +39,7 @@ templ bodySalesOrders(vm SalesOrdersVM) {
 				}
 			</div>
 		}
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		// Filter
 		<form method="get" action="/sales-orders" class="mt-6 rounded-lg border border-border bg-surface p-6">

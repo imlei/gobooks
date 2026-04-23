@@ -24,9 +24,7 @@ templ bodyCustomerStatement(vm CustomerStatementVM) {
 			</div>
 		</div>
 
-		if vm.FormError != "" {
-			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
-		}
+		@formErrorBanner(vm.FormError)
 
 		<!-- Filters -->
 		<form method="GET" action="/customer-statement" class="mt-4 flex flex-wrap items-end gap-3">

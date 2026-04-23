@@ -1,0 +1,312 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"gobooks/internal/services"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
+
+templ SalesTransactions(vm SalesTxVM) {
+	@layout.Layout(
+		"GoBooks - Sales Transactions",
+		ui.SidebarVM{Active: "Sales Transactions", HasCompany: vm.HasCompany},
+		bodySalesTransactions(vm),
+	)
+}
+
+templ bodySalesTransactions(vm SalesTxVM) {
+	<div class="max-w-[95%] space-y-4">
+		<div class="flex flex-wrap items-end justify-between gap-3">
+			<div>
+				<h1 class="text-title font-semibold">Sales transactions</h1>
+				<p class="mt-1 text-small text-text-muted2">Unified feed across quotes, sales orders, invoices, receipts, credit notes and returns.</p>
+			</div>
+		</div>
+
+		@salesTxKPIStrip(vm.KPI)
+
+		@salesTxFilterBar(vm)
+
+		@salesTxTable(vm)
+
+		@salesTxPager(vm)
+	</div>
+}
+
+// salesTxKPIStrip renders the 5-segment KPI bar at the top of the page.
+// The coloured underline strip is proportional to each segment's share
+// of the total, mirroring the QuickBooks reference design.
+templ salesTxKPIStrip(kpi services.SalesTxKPI) {
+	{{ shares := salesTxKPIShares(kpi) }}
+	<div class="rounded-lg border border-border bg-surface p-4 shadow-sm">
+		<div class="grid grid-cols-2 gap-4 md:grid-cols-5">
+			@salesTxKPICell("/sales-transactions?type=quotes", salesTxMoneyFmt(kpi.QuotesOpenTotal), salesTxCountLabel(kpi.QuotesOpenCount, "quote", "quotes"), "sky")
+			@salesTxKPICell("/sales-transactions?type=unbilled", salesTxMoneyFmt(kpi.UnbilledTotal), "Unbilled income", "purple")
+			@salesTxKPICell("/sales-transactions?type=invoices&status=overdue", salesTxMoneyFmt(kpi.OverdueTotal), salesTxCountLabel(kpi.OverdueCount, "overdue invoice", "overdue invoices"), "warning")
+			@salesTxKPICell("/sales-transactions?type=invoices&status=open", salesTxMoneyFmt(kpi.OpenTotal), salesTxCountLabel(kpi.OpenCount, "open invoice and credit", "open invoices and credits"), "muted")
+			@salesTxKPICell("/sales-transactions?type=recently_paid", salesTxMoneyFmt(kpi.RecentlyPaidTotal), salesTxCountLabel(kpi.RecentlyPaidCount, "recently paid", "recently paid"), "success")
+		</div>
+		// Proportional colour bar underneath — same five colours, widths
+		// proportional to each segment's share of the total. Zero-total
+		// segments render as a slim 4% sliver so the bar is always visible.
+		<div class="mt-4 flex h-2 w-full overflow-hidden rounded-full bg-background">
+			<div class="bg-sky-400" style={ salesTxBarWidth(shares[0]) }></div>
+			<div class="bg-purple-400" style={ salesTxBarWidth(shares[1]) }></div>
+			<div class="bg-warning" style={ salesTxBarWidth(shares[2]) }></div>
+			<div class="bg-border-input" style={ salesTxBarWidth(shares[3]) }></div>
+			<div class="bg-success" style={ salesTxBarWidth(shares[4]) }></div>
+		</div>
+	</div>
+}
+
+// salesTxKPICell renders one segment of the KPI strip.
+templ salesTxKPICell(href, amount, label, _ string) {
+	<a href={ templ.SafeURL(href) } class="block rounded-md px-2 py-1 hover:bg-background">
+		<div class="text-title font-semibold tabular-nums text-text">{ amount }</div>
+		<div class="mt-0.5 text-small text-text-muted2">{ label }</div>
+	</a>
+}
+
+// salesTxFilterBar renders the top toolbar: batch actions dropdown,
+// Type / Date / Customer filters, search box, and "New transaction" CTA.
+// Filter changes submit the GET form; Alpine isn't needed here because
+// the page is fully server-rendered.
+templ salesTxFilterBar(vm SalesTxVM) {
+	<form method="get" action="/sales-transactions" class="rounded-lg border border-border bg-surface p-3 shadow-sm">
+		<div class="flex flex-wrap items-end gap-3">
+			<div class="min-w-[120px]">
+				<label class={ compactLabelClass() }>Batch actions</label>
+				<div class="mt-2 inline-flex items-center rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted3">
+					Batch actions
+					<svg xmlns="http://www.w3.org/2000/svg" class="ml-1 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+				</div>
+			</div>
+
+			<div class="min-w-[160px]">
+				<label class={ compactLabelClass() }>Type</label>
+				<select name="type" onchange="this.form.submit()" class={ salesTxSelectClass() }>
+					<option value="" selected?={ vm.TypeFilter == "" }>All transactions</option>
+					<option value="invoices" selected?={ vm.TypeFilter == "invoices" || vm.TypeFilter == services.SalesTxTypeInvoice }>Invoices</option>
+					<option value="quotes" selected?={ vm.TypeFilter == "quotes" || vm.TypeFilter == services.SalesTxTypeQuote }>Quotes</option>
+					<option value="sales_orders" selected?={ vm.TypeFilter == "sales_orders" || vm.TypeFilter == services.SalesTxTypeSalesOrder }>Sales orders</option>
+					<option value="payments" selected?={ vm.TypeFilter == "payments" || vm.TypeFilter == services.SalesTxTypePayment }>Payments received</option>
+					<option value="credit_memos" selected?={ vm.TypeFilter == "credit_memos" || vm.TypeFilter == services.SalesTxTypeCreditNote }>Credit memos</option>
+					<option value="returns" selected?={ vm.TypeFilter == "returns" || vm.TypeFilter == services.SalesTxTypeReturn }>Returns</option>
+					<option value="unbilled" selected?={ vm.TypeFilter == services.SalesTxPseudoUnbilled }>Unbilled income</option>
+					<option value="recently_paid" selected?={ vm.TypeFilter == services.SalesTxPseudoRecentlyPaid }>Recently paid</option>
+				</select>
+			</div>
+
+			<div class="min-w-[140px]">
+				<label class={ compactLabelClass() }>Date</label>
+				<select name="date" onchange="this.form.submit()" class={ salesTxSelectClass() }>
+					<option value="" selected?={ vm.DateFilter == "" || vm.DateFilter == "all" }>All</option>
+					<option value="today" selected?={ vm.DateFilter == "today" }>Today</option>
+					<option value="yesterday" selected?={ vm.DateFilter == "yesterday" }>Yesterday</option>
+					<option value="this_week" selected?={ vm.DateFilter == "this_week" }>This week</option>
+					<option value="last_week" selected?={ vm.DateFilter == "last_week" }>Last week</option>
+					<option value="this_month" selected?={ vm.DateFilter == "this_month" }>This month</option>
+					<option value="last_month" selected?={ vm.DateFilter == "last_month" }>Last month</option>
+					<option value="last_30_days" selected?={ vm.DateFilter == "last_30_days" }>Last 30 days</option>
+					<option value="this_quarter" selected?={ vm.DateFilter == "this_quarter" }>This quarter</option>
+					<option value="last_quarter" selected?={ vm.DateFilter == "last_quarter" }>Last quarter</option>
+					<option value="this_year" selected?={ vm.DateFilter == "this_year" }>This year</option>
+					<option value="last_year" selected?={ vm.DateFilter == "last_year" }>Last year</option>
+					<option value="custom" selected?={ vm.DateFilter == "custom" }>Custom</option>
+				</select>
+			</div>
+
+			if vm.DateFilter == "custom" {
+				<div>
+					<label class={ compactLabelClass() }>From</label>
+					<input type="date" name="from" value={ vm.DateFrom } class={ salesTxSelectClass() }/>
+				</div>
+				<div>
+					<label class={ compactLabelClass() }>To</label>
+					<input type="date" name="to" value={ vm.DateTo } class={ salesTxSelectClass() }/>
+				</div>
+			}
+
+			<div class="min-w-[180px]">
+				<label class={ compactLabelClass() }>Customer</label>
+				<select name="customer_id" onchange="this.form.submit()" class={ salesTxSelectClass() }>
+					<option value="" selected?={ vm.CustomerID == 0 }>All customers</option>
+					for _, c := range vm.Customers {
+						<option value={ Uitoa(c.ID) } selected?={ c.ID == vm.CustomerID }>{ c.Name }</option>
+					}
+				</select>
+			</div>
+
+			<div class="min-w-[160px] flex-1">
+				<label class={ compactLabelClass() }>Search</label>
+				<input
+					type="text"
+					name="q"
+					value={ vm.Search }
+					placeholder="Number or memo…"
+					class={ salesTxSelectClass() }
+				/>
+			</div>
+
+			<div class="flex items-end gap-2">
+				<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">Apply</button>
+				<a href="/sales-transactions" class="rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted3 hover:bg-background hover:text-text">Reset</a>
+				<details class="relative">
+					<summary class="cursor-pointer list-none rounded-md bg-success px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-success-hover">
+						New transaction ▾
+					</summary>
+					<div class="absolute right-0 z-20 mt-1 w-56 rounded-md border border-border bg-surface p-1 shadow-lg">
+						<a href="/invoices/new" class="block rounded px-3 py-2 text-small text-text hover:bg-background">Invoice</a>
+						<a href="/quotes/new" class="block rounded px-3 py-2 text-small text-text hover:bg-background">Quote</a>
+						<a href="/sales-orders/new" class="block rounded px-3 py-2 text-small text-text hover:bg-background">Sales order</a>
+						<a href="/receipts/new" class="block rounded px-3 py-2 text-small text-text hover:bg-background">Customer receipt</a>
+						<a href="/credit-notes/new" class="block rounded px-3 py-2 text-small text-text hover:bg-background">Credit memo</a>
+						<a href="/returns/new" class="block rounded px-3 py-2 text-small text-text hover:bg-background">Return</a>
+					</div>
+				</details>
+			</div>
+		</div>
+	</form>
+}
+
+// salesTxTable is the compact transaction grid. Row height py-2 (~36px)
+// to meet the "compress information density" brief.
+templ salesTxTable(vm SalesTxVM) {
+	<div class="rounded-lg border border-border bg-surface shadow-sm">
+		<div class="overflow-x-auto">
+			<table class="w-full text-left text-body">
+				<thead class="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
+					<tr>
+						<th class="w-10 px-3 py-2"></th>
+						<th class="px-3 py-2">Date</th>
+						<th class="px-3 py-2">Type</th>
+						<th class="px-3 py-2">No.</th>
+						<th class="px-3 py-2">Customer</th>
+						<th class="px-3 py-2">Memo</th>
+						<th class="px-3 py-2 text-right">Amount</th>
+						<th class="px-3 py-2">Status</th>
+						<th class="w-36 px-3 py-2 text-right">Action</th>
+					</tr>
+				</thead>
+				<tbody class="text-text">
+					if len(vm.Rows) == 0 {
+						<tr>
+							<td colspan="9" class="px-3 py-10 text-center text-small text-text-muted2">No transactions match your filters.</td>
+						</tr>
+					} else {
+						for _, r := range vm.Rows {
+							@salesTxRow(r)
+						}
+					}
+				</tbody>
+				if len(vm.Rows) > 0 {
+					<tfoot class="border-t border-border bg-background">
+						<tr>
+							<td colspan="6" class="px-3 py-2 text-small font-semibold text-text-muted2">Total</td>
+							<td class="px-3 py-2 text-right text-small font-semibold tabular-nums text-text" data-numfmt>{ salesTxRowsTotal(vm.Rows) }</td>
+							<td colspan="2"></td>
+						</tr>
+					</tfoot>
+				}
+			</table>
+		</div>
+	</div>
+}
+
+templ salesTxRow(r services.SalesTxRow) {
+	<tr class="border-b border-border-subtle hover:bg-background">
+		<td class="w-10 px-3 py-2">
+			<input type="checkbox" name="selected" value={ salesTxSelectionKey(r) } class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"/>
+		</td>
+		<td class="px-3 py-2 text-small text-text-muted2 tabular-nums">{ r.Date.Format("2/1/06") }</td>
+		<td class="px-3 py-2 text-small">{ salesTxTypeLabel(r.Type) }</td>
+		<td class="px-3 py-2 text-small font-mono">
+			if r.DetailURL != "" {
+				<a href={ templ.SafeURL(r.DetailURL) } class="text-primary hover:underline">{ r.Number }</a>
+			} else {
+				{ r.Number }
+			}
+		</td>
+		<td class="px-3 py-2 text-small">
+			if r.CustomerID != 0 {
+				<a href={ templ.SafeURL("/customers/" + Uitoa(r.CustomerID)) } class="hover:text-primary hover:underline">{ r.CustomerName }</a>
+			} else {
+				<span class="text-text-muted2">—</span>
+			}
+		</td>
+		<td class="max-w-[260px] px-3 py-2 text-small text-text-muted2">
+			<span class="block truncate" title={ r.Memo }>
+				if r.Memo == "" {
+					—
+				} else {
+					{ r.Memo }
+				}
+			</span>
+		</td>
+		<td class="px-3 py-2 text-right text-small font-mono tabular-nums">
+			if r.Amount.IsNegative() {
+				<span class="text-danger-hover" data-numfmt>{ r.Amount.StringFixed(2) }</span>
+			} else {
+				<span data-numfmt>{ r.Amount.StringFixed(2) }</span>
+			}
+		</td>
+		<td class="px-3 py-2 text-small">
+			@salesTxStatusBadge(r)
+		</td>
+		<td class="w-36 px-3 py-2 text-right text-small">
+			if r.DetailURL != "" {
+				<a href={ templ.SafeURL(r.DetailURL) } class="text-primary hover:underline">View/Edit</a>
+			}
+		</td>
+	</tr>
+}
+
+// salesTxStatusBadge renders a small colour-keyed pill for a row's status.
+// Same component handles invoice / quote / SO / receipt / CN / return
+// statuses — the colour lookup is centralised in salesTxStatusBadgeClass.
+templ salesTxStatusBadge(r services.SalesTxRow) {
+	<span class={ salesTxStatusBadgeClass(r) }>
+		@salesTxStatusIcon(r)
+		{ salesTxStatusLabel(r) }
+	</span>
+}
+
+templ salesTxStatusIcon(r services.SalesTxRow) {
+	{{ kind := salesTxStatusKind(r) }}
+	if kind == "danger" {
+		<svg xmlns="http://www.w3.org/2000/svg" class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-11a1 1 0 112 0v4a1 1 0 11-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+	} else if kind == "success" {
+		<svg xmlns="http://www.w3.org/2000/svg" class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+	}
+}
+
+// salesTxPager renders the "n–m of T" strip plus First/Prev/Next/Last
+// links. All link hrefs preserve the current filter state via
+// salesTxPageHref.
+templ salesTxPager(vm SalesTxVM) {
+	if vm.Total > 0 {
+		<div class="flex flex-wrap items-center justify-between gap-2 px-1 text-small text-text-muted2">
+			<div>
+				Showing { Itoa((vm.Page - 1) * vm.PageSize + 1) }–{ Itoa(salesTxPageEnd(vm)) } of { Itoa(vm.Total) }
+			</div>
+			<div class="flex items-center gap-3">
+				if vm.Page > 1 {
+					<a href={ templ.SafeURL(salesTxPageHref(vm, 1)) } class="hover:text-text">First</a>
+					<a href={ templ.SafeURL(salesTxPageHref(vm, vm.Page - 1)) } class="hover:text-text">Previous</a>
+				} else {
+					<span class="text-text-muted3">First</span>
+					<span class="text-text-muted3">Previous</span>
+				}
+				<span class="tabular-nums text-text">{ Itoa(vm.Page) } / { Itoa(vm.TotalPages) }</span>
+				if vm.Page < vm.TotalPages {
+					<a href={ templ.SafeURL(salesTxPageHref(vm, vm.Page + 1)) } class="hover:text-text">Next</a>
+					<a href={ templ.SafeURL(salesTxPageHref(vm, vm.TotalPages)) } class="hover:text-text">Last</a>
+				} else {
+					<span class="text-text-muted3">Next</span>
+					<span class="text-text-muted3">Last</span>
+				}
+			</div>
+		</div>
+	}
+}

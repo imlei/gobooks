@@ -29,7 +29,7 @@ templ bodyGatewayDisputeList(vm GatewayDisputeListVM) {
 			</div>
 			<a
 				href="/settings/payment-gateways/disputes/new"
-				class="rounded-md bg-primary px-4 py-2 text-body font-medium text-white hover:bg-primary-hover"
+				class="rounded-md bg-primary px-4 py-2 text-body font-medium text-onPrimary hover:bg-primary-hover"
 			>
 				Open Dispute
 			</a>
@@ -89,7 +89,7 @@ templ disputeStatusBadge(status models.GatewayDisputeStatus) {
 	case models.DisputeStatusWon:
 		<span class="rounded bg-success-soft px-2 py-0.5 text-small text-success-hover border border-success-border">Won</span>
 	case models.DisputeStatusLost:
-		<span class="rounded bg-error-soft px-2 py-0.5 text-small text-error-hover border border-error-border">Lost</span>
+		<span class="rounded bg-danger-soft px-2 py-0.5 text-small text-danger-hover border border-border-danger">Lost</span>
 	default:
 		<span class="rounded bg-surface px-2 py-0.5 text-small text-text-muted2 border border-border-subtle">{ string(status) }</span>
 	}

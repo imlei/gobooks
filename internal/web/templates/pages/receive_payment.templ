@@ -254,7 +254,7 @@ templ rpInvoiceTable(vm ReceivePaymentVM) {
 								class="inline-flex h-4 w-4 items-center justify-center rounded-full border-2"
 								:class="String(inv.id) === invoiceId ? 'border-primary bg-primary' : 'border-border'"
 							>
-								<span x-show="String(inv.id) === invoiceId" class="h-2 w-2 rounded-full bg-white"></span>
+								<span x-show="String(inv.id) === invoiceId" class="h-2 w-2 rounded-full bg-onPrimary"></span>
 							</span>
 						</td>
 						<td class="py-2.5 pr-4 font-medium font-mono text-text" x-text="inv.invoice_number"></td>

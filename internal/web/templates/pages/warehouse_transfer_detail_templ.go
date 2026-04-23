@@ -204,7 +204,7 @@ func transferEditForm(vm WarehouseTransferDetailVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"input input-bordered\" placeholder=\"e.g. TRF-0001\"></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">Date <span class=\"text-error\">*</span></span></label> <input type=\"date\" name=\"transfer_date\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"input input-bordered\" placeholder=\"e.g. TRF-0001\"></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">Date <span class=\"text-danger\">*</span></span></label> <input type=\"date\" name=\"transfer_date\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -217,7 +217,7 @@ func transferEditForm(vm WarehouseTransferDetailVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"input input-bordered\" required></div></div><div class=\"grid grid-cols-2 gap-4 mt-4\"><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">From Warehouse <span class=\"text-error\">*</span></span></label> <select name=\"from_warehouse_id\" class=\"select select-bordered\" required><option value=\"\">— select —</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"input input-bordered\" required></div></div><div class=\"grid grid-cols-2 gap-4 mt-4\"><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">From Warehouse <span class=\"text-danger\">*</span></span></label> <select name=\"from_warehouse_id\" class=\"select select-bordered\" required><option value=\"\">— select —</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -314,7 +314,7 @@ func transferEditForm(vm WarehouseTransferDetailVM) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</select></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">To Warehouse <span class=\"text-error\">*</span></span></label> <select name=\"to_warehouse_id\" class=\"select select-bordered\" required><option value=\"\">— select —</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</select></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">To Warehouse <span class=\"text-danger\">*</span></span></label> <select name=\"to_warehouse_id\" class=\"select select-bordered\" required><option value=\"\">— select —</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -411,7 +411,7 @@ func transferEditForm(vm WarehouseTransferDetailVM) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select></div></div><div class=\"grid grid-cols-2 gap-4 mt-4\"><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">Item <span class=\"text-error\">*</span></span></label> <select name=\"item_id\" class=\"select select-bordered\" required><option value=\"\">— select —</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select></div></div><div class=\"grid grid-cols-2 gap-4 mt-4\"><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">Item <span class=\"text-danger\">*</span></span></label> <select name=\"item_id\" class=\"select select-bordered\" required><option value=\"\">— select —</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -480,7 +480,7 @@ func transferEditForm(vm WarehouseTransferDetailVM) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</select></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">Quantity <span class=\"text-error\">*</span></span></label> <input type=\"number\" name=\"quantity\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</select></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text\">Quantity <span class=\"text-danger\">*</span></span></label> <input type=\"number\" name=\"quantity\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

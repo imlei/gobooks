@@ -1,0 +1,118 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"encoding/json"
+
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/ui"
+)
+
+// poShellVM maps PurchaseOrderDetailVM into the shared DocEditorShell
+// wrapper used by the migrated PO editor.
+func poShellVM(vm PurchaseOrderDetailVM) ui.DocEditorShellVM {
+	title := "New Purchase Order"
+	subtitle := "Create a new purchase order."
+	if vm.PurchaseOrder.ID != 0 {
+		title = "Purchase Order " + vm.PurchaseOrder.PONumber
+		subtitle = "View and manage this purchase order."
+	}
+	return ui.DocEditorShellVM{
+		Title:     title,
+		Subtitle:  subtitle,
+		BackURL:   "/purchase-orders",
+		BackLabel: "Back to Purchase Orders",
+		FormError: vm.FormError,
+	}
+}
+
+// poFooterVM is the sticky bottom action bar for the PO editor.
+// Single Save button — confirm/cancel actions live in their own POST
+// forms rendered above the footer (sibling to the editor form per the
+// nested-form prohibition called out in the original page comment).
+func poFooterVM(vm PurchaseOrderDetailVM) ui.DocEditorFooterVM {
+	return ui.DocEditorFooterVM{
+		Cancel: &ui.DocEditorFooterLink{
+			Label: "Cancel",
+			Href:  "/purchase-orders",
+		},
+		Buttons: []ui.DocEditorFooterButton{
+			{Label: "Save", Variant: ui.FooterBtnPrimary, Type: "submit"},
+		},
+	}
+}
+
+// poProductsJSON serialises the product/service catalogue for the
+// docTransactionEditor's Alpine factory (auto-fills description / price
+// when the operator picks an item via gobooksItemPicker).
+func poProductsJSON(products []models.ProductService) string {
+	type row struct {
+		ID               uint   `json:"id"`
+		Name             string `json:"name"`
+		Description      string `json:"description"`
+		DefaultPrice     string `json:"default_price"`
+		DefaultTaxCodeID *uint  `json:"default_tax_code_id"`
+	}
+	out := make([]row, 0, len(products))
+	for _, p := range products {
+		out = append(out, row{
+			ID:               p.ID,
+			Name:             p.Name,
+			Description:      p.Description,
+			DefaultPrice:     p.DefaultPrice.StringFixed(2),
+			DefaultTaxCodeID: p.DefaultTaxCodeID,
+		})
+	}
+	b, _ := json.Marshal(out)
+	return string(b)
+}
+
+// poTaxCodesJSON serialises tax codes. PO doesn't currently expose a per-line
+// tax column in its editor, but the shared docTransactionEditor expects the
+// dataset to be present (and it stays 0 when no code is bound), so we emit
+// the catalogue for forward-compat.
+func poTaxCodesJSON(codes []models.TaxCode) string {
+	type row struct {
+		ID   uint   `json:"id"`
+		Code string `json:"code"`
+		Rate string `json:"rate"`
+	}
+	out := make([]row, 0, len(codes))
+	for _, tc := range codes {
+		out = append(out, row{ID: tc.ID, Code: tc.Code, Rate: tc.Rate.String()})
+	}
+	b, _ := json.Marshal(out)
+	return string(b)
+}
+
+// poInitialLinesJSON converts existing PurchaseOrderLines into the shape
+// the docTransactionEditor's Alpine factory expects on edit-page hydration.
+func poInitialLinesJSON(lines []models.PurchaseOrderLine) string {
+	type row struct {
+		ProductServiceID    string `json:"product_service_id"`
+		ProductServiceLabel string `json:"product_service_label"`
+		Description         string `json:"description"`
+		Qty                 string `json:"qty"`
+		UnitPrice           string `json:"unit_price"`
+		TaxCodeID           string `json:"tax_code_id"`
+		LineTotal           string `json:"line_total"`
+	}
+	out := make([]row, 0, len(lines))
+	for _, l := range lines {
+		r := row{
+			Description: l.Description,
+			Qty:         l.Qty.StringFixed(2),
+			UnitPrice:   l.UnitPrice.StringFixed(2),
+			LineTotal:   l.LineNet.StringFixed(2),
+		}
+		if l.ProductServiceID != nil {
+			r.ProductServiceID = Uitoa(*l.ProductServiceID)
+			if l.ProductService != nil {
+				r.ProductServiceLabel = l.ProductService.Name
+			}
+		}
+		out = append(out, r)
+	}
+	b, _ := json.Marshal(out)
+	return string(b)
+}

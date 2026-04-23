@@ -1186,7 +1186,7 @@ func prHooksCard(vm PaymentReverseExceptionDetailVM) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "\"><button type=\"submit\" class=\"inline-flex items-center rounded-md border border-primary bg-primary px-3 py-1.5 text-small font-medium text-white hover:opacity-90\">Run</button></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "\"><button type=\"submit\" class=\"inline-flex items-center rounded-md border border-primary bg-primary px-3 py-1.5 text-small font-medium text-onPrimary hover:opacity-90\">Run</button></form>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
