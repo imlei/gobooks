@@ -9,6 +9,7 @@ import (
 	"gobooks/internal/db"
 	"gobooks/internal/logging"
 	"gobooks/internal/services"
+	_ "gobooks/internal/services/pdf" // init() registers the system-template seeder with db.Migrate
 	"gobooks/internal/version"
 	"gobooks/internal/web"
 )

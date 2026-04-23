@@ -386,7 +386,28 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 	// Phase D: warehouse_id columns on bills and invoices.
-	return migratePhaseDInventory(db)
+	if err := migratePhaseDInventory(db); err != nil {
+		return err
+	}
+	// Phase 3 (G2): seed system-shipped PDF templates so a fresh install has
+	// the 18 baseline presets immediately available. Idempotent — re-runs
+	// refresh schema_json + description on existing system rows.
+	return seedSystemPDFTemplates(db)
+}
+
+// seedSystemPDFTemplates is wired through a forwarder so the db package
+// doesn't import services/pdf at the top level (avoids a cycle when other
+// services import db). Concrete implementation lives in services/pdf/seed.go.
+var seedSystemPDFTemplates = func(db *gorm.DB) error {
+	// Default no-op; overridden by services/pdf init via SetPDFTemplateSeeder.
+	return nil
+}
+
+// SetPDFTemplateSeeder wires the seeder. Called from services/pdf/init.go.
+func SetPDFTemplateSeeder(fn func(*gorm.DB) error) {
+	if fn != nil {
+		seedSystemPDFTemplates = fn
+	}
 }
 
 // migrateEnsureUserPlans seeds the user_plans table with the three default tiers
