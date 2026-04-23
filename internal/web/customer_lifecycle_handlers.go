@@ -9,6 +9,7 @@ package web
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"gobooks/internal/searchprojection/producers"
 	"gobooks/internal/services"
 )
 
@@ -39,6 +40,7 @@ func (s *Server) handleCustomerDelete(c *fiber.Ctx) error {
 		}
 		return redirectErr(c, "/customers/"+c.Params("id"), "Could not delete customer.")
 	}
+	_ = producers.DeleteCustomerProjection(c.Context(), s.SearchProjector, companyID, customerID)
 
 	cid := companyID
 	uid := user.ID
@@ -82,6 +84,8 @@ func setCustomerActiveAndRedirect(s *Server, c *fiber.Ctx, active bool, auditAct
 	if err := services.SetCustomerActive(s.DB, companyID, customerID, active); err != nil {
 		return redirectErr(c, "/customers/"+c.Params("id"), "Could not update customer status.")
 	}
+	// Re-project so the row's status flips (active/inactive) in search.
+	_ = producers.ProjectCustomer(c.Context(), s.DB, s.SearchProjector, customerID)
 
 	cid := companyID
 	uid := user.ID

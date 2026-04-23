@@ -29,6 +29,21 @@ type Config struct {
 	// Set via APP_PUBLIC_URL environment variable.
 	// If empty, handlers fall back to the request host (logged as WARN).
 	PublicBaseURL string
+
+	// SearchEngine selects between the legacy SmartPicker fan-out and the
+	// upcoming ent-backed search projection. Phase 0 always defaults to
+	// "legacy" — flipping to "dual" or "ent" is opt-in and arrives only
+	// after the projector has been written and validated.
+	//
+	// Valid values:
+	//   legacy  → existing per-entity SmartPicker providers (status quo)
+	//   dual    → call legacy AND ent; return legacy results, log diffs
+	//   ent     → call ent only (post-validation cutover)
+	//
+	// Read once at startup; SIGHUP reload is intentionally unsupported —
+	// the search engine is a foundational dependency and a runtime swap
+	// would let inconsistent reads slip through. Restart to change.
+	SearchEngine string
 }
 
 // Load reads .env (if present) and then reads environment variables.
@@ -49,6 +64,7 @@ func Load() (Config, error) {
 		DBSSLMode:  getenv("DB_SSLMODE", "disable"),
 		AISecretKey:   getenv("AI_SECRET_KEY", ""),
 		PublicBaseURL: getenv("APP_PUBLIC_URL", ""),
+		SearchEngine:  getenv("SEARCH_ENGINE", "legacy"),
 	}
 
 	if cfg.DBHost == "" || cfg.DBPort == "" || cfg.DBUser == "" || cfg.DBName == "" {

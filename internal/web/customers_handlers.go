@@ -10,6 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"gobooks/internal/models"
+	"gobooks/internal/searchprojection/producers"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
@@ -295,6 +296,8 @@ func (s *Server) handleCustomerCreate(c *fiber.Ctx) error {
 		vm.FormError = "Could not create customer. Please try again."
 		return pages.CustomerNew(vm).Render(c.Context(), c)
 	}
+	// Post-commit projection — failure logged, not surfaced to caller.
+	_ = producers.ProjectCustomer(c.Context(), s.DB, s.SearchProjector, customer.ID)
 
 	cid := companyID
 	uid := user.ID
@@ -404,6 +407,7 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 	if err := s.DB.Save(&existing).Error; err != nil {
 		return pages.Customers(buildErrVM("", "", "Could not update customer. Please try again.")).Render(c.Context(), c)
 	}
+	_ = producers.ProjectCustomer(c.Context(), s.DB, s.SearchProjector, existing.ID)
 
 	cid := companyID
 	uid := user.ID
@@ -616,6 +620,7 @@ func (s *Server) handleCustomerQuickCreate(c *fiber.Ctx) error {
 	if err := s.DB.Create(&customer).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Could not create customer."})
 	}
+	_ = producers.ProjectCustomer(c.Context(), s.DB, s.SearchProjector, customer.ID)
 
 	cid := companyID
 	uid := user.ID

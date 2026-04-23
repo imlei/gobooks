@@ -1,0 +1,132 @@
+// 遵循project_guide.md
+//
+// Package search_engine selects between the legacy SmartPicker fan-out and
+// the upcoming ent-backed projection at request time. Driven by the
+// SEARCH_ENGINE environment variable read once at server start (config.Config).
+//
+// Modes:
+//
+//	legacy → existing SmartPicker providers (status quo)
+//	dual   → call legacy AND ent; return legacy results, log diffs (Phase 1+)
+//	ent    → call ent only (post-validation flip)
+//
+// Phase 0 ships only the selector + the legacy delegate. Dual / ent
+// implementations are stubs that fall back to legacy with a logged warning.
+package search_engine
+
+import (
+	"context"
+	"fmt"
+	"strings"
+)
+
+// Mode identifies which search backend the selector should dispatch to.
+type Mode string
+
+const (
+	ModeLegacy Mode = "legacy"
+	ModeDual   Mode = "dual"
+	ModeEnt    Mode = "ent"
+)
+
+// ParseMode normalises a free-form string (typically the env var value)
+// into a Mode. Unknown values fall back to ModeLegacy with no error;
+// the env var is operator-facing and a typo should never break startup.
+func ParseMode(raw string) Mode {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case string(ModeDual):
+		return ModeDual
+	case string(ModeEnt):
+		return ModeEnt
+	default:
+		return ModeLegacy
+	}
+}
+
+// Engine is the contract every backend must satisfy. Phase 0 has only one
+// method (Search) so the selector compiles; Phase 4 adds Recents / Stats
+// when the projection-backed engine actually has more to offer than legacy.
+type Engine interface {
+	// Mode returns the backend's identity for logging / metrics.
+	Mode() Mode
+
+	// Search executes a global search for the given query in the given
+	// company. The Phase 0 contract is intentionally minimal — Phase 4
+	// expands it once the response shape is agreed.
+	Search(ctx context.Context, req SearchRequest) (*SearchResponse, error)
+}
+
+// SearchRequest is the input shape passed through the selector. Kept tiny
+// in Phase 0 — Phase 4 adds entity-type filters, group-restriction flags,
+// pagination cursor, etc.
+type SearchRequest struct {
+	CompanyID uint
+	Query     string
+	Limit     int
+}
+
+// SearchResponse holds the raw candidate list. Mirrors SmartPickerItem
+// shape conceptually but lives in this package to keep search_engine
+// callable from non-web code (e.g. CLI / batch jobs in later phases).
+type SearchResponse struct {
+	Candidates []Candidate
+	Source     string
+}
+
+// Candidate is the proto-version of the upgraded SmartPickerCandidate
+// (Phase 4 spec — adds GroupKey / GroupLabel / ActionKind / EntityType
+// fields). Phase 0 stores only what the legacy engine already produces
+// so the selector compiles end-to-end.
+type Candidate struct {
+	ID        string
+	Primary   string
+	Secondary string
+	Payload   map[string]string
+}
+
+// Selector picks the right Engine implementation for the configured Mode
+// and dispatches calls. Initialise once at server startup; concurrent
+// callers share the same Selector.
+type Selector struct {
+	mode    Mode
+	legacy  Engine
+	dual    Engine
+	entImpl Engine
+}
+
+// NewSelector wires the available engine implementations and the mode.
+// `legacy` is mandatory; `dual` and `entImpl` may be nil during the
+// transitional rollout (selector falls back to legacy).
+func NewSelector(mode Mode, legacy, dual, entImpl Engine) *Selector {
+	return &Selector{
+		mode:    mode,
+		legacy:  legacy,
+		dual:    dual,
+		entImpl: entImpl,
+	}
+}
+
+// Mode reports which backend Selector currently dispatches to.
+func (s *Selector) Mode() Mode { return s.mode }
+
+// Search dispatches to the engine the selector is configured for.
+// Falls back to legacy if the requested engine isn't wired yet.
+func (s *Selector) Search(ctx context.Context, req SearchRequest) (*SearchResponse, error) {
+	if s == nil || s.legacy == nil {
+		return nil, fmt.Errorf("search_engine: selector not initialised")
+	}
+	switch s.mode {
+	case ModeDual:
+		if s.dual != nil {
+			return s.dual.Search(ctx, req)
+		}
+		return s.legacy.Search(ctx, req)
+	case ModeEnt:
+		if s.entImpl != nil {
+			return s.entImpl.Search(ctx, req)
+		}
+		return s.legacy.Search(ctx, req)
+	default:
+		return s.legacy.Search(ctx, req)
+	}
+}

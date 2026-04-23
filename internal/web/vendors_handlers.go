@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"gobooks/internal/models"
+	"gobooks/internal/searchprojection/producers"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
 )
@@ -137,6 +138,7 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 		vm.FormError = "Could not create vendor. Please try again."
 		return pages.Vendors(vm).Render(c.Context(), c)
 	}
+	_ = producers.ProjectVendor(c.Context(), s.DB, s.SearchProjector, vendor.ID)
 
 	cid := companyID
 	uid := user.ID

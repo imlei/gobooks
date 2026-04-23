@@ -8,6 +8,7 @@ package web
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"gobooks/internal/searchprojection/producers"
 	"gobooks/internal/services"
 )
 
@@ -35,6 +36,7 @@ func (s *Server) handleVendorDelete(c *fiber.Ctx) error {
 		}
 		return redirectErr(c, "/vendors/"+c.Params("id"), "Could not delete vendor.")
 	}
+	_ = producers.DeleteVendorProjection(c.Context(), s.SearchProjector, companyID, vendorID)
 
 	cid := companyID
 	uid := user.ID
@@ -78,6 +80,7 @@ func setVendorActiveAndRedirect(s *Server, c *fiber.Ctx, active bool, auditActio
 	if err := services.SetVendorActive(s.DB, companyID, vendorID, active); err != nil {
 		return redirectErr(c, "/vendors/"+c.Params("id"), "Could not update vendor status.")
 	}
+	_ = producers.ProjectVendor(c.Context(), s.DB, s.SearchProjector, vendorID)
 
 	cid := companyID
 	uid := user.ID

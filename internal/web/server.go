@@ -2,8 +2,11 @@
 package web
 
 import (
+	"gobooks/ent"
 	"gobooks/internal/ai"
 	"gobooks/internal/config"
+	"gobooks/internal/logging"
+	"gobooks/internal/searchprojection"
 	"gobooks/internal/web/admin"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,16 +32,31 @@ type Server struct {
 	// services.OpenAICompatibleChatCompletion directly from a handler.
 	// Initialised by NewServer; never nil.
 	AIAssist *ai.Platform
+
+	// EntClient drives the search_documents projection. Nil when
+	// ent initialisation fails at startup (see initSearchProjection);
+	// handlers should guard with `if s.EntClient != nil` or just use
+	// SearchProjector which gracefully degrades.
+	EntClient *ent.Client
+
+	// SearchProjector is always non-nil: either an EntProjector when the
+	// ent client wired up, or a NoopProjector fallback. Handlers can call
+	// producers.ProjectCustomer / ProjectVendor / … without nil-checking.
+	SearchProjector searchprojection.Projector
 }
 
 // NewServer creates a Fiber app with basic middleware and routes.
 func NewServer(cfg config.Config, db *gorm.DB) *fiber.App {
+	entClient, projector := initSearchProjection(db)
+
 	s := &Server{
-		Cfg:            cfg,
-		DB:             db,
-		SPAcceleration: NewSmartPickerAcceleration(),
-		ReportCache:    NewReportAcceleration(),
-		AIAssist:       ai.New(db),
+		Cfg:             cfg,
+		DB:              db,
+		SPAcceleration:  NewSmartPickerAcceleration(),
+		ReportCache:     NewReportAcceleration(),
+		AIAssist:        ai.New(db),
+		EntClient:       entClient,
+		SearchProjector: projector,
 	}
 
 	app := fiber.New(fiber.Config{
@@ -55,4 +73,26 @@ func NewServer(cfg config.Config, db *gorm.DB) *fiber.App {
 	adminSrv.RegisterRoutes(app)
 
 	return app
+}
+
+// initSearchProjection wires ent + the EntProjector, falling back to a
+// NoopProjector if ent-client construction fails (e.g. unusual DB driver
+// configuration). Always returns a non-nil Projector so handlers never
+// have to guard per-call.
+//
+// The ent client shares the *sql.DB pool with GORM — no separate
+// connection pool is opened. See searchprojection.OpenEntFromGorm for
+// lifecycle notes.
+func initSearchProjection(db *gorm.DB) (*ent.Client, searchprojection.Projector) {
+	client, err := searchprojection.OpenEntFromGorm(db)
+	if err != nil {
+		logging.L().Warn("search projection disabled: ent client init failed", "err", err)
+		return nil, searchprojection.NoopProjector{}
+	}
+	p, err := searchprojection.NewEntProjector(client, searchprojection.AsciiNormalizer{})
+	if err != nil {
+		logging.L().Warn("search projection disabled: projector init failed", "err", err)
+		return client, searchprojection.NoopProjector{}
+	}
+	return client, p
 }
