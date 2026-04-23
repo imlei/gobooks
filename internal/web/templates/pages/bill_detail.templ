@@ -36,6 +36,10 @@ templ bodyBillDetail(vm BillDetailVM) {
 				<h1 class="mt-1 text-title font-semibold">{ vm.Bill.BillNumber }</h1>
 			</div>
 			<div class="flex shrink-0 gap-3">
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/bills/%d/pdf-v2", vm.Bill.ID)) }
+					class="rounded-md border border-primary-soft bg-primary-soft px-4 py-2 text-body font-medium text-primary hover:bg-primary/10"
+				>Download PDF (Beta)</a>
 				if vm.Bill.Status == models.BillStatusDraft {
 					<a
 						href={ templ.SafeURL(fmt.Sprintf("/bills/%d/edit", vm.Bill.ID)) }

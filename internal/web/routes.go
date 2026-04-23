@@ -216,9 +216,16 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/invoices/:id/preview", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoicePreview)
 	app.Get("/invoices/:id/print", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoicePrint)
 	app.Get("/invoices/:id/pdf", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoicePDF)
-	// Phase 3 G4: side-by-side new PDF pipeline (block-template + chromedp).
-	// Legacy /pdf endpoint stays until G4-cleanup confirms parity.
-	app.Get("/invoices/:id/pdf-v2", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoicePDFV2)
+	// Phase 3 G4 + G5: side-by-side new PDF pipeline (block-template + chromedp).
+	// Legacy Invoice /pdf stays until G4-cleanup confirms parity. The other
+	// five document types had no PDF route at all before — pdf-v2 is the
+	// first PDF endpoint for Quote / SO / Bill / PO / Shipment.
+	app.Get("/invoices/:id/pdf-v2",         s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoicePDFV2)
+	app.Get("/quotes/:id/pdf-v2",           s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleQuotePDFV2)
+	app.Get("/sales-orders/:id/pdf-v2",     s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesOrderPDFV2)
+	app.Get("/bills/:id/pdf-v2",            s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBillPDFV2)
+	app.Get("/purchase-orders/:id/pdf-v2",  s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePurchaseOrderPDFV2)
+	app.Get("/shipments/:id/pdf-v2",        s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleShipmentPDFV2)
 
 	// Invoice lifecycle management (issue → send → mark paid / void)
 	app.Post("/invoices/:id/save-task-draft", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleInvoiceSaveTaskDraft)

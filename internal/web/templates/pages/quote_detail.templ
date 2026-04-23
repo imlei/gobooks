@@ -34,7 +34,14 @@ templ bodyQuoteDetail(vm QuoteDetailVM) {
 					}
 				</p>
 			</div>
-			<a href="/quotes" class="text-body text-text-muted3 hover:text-text">← Back to Quotes</a>
+			<div class="flex items-center gap-3">
+				if vm.Quote.ID != 0 {
+					<a href={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/pdf-v2") } class="inline-block rounded-md border border-primary-soft bg-primary-soft px-3 py-2 text-small font-medium text-primary hover:bg-primary/10">
+						Download PDF (Beta)
+					</a>
+				}
+				<a href="/quotes" class="text-body text-text-muted3 hover:text-text">← Back to Quotes</a>
+			</div>
 		</div>
 
 		// Flash messages
