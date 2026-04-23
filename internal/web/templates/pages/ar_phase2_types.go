@@ -38,14 +38,20 @@ type QuoteDetailVM struct {
 
 // SalesOrdersVM is the view model for the Sales Orders list page.
 type SalesOrdersVM struct {
-	HasCompany     bool
-	Orders         []models.SalesOrder
-	Customers      []models.Customer
-	FilterStatus   string
-	FilterCustomer string
-	Created        bool
-	Saved          bool
-	FormError      string
+	HasCompany bool
+	Orders     []models.SalesOrder
+
+	// Echoed filter values — feed back into the form inputs so the URL
+	// fully describes the result set and is shareable.
+	FilterStatus         string
+	FilterCustomer       string // raw customer_id query param
+	FilterCustomerLabel  string // resolved customer name for SmartPicker echo display
+	FilterDateFrom       string // YYYY-MM-DD
+	FilterDateTo         string // YYYY-MM-DD
+
+	Created   bool
+	Saved     bool
+	FormError string
 }
 
 // SalesOrderDetailVM is the view model for a single SalesOrder detail / edit page.

@@ -168,16 +168,31 @@ func GetSalesOrder(db *gorm.DB, companyID, orderID uint) (*models.SalesOrder, er
 	return &so, err
 }
 
+// SalesOrderListFilter bundles the optional list-page filters. Zero
+// values mean "no constraint". Passed as a struct (rather than positional
+// args) so future filter additions don't churn every call site.
+type SalesOrderListFilter struct {
+	Status     string     // empty = all statuses
+	CustomerID uint       // 0 = all customers
+	DateFrom   *time.Time // nil = no lower bound on order_date
+	DateTo     *time.Time // nil = no upper bound on order_date
+}
+
 // ListSalesOrders returns sales orders for a company, newest first.
-// statusFilter: empty = all statuses.
-// customerID: 0 = all customers.
-func ListSalesOrders(db *gorm.DB, companyID uint, statusFilter string, customerID uint) ([]models.SalesOrder, error) {
+// All filters are optional — see SalesOrderListFilter for the contract.
+func ListSalesOrders(db *gorm.DB, companyID uint, f SalesOrderListFilter) ([]models.SalesOrder, error) {
 	q := db.Where("company_id = ?", companyID)
-	if statusFilter != "" {
-		q = q.Where("status = ?", statusFilter)
+	if f.Status != "" {
+		q = q.Where("status = ?", f.Status)
 	}
-	if customerID > 0 {
-		q = q.Where("customer_id = ?", customerID)
+	if f.CustomerID > 0 {
+		q = q.Where("customer_id = ?", f.CustomerID)
+	}
+	if f.DateFrom != nil {
+		q = q.Where("order_date >= ?", *f.DateFrom)
+	}
+	if f.DateTo != nil {
+		q = q.Where("order_date <= ?", *f.DateTo)
 	}
 	var orders []models.SalesOrder
 	err := q.Preload("Customer").Order("id desc").Find(&orders).Error

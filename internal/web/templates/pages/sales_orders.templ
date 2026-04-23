@@ -41,31 +41,43 @@ templ bodySalesOrders(vm SalesOrdersVM) {
 		}
 		@formErrorBanner(vm.FormError)
 
-		// Filter
-		<form method="get" action="/sales-orders" class="mt-6 rounded-lg border border-border bg-surface p-6">
-			<h2 class="text-section font-semibold text-text">Filter</h2>
-			<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
-				<div>
-					<label class="block text-body font-medium text-text">Customer</label>
-					<select name="customer_id" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
-						<option value="">-- All --</option>
-						for _, c := range vm.Customers {
-							<option value={ Uitoa(c.ID) } selected?={ Uitoa(c.ID) == vm.FilterCustomer }>{ c.Name }</option>
-						}
-					</select>
+		// Filter bar — single row: Customer (SmartPicker) | Status | From | To | Apply.
+		// Compact label class + p-4 card matches the Sales Transactions density.
+		<form method="get" action="/sales-orders" class="mt-6 rounded-lg border border-border bg-surface p-4">
+			<div class="flex flex-wrap items-end gap-3">
+				<div class="min-w-[220px] flex-1">
+					<label class={ compactLabelClass() }>Customer</label>
+					@ui.SmartPicker(ui.SmartPickerVM{
+						FieldName:     "customer_id",
+						Entity:        "customer",
+						Context:       "sales_orders_filter",
+						Value:         vm.FilterCustomer,
+						SelectedLabel: vm.FilterCustomerLabel,
+						Placeholder:   "All customers",
+						Limit:         20,
+					})
 				</div>
-				<div>
-					<label class="block text-body font-medium text-text">Status</label>
-					<select name="status" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
-						<option value="">-- All --</option>
+				<div class="min-w-[160px]">
+					<label for="so-filter-status" class={ compactLabelClass() }>Status</label>
+					<select id="so-filter-status" name="status" class={ salesOrderFilterInputClass() }>
+						<option value="" selected?={ vm.FilterStatus == "" }>-- All --</option>
 						for _, s := range models.AllSalesOrderStatuses() {
 							<option value={ string(s) } selected?={ string(s) == vm.FilterStatus }>{ models.SalesOrderStatusLabel(s) }</option>
 						}
 					</select>
 				</div>
-			</div>
-			<div class="mt-6 flex items-center justify-end">
-				<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Apply Filter</button>
+				<div>
+					<label for="so-filter-from" class={ compactLabelClass() }>From</label>
+					<input id="so-filter-from" type="date" name="from" value={ vm.FilterDateFrom } class={ salesOrderFilterInputClass() }/>
+				</div>
+				<div>
+					<label for="so-filter-to" class={ compactLabelClass() }>To</label>
+					<input id="so-filter-to" type="date" name="to" value={ vm.FilterDateTo } class={ salesOrderFilterInputClass() }/>
+				</div>
+				<div class="flex items-end gap-2">
+					<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">Apply Filter</button>
+					<a href="/sales-orders" class="rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted3 hover:bg-background hover:text-text">Reset</a>
+				</div>
 			</div>
 		</form>
 
@@ -125,6 +137,14 @@ templ bodySalesOrders(vm SalesOrdersVM) {
 			</div>
 		</div>
 	</div>
+}
+
+// salesOrderFilterInputClass is the compact dark-mode-safe styling for
+// the Sales Orders filter bar's <select> + <input type=date>. Matches
+// the Sales Transactions density (py-1) so the two surfaces feel
+// consistent.
+func salesOrderFilterInputClass() string {
+	return "mt-2 block w-full rounded-md border border-border-input bg-surface px-2.5 py-1 text-small text-text outline-none focus:ring-2 focus:ring-primary-focus"
 }
 
 // soStatusBadgeClass returns a Tailwind badge class for a SalesOrderStatus.
