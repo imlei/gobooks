@@ -1,5 +1,5 @@
 // invoice_editor.js — Alpine component for the invoice line-items editor.
-// v=18
+// v=19
 //
 // Composes gobooksLineItems() for line-array management (addLine / removeLine /
 // auto-grow) and layers Invoice-specific state on top: tax-code breakdown,
@@ -107,16 +107,22 @@ function invoiceEditor() {
         this._productsById = Object.fromEntries(this.products.map(p => [String(p.id), p]));
         this._paymentTermsByCode = Object.fromEntries(this.paymentTerms.map(p => [p.code, p]));
 
-        this.customerEmail = el.dataset.initialCustomerEmail || "";
-        this.billTo        = el.dataset.initialBillTo        || "";
-        this.shipTo        = el.dataset.initialShipTo        || "";
-        this.shipToLabel   = el.dataset.initialShipToLabel   || "";
-        // On edit-page rehydration the customer record's email is the
-        // same as customerEmail unless a prior invoice saved an override.
-        // That's acceptable: we only prompt when the user changes the
-        // field DURING this editor session (so false positives from
-        // existing overrides don't re-prompt on every save).
-        this._customerRecordEmail = this.customerEmail;
+        const initialEmail   = el.dataset.initialCustomerEmail || "";
+        const initialBillTo  = el.dataset.initialBillTo        || "";
+        this.customerEmail        = initialEmail;
+        this._customerRecordEmail = initialEmail;
+        // Combine email + bill-to into the single Bill-to textarea on
+        // edit-page hydration so the field renders consistently with the
+        // new layout (Phase 4). Skip prepending if the email is already
+        // line 1 of the saved bill-to text.
+        const firstLine = initialBillTo.split("\n")[0].trim();
+        if (initialEmail && firstLine !== initialEmail) {
+          this.billTo = this._composeBillTo(initialEmail, initialBillTo);
+        } else {
+          this.billTo = initialBillTo;
+        }
+        this.shipTo      = el.dataset.initialShipTo      || "";
+        this.shipToLabel = el.dataset.initialShipToLabel || "";
         try {
           this.shippingOptions = JSON.parse(el.dataset.initialShippingAddresses || "[]");
         } catch (_) {
@@ -345,6 +351,11 @@ function invoiceEditor() {
       // Picking a different customer always replaces the contact-block
       // overrides — operators who want to keep manual overrides shouldn't
       // re-pick the customer.
+      //
+      // Phase 4: Email is no longer a standalone field. It's prepended to
+      // the Bill-to textarea as line 1 (per user spec) so all customer
+      // contact info lives in a single block. customerEmail state is kept
+      // in sync via onBillToInput (extracted from line 1 if it has @).
       onContactChange(contactId, payload) {
         if (!contactId) return;
         const p = payload || {};
@@ -356,18 +367,43 @@ function invoiceEditor() {
           const sel = document.querySelector('select[name="currency_code"]');
           if (sel) sel.value = p.default_currency;
         }
-        this.customerEmail = p.email    || "";
-        this._customerRecordEmail = this.customerEmail;
-        this.billTo        = p.bill_to  || "";
-        this.shippingOptions = this._parseShippingAddresses(p.shipping_addresses);
-        // Pick the default shipping address (first entry — payload sorts is_default
-        // DESC). If none, leave ship-to blank — operator can type freeform.
+        const email = p.email   || "";
+        const addr  = p.bill_to || "";
+        this.customerEmail        = email;
+        this._customerRecordEmail = email;
+        this.billTo               = this._composeBillTo(email, addr);
+        this.shippingOptions      = this._parseShippingAddresses(p.shipping_addresses);
         if (this.shippingOptions.length > 0) {
           this.shipToLabel = this.shippingOptions[0].label;
           this.shipTo      = this.shippingOptions[0].address;
         } else {
           this.shipToLabel = "";
           this.shipTo      = "";
+        }
+      },
+
+      // _composeBillTo prepends the email as line 1 of the bill-to text when
+      // both are present, otherwise returns just the non-empty one. Used on
+      // initial customer pick so the editor renders one combined block.
+      _composeBillTo(email, addr) {
+        if (email && addr) return email + "\n" + addr;
+        return email || addr;
+      },
+
+      // _emailRegex matches a "looks-like-an-email" first line. Loose on
+      // purpose — we don't want to second-guess the operator's typing.
+      _emailRegex: /^\s*[^\s@]+@[^\s@]+\.[^\s@]+\s*$/,
+
+      // syncEmailFromBillTo runs whenever the user edits the bill-to
+      // textarea. If line 1 looks like an email, treat it as the email
+      // override (used by the "update customer record?" dialog gate and
+      // submitted as the customer_email hidden input).
+      syncEmailFromBillTo() {
+        const firstLine = (this.billTo || "").split("\n")[0].trim();
+        if (this._emailRegex.test(firstLine)) {
+          this.customerEmail = firstLine;
+        } else {
+          this.customerEmail = "";
         }
       },
 

@@ -94,7 +94,7 @@ templ invoiceEditorContent(vm InvoiceEditorVM) {
 		@invoiceContactUpdateDialog()
 		@invoiceCustomerQuickCreateDrawer(vm)
 
-		<script src="/static/invoice_editor.js?v=18"></script>
+		<script src="/static/invoice_editor.js?v=19"></script>
 		<script>
 			function ieExitReview() {
 				var fieldset = document.getElementById('ie-fields');
@@ -110,11 +110,12 @@ templ invoiceEditorContent(vm InvoiceEditorVM) {
 	</form>
 }
 
-// invoiceHeaderLeft is the customer column: SmartPicker + email + bill-to +
-// ship-to (with optional named-address dropdown). All four contact fields are
-// editable so operators can override per-invoice; the chosen values snapshot
-// onto the invoice via the form's `customer_email` / `bill_to` / `ship_to` /
-// `ship_to_label` inputs.
+// invoiceHeaderLeft is the customer column: SmartPicker on top, then a
+// 2-col Bill-to / Ship-to grid where Bill-to's first line is the email.
+// All three are editable so operators can override per-invoice; values
+// snapshot onto the invoice via customer_email / bill_to / ship_to /
+// ship_to_label form inputs (customer_email is derived from line 1 of
+// bill_to on submit — see invoice_editor.js onFormSubmit).
 templ invoiceHeaderLeft(vm InvoiceEditorVM) {
 	<div @gobooks-picker-select="onContactChange($event.detail.id, $event.detail.payload)">
 		@ui.SmartPicker(ui.SmartPickerVM{
@@ -133,66 +134,60 @@ templ invoiceHeaderLeft(vm InvoiceEditorVM) {
 		})
 	</div>
 
-	<div>
-		<label class="block text-body font-medium text-text">Email</label>
-		<input
-			type="email"
-			name="customer_email"
-			x-model="customerEmail"
-			placeholder="customer@example.com"
-			autocomplete="off"
-			disabled?={ vm.TaskGeneratedReadOnly }
-			class={ fieldClass(false) }
-		/>
-	</div>
+	<input type="hidden" name="customer_email" :value="customerEmail"/>
+	<input type="hidden" name="ship_to_label" :value="shipToLabel"/>
 
-	<div>
-		<label class="block text-body font-medium text-text">Bill to</label>
-		<textarea
-			name="bill_to"
-			x-model="billTo"
-			rows="3"
-			placeholder="Billing address"
-			disabled?={ vm.TaskGeneratedReadOnly }
-			class={ fieldClass(false) }
-		></textarea>
-	</div>
-
-	<div>
-		<div class="flex items-center justify-between">
-			<label class="block text-body font-medium text-text">Ship to</label>
-			// Named-address dropdown — appears only when the customer has 2+
-			// shipping rows or a default different from the billing address.
-			<select
-				x-show="shippingOptions.length > 0"
-				x-cloak
-				x-model="shipToLabel"
-				@change="onShipToLabelChange($event.target.value)"
+	<div class="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">
+		<div>
+			<label class={ compactLabelClass() }>Bill to</label>
+			<textarea
+				name="bill_to"
+				x-model="billTo"
+				@input="syncEmailFromBillTo()"
+				rows="5"
+				placeholder="email@example.com&#10;Street Address&#10;City, Province, Postal Code&#10;Country"
 				disabled?={ vm.TaskGeneratedReadOnly }
-				class="ml-2 rounded-md border border-border-input bg-surface px-2 py-1 text-small text-text outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-60 disabled:cursor-not-allowed"
-			>
-				<option value="">— Custom —</option>
-				<template x-for="opt in shippingOptions" :key="opt.label">
-					<option :value="opt.label" x-text="opt.label"></option>
-				</template>
-			</select>
+				class={ fieldClass(false) }
+			></textarea>
+			<p class={ compactHintClass() }>Tip: email on line 1; separate parts with commas.</p>
 		</div>
-		<input type="hidden" name="ship_to_label" :value="shipToLabel"/>
-		<textarea
-			name="ship_to"
-			x-model="shipTo"
-			rows="3"
-			placeholder="Shipping address (optional)"
-			disabled?={ vm.TaskGeneratedReadOnly }
-			class={ fieldClass(false) }
-		></textarea>
+		<div>
+			<div class="flex items-center justify-between">
+				<label class={ compactLabelClass() }>Ship to</label>
+				// Address-book popover — opens when the customer has named
+				// shipping addresses to pick from. Hidden otherwise.
+				<div class="relative" x-data="{ open: false }" @click.outside="open=false" x-show="shippingOptions.length > 0" x-cloak>
+					<button type="button" @click="open=!open" :disabled="taskReadOnly" class="rounded p-0.5 text-text-muted3 hover:text-primary disabled:opacity-30" title="Address book">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5V5a2 2 0 012-2h13a1 1 0 011 1v14M4 19.5A2.5 2.5 0 006.5 22H20a1 1 0 001-1V17"/></svg>
+					</button>
+					<div x-show="open" x-cloak class="absolute right-0 z-30 mt-1 w-64 rounded-md border border-border bg-surface shadow-lg" style="display:none">
+						<template x-for="opt in shippingOptions" :key="opt.label">
+							<button type="button" @click={ "shipToLabel = opt.label; shipTo = opt.address; open=false" } class="block w-full px-3 py-2 text-left text-body text-text hover:bg-background">
+								<span class="font-medium" x-text="opt.label"></span>
+								<span x-show="opt.is_default" class="ml-2 rounded bg-success-soft px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-success">Default</span>
+								<span class="mt-0.5 block text-small text-text-muted2 truncate" x-text="opt.address.split('\\n')[0]"></span>
+							</button>
+						</template>
+					</div>
+				</div>
+			</div>
+			<textarea
+				name="ship_to"
+				x-model="shipTo"
+				rows="5"
+				placeholder="Street Address&#10;City, Province, Postal Code&#10;Country"
+				disabled?={ vm.TaskGeneratedReadOnly }
+				class={ fieldClass(false) }
+			></textarea>
+			<p class={ compactHintClass() }>Tip: separate parts with commas.</p>
+		</div>
 	</div>
 }
 
 templ invoiceHeaderRight(vm InvoiceEditorVM) {
-	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+	<div class="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">
 		<div>
-			<label class="block text-body font-medium text-text">Invoice Number *</label>
+			<label class={ compactLabelClass() }>Invoice Number *</label>
 			<input
 				type="text"
 				name="invoice_number"
@@ -206,7 +201,7 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 		</div>
 
 		<div>
-			<label class="block text-body font-medium text-text">Invoice Date *</label>
+			<label class={ compactLabelClass() }>Invoice Date *</label>
 			<input
 				type="date"
 				name="invoice_date"
@@ -221,7 +216,7 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 		</div>
 
 		<div>
-			<label class="block text-body font-medium text-text">Due Date</label>
+			<label class={ compactLabelClass() }>Due Date</label>
 			<input
 				type="date"
 				name="due_date"
@@ -233,11 +228,10 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 					? 'mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus'
 					: 'mt-2 block w-full cursor-not-allowed rounded-md border border-border-input bg-background px-3 py-2 text-body text-text-muted2 outline-none'"
 			/>
-			<p class="mt-1 text-small text-text-muted2" x-show="!dueDateEditable">Auto-computed from terms.</p>
 		</div>
 
 		<div>
-			<label class="block text-body font-medium text-text">Terms</label>
+			<label class={ compactLabelClass() }>Terms</label>
 			<select
 				name="terms"
 				x-model="terms"
@@ -253,7 +247,7 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 		</div>
 
 		<div>
-			<label class="block text-body font-medium text-text">SO Number</label>
+			<label class={ compactLabelClass() }>SO Number</label>
 			if vm.SalesOrderID != 0 {
 				<a href={ templ.SafeURL(invoiceSalesOrderLink(vm.SalesOrderID)) } class="mt-2 block rounded-md border border-border-input bg-background px-3 py-2 text-body text-primary hover:bg-surface-hover">
 					{ vm.SalesOrderNumber } <span class="text-text-muted3">↗</span>
@@ -264,7 +258,7 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 		</div>
 
 		<div>
-			<label class="block text-body font-medium text-text">Customer PO#</label>
+			<label class={ compactLabelClass() }>Customer PO#</label>
 			<input
 				type="text"
 				name="customer_po_number"
@@ -278,7 +272,7 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 
 		if len(vm.Warehouses) > 0 {
 			<div class="md:col-span-2">
-				<label class="block text-body font-medium text-text">Warehouse <span class="font-normal text-text-muted2">(optional)</span></label>
+				<label class={ compactLabelClass() }>Warehouse</label>
 				<select
 					name="warehouse_id"
 					disabled?={ vm.TaskGeneratedReadOnly }
@@ -289,13 +283,12 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 						<option value={ Uitoa(w.ID) } selected?={ Uitoa(w.ID) == vm.WarehouseID }>{ w.Name } ({ w.Code })</option>
 					}
 				</select>
-				<p class="mt-1 text-small text-text-muted2">Inventory sold on this invoice will be deducted from the selected warehouse.</p>
 			</div>
 		}
 
 		if vm.MultiCurrencyEnabled {
 			<div>
-				<label class="block text-body font-medium text-text">Currency</label>
+				<label class={ compactLabelClass() }>Currency</label>
 				<select
 					name="currency_code"
 					disabled?={ vm.TaskGeneratedReadOnly }
@@ -310,7 +303,7 @@ templ invoiceHeaderRight(vm InvoiceEditorVM) {
 			</div>
 
 			<div>
-				<label class="block text-body font-medium text-text">Exchange Rate</label>
+				<label class={ compactLabelClass() }>Exchange Rate</label>
 				<input
 					type="text"
 					name="exchange_rate"

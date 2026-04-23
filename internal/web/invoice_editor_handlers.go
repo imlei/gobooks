@@ -380,6 +380,19 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 	customerPONumber := strings.TrimSpace(c.FormValue("customer_po_number"))
 	customerEmailOverride := strings.TrimSpace(c.FormValue("customer_email"))
 	billToOverride := strings.TrimSpace(c.FormValue("bill_to"))
+	// Phase 4: editor merges email into the bill-to textarea (line 1 for
+	// readability). Strip it back out before snapshot so the address block
+	// doesn't end up duplicated when the renderer also prints customer.email.
+	if customerEmailOverride != "" {
+		lines := strings.SplitN(billToOverride, "\n", 2)
+		if len(lines) > 0 && strings.TrimSpace(lines[0]) == customerEmailOverride {
+			if len(lines) > 1 {
+				billToOverride = strings.TrimSpace(lines[1])
+			} else {
+				billToOverride = ""
+			}
+		}
+	}
 	shipToSnapshot := strings.TrimSpace(c.FormValue("ship_to"))
 	shipToLabel := strings.TrimSpace(c.FormValue("ship_to_label"))
 	// update_customer_contact=1 means "also write the email override back to

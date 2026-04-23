@@ -8,6 +8,19 @@ import (
 	"gobooks/internal/web/templates/ui"
 )
 
+// compactLabelClass is the small uppercase label style for the QuickBooks-
+// style header redesign — saves vertical space and reads as "professional
+// tool" rather than "form survey".
+func compactLabelClass() string {
+	return "block text-[11px] font-semibold uppercase tracking-wider text-text-muted"
+}
+
+// compactHintClass styles the small tip text under textareas (e.g.
+// "Tip: separate parts with commas").
+func compactHintClass() string {
+	return "mt-1 text-[10px] text-text-muted3"
+}
+
 // invoiceSalesOrderLink returns the SO detail-page URL the "SO Number" cell
 // links to in the invoice editor header. Centralised so SO routing changes
 // only need updating in one place.
