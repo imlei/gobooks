@@ -72,15 +72,13 @@ func (s *Server) handleBills(c *fiber.Ctx) error {
 		formError = "Could not void bill. Check that it is posted and has no other dependencies."
 	}
 
-	// Resolve the vendor name for SmartPicker echo display. One extra
-	// query, only when the filter is active — cheap.
-	vendorLabel := ""
+	// Resolve the vendor ID once for the SmartPicker echo lookup —
+	// the GORM scan above used the raw string for its predicate, but
+	// the shared lookup helper takes a uint so we re-parse cheaply here.
+	var vendorIDForLookup uint
 	if filterVendorID != "" {
-		if id, err := services.ParseUint(filterVendorID); err == nil && id > 0 {
-			var vend models.Vendor
-			if err := s.DB.Select("name").Where("id = ? AND company_id = ?", uint(id), companyID).First(&vend).Error; err == nil {
-				vendorLabel = vend.Name
-			}
+		if id, err := services.ParseUint(filterVendorID); err == nil {
+			vendorIDForLookup = uint(id)
 		}
 	}
 
@@ -94,7 +92,7 @@ func (s *Server) handleBills(c *fiber.Ctx) error {
 		FormError:         formError,
 		FilterQ:           filterQ,
 		FilterVendorID:    filterVendorID,
-		FilterVendorLabel: vendorLabel,
+		FilterVendorLabel: lookupVendorName(s.DB, companyID, vendorIDForLookup),
 		FilterFrom:        filterFrom,
 		FilterTo:          filterTo,
 	}).Render(c.Context(), c)

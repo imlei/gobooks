@@ -35,21 +35,7 @@ func (s *Server) handlePurchaseOrderList(c *fiber.Ctx) error {
 		}
 	}
 
-	// Date parsing: tolerate empty/unparseable inputs by leaving the
-	// pointer nil (= no bound). DateTo bumps to end-of-day so a row
-	// dated `to` itself isn't excluded by a < comparison.
-	var dateFrom, dateTo *time.Time
-	if filterFromStr != "" {
-		if t, err := time.Parse("2006-01-02", filterFromStr); err == nil {
-			dateFrom = &t
-		}
-	}
-	if filterToStr != "" {
-		if t, err := time.Parse("2006-01-02", filterToStr); err == nil {
-			end := time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 0, t.Location())
-			dateTo = &end
-		}
-	}
+	dateFrom, dateTo := parseListDateRange(filterFromStr, filterToStr)
 
 	pos, err := services.ListPurchaseOrders(s.DB, companyID, services.PurchaseOrderListFilter{
 		Status:   filterStatus,
@@ -61,22 +47,12 @@ func (s *Server) handlePurchaseOrderList(c *fiber.Ctx) error {
 		pos = nil
 	}
 
-	// Resolve the vendor name for SmartPicker's echo display. One extra
-	// query, only when a filter is active — cheap.
-	vendorLabel := ""
-	if vendorID != 0 {
-		var vend models.Vendor
-		if err := s.DB.Select("name").Where("id = ? AND company_id = ?", vendorID, companyID).First(&vend).Error; err == nil {
-			vendorLabel = vend.Name
-		}
-	}
-
 	return pages.PurchaseOrders(pages.PurchaseOrdersVM{
 		HasCompany:        true,
 		PurchaseOrders:    pos,
 		FilterStatus:      filterStatus,
 		FilterVendor:      filterVendor,
-		FilterVendorLabel: vendorLabel,
+		FilterVendorLabel: lookupVendorName(s.DB, companyID, vendorID),
 		FilterDateFrom:    filterFromStr,
 		FilterDateTo:      filterToStr,
 		Created:           c.Query("created") == "1",

@@ -78,15 +78,13 @@ func (s *Server) handleInvoices(c *fiber.Ctx) error {
 		nextNo = "IN001"
 	}
 
-	// Resolve the customer name for SmartPicker echo display. One extra
-	// query, only when the filter is active — cheap.
-	customerLabel := ""
+	// Resolve the customer ID once for the SmartPicker echo lookup —
+	// the GORM scan above used the raw string for its predicate, but the
+	// shared lookup helper takes a uint so we re-parse cheaply here.
+	var customerIDForLookup uint
 	if filterCustomerID != "" {
-		if id, err := services.ParseUint(filterCustomerID); err == nil && id > 0 {
-			var cust models.Customer
-			if err := s.DB.Select("name").Where("id = ? AND company_id = ?", uint(id), companyID).First(&cust).Error; err == nil {
-				customerLabel = cust.Name
-			}
+		if id, err := services.ParseUint(filterCustomerID); err == nil {
+			customerIDForLookup = uint(id)
 		}
 	}
 
@@ -102,7 +100,7 @@ func (s *Server) handleInvoices(c *fiber.Ctx) error {
 		Deleted:             c.Query("deleted") == "1",
 		FilterQ:             filterQ,
 		FilterCustomerID:    filterCustomerID,
-		FilterCustomerLabel: customerLabel,
+		FilterCustomerLabel: lookupCustomerName(s.DB, companyID, customerIDForLookup),
 		FilterStatus:        filterStatus,
 		FilterFrom:          filterFrom,
 		FilterTo:            filterTo,
