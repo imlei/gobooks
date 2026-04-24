@@ -504,6 +504,8 @@ func (s *Server) registerRoutes(app *fiber.App) {
 
 	// ── 报表（需 view_reports 权限；AP 角色无权访问）─────────────────────────────
 	app.Get("/reports", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleReportsHub)
+	// Reports favourites toggle: per-user starred report list (POST → redirect back to /reports).
+	app.Post("/reports/favourites/toggle", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleReportFavouriteToggle)
 	app.Get("/reports/trial-balance", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleTrialBalance)
 	app.Get("/reports/trial-balance/export.csv", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleExportTrialBalanceCSV)
 	app.Get("/reports/income-statement", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionReportView), s.handleIncomeStatement)

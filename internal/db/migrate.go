@@ -128,6 +128,8 @@ func Migrate(db *gorm.DB) error {
 		&models.CompanySecuritySettings{},
 		&models.SystemSecuritySettings{},
 		&models.SecurityEvent{},
+		// Reports: per-user, per-company starred report list (Reports Hub favourites)
+		&models.ReportFavourite{},
 		// Posting Engine Phase 2: accounting fact layer (projection of posted journal lines)
 		&models.LedgerEntry{},
 		// Phase 2: user profile verification challenges (email / password change)

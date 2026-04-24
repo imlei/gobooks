@@ -124,8 +124,97 @@ func (s *Server) handleSetupForm(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleReportsHub(c *fiber.Ctx) error {
-	_, hasCompany := ActiveCompanyIDFromCtx(c)
-	return pages.ReportsHub(hasCompany).Render(c.Context(), c)
+	companyID, hasCompany := ActiveCompanyIDFromCtx(c)
+	user := UserFromCtx(c)
+
+	vm := pages.ReportsHubVM{
+		HasCompany: hasCompany,
+		Categories: buildReportsHubCategories(),
+	}
+	// Favourites only exist when both user + company are resolved.
+	// Pre-company users (mid-onboarding) get the categorized list with
+	// no stars filled in.
+	if hasCompany && user != nil {
+		favs, err := services.ListUserReportFavourites(s.DB, user.ID, companyID)
+		if err == nil {
+			vm.Favourites = favs
+			vm.FavouriteEntries = collectFavouriteEntries(favs)
+		}
+	}
+	return pages.ReportsHub(vm).Render(c.Context(), c)
+}
+
+// buildReportsHubCategories transforms the registry into the per-
+// category VM slices the templ iterates. One pass; cheap.
+func buildReportsHubCategories() []pages.ReportsHubCategoryVM {
+	cats := services.Categories()
+	out := make([]pages.ReportsHubCategoryVM, 0, len(cats))
+	for _, c := range cats {
+		entries := services.ReportsByCategory(c)
+		items := make([]pages.ReportsHubItemVM, 0, len(entries))
+		for _, e := range entries {
+			items = append(items, pages.ReportsHubItemVM{
+				Key:   e.Key,
+				Title: e.Title,
+				Desc:  e.Desc,
+				Href:  e.Href,
+			})
+		}
+		out = append(out, pages.ReportsHubCategoryVM{
+			Key:         string(c),
+			Label:       services.ReportCategoryLabel(c),
+			Description: services.ReportCategoryDescription(c),
+			Items:       items,
+		})
+	}
+	return out
+}
+
+// collectFavouriteEntries returns the registry rows for keys the user
+// has starred, in registry order. Used by the templ's Favourites
+// section so the order is stable across renders.
+func collectFavouriteEntries(favs map[string]bool) []pages.ReportsHubItemVM {
+	if len(favs) == 0 {
+		return nil
+	}
+	out := []pages.ReportsHubItemVM{}
+	for _, e := range services.AllReports() {
+		if favs[e.Key] {
+			out = append(out, pages.ReportsHubItemVM{
+				Key:   e.Key,
+				Title: e.Title,
+				Desc:  e.Desc,
+				Href:  e.Href,
+			})
+		}
+	}
+	return out
+}
+
+// handleReportFavouriteToggle handles the star/unstar POST from the
+// Reports hub. Idempotent — clicking on an already-starred report
+// removes the favourite, clicking on a non-starred report adds it.
+//
+// Always redirects back to /reports so the operator sees the updated
+// star state without manual navigation.
+func (s *Server) handleReportFavouriteToggle(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+
+	reportKey := strings.TrimSpace(c.FormValue("report_key"))
+	if _, err := services.ToggleReportFavourite(s.DB, user.ID, companyID, reportKey); err != nil {
+		// ErrUnknownReportKey or DB failure — log and bounce back to the
+		// hub. The hub still renders correctly without the toggle
+		// applying; better to show the page than 500 the user.
+		slog.Warn("report favourite toggle failed", "user_id", user.ID, "company_id", companyID, "report_key", reportKey, "err", err)
+	}
+	return c.Redirect("/reports", fiber.StatusSeeOther)
 }
 
 // reportCompanyInfo holds the company fields needed by report handlers.
