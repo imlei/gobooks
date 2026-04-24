@@ -116,8 +116,20 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 	// vendor is referenced by any AP document.
 	hasRecords, _ := services.VendorHasRecords(s.DB, companyID, vendorID)
 
+	// Legacy ?edit=1 URL → redirect into the Details tab so bookmarks +
+	// external links keep working after the tab rewrite.
+	editFlag := c.Query("edit") == "1"
+	tab := normaliseVendorDetailTab(c.Query("tab"))
+	if editFlag && tab == "" {
+		tab = "details"
+	}
+	if tab == "" {
+		tab = "transactions"
+	}
+
 	vm := pages.VendorDetailVM{
 		HasCompany:              true,
+		Tab:                     tab,
 		Vendor:                  vendor,
 		DefaultPaymentTermLabel: termLabel,
 		OutstandingBills:        outstandingBills,
@@ -128,16 +140,18 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 		OverdueBillCount:        int(overdueCount),
 		CreditCount:             creditCount,
 		CreditRemaining:         creditRemaining,
-		Editing:                 c.Query("edit") == "1",
-		Saved:                   c.Query("saved") == "1",
-		HasRecords:              hasRecords,
-		Deactivated:             c.Query("deactivated") == "1",
-		Reactivated:             c.Query("reactivated") == "1",
-		LifecycleErr:            strings.TrimSpace(c.Query("error")),
+		// Details tab is always-editable now. Keep the Editing flag on
+		// so the existing customerEditCard-style form + POST re-render
+		// paths still work.
+		Editing:      tab == "details",
+		Saved:        c.Query("saved") == "1",
+		HasRecords:   hasRecords,
+		Deactivated:  c.Query("deactivated") == "1",
+		Reactivated:  c.Query("reactivated") == "1",
+		LifecycleErr: strings.TrimSpace(c.Query("error")),
 	}
 
-	// Edit mode needs dropdown data + form field seeds (pre-populated from
-	// the current vendor values on entry; overwritten on validation re-render).
+	// Seed the Details-tab form from the current vendor values.
 	if vm.Editing {
 		s.loadVendorEditFormData(companyID, &vm)
 		vm.FormName = vendor.Name
@@ -149,7 +163,44 @@ func (s *Server) handleVendorDetail(c *fiber.Ctx) error {
 		vm.FormDefaultPaymentTermCode = vendor.DefaultPaymentTermCode
 	}
 
+	// Lazy-load the Transactions tab's unified list only when the tab
+	// is active. Other tabs reuse the already-loaded bills / POs / credit
+	// aggregates.
+	if tab == "transactions" {
+		typeFilter := strings.TrimSpace(c.Query("tx_type"))
+		statusFilter := strings.TrimSpace(c.Query("tx_status"))
+		fromStr := strings.TrimSpace(c.Query("tx_from"))
+		toStr := strings.TrimSpace(c.Query("tx_to"))
+		dateFrom, dateTo := parseListDateRange(fromStr, toStr)
+		rows, _, err := services.ListPurchaseTransactions(s.DB, companyID, services.PurchaseTxFilter{
+			Type:     typeFilter,
+			Status:   statusFilter,
+			DateFrom: dateFrom,
+			DateTo:   dateTo,
+			VendorID: vendorID,
+		}, 1, 100)
+		if err == nil {
+			vm.Transactions = rows
+		}
+		vm.TxFilterType = typeFilter
+		vm.TxFilterStatus = statusFilter
+		vm.TxFilterFrom = fromStr
+		vm.TxFilterTo = toStr
+	}
+
 	return pages.VendorDetail(vm).Render(c.Context(), c)
+}
+
+// normaliseVendorDetailTab collapses the `tab=X` query param to the
+// canonical set. Empty / unknown values fall through to transactions
+// (default) via the caller.
+func normaliseVendorDetailTab(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "transactions", "purchase-orders", "details", "notes":
+		return strings.ToLower(strings.TrimSpace(raw))
+	default:
+		return ""
+	}
 }
 
 // loadVendorEditFormData populates dropdown data for the inline edit form —

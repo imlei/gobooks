@@ -3,6 +3,7 @@ package pages
 
 import (
 	"gobooks/internal/models"
+	"gobooks/internal/services"
 
 	"github.com/shopspring/decimal"
 )
@@ -16,8 +17,26 @@ import (
 type VendorDetailVM struct {
 	HasCompany bool
 
+	// Tab drives the active content pane. One of:
+	//   "transactions" (default) — unified AP document list
+	//   "purchase-orders"        — PO pipeline
+	//   "details"                — editable profile form
+	//   "notes"                  — future; placeholder for now
+	Tab string
+
 	Vendor                  models.Vendor
 	DefaultPaymentTermLabel string // human-readable term name (empty when code unset)
+
+	// Transactions is the unified AP-document feed rendered in the
+	// Transactions tab. Populated by services.ListPurchaseTransactions
+	// with a vendor_id filter; empty when Tab != "transactions" (lazy load).
+	Transactions []services.PurchaseTxRow
+	// TxFilter* echo the query-string filters into the tab's filter bar
+	// so the URL fully describes the current view.
+	TxFilterType   string
+	TxFilterStatus string
+	TxFilterFrom   string // YYYY-MM-DD
+	TxFilterTo     string // YYYY-MM-DD
 
 	// Bills lists. Each is capped in the handler to keep the page snappy.
 	OutstandingBills []models.Bill // status in {posted, partially_paid} ordered by due_date asc
