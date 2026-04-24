@@ -208,6 +208,9 @@ templ bodyAccountTransactions(vm AccountTransactionsVM) {
 					<thead class="text-small uppercase tracking-wider text-text-muted border-b border-border">
 						<tr>
 							<th class="px-6 py-3 font-medium">Date</th>
+							<th class="px-4 py-3 font-medium">Type</th>
+							<th class="px-4 py-3 font-medium">No.</th>
+							<th class="px-4 py-3 font-medium">Name</th>
 							<th class="px-4 py-3 font-medium">Description</th>
 							<th class="px-4 py-3 font-medium text-right">Debit</th>
 							<th class="px-4 py-3 font-medium text-right">Credit</th>
@@ -217,19 +220,34 @@ templ bodyAccountTransactions(vm AccountTransactionsVM) {
 					<tbody class="text-text">
 						// Starting balance row
 						<tr class="border-b border-border bg-surface-tableHeader">
-							<td class="px-6 py-3 font-semibold" colspan="4">Starting Balance</td>
+							<td class="px-6 py-3 font-semibold" colspan="7">Starting Balance</td>
 							<td class="px-6 py-3 text-right tabular-nums font-semibold">{ Money(vm.Report.StartingBalance) }</td>
 						</tr>
 
 						if len(vm.Report.Rows) == 0 {
 							<tr class="border-b border-border-subtle">
-								<td colspan="5" class="px-6 py-6 text-center text-text-muted2">No transactions in this date range.</td>
+								<td colspan="8" class="px-6 py-6 text-center text-text-muted2">No transactions in this date range.</td>
 							</tr>
 						} else {
 							for _, row := range vm.Report.Rows {
 								<tr class="border-b border-border-subtle hover:bg-background">
-									<td class="px-6 py-2.5 text-text-muted2">{ row.Date }</td>
-									<td class="px-4 py-2.5">{ row.Description }</td>
+									<td class="px-6 py-2.5 text-text-muted2 whitespace-nowrap">{ row.Date }</td>
+									<td class="px-4 py-2.5 whitespace-nowrap">{ row.TransactionTypeLabel }</td>
+									<td class="px-4 py-2.5 font-mono text-small whitespace-nowrap">
+										if row.DocumentURL != "" {
+											<a href={ templ.SafeURL(row.DocumentURL) } class="text-primary hover:underline">{ row.DocumentNumber }</a>
+										} else {
+											{ row.DocumentNumber }
+										}
+									</td>
+									<td class="px-4 py-2.5 whitespace-nowrap">
+										if row.CounterpartyName == "" {
+											<span class="text-text-muted3">—</span>
+										} else {
+											{ row.CounterpartyName }
+										}
+									</td>
+									<td class="px-4 py-2.5 text-text-muted2">{ row.Description }</td>
 									<td class="px-4 py-2.5 text-right tabular-nums">
 										if row.Debit.IsPositive() {
 											{ Money(row.Debit) }
@@ -247,7 +265,7 @@ templ bodyAccountTransactions(vm AccountTransactionsVM) {
 
 						// Totals row
 						<tr class="border-t border-border bg-surface-tableHeader font-semibold">
-							<td class="px-6 py-3" colspan="2">Totals and Ending Balance</td>
+							<td class="px-6 py-3" colspan="5">Totals and Ending Balance</td>
 							<td class="px-4 py-3 text-right tabular-nums">{ Money(vm.Report.TotalDebits) }</td>
 							<td class="px-4 py-3 text-right tabular-nums">{ Money(vm.Report.TotalCredits) }</td>
 							<td class="px-6 py-3 text-right tabular-nums">{ Money(vm.Report.EndingBalance) }</td>
@@ -255,7 +273,7 @@ templ bodyAccountTransactions(vm AccountTransactionsVM) {
 
 						// Balance change row
 						<tr class="bg-surface-tableHeader text-text-muted2 text-small">
-							<td class="px-6 pb-3" colspan="4">
+							<td class="px-6 pb-3" colspan="7">
 								<span class="font-medium text-text">Balance Change</span>
 								<span class="ml-1">Difference between starting and ending balances</span>
 							</td>
