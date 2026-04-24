@@ -10,6 +10,7 @@ Built on Go · Fiber · GORM · PostgreSQL · Templ · Alpine.js · Tailwind CSS
 
 ## Table of Contents
 
+- [What's new in 0.0.15](#whats-new-in-0015)
 - [Quick Start — Docker](#quick-start--docker)
 - [Local Development](#local-development)
 - [Production Deployment](#production-deployment)
@@ -18,6 +19,64 @@ Built on Go · Fiber · GORM · PostgreSQL · Templ · Alpine.js · Tailwind CSS
 - [Useful Commands](#useful-commands)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
+
+---
+
+## What's new in 0.0.15
+
+This release is a major UX + reporting upgrade. Three themes:
+
+### 1. Global Search + Advanced Search (Phase 5)
+
+Topbar search box backed by a dedicated **search projection** (`search_documents` table) covering all 19 entity families — invoices, bills, quotes, sales orders, purchase orders, receipts, expenses, journal entries, credit notes, returns, refunds, deposits, prepayments, customers, vendors, and product/services.
+
+- **Topbar dropdown** (`Cmd-K`) — three-tier ranking (doc number → counterparty name → memo), grouped by family with per-group caps, debounced fetch, IME-safe keyboard handling, per-user 20 req/sec rate limit.
+- **Advanced Search** (`/advanced-search`) — full-page filter view: search + entity-type + date range + status, paginated flat results.
+- **Projection drift reconciler** (`cmd/search-reconcile`) — detect/repair/cron-friendly modes.
+- **SysAdmin "Rebuild search index"** button — kicks off a background backfill from `/admin/system`. Useful after deploys or if existing rows pre-date the projection.
+- **Backend modes** — `SEARCH_ENGINE=ent | dual | legacy` env var; defaults to `ent` (the projection-backed engine). The `legacy` mode is an empty-fallback for emergencies; `dual` is reserved for cutover validation.
+
+### 2. Reports system
+
+Eleven reports organised into a **categorized hub** with per-user, per-company **favourites**:
+
+| Category | Reports |
+|----------|---------|
+| Financial Statements | Profit & Loss, Balance Sheet, Trial Balance, **Cash Flow Summary** |
+| Sales | **Sales by Customer** |
+| Expenses | **Expense by Vendor** |
+| Who owes you | A/R Aging |
+| What you owe | A/P Aging *(now in the Reports hub)* |
+| Sales Tax | Sales Tax Report |
+| For my accountant | **General Ledger**, Journal Entries, Account Transactions |
+
+**Universal drill-through:** every per-account / per-counterparty money cell on Balance Sheet / Income Statement / Trial Balance / AR Aging / AP Aging / Cash Flow / Sales by Customer / Expense by Vendor is a hyperlink. The chain is:
+
+```
+Summary report (BS/IS/TB/Aging/...)
+    → click cell
+    → Account Transactions / customer or vendor workspace
+        → click row #
+        → Source document (Bill / Invoice / Expense / Journal Entry / ...)
+```
+
+The Account Transactions page itself was enhanced with **Type / # / Name** columns: source-document type label, the document number as a clickable link to the originating record, and the counterparty name resolved from the JE line's `party_type`/`party_id`. Manual JEs and unmapped source types fall back to the JE detail page so every row is clickable.
+
+### 3. List-page filter unification (16 pages)
+
+Every list surface in the app now shares the same **compact one-row filter pattern**: counterparty SmartPicker (typeahead) + status select + date range + Apply / Reset. Unified pages:
+
+- **AR side** — Sales Orders, Quotes, Invoices, Receipts, Customer Deposits, AR Returns, AR Refunds
+- **AP side** — Purchase Orders, Bills, Vendor Credit Notes, Vendor Prepayments, Vendor Returns, Vendor Refunds
+- **Contacts/Items** — Customers, Vendors, Products & Services (Search + Status, Products adds Type + Stock filter)
+
+Architectural sediment from this work:
+
+- **`pages.listFilterInputClass()`** — single styling source.
+- **`web.parseListDateRange()`** + **`lookupCustomerName()` / `lookupVendorName()`** — single date / name-resolution source.
+- **`services.XxxListFilter` structs** — replaces positional args on every `ListXxx` service func; future filter additions don't churn call sites.
+- **`pages.MoneyCell{Amount, DrillURL}`** + **`services.AccountDrillURL()`** — single money-with-drill primitive.
+- **`services.AllReports()` registry** — adding a new report is one struct entry: hub auto-picks-it-up + favourites toggle works without glue.
 
 ---
 
