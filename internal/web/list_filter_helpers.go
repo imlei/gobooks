@@ -2,12 +2,54 @@
 package web
 
 import (
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
 
 	"gobooks/internal/models"
 )
+
+// normaliseProductType is the validation guard for the Products &
+// Services list page's `type=` query param. Sourced from the canonical
+// ProductServiceType enum so URL-bar typos collapse to "" (no filter)
+// rather than silently producing an empty result page.
+func normaliseProductType(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "service":
+		return string(models.ProductServiceTypeService)
+	case "non_inventory", "product":
+		return string(models.ProductServiceTypeNonInventory)
+	case "inventory":
+		return string(models.ProductServiceTypeInventory)
+	case "other_charge":
+		return string(models.ProductServiceTypeOtherCharge)
+	default:
+		return ""
+	}
+}
+
+// normaliseListStatus folds the standard `status` query-string value used
+// by the contact / product list pages (Customers, Vendors, Products &
+// Services) into one of three canonical tokens:
+//
+//   - "active"   → only active rows (default; what the Status select shows
+//                  when the operator hasn't picked anything)
+//   - "inactive" → only deactivated rows
+//   - "all"      → both active + inactive
+//
+// Anything else (empty string, garbage, whitespace) collapses to
+// "active" so the URL bar can never silently degrade into "no filter".
+func normaliseListStatus(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "inactive":
+		return "inactive"
+	case "all":
+		return "all"
+	default:
+		return "active"
+	}
+}
 
 // parseListDateRange parses the standard `from` / `to` query-string
 // inputs every list page exposes (YYYY-MM-DD). Empty / unparseable

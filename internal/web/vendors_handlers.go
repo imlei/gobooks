@@ -18,12 +18,24 @@ func (s *Server) handleVendors(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	showInactive := c.Query("show_inactive") == "1"
+	filterQ := strings.TrimSpace(c.Query("q"))
+	filterStatus := normaliseListStatus(c.Query("status"))
 
-	// Default to active-only; include inactive when the toggle is on.
+	// Default to active-only; the Status select can flip to inactive or all.
+	// Substring filter (q) matches name OR email so the operator can find
+	// by either without choosing which column upfront.
 	listQuery := s.DB.Where("company_id = ?", companyID)
-	if !showInactive {
+	switch filterStatus {
+	case "inactive":
+		listQuery = listQuery.Where("is_active = false")
+	case "all":
+		// no status filter
+	default:
 		listQuery = listQuery.Where("is_active = true")
+	}
+	if filterQ != "" {
+		like := "%" + strings.ToLower(filterQ) + "%"
+		listQuery = listQuery.Where("LOWER(name) LIKE ? OR LOWER(email) LIKE ?", like, like)
 	}
 	var vendors []models.Vendor
 	if err := listQuery.Order("name asc").Find(&vendors).Error; err != nil {
@@ -52,7 +64,8 @@ func (s *Server) handleVendors(c *fiber.Ctx) error {
 		MultiCurrency:       multiCurrency,
 		BaseCurrencyCode:    baseCurrency,
 		Currencies:          currencies,
-		ShowInactive:        showInactive,
+		FilterQ:             filterQ,
+		FilterStatus:        filterStatus,
 		InactiveVendorCount: int(inactiveCount),
 	}).Render(c.Context(), c)
 }

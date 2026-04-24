@@ -31,7 +31,17 @@ func (s *Server) handleProductServices(c *fiber.Ctx) error {
 		OpeningOK:    c.Query("opening") == "1",
 		AdjustmentOK: c.Query("adjustment") == "1",
 		FormError:    strings.TrimSpace(c.Query("error")),
+		FilterQ:      strings.TrimSpace(c.Query("q")),
+		FilterType:   normaliseProductType(c.Query("type")),
+		FilterStatus: normaliseListStatus(c.Query("status")),
 	}
+
+	// Inactive count for the Status select option label — unfiltered.
+	var inactiveCount int64
+	s.DB.Model(&models.ProductService{}).
+		Where("company_id = ? AND is_active = false", companyID).
+		Count(&inactiveCount)
+	vm.InactiveItemCount = int(inactiveCount)
 
 	if c.Query("new") == "1" {
 		vm.DrawerOpen = true
@@ -818,11 +828,28 @@ func (s *Server) loadProductServicesDropdowns(companyID uint, vm *pages.ProductS
 }
 
 func (s *Server) loadItemsForVM(companyID uint, vm *pages.ProductServicesVM) {
+	listQuery := s.DB.Preload("RevenueAccount").Where("company_id = ?", companyID)
+
+	// Status filter — empty (not set by caller) preserves the original
+	// "show every item including inactive" behaviour so POST-handler
+	// rerenders (validation errors, etc.) don't suddenly hide rows. The
+	// main GET handler sets FilterStatus = "active" explicitly.
+	switch vm.FilterStatus {
+	case "active":
+		listQuery = listQuery.Where("is_active = ?", true)
+	case "inactive":
+		listQuery = listQuery.Where("is_active = ?", false)
+	}
+	if vm.FilterType != "" {
+		listQuery = listQuery.Where("type = ?", vm.FilterType)
+	}
+	if vm.FilterQ != "" {
+		like := "%" + strings.ToLower(vm.FilterQ) + "%"
+		listQuery = listQuery.Where("LOWER(name) LIKE ? OR LOWER(sku) LIKE ?", like, like)
+	}
+
 	var items []models.ProductService
-	if err := s.DB.Preload("RevenueAccount").
-		Where("company_id = ?", companyID).
-		Order("name asc").
-		Find(&items).Error; err == nil {
+	if err := listQuery.Order("name asc").Find(&items).Error; err == nil {
 		vm.Items = items
 	}
 

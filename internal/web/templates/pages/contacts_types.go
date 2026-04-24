@@ -43,11 +43,15 @@ type CustomersVM struct {
 
 	BillableSummaries map[uint]services.CustomerBillableSummary
 
-	// ShowInactive mirrors the ?show_inactive=1 query param. When true the
-	// list includes deactivated customers (visually tagged); when false they
-	// are hidden.
-	ShowInactive      bool
-	InactiveCustomerCount int // total inactive count so the toggle link can hint at what's hidden
+	// FilterQ is the search box value — substring match against name + email.
+	FilterQ string
+	// FilterStatus is one of "active" (default), "inactive", "all". Echoed
+	// back into the Status select.
+	FilterStatus string
+	// InactiveCustomerCount is the total inactive count regardless of the
+	// current filter. Surfaces in the Status select option label so the
+	// operator sees how many records are hidden by the default filter.
+	InactiveCustomerCount int
 }
 
 type CustomerNewVM struct {
@@ -174,7 +178,11 @@ type VendorsVM struct {
 	PaymentTerms []models.PaymentTerm
 	Currencies   []models.Currency // enabled currencies (base + foreign); only used when MultiCurrency == true
 
-	// Inactive toggle — mirrors CustomersVM.ShowInactive semantics.
-	ShowInactive        bool
+	// FilterQ is the search box value — substring match against name + email.
+	FilterQ string
+	// FilterStatus is one of "active" (default), "inactive", "all".
+	FilterStatus string
+	// InactiveVendorCount is the total inactive count regardless of the
+	// current filter. Surfaces in the Status select option label.
 	InactiveVendorCount int
 }

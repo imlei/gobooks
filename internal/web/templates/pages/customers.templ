@@ -53,19 +53,33 @@ templ bodyCustomers(vm CustomersVM) {
 			</div>
 		}
 
-		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
-			<div class="flex items-center justify-between">
-				<h2 class="text-section font-semibold text-text">All Customers</h2>
-				if vm.ShowInactive || vm.InactiveCustomerCount > 0 {
-					if vm.ShowInactive {
-						<a href="/customers" class="text-small text-primary hover:underline">Hide inactive</a>
-					} else {
-						<a href="/customers?show_inactive=1" class="text-small text-primary hover:underline">
-							{ fmt.Sprintf("Show inactive (%d)", vm.InactiveCustomerCount) }
-						</a>
-					}
-				}
+		// Filter bar — Search box + Status select. Mirrors the AR/AP list-page
+		// pattern (Sales Orders, Quotes, etc.). The Status select replaces the
+		// old "Show inactive (N)" link — same info (inactive count appears in
+		// the option label), but now you can also pick "All" to see both.
+		<form method="get" action="/customers" class="mt-6 rounded-lg border border-border bg-surface p-4">
+			<div class="flex flex-wrap items-end gap-3">
+				<div class="min-w-[260px] flex-1">
+					<label for="customers-filter-q" class={ compactLabelClass() }>Search</label>
+					<input id="customers-filter-q" type="text" name="q" value={ vm.FilterQ } placeholder="Name or email…" autocomplete="off" class={ listFilterInputClass() }/>
+				</div>
+				<div class="min-w-[180px]">
+					<label for="customers-filter-status" class={ compactLabelClass() }>Status</label>
+					<select id="customers-filter-status" name="status" class={ listFilterInputClass() }>
+						<option value="active" selected?={ vm.FilterStatus == "active" }>Active</option>
+						<option value="inactive" selected?={ vm.FilterStatus == "inactive" }>{ fmt.Sprintf("Inactive (%d)", vm.InactiveCustomerCount) }</option>
+						<option value="all" selected?={ vm.FilterStatus == "all" }>All</option>
+					</select>
+				</div>
+				<div class="flex items-end gap-2">
+					<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">Apply Filter</button>
+					<a href="/customers" class="rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted3 hover:bg-background hover:text-text">Reset</a>
+				</div>
 			</div>
+		</form>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">All Customers</h2>
 			<div class="mt-4 overflow-x-auto">
 				<table class="w-full text-left text-body">
 					<thead class="text-small uppercase tracking-wider text-text-muted">

@@ -69,6 +69,16 @@ type ProductServicesVM struct {
 	Items      []models.ProductService
 	Balances   map[uint]string // item_id → qty_on_hand display string (legacy compat)
 	Valuations map[uint]ItemValuationVM // item_id → full valuation data
+
+	// Filter state — echoed back into the filter bar so the URL fully
+	// describes the result set.
+	FilterQ      string // substring match against name + sku
+	FilterType   string // "" (all), "service", "product", "other_charge", "bundle"
+	FilterStatus string // "active" (default), "inactive", "all"
+	// InactiveItemCount is the unfiltered count of deactivated items, used
+	// in the Status select option label so the operator sees how many are
+	// hidden by the default Active-only filter.
+	InactiveItemCount int
 }
 
 // ItemValuationVM holds display-ready valuation data for the items list table.

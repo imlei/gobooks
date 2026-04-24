@@ -70,6 +70,38 @@ templ bodyProductServices(vm ProductServicesVM) {
 			</div>
 		}
 
+		// Filter bar — Search + Type + Status. Mirrors the Customers /
+		// Vendors / SO/PO list-page pattern so every list surface looks the same.
+		<form method="get" action="/products-services" class="mt-6 rounded-lg border border-border bg-surface p-4">
+			<div class="flex flex-wrap items-end gap-3">
+				<div class="min-w-[260px] flex-1">
+					<label for="ps-filter-q" class={ compactLabelClass() }>Search</label>
+					<input id="ps-filter-q" type="text" name="q" value={ vm.FilterQ } placeholder="Name or SKU…" autocomplete="off" class={ listFilterInputClass() }/>
+				</div>
+				<div class="min-w-[180px]">
+					<label for="ps-filter-type" class={ compactLabelClass() }>Type</label>
+					<select id="ps-filter-type" name="type" class={ listFilterInputClass() }>
+						<option value="" selected?={ vm.FilterType == "" }>All types</option>
+						for _, t := range models.AllProductServiceTypes() {
+							<option value={ string(t) } selected?={ string(t) == vm.FilterType }>{ models.ProductServiceTypeLabel(t) }</option>
+						}
+					</select>
+				</div>
+				<div class="min-w-[180px]">
+					<label for="ps-filter-status" class={ compactLabelClass() }>Status</label>
+					<select id="ps-filter-status" name="status" class={ listFilterInputClass() }>
+						<option value="active" selected?={ vm.FilterStatus == "active" }>Active</option>
+						<option value="inactive" selected?={ vm.FilterStatus == "inactive" }>{ fmt.Sprintf("Inactive (%d)", vm.InactiveItemCount) }</option>
+						<option value="all" selected?={ vm.FilterStatus == "all" }>All</option>
+					</select>
+				</div>
+				<div class="flex items-end gap-2">
+					<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">Apply Filter</button>
+					<a href="/products-services" class="rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted3 hover:bg-background hover:text-text">Reset</a>
+				</div>
+			</div>
+		</form>
+
 		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
 			<h2 class="text-section font-semibold text-text">All Items</h2>
 			<div class="mt-4 overflow-x-auto">

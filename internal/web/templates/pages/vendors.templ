@@ -33,8 +33,35 @@ templ bodyVendors(vm VendorsVM) {
 		</form>
 
 		// ── Vendor List ─────────────────────────────────────────────────────────
+		@vendorFilterBar(vm)
 		@ui.SectionCard("All Vendors", "", vendorListTable(vm))
 	</div>
+}
+
+// vendorFilterBar renders Search + Status filter row above the list.
+// Mirrors the customers / sales-orders / etc. one-row filter pattern so
+// every list surface looks the same.
+templ vendorFilterBar(vm VendorsVM) {
+	<form method="get" action="/vendors" class="rounded-lg border border-border bg-surface p-4">
+		<div class="flex flex-wrap items-end gap-3">
+			<div class="min-w-[260px] flex-1">
+				<label for="vendors-filter-q" class={ compactLabelClass() }>Search</label>
+				<input id="vendors-filter-q" type="text" name="q" value={ vm.FilterQ } placeholder="Name or email…" autocomplete="off" class={ listFilterInputClass() }/>
+			</div>
+			<div class="min-w-[180px]">
+				<label for="vendors-filter-status" class={ compactLabelClass() }>Status</label>
+				<select id="vendors-filter-status" name="status" class={ listFilterInputClass() }>
+					<option value="active" selected?={ vm.FilterStatus == "active" }>Active</option>
+					<option value="inactive" selected?={ vm.FilterStatus == "inactive" }>{ fmt.Sprintf("Inactive (%d)", vm.InactiveVendorCount) }</option>
+					<option value="all" selected?={ vm.FilterStatus == "all" }>All</option>
+				</select>
+			</div>
+			<div class="flex items-end gap-2">
+				<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">Apply Filter</button>
+				<a href="/vendors" class="rounded-md border border-border-input px-3 py-1.5 text-small text-text-muted3 hover:bg-background hover:text-text">Reset</a>
+			</div>
+		</div>
+	</form>
 }
 
 // vendorAddForm renders the Add Vendor form fields.
@@ -113,19 +140,6 @@ templ vendorAddForm(vm VendorsVM) {
 
 // vendorListTable renders the All Vendors data table.
 templ vendorListTable(vm VendorsVM) {
-	// Active/inactive toggle row. Only renders when there is at least one
-	// inactive vendor to reveal — otherwise the link is noise.
-	if vm.ShowInactive || vm.InactiveVendorCount > 0 {
-		<div class="mb-3 flex items-center justify-end text-small">
-			if vm.ShowInactive {
-				<a href="/vendors" class="text-primary hover:underline">Hide inactive</a>
-			} else {
-				<a href="/vendors?show_inactive=1" class="text-primary hover:underline">
-					{ fmt.Sprintf("Show inactive (%d)", vm.InactiveVendorCount) }
-				</a>
-			}
-		</div>
-	}
 	<div class="overflow-x-auto">
 		<table class="w-full text-left text-body">
 			<thead>

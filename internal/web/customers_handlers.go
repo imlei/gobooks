@@ -25,7 +25,8 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 
 	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
 
-	showInactive := c.Query("show_inactive") == "1"
+	filterQ := strings.TrimSpace(c.Query("q"))
+	filterStatus := normaliseListStatus(c.Query("status"))
 
 	vm := pages.CustomersVM{
 		HasCompany:       true,
@@ -35,16 +36,26 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 		MultiCurrency:    multiCurrency,
 		BaseCurrencyCode: baseCurrency,
 		Currencies:       currencies,
-		ShowInactive:     showInactive,
+		FilterQ:          filterQ,
+		FilterStatus:     filterStatus,
 	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
-	// Load customer list — default to active-only; include inactive when the
-	// toggle is on. The unfiltered inactive count feeds the toggle label so
-	// users know what's hidden without having to flip it.
+	// Load customer list — default to active-only; the Status select can flip
+	// to inactive or all. Substring filter (q) matches name OR email so the
+	// operator can find by either without choosing which column upfront.
 	listQuery := s.DB.Where("company_id = ?", companyID)
-	if !showInactive {
+	switch filterStatus {
+	case "inactive":
+		listQuery = listQuery.Where("is_active = false")
+	case "all":
+		// no status filter
+	default:
 		listQuery = listQuery.Where("is_active = true")
+	}
+	if filterQ != "" {
+		like := "%" + strings.ToLower(filterQ) + "%"
+		listQuery = listQuery.Where("LOWER(name) LIKE ? OR LOWER(email) LIKE ?", like, like)
 	}
 	if err := listQuery.Order("name asc").Find(&vm.Customers).Error; err != nil {
 		vm.FormError = "Could not load customers."
