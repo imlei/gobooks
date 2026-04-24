@@ -1,0 +1,253 @@
+// 遵循project_guide.md
+package pages
+
+import (
+	"time"
+
+	"github.com/shopspring/decimal"
+
+	"gobooks/internal/models"
+	"gobooks/internal/services"
+)
+
+// ── Report tree primitives ──────────────────────────────────────────────────
+//
+// The Balance Sheet, Income Statement, and Trial Balance all share the
+// same visual skeleton: one continuous table with section headers,
+// detail-type sub-groups, account rows, subtotals, and section totals.
+// The shapes below model that hierarchy so each report's templ body
+// stays a thin glue layer over a shared render function.
+//
+// Depth convention for padding-left (pl-N):
+//   Level 0 — section header (Assets / Liabilities / Equity / …)   → pl-2
+//   Level 1 — detail-type group header (Bank / AR / Inventory / …)  → pl-4
+//   Level 2 — account row                                            → pl-8
+//   Level 1 — group subtotal                                         → pl-4
+//   Level 0 — section total                                          → pl-2
+
+// detailGroup is one detail-type bucket inside a section. Lines are
+// already sorted by account code (the service returns sorted rows);
+// the grouper preserves that ordering.
+type detailGroup struct {
+	Detail   string            // raw detail_account_type string; "" = ungrouped (rare)
+	Label    string            // human label — falls back to the raw string if unknown
+	Lines    []reportLine      // account rows
+	Subtotal decimal.Decimal   // sum of Lines.Amount
+}
+
+// reportLine is the polymorphic account-row shape shared between BS /
+// IS. Wraps the AccountID + Code + Name + Amount fields common to
+// BalanceSheetLine and IncomeStatementLine without tying the renderer
+// to either type directly.
+type reportLine struct {
+	AccountID uint
+	Code      string
+	Name      string
+	Amount    decimal.Decimal
+}
+
+// groupBSLines collapses a flat BS section into detail-type buckets.
+// Preserves the service's account-code ordering; detail groups appear
+// in the canonical order from models.DetailsForRoot() so the report
+// looks the same across runs.
+func groupBSLines(root models.RootAccountType, lines []services.BalanceSheetLine) []detailGroup {
+	return groupByDetail(root, func() []reportLine {
+		out := make([]reportLine, len(lines))
+		for i, l := range lines {
+			out[i] = reportLine{AccountID: l.AccountID, Code: l.Code, Name: l.Name, Amount: l.Amount}
+		}
+		// tag each line's detail on the way out — need parallel slice
+		// because reportLine is detail-type-agnostic
+		return out
+	}(), detailsOf(lines))
+}
+
+// groupISLines is the IncomeStatementLine variant. Same shape as
+// groupBSLines; separate helper because Go lacks generic conversion
+// between the two slice types without duplicating the body.
+func groupISLines(root models.RootAccountType, lines []services.IncomeStatementLine) []detailGroup {
+	return groupByDetail(root, func() []reportLine {
+		out := make([]reportLine, len(lines))
+		for i, l := range lines {
+			out[i] = reportLine{AccountID: l.AccountID, Code: l.Code, Name: l.Name, Amount: l.Amount}
+		}
+		return out
+	}(), detailsOfIS(lines))
+}
+
+func detailsOf(lines []services.BalanceSheetLine) []string {
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		out[i] = l.Detail
+	}
+	return out
+}
+func detailsOfIS(lines []services.IncomeStatementLine) []string {
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		out[i] = l.Detail
+	}
+	return out
+}
+
+// groupByDetail is the shared bucketing core. `lines` and `details`
+// are parallel slices (lines[i] has detail type details[i]). Returns
+// groups in models.DetailsForRoot order, with any unknown-detail
+// lines collapsed into a single "" group at the end.
+func groupByDetail(root models.RootAccountType, lines []reportLine, details []string) []detailGroup {
+	// Bucket lines by detail string.
+	buckets := map[string][]reportLine{}
+	for i, l := range lines {
+		d := ""
+		if i < len(details) {
+			d = details[i]
+		}
+		buckets[d] = append(buckets[d], l)
+	}
+	// Emit in canonical detail order, then any leftover buckets.
+	out := []detailGroup{}
+	seen := map[string]bool{}
+	for _, d := range models.DetailsForRoot(root) {
+		ds := string(d)
+		if b, ok := buckets[ds]; ok {
+			out = append(out, makeDetailGroup(ds, b))
+			seen[ds] = true
+		}
+	}
+	for d, b := range buckets {
+		if !seen[d] {
+			out = append(out, makeDetailGroup(d, b))
+		}
+	}
+	return out
+}
+
+func makeDetailGroup(detail string, lines []reportLine) detailGroup {
+	subtotal := decimal.Zero
+	for _, l := range lines {
+		subtotal = subtotal.Add(l.Amount)
+	}
+	return detailGroup{
+		Detail:   detail,
+		Label:    reportDetailLabel(detail),
+		Lines:    lines,
+		Subtotal: subtotal,
+	}
+}
+
+// reportDetailLabel returns a display label for a DetailAccountType
+// string. Falls back to DetailSnakeToLabel (title-case the snake_case)
+// so every known detail type reads cleanly without a custom case.
+func reportDetailLabel(detail string) string {
+	if detail == "" {
+		return "Other"
+	}
+	return models.DetailSnakeToLabel(detail)
+}
+
+// ── Render helpers ──────────────────────────────────────────────────────────
+
+// reportSectionHeaderRow is the tr at the top of each section
+// (Assets / Liabilities / Equity / Revenue / COGS / Expenses).
+templ reportSectionHeaderRow(title string) {
+	<tr class="bg-surface-tableHeader">
+		<td class="py-1.5 pl-2 pr-4 text-body font-semibold text-text" colspan="3"><span>{ title }</span></td>
+	</tr>
+}
+
+// reportGroupHeaderRow is the tr that labels a detail-type sub-group.
+// Blank trailing column keeps the layout aligned.
+templ reportGroupHeaderRow(label string) {
+	<tr>
+		<td class="py-1 pl-4 pr-4 text-small font-semibold text-text-muted" colspan="3">{ label }</td>
+	</tr>
+}
+
+// reportAccountRow is one indented account line with a right-aligned
+// drill-to-ledger money cell. Common to BS + IS — they diverge only in
+// how the drill URL is built, which the caller hands in.
+templ reportAccountRow(code, name, drillURL string, amount decimal.Decimal) {
+	<tr class="hover:bg-background">
+		<td class="py-1 pl-8 pr-4 font-mono text-small text-text-muted2 w-24">{ code }</td>
+		<td class="py-1 pr-4">{ name }</td>
+		<td class="py-1 pr-4 text-right tabular-nums w-40">
+			@RenderMoneyCell(NewMoneyCell(amount, drillURL))
+		</td>
+	</tr>
+}
+
+// reportGroupSubtotalRow is the subtotal row at the bottom of a detail
+// group. Shown only when the group has more than one line; a single-
+// line group's subtotal equals the line amount and is redundant.
+templ reportGroupSubtotalRow(label string, subtotal decimal.Decimal) {
+	<tr class="border-t border-border-subtle/60">
+		<td class="py-1 pl-4 pr-4 text-small font-semibold text-text" colspan="2">Total { label }</td>
+		<td class="py-1 pr-4 text-right tabular-nums font-semibold">{ Money(subtotal) }</td>
+	</tr>
+}
+
+// reportSectionTotalRow sits at the bottom of each top-level section.
+// Border above + background tint so it reads as the section's roll-up
+// without needing its own card wrapper.
+templ reportSectionTotalRow(title string, total decimal.Decimal) {
+	<tr class="border-t border-border bg-surface-tableHeader/60">
+		<td class="py-2 pl-2 pr-4 text-body font-semibold text-text" colspan="2">Total { title }</td>
+		<td class="py-2 pr-4 text-right tabular-nums font-semibold text-text">{ Money(total) }</td>
+	</tr>
+}
+
+// reportSummaryRow is a standalone bold row with a running subtotal
+// that isn't wrapped in a section (Gross Profit, Net Income, Total
+// Liabilities + Equity). Keeps the hierarchy visible in one table.
+templ reportSummaryRow(label string, amount decimal.Decimal) {
+	<tr class="border-t border-border bg-surface-tableHeader">
+		<td class="py-2 pl-2 pr-4 text-body font-semibold text-text" colspan="2">{ label }</td>
+		<td class="py-2 pr-4 text-right tabular-nums font-semibold text-text">{ Money(amount) }</td>
+	</tr>
+}
+
+// reportSpacerRow is a half-height empty row between sections so the
+// continuous table still has breathing room. Fully transparent; does
+// not affect the borders of surrounding rows.
+templ reportSpacerRow() {
+	<tr><td colspan="3" class="py-1"></td></tr>
+}
+
+// ── Section renderers ───────────────────────────────────────────────────────
+
+// renderBSSection emits the rows for one Balance Sheet section.
+// `drillDates` is the (from, to) pair used to build per-row drill URLs.
+templ renderBSSection(title string, root models.RootAccountType, lines []services.BalanceSheetLine, total decimal.Decimal, asOf time.Time) {
+	@reportSectionHeaderRow(title)
+	for _, g := range groupBSLines(root, lines) {
+		if len(g.Lines) > 1 {
+			@reportGroupHeaderRow(g.Label)
+		}
+		for _, line := range g.Lines {
+			@reportAccountRow(line.Code, line.Name, services.AccountDrillURL(line.AccountID, time.Time{}, asOf), line.Amount)
+		}
+		if len(g.Lines) > 1 {
+			@reportGroupSubtotalRow(g.Label, g.Subtotal)
+		}
+	}
+	@reportSectionTotalRow(title, total)
+	@reportSpacerRow()
+}
+
+// renderISSection emits the rows for one Income Statement section.
+templ renderISSection(title string, root models.RootAccountType, lines []services.IncomeStatementLine, total decimal.Decimal, fromDate, toDate time.Time) {
+	@reportSectionHeaderRow(title)
+	for _, g := range groupISLines(root, lines) {
+		if len(g.Lines) > 1 {
+			@reportGroupHeaderRow(g.Label)
+		}
+		for _, line := range g.Lines {
+			@reportAccountRow(line.Code, line.Name, services.AccountDrillURL(line.AccountID, fromDate, toDate), line.Amount)
+		}
+		if len(g.Lines) > 1 {
+			@reportGroupSubtotalRow(g.Label, g.Subtotal)
+		}
+	}
+	@reportSectionTotalRow(title, total)
+	@reportSpacerRow()
+}

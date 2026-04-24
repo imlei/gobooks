@@ -2,9 +2,7 @@
 package pages
 
 import (
-	"time"
-
-	"gobooks/internal/services"
+	"gobooks/internal/models"
 	"gobooks/internal/web/templates/layout"
 	"gobooks/internal/web/templates/ui"
 )
@@ -29,49 +27,18 @@ templ bodyBalanceSheet(vm BalanceSheetVM) {
 
 		@ReportToolbar(vm.Toolbar)
 
-		<div class="mt-4 space-y-3">
-			@bsSection("Assets", vm.Report.Assets, Money(vm.Report.TotalAssets), vm.AsOfTime)
-			@bsSection("Liabilities", vm.Report.Liabilities, Money(vm.Report.TotalLiabilities), vm.AsOfTime)
-			@bsSection("Equity", vm.Report.Equity, Money(vm.Report.TotalEquity), vm.AsOfTime)
-
-			<div class="rounded-lg border border-border bg-surface px-4 py-2.5">
-				<div class="flex items-center justify-between">
-					<div class="text-body font-semibold text-text">Total Liabilities + Equity</div>
-					<div class="text-body font-semibold text-text">
-						{ Money(vm.Report.TotalLiabilities.Add(vm.Report.TotalEquity)) }
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-}
-
-templ bsSection(title string, lines []services.BalanceSheetLine, total string, asOf time.Time) {
-	<div class="rounded-lg border border-border bg-surface p-4">
-		<div class="flex items-center justify-between">
-			<div class="text-section font-semibold text-text">{ title }</div>
-			<div class="text-body font-semibold text-text">{ total }</div>
-		</div>
-
-		<div class="mt-2 overflow-x-auto">
+		// One unified table holds the whole Balance Sheet. Each section
+		// (Assets / Liabilities / Equity) is a group of rows —
+		// reportSectionHeaderRow + per-detail-type sub-groups +
+		// reportSectionTotalRow — instead of a separate card. Keeps the
+		// account columns aligned across sections (the QB-style feel).
+		<div class="mt-4 rounded-lg border border-border bg-surface overflow-x-auto">
 			<table class="w-full text-left text-body">
-				<thead class="text-small uppercase tracking-wider text-text-muted">
-					<tr class="border-b border-border-subtle">
-						<th class="py-1.5 pr-4">Code</th>
-						<th class="py-1.5 pr-4">Name</th>
-						<th class="py-1.5 pr-0 text-right">Amount</th>
-					</tr>
-				</thead>
 				<tbody class="text-text">
-					for _, l := range lines {
-						<tr class="border-b border-border-subtle/60 hover:bg-background">
-							<td class="py-1.5 pr-4 font-mono text-small">{ l.Code }</td>
-							<td class="py-1.5 pr-4">{ l.Name }</td>
-							<td class="py-1.5 pr-0 text-right tabular-nums">
-								@RenderMoneyCell(NewMoneyCell(l.Amount, services.AccountDrillURL(l.AccountID, time.Time{}, asOf)))
-							</td>
-						</tr>
-					}
+					@renderBSSection("Assets", models.RootAsset, vm.Report.Assets, vm.Report.TotalAssets, vm.AsOfTime)
+					@renderBSSection("Liabilities", models.RootLiability, vm.Report.Liabilities, vm.Report.TotalLiabilities, vm.AsOfTime)
+					@renderBSSection("Equity", models.RootEquity, vm.Report.Equity, vm.Report.TotalEquity, vm.AsOfTime)
+					@reportSummaryRow("Total Liabilities + Equity", vm.Report.TotalLiabilities.Add(vm.Report.TotalEquity))
 				</tbody>
 			</table>
 		</div>

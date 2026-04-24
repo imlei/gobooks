@@ -211,7 +211,12 @@ type IncomeStatementLine struct {
 	AccountID uint // accounts.id PK; used to build per-row drill URLs
 	Code      string
 	Name      string
-	Amount    decimal.Decimal
+	// Detail is the DetailAccountType string (e.g. "operating_revenue",
+	// "office_expense"). Threaded through so the templ layer can group
+	// lines into QuickBooks-style sub-sections (one indented group per
+	// detail type).
+	Detail string
+	Amount decimal.Decimal
 }
 
 // IncomeStatement is the full Income Statement for a period.
@@ -255,17 +260,17 @@ func IncomeStatementReport(db *gorm.DB, companyID uint, fromDate, toDate time.Ti
 		switch r.Root {
 		case models.RootRevenue:
 			if !amt.IsZero() {
-				report.Revenue = append(report.Revenue, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
+				report.Revenue = append(report.Revenue, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Detail: string(r.Detail), Amount: amt})
 			}
 			report.TotalRevenue = report.TotalRevenue.Add(amt)
 		case models.RootCostOfSales:
 			if !amt.IsZero() {
-				report.CostOfSales = append(report.CostOfSales, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
+				report.CostOfSales = append(report.CostOfSales, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Detail: string(r.Detail), Amount: amt})
 			}
 			report.TotalCostOfSales = report.TotalCostOfSales.Add(amt)
 		case models.RootExpense:
 			if !amt.IsZero() {
-				report.Expenses = append(report.Expenses, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
+				report.Expenses = append(report.Expenses, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Detail: string(r.Detail), Amount: amt})
 			}
 			report.TotalExpenses = report.TotalExpenses.Add(amt)
 		}
@@ -284,7 +289,11 @@ type BalanceSheetLine struct {
 	AccountID uint // accounts.id PK; used to build per-row drill URLs
 	Code      string
 	Name      string
-	Amount    decimal.Decimal
+	// Detail is the DetailAccountType string (e.g. "bank",
+	// "accounts_receivable"). Threaded through so the templ layer can
+	// group lines into QuickBooks-style sub-sections.
+	Detail string
+	Amount decimal.Decimal
 }
 
 // BalanceSheet is the full Balance Sheet as of a point in time.
@@ -324,17 +333,17 @@ func BalanceSheetReport(db *gorm.DB, companyID uint, asOf time.Time) (BalanceShe
 		switch r.Root {
 		case models.RootAsset:
 			if !amt.IsZero() {
-				report.Assets = append(report.Assets, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
+				report.Assets = append(report.Assets, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Detail: string(r.Detail), Amount: amt})
 			}
 			report.TotalAssets = report.TotalAssets.Add(amt)
 		case models.RootLiability:
 			if !amt.IsZero() {
-				report.Liabilities = append(report.Liabilities, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
+				report.Liabilities = append(report.Liabilities, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Detail: string(r.Detail), Amount: amt})
 			}
 			report.TotalLiabilities = report.TotalLiabilities.Add(amt)
 		case models.RootEquity:
 			if !amt.IsZero() {
-				report.Equity = append(report.Equity, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
+				report.Equity = append(report.Equity, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Detail: string(r.Detail), Amount: amt})
 			}
 			report.TotalEquity = report.TotalEquity.Add(amt)
 		}

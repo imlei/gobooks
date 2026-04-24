@@ -2,9 +2,7 @@
 package pages
 
 import (
-	"time"
-
-	"gobooks/internal/services"
+	"gobooks/internal/models"
 	"gobooks/internal/web/templates/layout"
 	"gobooks/internal/web/templates/ui"
 )
@@ -29,55 +27,18 @@ templ bodyIncomeStatement(vm IncomeStatementVM) {
 
 		@ReportToolbar(vm.Toolbar)
 
-		<div class="mt-4 space-y-3">
-			@incomeSection("Revenue", vm.Report.Revenue, Money(vm.Report.TotalRevenue), vm.Report.FromDate, vm.Report.ToDate)
-			@incomeSection("Cost of Sales", vm.Report.CostOfSales, Money(vm.Report.TotalCostOfSales), vm.Report.FromDate, vm.Report.ToDate)
-
-			<div class="rounded-lg border border-border bg-surface px-4 py-2.5">
-				<div class="flex items-center justify-between">
-					<div class="text-body font-semibold text-text">Gross Profit</div>
-					<div class="text-body font-semibold text-text">{ Money(vm.Report.GrossProfit) }</div>
-				</div>
-			</div>
-
-			@incomeSection("Expenses", vm.Report.Expenses, Money(vm.Report.TotalExpenses), vm.Report.FromDate, vm.Report.ToDate)
-
-			<div class="rounded-lg border border-border bg-surface px-4 py-2.5">
-				<div class="flex items-center justify-between">
-					<div class="text-body font-semibold text-text">Net Income</div>
-					<div class="text-body font-semibold text-text">{ Money(vm.Report.NetIncome) }</div>
-				</div>
-			</div>
-		</div>
-	</div>
-}
-
-templ incomeSection(title string, lines []services.IncomeStatementLine, total string, fromDate, toDate time.Time) {
-	<div class="rounded-lg border border-border bg-surface p-4">
-		<div class="flex items-center justify-between">
-			<div class="text-section font-semibold text-text">{ title }</div>
-			<div class="text-body font-semibold text-text">{ total }</div>
-		</div>
-
-		<div class="mt-2 overflow-x-auto">
+		// One unified table. Revenue + COGS sections build up to a
+		// Gross Profit summary row; Expenses section builds down to
+		// Net Income. Mirrors the QB Profit & Loss visual layout.
+		<div class="mt-4 rounded-lg border border-border bg-surface overflow-x-auto">
 			<table class="w-full text-left text-body">
-				<thead class="text-small uppercase tracking-wider text-text-muted">
-					<tr class="border-b border-border-subtle">
-						<th class="py-1.5 pr-4">Code</th>
-						<th class="py-1.5 pr-4">Name</th>
-						<th class="py-1.5 pr-0 text-right">Amount</th>
-					</tr>
-				</thead>
 				<tbody class="text-text">
-					for _, l := range lines {
-						<tr class="border-b border-border-subtle/60 hover:bg-background">
-							<td class="py-1.5 pr-4 font-mono text-small">{ l.Code }</td>
-							<td class="py-1.5 pr-4">{ l.Name }</td>
-							<td class="py-1.5 pr-0 text-right tabular-nums">
-								@RenderMoneyCell(NewMoneyCell(l.Amount, services.AccountDrillURL(l.AccountID, fromDate, toDate)))
-							</td>
-						</tr>
-					}
+					@renderISSection("Revenue", models.RootRevenue, vm.Report.Revenue, vm.Report.TotalRevenue, vm.Report.FromDate, vm.Report.ToDate)
+					@renderISSection("Cost of Sales", models.RootCostOfSales, vm.Report.CostOfSales, vm.Report.TotalCostOfSales, vm.Report.FromDate, vm.Report.ToDate)
+					@reportSummaryRow("Gross Profit", vm.Report.GrossProfit)
+					@reportSpacerRow()
+					@renderISSection("Expenses", models.RootExpense, vm.Report.Expenses, vm.Report.TotalExpenses, vm.Report.FromDate, vm.Report.ToDate)
+					@reportSummaryRow("Net Income", vm.Report.NetIncome)
 				</tbody>
 			</table>
 		</div>
