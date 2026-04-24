@@ -102,9 +102,13 @@ func (s *Server) handleAccountTransactions(c *fiber.Ctx) error {
 		ReportTitle:   "Account Transactions",
 		FormAction:    "/reports/account-transactions",
 		Mode:          "period",
+		// account_id MUST go through HiddenInputs — appending it to the
+		// action's query string doesn't survive form submit (browsers
+		// replace the action's query with form inputs on GET submit).
+		HiddenInputs: []pages.ReportToolbarHiddenInput{
+			{Name: "account_id", Value: accountIDRaw},
+		},
 	}
-	// Carry account_id through form submissions by appending to form action.
-	toolbar.FormAction = "/reports/account-transactions?account_id=" + accountIDRaw
 
 	vm := pages.AccountTransactionsVM{
 		HasCompany: true,

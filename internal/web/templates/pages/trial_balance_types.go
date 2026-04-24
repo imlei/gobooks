@@ -9,6 +9,13 @@ import (
 
 // ── Report Toolbar VM ─────────────────────────────────────────────────────────
 
+// ReportToolbarHiddenInput is one Name/Value pair the report toolbar must
+// re-emit as `<input type="hidden">` so the value survives GET form submit.
+type ReportToolbarHiddenInput struct {
+	Name  string
+	Value string
+}
+
 // ReportToolbarVM carries all data needed by the unified report toolbar component.
 type ReportToolbarVM struct {
 	// Preset is the currently active period preset (one of the PresetXxx constants
@@ -30,6 +37,13 @@ type ReportToolbarVM struct {
 	CSVExportURL string
 	// FormAction is the GET action for the report form (e.g. "/reports/income-statement").
 	FormAction string
+	// HiddenInputs carries extra `<input type="hidden">` pairs that must
+	// survive form submission. Use this for context the toolbar itself
+	// doesn't know about — e.g. Account Transactions stamps account_id
+	// here so the GET form roundtrip doesn't drop it (browsers REPLACE
+	// the action's query string with form inputs on submit, so query
+	// params on FormAction alone are silently lost).
+	HiddenInputs []ReportToolbarHiddenInput
 	// Mode is "period" (shows From + To) or "asof" (shows As Of only).
 	Mode string
 	// Source is "cache", "recomputed", or "mixed" when the rendered page can

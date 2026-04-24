@@ -38,6 +38,13 @@ templ ReportToolbar(vm ReportToolbarVM) {
 		<form method="get" action={ templ.SafeURL(vm.FormAction) } class="report-toolbar-form mt-4 rounded-lg border border-border bg-surface px-5 py-4">
 			<!-- Period preset is submitted so the server can echo it back -->
 			<input type="hidden" name="period" :value="preset"/>
+			<!-- Caller-supplied hidden inputs (e.g. account_id for the Account
+			     Transactions drill-down). Required because GET form submit
+			     replaces the action's query string with form inputs — any param
+			     baked into FormAction alone is silently lost on submit. -->
+			for _, h := range vm.HiddenInputs {
+				<input type="hidden" name={ h.Name } value={ h.Value }/>
+			}
 
 			<div class="flex flex-wrap items-end gap-3">
 				<!-- Report Period selector -->
