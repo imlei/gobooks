@@ -24,16 +24,17 @@ func (s *Server) handleProductServices(c *fiber.Ctx) error {
 	}
 
 	vm := pages.ProductServicesVM{
-		HasCompany:   true,
-		Created:      c.Query("created") == "1",
-		Updated:      c.Query("updated") == "1",
-		InactiveOK:   c.Query("inactive") == "1",
-		OpeningOK:    c.Query("opening") == "1",
-		AdjustmentOK: c.Query("adjustment") == "1",
-		FormError:    strings.TrimSpace(c.Query("error")),
-		FilterQ:      strings.TrimSpace(c.Query("q")),
-		FilterType:   normaliseProductType(c.Query("type")),
-		FilterStatus: normaliseListStatus(c.Query("status")),
+		HasCompany:       true,
+		Created:          c.Query("created") == "1",
+		Updated:          c.Query("updated") == "1",
+		InactiveOK:       c.Query("inactive") == "1",
+		OpeningOK:        c.Query("opening") == "1",
+		AdjustmentOK:     c.Query("adjustment") == "1",
+		FormError:        strings.TrimSpace(c.Query("error")),
+		FilterQ:          strings.TrimSpace(c.Query("q")),
+		FilterType:       normaliseProductType(c.Query("type")),
+		FilterStatus:     normaliseListStatus(c.Query("status")),
+		FilterStockLevel: normaliseStockLevel(c.Query("stock")),
 	}
 
 	// Inactive count for the Status select option label — unfiltered.
@@ -840,7 +841,15 @@ func (s *Server) loadItemsForVM(companyID uint, vm *pages.ProductServicesVM) {
 	case "inactive":
 		listQuery = listQuery.Where("is_active = ?", false)
 	}
-	if vm.FilterType != "" {
+
+	// Stock filter forces type = "inventory" — services / non-inventory
+	// don't track quantities, so a stock-level filter on them is
+	// semantically meaningless. Honoured even when the operator sets
+	// Type = "All" because the stock filter is the more specific intent.
+	stockFilter := vm.FilterStockLevel
+	if stockFilter != "" {
+		listQuery = listQuery.Where("type = ?", string(models.ProductServiceTypeInventory))
+	} else if vm.FilterType != "" {
 		listQuery = listQuery.Where("type = ?", vm.FilterType)
 	}
 	if vm.FilterQ != "" {
@@ -864,5 +873,35 @@ func (s *Server) loadItemsForVM(companyID uint, vm *pages.ProductServicesVM) {
 			AverageCost:    v.AverageCost,
 			InventoryValue: v.InventoryValue,
 		}
+	}
+
+	// Apply stock filter post-query: ListItemValuations returns rows for
+	// items that have a balance row. "in_stock" = positive qty; "out_of_stock"
+	// = no balance OR non-positive qty. Done in Go because qty_on_hand is a
+	// computed aggregate (inventory_balances.location_ref="" rollup) rather
+	// than a column on product_services — adding a join + HAVING here would
+	// be heavier than just walking the items slice.
+	if stockFilter != "" {
+		filtered := items[:0]
+		for _, item := range items {
+			val, hasBalance := rawVals[item.ID]
+			inStock := false
+			if hasBalance {
+				if qty, err := decimal.NewFromString(val.QuantityOnHand); err == nil && qty.IsPositive() {
+					inStock = true
+				}
+			}
+			switch stockFilter {
+			case "in_stock":
+				if inStock {
+					filtered = append(filtered, item)
+				}
+			case "out_of_stock":
+				if !inStock {
+					filtered = append(filtered, item)
+				}
+			}
+		}
+		vm.Items = filtered
 	}
 }

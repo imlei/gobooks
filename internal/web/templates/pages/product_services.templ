@@ -87,6 +87,14 @@ templ bodyProductServices(vm ProductServicesVM) {
 						}
 					</select>
 				</div>
+				<div class="min-w-[160px]">
+					<label for="ps-filter-stock" class={ compactLabelClass() }>Stock</label>
+					<select id="ps-filter-stock" name="stock" class={ listFilterInputClass() } title="Stock filter applies to inventory items only">
+						<option value="" selected?={ vm.FilterStockLevel == "" }>Any stock</option>
+						<option value="in_stock" selected?={ vm.FilterStockLevel == "in_stock" }>In stock</option>
+						<option value="out_of_stock" selected?={ vm.FilterStockLevel == "out_of_stock" }>Out of stock</option>
+					</select>
+				</div>
 				<div class="min-w-[180px]">
 					<label for="ps-filter-status" class={ compactLabelClass() }>Status</label>
 					<select id="ps-filter-status" name="status" class={ listFilterInputClass() }>

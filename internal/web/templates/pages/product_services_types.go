@@ -75,6 +75,14 @@ type ProductServicesVM struct {
 	FilterQ      string // substring match against name + sku
 	FilterType   string // "" (all), "service", "product", "other_charge", "bundle"
 	FilterStatus string // "active" (default), "inactive", "all"
+	// FilterStockLevel narrows the inventory list:
+	//   "" / "any" → no stock filter (default)
+	//   "in_stock" → qty_on_hand > 0 (implies type = inventory)
+	//   "out_of_stock" → qty_on_hand <= 0 OR no balance row (implies type = inventory)
+	// "Low stock" is intentionally absent — the schema has no reorder_point
+	// column yet; surface honest options rather than guess a hardcoded
+	// threshold.
+	FilterStockLevel string
 	// InactiveItemCount is the unfiltered count of deactivated items, used
 	// in the Status select option label so the operator sees how many are
 	// hidden by the default Active-only filter.

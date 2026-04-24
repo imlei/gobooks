@@ -10,6 +10,27 @@ import (
 	"gobooks/internal/models"
 )
 
+// normaliseStockLevel is the validation guard for the Products &
+// Services list page's `stock=` query param. Returns one of:
+//
+//   - ""             → no stock filter
+//   - "in_stock"     → only items with qty_on_hand > 0
+//   - "out_of_stock" → only items with qty_on_hand <= 0 (or no balance row)
+//
+// Anything else (empty, "any", garbage) collapses to "". "Low stock" is
+// intentionally absent — see ProductServicesVM.FilterStockLevel for the
+// reasoning.
+func normaliseStockLevel(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "in_stock":
+		return "in_stock"
+	case "out_of_stock":
+		return "out_of_stock"
+	default:
+		return ""
+	}
+}
+
 // normaliseProductType is the validation guard for the Products &
 // Services list page's `type=` query param. Sourced from the canonical
 // ProductServiceType enum so URL-bar typos collapse to "" (no filter)
