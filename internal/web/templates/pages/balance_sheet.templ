@@ -1,9 +1,13 @@
 // 遵循project_guide.md
 package pages
 
-import "gobooks/internal/services"
-import "gobooks/internal/web/templates/layout"
-import "gobooks/internal/web/templates/ui"
+import (
+	"time"
+
+	"gobooks/internal/services"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
 
 templ BalanceSheet(vm BalanceSheetVM) {
 	@layout.Layout(
@@ -30,9 +34,9 @@ templ bodyBalanceSheet(vm BalanceSheetVM) {
 		@ReportToolbar(vm.Toolbar)
 
 		<div class="mt-6 space-y-6">
-			@bsSection("Assets", vm.Report.Assets, Money(vm.Report.TotalAssets))
-			@bsSection("Liabilities", vm.Report.Liabilities, Money(vm.Report.TotalLiabilities))
-			@bsSection("Equity", vm.Report.Equity, Money(vm.Report.TotalEquity))
+			@bsSection("Assets", vm.Report.Assets, Money(vm.Report.TotalAssets), vm.AsOfTime)
+			@bsSection("Liabilities", vm.Report.Liabilities, Money(vm.Report.TotalLiabilities), vm.AsOfTime)
+			@bsSection("Equity", vm.Report.Equity, Money(vm.Report.TotalEquity), vm.AsOfTime)
 
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<div class="flex items-center justify-between">
@@ -46,7 +50,7 @@ templ bodyBalanceSheet(vm BalanceSheetVM) {
 	</div>
 }
 
-templ bsSection(title string, lines []services.BalanceSheetLine, total string) {
+templ bsSection(title string, lines []services.BalanceSheetLine, total string, asOf time.Time) {
 	<div class="rounded-lg border border-border bg-surface p-6">
 		<div class="flex items-center justify-between">
 			<div class="text-section font-semibold text-text">{ title }</div>
@@ -67,7 +71,9 @@ templ bsSection(title string, lines []services.BalanceSheetLine, total string) {
 						<tr class="border-b border-border-subtle">
 							<td class="py-3 pr-4 font-medium">{ l.Code }</td>
 							<td class="py-3 pr-4">{ l.Name }</td>
-							<td class="py-3 pr-0 text-right">{ Money(l.Amount) }</td>
+							<td class="py-3 pr-0 text-right">
+								@RenderMoneyCell(NewMoneyCell(l.Amount, services.AccountDrillURL(l.AccountID, time.Time{}, asOf)))
+							</td>
 						</tr>
 					}
 				</tbody>

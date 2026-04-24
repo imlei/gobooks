@@ -1,9 +1,13 @@
 // 遵循project_guide.md
 package pages
 
-import "gobooks/internal/web/templates/layout"
-import "gobooks/internal/web/templates/ui"
-import "gobooks/internal/services"
+import (
+	"time"
+
+	"gobooks/internal/services"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
 
 templ IncomeStatement(vm IncomeStatementVM) {
 	@layout.Layout(
@@ -30,8 +34,8 @@ templ bodyIncomeStatement(vm IncomeStatementVM) {
 		@ReportToolbar(vm.Toolbar)
 
 		<div class="mt-6 space-y-6">
-			@incomeSection("Revenue", vm.Report.Revenue, Money(vm.Report.TotalRevenue))
-			@incomeSection("Cost of Sales", vm.Report.CostOfSales, Money(vm.Report.TotalCostOfSales))
+			@incomeSection("Revenue", vm.Report.Revenue, Money(vm.Report.TotalRevenue), vm.Report.FromDate, vm.Report.ToDate)
+			@incomeSection("Cost of Sales", vm.Report.CostOfSales, Money(vm.Report.TotalCostOfSales), vm.Report.FromDate, vm.Report.ToDate)
 
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<div class="flex items-center justify-between">
@@ -40,7 +44,7 @@ templ bodyIncomeStatement(vm IncomeStatementVM) {
 				</div>
 			</div>
 
-			@incomeSection("Expenses", vm.Report.Expenses, Money(vm.Report.TotalExpenses))
+			@incomeSection("Expenses", vm.Report.Expenses, Money(vm.Report.TotalExpenses), vm.Report.FromDate, vm.Report.ToDate)
 
 			<div class="rounded-lg border border-border bg-surface p-6">
 				<div class="flex items-center justify-between">
@@ -52,7 +56,7 @@ templ bodyIncomeStatement(vm IncomeStatementVM) {
 	</div>
 }
 
-templ incomeSection(title string, lines []services.IncomeStatementLine, total string) {
+templ incomeSection(title string, lines []services.IncomeStatementLine, total string, fromDate, toDate time.Time) {
 	<div class="rounded-lg border border-border bg-surface p-6">
 		<div class="flex items-center justify-between">
 			<div class="text-section font-semibold text-text">{ title }</div>
@@ -73,7 +77,9 @@ templ incomeSection(title string, lines []services.IncomeStatementLine, total st
 						<tr class="border-b border-border-subtle">
 							<td class="py-3 pr-4 font-medium">{ l.Code }</td>
 							<td class="py-3 pr-4">{ l.Name }</td>
-							<td class="py-3 pr-0 text-right">{ Money(l.Amount) }</td>
+							<td class="py-3 pr-0 text-right">
+								@RenderMoneyCell(NewMoneyCell(l.Amount, services.AccountDrillURL(l.AccountID, fromDate, toDate)))
+							</td>
 						</tr>
 					}
 				</tbody>

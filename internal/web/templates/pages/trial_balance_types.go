@@ -60,6 +60,11 @@ type TrialBalanceVM struct {
 
 	From string
 	To   string
+	// FromTime / ToTime are the parsed dates used by the templ to build
+	// per-row drill URLs into Account Transactions. Same period as the
+	// From / To string fields above; populated by the handler.
+	FromTime time.Time
+	ToTime   time.Time
 
 	ActiveTab string
 

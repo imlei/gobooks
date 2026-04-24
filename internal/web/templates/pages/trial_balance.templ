@@ -1,8 +1,11 @@
 // 遵循project_guide.md
 package pages
 
-import "gobooks/internal/web/templates/layout"
-import "gobooks/internal/web/templates/ui"
+import (
+	"gobooks/internal/services"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
 
 templ TrialBalance(vm TrialBalanceVM) {
 	@layout.Layout(
@@ -42,12 +45,17 @@ templ bodyTrialBalance(vm TrialBalanceVM) {
 					</thead>
 					<tbody class="text-text">
 						for _, r := range vm.Rows {
+							{{ drillURL := services.AccountDrillURL(r.AccountID, vm.FromTime, vm.ToTime) }}
 							<tr class="border-b border-border-subtle">
 								<td class="py-3 pr-4 font-medium">{ r.Code }</td>
 								<td class="py-3 pr-4">{ r.Name }</td>
 								<td class="py-3 pr-4">{ r.Classification }</td>
-								<td class="py-3 pr-4 text-right">{ Money(r.Debit) }</td>
-								<td class="py-3 pr-0 text-right">{ Money(r.Credit) }</td>
+								<td class="py-3 pr-4 text-right">
+									@RenderMoneyCellBlank(NewMoneyCell(r.Debit, drillURL))
+								</td>
+								<td class="py-3 pr-0 text-right">
+									@RenderMoneyCellBlank(NewMoneyCell(r.Credit, drillURL))
+								</td>
 							</tr>
 						}
 					</tbody>

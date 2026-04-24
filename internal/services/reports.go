@@ -55,6 +55,9 @@ type AccountBalanceFilter struct {
 // Debit and Credit are the raw period sums from journal_lines; each report
 // interprets them through normalBalance() to get the meaningful figure.
 type RawAccountBalance struct {
+	// ID is the accounts.id PK. Wired through so report line items can
+	// build drill-through URLs to /reports/account-transactions.
+	ID     uint
 	Code   string
 	Name   string
 	Root   models.RootAccountType
@@ -120,6 +123,7 @@ func accountBalances(db *gorm.DB, f AccountBalanceFilter) ([]RawAccountBalance, 
 
 	query := `
 SELECT
+  a.id                  AS id,
   a.code                AS code,
   a.name                AS name,
   a.root_account_type   AS root,
@@ -148,6 +152,7 @@ ORDER BY a.code ASC
 
 // TrialBalanceRow is one line in a Trial Balance report.
 type TrialBalanceRow struct {
+	AccountID      uint // accounts.id PK; used to build per-row drill URLs
 	Code           string
 	Name           string
 	Classification string
@@ -179,6 +184,7 @@ func TrialBalance(db *gorm.DB, companyID uint, fromDate, toDate time.Time) ([]Tr
 		net := r.Debit.Sub(r.Credit)
 		label := models.ClassificationDisplay(r.Root, r.Detail)
 		row := TrialBalanceRow{
+			AccountID:      r.ID,
 			Code:           r.Code,
 			Name:           r.Name,
 			Classification: label,
@@ -202,9 +208,10 @@ func TrialBalance(db *gorm.DB, companyID uint, fromDate, toDate time.Time) ([]Tr
 
 // IncomeStatementLine is one line item in Income Statement sections.
 type IncomeStatementLine struct {
-	Code   string
-	Name   string
-	Amount decimal.Decimal
+	AccountID uint // accounts.id PK; used to build per-row drill URLs
+	Code      string
+	Name      string
+	Amount    decimal.Decimal
 }
 
 // IncomeStatement is the full Income Statement for a period.
@@ -248,17 +255,17 @@ func IncomeStatementReport(db *gorm.DB, companyID uint, fromDate, toDate time.Ti
 		switch r.Root {
 		case models.RootRevenue:
 			if !amt.IsZero() {
-				report.Revenue = append(report.Revenue, IncomeStatementLine{Code: r.Code, Name: r.Name, Amount: amt})
+				report.Revenue = append(report.Revenue, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
 			}
 			report.TotalRevenue = report.TotalRevenue.Add(amt)
 		case models.RootCostOfSales:
 			if !amt.IsZero() {
-				report.CostOfSales = append(report.CostOfSales, IncomeStatementLine{Code: r.Code, Name: r.Name, Amount: amt})
+				report.CostOfSales = append(report.CostOfSales, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
 			}
 			report.TotalCostOfSales = report.TotalCostOfSales.Add(amt)
 		case models.RootExpense:
 			if !amt.IsZero() {
-				report.Expenses = append(report.Expenses, IncomeStatementLine{Code: r.Code, Name: r.Name, Amount: amt})
+				report.Expenses = append(report.Expenses, IncomeStatementLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
 			}
 			report.TotalExpenses = report.TotalExpenses.Add(amt)
 		}
@@ -274,9 +281,10 @@ func IncomeStatementReport(db *gorm.DB, companyID uint, fromDate, toDate time.Ti
 
 // BalanceSheetLine is one account line in a Balance Sheet section.
 type BalanceSheetLine struct {
-	Code   string
-	Name   string
-	Amount decimal.Decimal
+	AccountID uint // accounts.id PK; used to build per-row drill URLs
+	Code      string
+	Name      string
+	Amount    decimal.Decimal
 }
 
 // BalanceSheet is the full Balance Sheet as of a point in time.
@@ -316,17 +324,17 @@ func BalanceSheetReport(db *gorm.DB, companyID uint, asOf time.Time) (BalanceShe
 		switch r.Root {
 		case models.RootAsset:
 			if !amt.IsZero() {
-				report.Assets = append(report.Assets, BalanceSheetLine{Code: r.Code, Name: r.Name, Amount: amt})
+				report.Assets = append(report.Assets, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
 			}
 			report.TotalAssets = report.TotalAssets.Add(amt)
 		case models.RootLiability:
 			if !amt.IsZero() {
-				report.Liabilities = append(report.Liabilities, BalanceSheetLine{Code: r.Code, Name: r.Name, Amount: amt})
+				report.Liabilities = append(report.Liabilities, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
 			}
 			report.TotalLiabilities = report.TotalLiabilities.Add(amt)
 		case models.RootEquity:
 			if !amt.IsZero() {
-				report.Equity = append(report.Equity, BalanceSheetLine{Code: r.Code, Name: r.Name, Amount: amt})
+				report.Equity = append(report.Equity, BalanceSheetLine{AccountID: r.ID, Code: r.Code, Name: r.Name, Amount: amt})
 			}
 			report.TotalEquity = report.TotalEquity.Add(amt)
 		}

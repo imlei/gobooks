@@ -1,0 +1,31 @@
+// 遵循project_guide.md
+package pages
+
+// RenderMoneyCell renders a MoneyCell as either a clickable drill link
+// (when DrillURL is non-empty) or plain text. Use this in summary
+// report tables where most rows drill into the per-account ledger but
+// computed totals (Net Income, Total Assets) don't.
+//
+// The link styling matches the rest of the app's primary-coloured
+// hyperlinks. The amount is wrapped in <span data-numfmt> so the
+// global num-format.js applies the user's preferred separator.
+templ RenderMoneyCell(cell MoneyCell) {
+	if cell.DrillURL != "" {
+		<a href={ templ.SafeURL(cell.DrillURL) } class="text-primary hover:underline" data-numfmt>{ Money(cell.Amount) }</a>
+	} else {
+		<span data-numfmt>{ Money(cell.Amount) }</span>
+	}
+}
+
+// RenderMoneyCellBlank is like RenderMoneyCell but renders nothing
+// when the amount is zero — used by Trial Balance's split Debit /
+// Credit columns where only one side is populated per row.
+templ RenderMoneyCellBlank(cell MoneyCell) {
+	if cell.Amount.IsZero() {
+		// blank — TB convention is to show only the populated column
+	} else if cell.DrillURL != "" {
+		<a href={ templ.SafeURL(cell.DrillURL) } class="text-primary hover:underline" data-numfmt>{ Money(cell.Amount) }</a>
+	} else {
+		<span data-numfmt>{ Money(cell.Amount) }</span>
+	}
+}

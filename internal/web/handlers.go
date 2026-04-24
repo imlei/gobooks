@@ -259,6 +259,8 @@ func (s *Server) handleTrialBalance(c *fiber.Ctx) error {
 		HasCompany:   true,
 		From:         fromStr,
 		To:           toStr,
+		FromTime:     fromDate,
+		ToTime:       toDate,
 		ActiveTab:    "trial",
 		Rows:         rows,
 		TotalDebits:  pages.Money(totalDebits),
