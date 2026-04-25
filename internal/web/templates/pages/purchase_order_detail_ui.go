@@ -27,19 +27,56 @@ func poShellVM(vm PurchaseOrderDetailVM) ui.DocEditorShellVM {
 }
 
 // poFooterVM is the sticky bottom action bar for the PO editor.
-// Single Save button — confirm/cancel actions live in their own POST
-// forms rendered above the footer (sibling to the editor form per the
-// nested-form prohibition called out in the original page comment).
+//
+// Layout — all action buttons consolidated into one row to remove the
+// "two Cancels mean different things" confusion the duplicate
+// poDraftActionButtons row used to cause:
+//
+//	Left:  Back to Purchase Orders (navigate, discards unsaved edits)
+//	Right: [Cancel PO] [Save] [Confirm]   — only when the PO is a saved Draft
+//
+// New POs (ID == 0) only show Save — Confirm/Cancel-PO require an existing
+// row to act on. Confirm + Cancel-PO use HTML5 `formaction` to override the
+// editor form's POST URL; the handlers only read the URL :id, so the
+// payload is harmless. Operator must click Save before Confirm to persist
+// in-progress edits — matches the prior separate-form behaviour.
 func poFooterVM(vm PurchaseOrderDetailVM) ui.DocEditorFooterVM {
-	return ui.DocEditorFooterVM{
+	footer := ui.DocEditorFooterVM{
 		Cancel: &ui.DocEditorFooterLink{
-			Label: "Cancel",
+			Label: "Back to Purchase Orders",
 			Href:  "/purchase-orders",
 		},
-		Buttons: []ui.DocEditorFooterButton{
-			{Label: "Save", Variant: ui.FooterBtnPrimary, Type: "submit"},
-		},
 	}
+
+	// Draft + saved: cancel-PO (danger), save (primary), confirm (primary).
+	// Order is "left = least desirable, right = main next step".
+	if vm.PurchaseOrder.ID != 0 && vm.PurchaseOrder.Status == models.POStatusDraft {
+		poURL := "/purchase-orders/" + Uitoa(vm.PurchaseOrder.ID)
+		footer.Buttons = []ui.DocEditorFooterButton{
+			{
+				Label:      "Cancel PO",
+				Variant:    ui.FooterBtnDanger,
+				Type:       "submit",
+				FormAction: poURL + "/cancel",
+				OnClick:    "return confirm('Cancel this purchase order? This marks the order cancelled and cannot be undone.')",
+			},
+			{Label: "Save", Variant: ui.FooterBtnPrimary, Type: "submit"},
+			{
+				Label:      "Confirm",
+				Variant:    ui.FooterBtnPrimary,
+				Type:       "submit",
+				FormAction: poURL + "/confirm",
+				OnClick:    "return confirm('Confirm this purchase order? Save your edits first if you have unsaved changes.')",
+			},
+		}
+		return footer
+	}
+
+	// New PO (ID == 0): only Save — confirm/cancel require an existing row.
+	footer.Buttons = []ui.DocEditorFooterButton{
+		{Label: "Save", Variant: ui.FooterBtnPrimary, Type: "submit"},
+	}
+	return footer
 }
 
 // poProductsJSON serialises the product/service catalogue for the

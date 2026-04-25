@@ -82,10 +82,6 @@ templ poEditorContent(vm PurchaseOrderDetailVM) {
 		)
 		@poNotesCard(vm)
 
-		if vm.PurchaseOrder.ID != 0 {
-			@poDraftActionButtons(vm)
-		}
-
 		@ui.DocEditorFooter(poFooterVM(vm))
 	</form>
 }
@@ -285,24 +281,6 @@ templ poNotesCard(vm PurchaseOrderDetailVM) {
 	// one place; this stub keeps the slot in case PO grows an internal
 	// memo (matching Quote/SO/Bill).
 	<!-- intentionally empty: notes already rendered in header-left -->
-}
-
-templ poDraftActionButtons(vm PurchaseOrderDetailVM) {
-	// Confirm / Cancel must be SIBLINGS of the save form, not nested.
-	// Rendering them inside the editor form is illegal HTML; render as
-	// adjacent forms so each button transitions PO status directly.
-	<div class="flex flex-wrap gap-3">
-		<form method="POST" action={ templ.SafeURL("/purchase-orders/" + fmt.Sprintf("%d", vm.PurchaseOrder.ID) + "/confirm") }>
-			<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
-				Confirm
-			</button>
-		</form>
-		<form method="POST" action={ templ.SafeURL("/purchase-orders/" + fmt.Sprintf("%d", vm.PurchaseOrder.ID) + "/cancel") }>
-			<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
-				Cancel
-			</button>
-		</form>
-	</div>
 }
 
 templ poCurrencyOptions(vm PurchaseOrderDetailVM) {
