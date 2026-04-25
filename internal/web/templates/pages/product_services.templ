@@ -480,7 +480,138 @@ templ psFormFields(vm ProductServicesVM) {
 			<div x-show="itemType === 'inventory' && structureType !== 'bundle'" x-cloak>
 				@psInventorySection(vm)
 			</div>
+			<div x-show="itemType === 'inventory' && structureType !== 'bundle'" x-cloak>
+				@psUOMSection(vm)
+			</div>
 		}
+	</div>
+}
+
+// psUOMSection — Phase U1 (2026-04-25). UOM (Unit of Measure) management
+// for a single inventory item. Renders three rows:
+//   1. Stock UOM — read-only display + a small "Change…" link when no
+//      on-hand exists (parallels TrackingMode rule).
+//   2. Sell UOM + factor.
+//   3. Purchase UOM + factor.
+// Posts to /products-services/uom (sell + purchase only). Stock UOM
+// changes go through /products-services/stock-uom which has its own
+// confirm dialog because changing stock unit also resets sell/purchase
+// factors.
+templ psUOMSection(vm ProductServicesVM) {
+	<div class="border-t border-border pt-4 space-y-4">
+		<p class="text-small font-semibold uppercase tracking-wider text-text-muted">
+			Units of Measure
+		</p>
+
+		if vm.UOMOK {
+			<div class="rounded-md border border-success-border bg-success-soft px-3 py-2 text-small text-success-hover">
+				UOM updated.
+			</div>
+		}
+		if vm.UOMError != "" {
+			<div class="rounded-md border border-border-danger bg-danger-soft px-3 py-2 text-small text-danger-hover">
+				{ vm.UOMError }
+			</div>
+		}
+
+		// ── Stock UOM (read-only with optional change link) ───────────────
+		<div class="rounded-md border border-border bg-background p-3">
+			<div class="flex items-center justify-between gap-3">
+				<div>
+					<p class="text-small text-text-muted2">Stock UOM</p>
+					<p class="mt-0.5 text-body font-semibold text-text">{ vm.StockUOM }</p>
+				</div>
+				if vm.UOMHasStock {
+					<span class="text-small text-text-muted3" title="Drain on-hand to zero before changing the stock unit.">
+						Locked (on-hand &gt; 0)
+					</span>
+				} else {
+					<form
+						method="post"
+						action="/products-services/stock-uom"
+						class="flex items-center gap-2"
+						onsubmit="return confirm('Change Stock UOM? This resets Sell + Purchase UOMs to match the new stock unit; you will need to re-enter their factors.');"
+					>
+						<input type="hidden" name="item_id" value={ Uitoa(vm.EditingID) }/>
+						<input
+							type="text"
+							name="stock_uom"
+							value={ vm.StockUOM }
+							maxlength="16"
+							class="w-20 rounded border border-border-input bg-surface px-2 py-1 text-right text-small font-mono uppercase text-text focus:outline-none focus:ring-2 focus:ring-primary-focus"
+						/>
+						<button
+							type="submit"
+							class="rounded-md border border-border-input px-2 py-1 text-[11px] font-medium text-text-muted2 hover:bg-background hover:text-text"
+						>Change</button>
+					</form>
+				}
+			</div>
+			<p class="mt-1 text-[11px] text-text-muted3">
+				The unit inventory + costing counts in. Immutable while on-hand &gt; 0.
+			</p>
+		</div>
+
+		// ── Sell + Purchase UOMs (edit form) ──────────────────────────────
+		<form method="post" action="/products-services/uom" class="rounded-md border border-border bg-background p-3 space-y-3">
+			<input type="hidden" name="item_id" value={ Uitoa(vm.EditingID) }/>
+
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<label class="block text-small text-text-muted2">Sell UOM</label>
+					<input
+						type="text"
+						name="sell_uom"
+						value={ vm.SellUOM }
+						maxlength="16"
+						class={ psInputClass(false) + " uppercase" }
+					/>
+				</div>
+				<div>
+					<label class="block text-small text-text-muted2">Sell factor (per Stock UOM)</label>
+					<input
+						type="text"
+						inputmode="decimal"
+						name="sell_uom_factor"
+						value={ vm.SellUOMFactor }
+						class={ psInputClass(false) }
+					/>
+				</div>
+			</div>
+
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<label class="block text-small text-text-muted2">Purchase UOM</label>
+					<input
+						type="text"
+						name="purchase_uom"
+						value={ vm.PurchaseUOM }
+						maxlength="16"
+						class={ psInputClass(false) + " uppercase" }
+					/>
+				</div>
+				<div>
+					<label class="block text-small text-text-muted2">Purchase factor (per Stock UOM)</label>
+					<input
+						type="text"
+						inputmode="decimal"
+						name="purchase_uom_factor"
+						value={ vm.PurchaseUOMFactor }
+						class={ psInputClass(false) }
+					/>
+				</div>
+			</div>
+
+			<p class="text-[11px] text-text-muted3">
+				Factor = how many <span class="font-semibold">{ vm.StockUOM }</span> equal one of this UOM.
+				Set to 1 when the UOM matches the stock unit (e.g. sell in BOTTLE, stock in BOTTLE).
+			</p>
+
+			<button
+				type="submit"
+				class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover"
+			>Save UOMs</button>
+		</form>
 	</div>
 }
 

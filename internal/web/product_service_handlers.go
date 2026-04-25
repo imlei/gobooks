@@ -74,6 +74,24 @@ func (s *Server) handleProductServices(c *fiber.Ctx) error {
 				if item.DefaultTaxCodeID != nil {
 					vm.DefaultTaxCodeID = strconv.FormatUint(uint64(*item.DefaultTaxCodeID), 10)
 				}
+				// UOM (Phase U1) — populate display strings + the
+				// has-stock flag so psUOMSection can disable the
+				// stock-UOM change link when on-hand > 0.
+				vm.StockUOM = item.StockUOM
+				vm.SellUOM = item.SellUOM
+				vm.SellUOMFactor = item.SellUOMFactor.StringFixed(2)
+				vm.PurchaseUOM = item.PurchaseUOM
+				vm.PurchaseUOMFactor = item.PurchaseUOMFactor.StringFixed(2)
+				if item.IsStockItem {
+					var sum struct{ Total float64 }
+					_ = s.DB.Model(&models.InventoryBalance{}).
+						Select("COALESCE(SUM(quantity_on_hand), 0) AS total").
+						Where("company_id = ? AND item_id = ?", companyID, item.ID).
+						Scan(&sum).Error
+					vm.UOMHasStock = sum.Total != 0
+				}
+				vm.UOMOK = c.Query("uom_ok") == "1"
+				vm.UOMError = strings.TrimSpace(c.Query("uom_error"))
 				// Load bundle components for edit.
 				if item.ItemStructureType == models.ItemStructureBundle {
 					comps, _ := services.GetBundleComponents(s.DB, companyID, item.ID)
@@ -904,4 +922,115 @@ func (s *Server) loadItemsForVM(companyID uint, vm *pages.ProductServicesVM) {
 		}
 		vm.Items = filtered
 	}
+}
+
+// ── UOM (Phase U1 — 2026-04-25) ─────────────────────────────────────────────
+
+// handleProductServiceUOMSave persists the Sell + Purchase UOMs + factors
+// for a single inventory item.  Stock UOM is NOT touched here (separate
+// endpoint /products-services/stock-uom which has its own on-hand guard).
+//
+// On success: redirect back to the edit drawer with ?uom_ok=1.
+// On failure: redirect with ?uom_error=<message> URL-escaped so the
+//             error renders inline in the UOM section banner.
+func (s *Server) handleProductServiceUOMSave(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	itemID64, err := strconv.ParseUint(strings.TrimSpace(c.FormValue("item_id")), 10, 64)
+	if err != nil || itemID64 == 0 {
+		return c.Redirect("/products-services", fiber.StatusSeeOther)
+	}
+	itemID := uint(itemID64)
+
+	sellUOM := c.FormValue("sell_uom")
+	purchaseUOM := c.FormValue("purchase_uom")
+	sellFactor, _ := decimal.NewFromString(strings.TrimSpace(c.FormValue("sell_uom_factor")))
+	purchaseFactor, _ := decimal.NewFromString(strings.TrimSpace(c.FormValue("purchase_uom_factor")))
+
+	uid := user.ID
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+
+	if err := services.SaveProductUOMs(s.DB, services.SaveProductUOMsInput{
+		CompanyID:         companyID,
+		ItemID:            itemID,
+		SellUOM:           sellUOM,
+		SellUOMFactor:     sellFactor,
+		PurchaseUOM:       purchaseUOM,
+		PurchaseUOMFactor: purchaseFactor,
+		Actor:             actor,
+		ActorUserID:       &uid,
+	}); err != nil {
+		return c.Redirect(
+			fmt.Sprintf("/products-services?edit=%d&uom_error=%s", itemID, encodeQuery(err.Error())),
+			fiber.StatusSeeOther,
+		)
+	}
+
+	return c.Redirect(
+		fmt.Sprintf("/products-services?edit=%d&uom_ok=1", itemID),
+		fiber.StatusSeeOther,
+	)
+}
+
+// handleProductServiceStockUOMChange transitions the item's Stock UOM
+// after the on-hand guard. Resets Sell + Purchase UOMs to match (factors
+// to 1) so the operator can't carry stale conversion factors against
+// the new stock unit.
+func (s *Server) handleProductServiceStockUOMChange(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Redirect("/login", fiber.StatusSeeOther)
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	itemID64, err := strconv.ParseUint(strings.TrimSpace(c.FormValue("item_id")), 10, 64)
+	if err != nil || itemID64 == 0 {
+		return c.Redirect("/products-services", fiber.StatusSeeOther)
+	}
+	itemID := uint(itemID64)
+
+	uid := user.ID
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+
+	if err := services.ChangeStockUOM(s.DB, services.ChangeStockUOMInput{
+		CompanyID:   companyID,
+		ItemID:      itemID,
+		NewStockUOM: c.FormValue("stock_uom"),
+		Actor:       actor,
+		ActorUserID: &uid,
+	}); err != nil {
+		return c.Redirect(
+			fmt.Sprintf("/products-services?edit=%d&uom_error=%s", itemID, encodeQuery(err.Error())),
+			fiber.StatusSeeOther,
+		)
+	}
+	return c.Redirect(
+		fmt.Sprintf("/products-services?edit=%d&uom_ok=1", itemID),
+		fiber.StatusSeeOther,
+	)
+}
+
+// encodeQuery is a tiny URL-encoder shim — the redirect path needs the
+// error message escaped, but we don't want to drag in net/url at the top
+// of this file just for one call.
+func encodeQuery(s string) string {
+	r := strings.NewReplacer(
+		" ", "+", "&", "%26", "?", "%3F", "#", "%23",
+		"+", "%2B", "%", "%25",
+	)
+	return r.Replace(s)
 }

@@ -3,6 +3,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -121,6 +122,10 @@ func (ps *ProductService) ApplyTypeDefaults() {
 	if ps.TrackingMode == "" || !ps.IsStockItem {
 		ps.TrackingMode = TrackingNone
 	}
+	// UOM defaults (Phase U1) — every new item gets EA / EA / EA / 1 / 1
+	// so the existing single-unit flow keeps working without operator
+	// action.  Operators opt in to multi-UOM by editing the item.
+	ps.ApplyUOMDefaults()
 }
 
 // ValidateTrackingMode ensures the mode is legal both in-value and
@@ -140,6 +145,79 @@ func (ps *ProductService) ValidateTrackingMode() error {
 	default:
 		return fmt.Errorf("tracking_mode must be one of none|lot|serial (got %q)", ps.TrackingMode)
 	}
+}
+
+// ── UOM (Phase U1) ───────────────────────────────────────────────────────────
+
+// NormalizeUOM uppercases + trims a UOM string, falling back to "EA"
+// when empty.  Called by save handlers + the model's
+// ApplyUOMDefaults so different casings of "ea" / "Ea" / "EA" don't
+// fragment the picker / catalogs.
+func NormalizeUOM(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "EA"
+	}
+	return strings.ToUpper(s)
+}
+
+// ApplyUOMDefaults fills any missing UOM fields with safe defaults
+// (StockUOM = SellUOM = PurchaseUOM = "EA"; factors = 1).  Idempotent —
+// re-running on a fully-populated row is a no-op.  Used by ApplyTypeDefaults
+// + by the save handler before persisting.
+func (ps *ProductService) ApplyUOMDefaults() {
+	ps.StockUOM = NormalizeUOM(ps.StockUOM)
+	ps.SellUOM = NormalizeUOM(ps.SellUOM)
+	ps.PurchaseUOM = NormalizeUOM(ps.PurchaseUOM)
+	if !ps.SellUOMFactor.IsPositive() {
+		ps.SellUOMFactor = decimal.NewFromInt(1)
+	}
+	if !ps.PurchaseUOMFactor.IsPositive() {
+		ps.PurchaseUOMFactor = decimal.NewFromInt(1)
+	}
+}
+
+// ValidateUOMs checks the UOM tuple is internally consistent:
+//   - All three UOM strings are non-empty (caller should normalise first
+//     to fold case; this validator just rejects truly empty strings).
+//   - Factors are strictly positive.
+//   - When SellUOM == StockUOM, SellUOMFactor must be 1 (and same for
+//     PurchaseUOM). Mismatched factor on the same unit is nonsense.
+//   - Non-stock items must use defaults (StockUOM="EA", factors=1) —
+//     UOM only makes sense for stock-tracked items.  Time-bill /
+//     non-inventory don't have a stock unit to convert from.
+//
+// Returns the first failure, suitable for surfacing inline next to the
+// offending field.
+func (ps *ProductService) ValidateUOMs() error {
+	if ps.StockUOM == "" || ps.SellUOM == "" || ps.PurchaseUOM == "" {
+		return fmt.Errorf("UOM strings cannot be empty")
+	}
+	if !ps.SellUOMFactor.IsPositive() {
+		return fmt.Errorf("sell UOM factor must be > 0 (got %s)", ps.SellUOMFactor.String())
+	}
+	if !ps.PurchaseUOMFactor.IsPositive() {
+		return fmt.Errorf("purchase UOM factor must be > 0 (got %s)", ps.PurchaseUOMFactor.String())
+	}
+	one := decimal.NewFromInt(1)
+	if ps.SellUOM == ps.StockUOM && !ps.SellUOMFactor.Equal(one) {
+		return fmt.Errorf("sell UOM equals stock UOM (%s) so factor must be 1 (got %s)",
+			ps.StockUOM, ps.SellUOMFactor.String())
+	}
+	if ps.PurchaseUOM == ps.StockUOM && !ps.PurchaseUOMFactor.Equal(one) {
+		return fmt.Errorf("purchase UOM equals stock UOM (%s) so factor must be 1 (got %s)",
+			ps.StockUOM, ps.PurchaseUOMFactor.String())
+	}
+	if !ps.IsStockItem {
+		// Non-stock items don't have a stock unit. Reject any
+		// non-default config so the catalog stays honest.
+		if ps.StockUOM != "EA" || ps.SellUOM != "EA" || ps.PurchaseUOM != "EA" ||
+			!ps.SellUOMFactor.Equal(one) || !ps.PurchaseUOMFactor.Equal(one) {
+			return fmt.Errorf("UOM customisation only applies to stock-tracked items; %q is not stock-tracked",
+				ps.Name)
+		}
+	}
+	return nil
 }
 
 // ── ProductService model ─────────────────────────────────────────────────────
@@ -212,6 +290,27 @@ type ProductService struct {
 	// IsSystem = true marks items that must not be deleted or have their Type changed.
 	// The service layer checks this flag before allowing mutations.
 	IsSystem bool `gorm:"not null;default:false"`
+
+	// ── Unit of Measure (Phase U1 — 2026-04-25) ──────────────────────────
+	//
+	// StockUOM is the unit the inventory module counts in (on-hand,
+	// FIFO layers, transfers, costs all denominated here). Immutable
+	// while inventory on-hand > 0 — enforced by
+	// services.ChangeStockUOM (parallel to the TrackingMode rule).
+	// Default "EA" so every existing item keeps working without
+	// operator action.
+	StockUOM string `gorm:"type:varchar(16);not null;default:'EA'"`
+
+	// SellUOM is the AR-side default unit on Invoice / Quote / SO / CN
+	// lines. SellUOMFactor is the conversion: how many StockUOMs equal
+	// one SellUOM. When SellUOM == StockUOM the factor must be 1.
+	SellUOM       string          `gorm:"type:varchar(16);not null;default:'EA'"`
+	SellUOMFactor decimal.Decimal `gorm:"type:numeric(18,6);not null;default:1"`
+
+	// PurchaseUOM is the AP-side default unit on Bill / PO / VCN
+	// lines. Same semantics as SellUOM but for the buy side.
+	PurchaseUOM       string          `gorm:"type:varchar(16);not null;default:'EA'"`
+	PurchaseUOMFactor decimal.Decimal `gorm:"type:numeric(18,6);not null;default:1"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

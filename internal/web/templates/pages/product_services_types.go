@@ -33,6 +33,22 @@ type ProductServicesVM struct {
 	InventoryAccountID string
 	DefaultTaxCodeID   string
 
+	// UOM display fields (Phase U1) — populated from the item being
+	// edited. Used by psUOMSection to render current values + the
+	// inline mini-form. Default values for create-mode are EA / 1.
+	StockUOM          string
+	SellUOM           string
+	SellUOMFactor     string
+	PurchaseUOM       string
+	PurchaseUOMFactor string
+	// UOMHasStock is true when the item has on-hand > 0; the templ uses
+	// this to disable the StockUOM change link (parallels the
+	// TrackingMode rule).
+	UOMHasStock bool
+	// UOMOK / UOMError are flash flags from the save round-trip.
+	UOMOK    bool
+	UOMError string
+
 	// Bundle components (for edit mode)
 	Components     []BundleComponentRow
 	ComponentError string

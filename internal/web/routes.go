@@ -547,6 +547,9 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/products-services/:id/ledger", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInventoryLedger)
 	app.Post("/products-services/opening", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleInventoryOpening)
 	app.Post("/products-services/adjustment", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleInventoryAdjustment)
+	// UOM (Phase U1 — 2026-04-25)
+	app.Post("/products-services/uom", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleProductServiceUOMSave)
+	app.Post("/products-services/stock-uom", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleProductServiceStockUOMChange)
 
 	// ── 往来单位（客户 / 供应商）────────────────────────────────────────────────
 	// 联系人数据对所有运营角色开放（不在现有 action 定义范围内，仅需成员资格）
