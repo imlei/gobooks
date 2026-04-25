@@ -136,12 +136,21 @@ type SalesOrderLine struct {
 	TaxCodeID *uint    `gorm:"index"`
 	TaxCode   *TaxCode `gorm:"foreignKey:TaxCodeID"`
 
-	Description    string          `gorm:"type:text;not null;default:''"`
-	Quantity       decimal.Decimal `gorm:"type:numeric(18,4);not null;default:1"`
-	UnitPrice      decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
-	LineNet        decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
-	TaxAmount      decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
-	LineTotal      decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
+	Description string          `gorm:"type:text;not null;default:''"`
+	Quantity    decimal.Decimal `gorm:"type:numeric(18,4);not null;default:1"`
+
+	// OriginalQuantity captures the contracted (initial-create) qty.
+	// The S2 partially-invoiced Qty-edit path uses this as the stable
+	// baseline for the over-shipment buffer cap (otherwise each edit
+	// would shift the baseline and the buffer would compound).
+	// Set on Create + Update (which is draft-only); never touched by
+	// AdjustSalesOrderLineQty.
+	OriginalQuantity decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
+
+	UnitPrice decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
+	LineNet   decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
+	TaxAmount decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
+	LineTotal decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`
 
 	// InvoicedQty tracks how much of this line has been invoiced.
 	InvoicedQty decimal.Decimal `gorm:"type:numeric(18,4);not null;default:0"`

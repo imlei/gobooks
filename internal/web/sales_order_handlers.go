@@ -2,11 +2,13 @@
 package web
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 
 	"gobooks/internal/models"
 	"gobooks/internal/searchprojection/producers"
@@ -90,11 +92,13 @@ func (s *Server) handleSalesOrderDetail(c *fiber.Ctx) error {
 	}
 
 	vm := pages.SalesOrderDetailVM{
-		HasCompany: true,
-		Order:      *so,
-		Saved:      c.Query("saved") == "1",
-		Confirmed:  c.Query("confirmed") == "1",
-		Cancelled:  c.Query("cancelled") == "1",
+		HasCompany:  true,
+		Order:       *so,
+		Saved:       c.Query("saved") == "1",
+		Confirmed:   c.Query("confirmed") == "1",
+		Cancelled:   c.Query("cancelled") == "1",
+		QtyAdjusted: c.Query("qty_adjusted") == "1",
+		QtyError:    strings.TrimSpace(c.Query("qty_error")),
 	}
 	s.loadSOFormData(companyID, &vm)
 
@@ -110,6 +114,23 @@ func (s *Server) handleSalesOrderDetail(c *fiber.Ctx) error {
 			Find(&linked).Error; err == nil {
 			vm.LinkedInvoices = linked
 		}
+	}
+
+	// S2: per-line max-qty cap so the inline <input min/max> + soft hint
+	// reflect the live over-shipment buffer. Only relevant on partially-
+	// invoiced SOs; skip the work otherwise.
+	if so.Status == models.SalesOrderStatusPartiallyInvoiced && len(so.Lines) > 0 {
+		policy, _ := services.ResolveOverShipmentPolicy(s.DB, companyID, 0)
+		caps := make(map[uint]string, len(so.Lines))
+		for _, l := range so.Lines {
+			base := l.OriginalQuantity
+			if !base.IsPositive() {
+				base = l.Quantity
+			}
+			max := policy.MaxAllowedQty(base)
+			caps[l.ID] = pages.QtyDisplayForLineProduct(max, l.ProductService)
+		}
+		vm.QtyMaxByLineID = caps
 	}
 
 	return pages.SalesOrderDetail(vm).Render(c.Context(), c)
@@ -195,6 +216,57 @@ func (s *Server) handleSalesOrderCancel(c *fiber.Ctx) error {
 	_ = services.CancelSalesOrder(s.DB, companyID, id)
 	_ = producers.ProjectSalesOrder(c.Context(), s.DB, s.SearchProjector, companyID, id)
 	return c.Redirect("/sales-orders/"+strconv.FormatUint(uint64(id), 10)+"?cancelled=1", fiber.StatusSeeOther)
+}
+
+// ── Per-line Qty adjust (S2 — partially-invoiced edit path) ──────────────────
+
+// handleSalesOrderLineQtyAdjust accepts a single qty change against a
+// single SO line. Only valid on partially-invoiced SOs; capped at the
+// over-shipment buffer (S3) and floored at the line's already-invoiced qty.
+//
+// On success → redirect to the SO detail page with ?qty_adjusted=1.
+// On error  → redirect with ?qty_error=<urlencoded message>.
+func (s *Server) handleSalesOrderLineQtyAdjust(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Redirect("/select-company", fiber.StatusSeeOther)
+	}
+	soID, err := parseIDParam(c)
+	if err != nil {
+		return c.Redirect("/sales-orders", fiber.StatusSeeOther)
+	}
+	lineIDRaw := strings.TrimSpace(c.Params("lineID"))
+	lineID64, err := strconv.ParseUint(lineIDRaw, 10, 64)
+	if err != nil || lineID64 == 0 {
+		return c.Redirect("/sales-orders/"+strconv.FormatUint(uint64(soID), 10)+"?qty_error=invalid+line+id", fiber.StatusSeeOther)
+	}
+
+	qtyRaw := strings.TrimSpace(c.FormValue("qty"))
+	qty, qtyErr := services.ParseDecimalMoney(qtyRaw)
+	if qtyErr != nil || !qty.IsPositive() {
+		return c.Redirect("/sales-orders/"+strconv.FormatUint(uint64(soID), 10)+"?qty_error=qty+must+be+a+positive+number", fiber.StatusSeeOther)
+	}
+
+	user := UserFromCtx(c)
+	actor := "system"
+	var actorUserID *uuid.UUID
+	if user != nil {
+		actor = user.Email
+		if actor == "" {
+			actor = "user"
+		}
+		uid := user.ID
+		actorUserID = &uid
+	}
+
+	if _, err := services.AdjustSalesOrderLineQty(s.DB, companyID, soID, uint(lineID64), qty, actor, actorUserID); err != nil {
+		return c.Redirect(
+			"/sales-orders/"+strconv.FormatUint(uint64(soID), 10)+"?qty_error="+url.QueryEscape(err.Error()),
+			fiber.StatusSeeOther,
+		)
+	}
+	_ = producers.ProjectSalesOrder(c.Context(), s.DB, s.SearchProjector, companyID, soID)
+	return c.Redirect("/sales-orders/"+strconv.FormatUint(uint64(soID), 10)+"?qty_adjusted=1", fiber.StatusSeeOther)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

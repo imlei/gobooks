@@ -79,4 +79,17 @@ type SalesOrderDetailVM struct {
 	// Empty for Draft SOs and for Confirmed SOs without any
 	// invoices yet. Rendered in a table on the read-only view.
 	LinkedInvoices []models.Invoice
+
+	// S2 (2026-04-25) — partially-invoiced Qty editing.
+	// QtyMaxByLineID maps SalesOrderLine.ID → max-allowed qty (string,
+	// formatted per IsStockItem) for the inline Qty input. Computed
+	// once in the handler so the templ doesn't need to call the buffer
+	// resolver per line.
+	QtyMaxByLineID map[uint]string
+	// QtyAdjusted is true when the page is loaded with ?qty_adjusted=1
+	// (success flash after an adjust POST).
+	QtyAdjusted bool
+	// QtyError carries the human-readable failure from the last adjust
+	// attempt (sent via ?qty_error=...). Empty when no error.
+	QtyError string
 }

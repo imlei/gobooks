@@ -154,6 +154,7 @@ func CreateSalesOrder(db *gorm.DB, companyID uint, in SalesOrderInput) (*models.
 			TaxCodeID:        li.TaxCodeID,
 			Description:      li.Description,
 			Quantity:         li.Quantity,
+			OriginalQuantity: li.Quantity, // anchor for the S3 over-ship buffer cap
 			UnitPrice:        li.UnitPrice,
 			SortOrder:        i,
 		}
@@ -265,6 +266,7 @@ func UpdateSalesOrder(db *gorm.DB, companyID, orderID uint, in SalesOrderInput) 
 			TaxCodeID:        li.TaxCodeID,
 			Description:      li.Description,
 			Quantity:         li.Quantity,
+			OriginalQuantity: li.Quantity, // re-anchor on draft edit
 			UnitPrice:        li.UnitPrice,
 			SortOrder:        i,
 		}

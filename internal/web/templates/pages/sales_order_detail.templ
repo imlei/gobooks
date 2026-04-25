@@ -1,9 +1,13 @@
 // 遵循project_guide.md
 package pages
 
-import "gobooks/internal/models"
-import "gobooks/internal/web/templates/layout"
-import "gobooks/internal/web/templates/ui"
+import (
+	"fmt"
+
+	"gobooks/internal/models"
+	"gobooks/internal/web/templates/layout"
+	"gobooks/internal/web/templates/ui"
+)
 
 templ SalesOrderDetail(vm SalesOrderDetailVM) {
 	@layout.Layout(
@@ -86,6 +90,54 @@ templ soFlashBanners(vm SalesOrderDetailVM) {
 	if vm.Cancelled {
 		@ui.AlertError("Sales order cancelled.")
 	}
+	if vm.QtyAdjusted {
+		@ui.AlertSuccess("Line quantity updated.")
+	}
+	if vm.QtyError != "" {
+		@ui.AlertError(vm.QtyError)
+	}
+}
+
+// soLineQtyEditor renders the inline per-line Qty input that operators
+// use on partially-invoiced SOs. Posts to /sales-orders/:id/lines/:lineID/qty
+// (S2 — 2026-04-25). The min hint is the line's already-invoiced floor
+// (lower violates the contract); the max hint is the over-shipment cap
+// pre-computed by the handler. A small "Save" button submits the form.
+templ soLineQtyEditor(vm SalesOrderDetailVM, line models.SalesOrderLine) {
+	<form
+		method="POST"
+		action={ templ.SafeURL(fmt.Sprintf("/sales-orders/%d/lines/%d/qty", vm.Order.ID, line.ID)) }
+		class="inline-flex items-center gap-1.5"
+	>
+		<input
+			type="text"
+			inputmode="decimal"
+			name="qty"
+			value={ QtyDisplayForLineProduct(line.Quantity, line.ProductService) }
+			class="w-16 rounded border border-border-input bg-surface px-2 py-1 text-right font-mono text-small text-text focus:outline-none focus:ring-2 focus:ring-primary-focus"
+			title={ qtyEditorHint(vm, line) }
+		/>
+		<button
+			type="submit"
+			class="rounded-md border border-border-input px-2 py-1 text-[11px] font-medium text-text-muted2 hover:bg-background hover:text-text"
+		>Save</button>
+	</form>
+	<div class="mt-0.5 text-[11px] text-text-muted3">
+		min { QtyDisplayForLineProduct(line.InvoicedQty, line.ProductService) }
+		if max, ok := vm.QtyMaxByLineID[line.ID]; ok {
+			<span> · max { max }</span>
+		}
+	</div>
+}
+
+// qtyEditorHint returns the title-attribute tooltip shown on hover.
+// Renders as plain text inside the <input>'s native tooltip — no HTML.
+func qtyEditorHint(vm SalesOrderDetailVM, line models.SalesOrderLine) string {
+	min := QtyDisplayForLineProduct(line.InvoicedQty, line.ProductService)
+	if max, ok := vm.QtyMaxByLineID[line.ID]; ok {
+		return fmt.Sprintf("Allowed range: %s – %s (over-shipment buffer applies)", min, max)
+	}
+	return "Minimum: " + min + " (already invoiced)"
 }
 
 templ soHeaderLeft(vm SalesOrderDetailVM) {
@@ -410,7 +462,13 @@ templ soReadOnlyBody(vm SalesOrderDetailVM) {
 										{ line.Description }
 									}
 								</td>
-								<td class="py-2 pr-4 text-right font-mono" data-numfmt>{ QtyDisplayForLineProduct(line.Quantity, line.ProductService) }</td>
+								<td class="py-2 pr-4 text-right font-mono" data-numfmt>
+									if vm.Order.Status == models.SalesOrderStatusPartiallyInvoiced {
+										@soLineQtyEditor(vm, line)
+									} else {
+										{ QtyDisplayForLineProduct(line.Quantity, line.ProductService) }
+									}
+								</td>
 								<td class="py-2 pr-4 text-right font-mono text-text-muted2" data-numfmt>
 									{ QtyDisplayForLineProduct(line.InvoicedQty, line.ProductService) }
 									if line.InvoicedQty.IsPositive() && line.InvoicedQty.LessThan(line.Quantity) {

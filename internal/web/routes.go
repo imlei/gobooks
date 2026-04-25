@@ -324,6 +324,8 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/sales-orders/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesOrderDetail)
 	app.Post("/sales-orders/:id/confirm", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesOrderConfirm)
 	app.Post("/sales-orders/:id/cancel", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesOrderCancel)
+	// S2 (2026-04-25): per-line Qty adjust on partially-invoiced SOs.
+	app.Post("/sales-orders/:id/lines/:lineID/qty", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleSalesOrderLineQtyAdjust)
 	// Customer Deposits (Phase 3)
 	app.Get("/deposits", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDeposits)
 	app.Get("/deposits/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDepositNew)
