@@ -543,7 +543,6 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 		if desc == "" {
 			row.Error = "Description is required."
 		}
-		lineFormRows = append(lineFormRows, row)
 
 		pl := parsedInvoiceLine{Description: desc, Qty: qty, UnitPrice: price}
 		if id64, err := strconv.ParseUint(psIDRaw, 10, 64); err == nil && id64 > 0 {
@@ -554,6 +553,18 @@ func (s *Server) handleInvoiceSaveDraft(c *fiber.Ctx) error {
 			id := uint(id64)
 			pl.TaxCodeID = &id
 		}
+
+		// Stock-item integer rule (S1 / S4 batch follow-up). Surface as a
+		// row-level error so the user sees it inline next to the offending
+		// qty input rather than as a banner. Only applied when the row's
+		// description check hasn't already failed — avoid stacking errors.
+		if row.Error == "" {
+			if msg := services.StockItemQtyRowError(s.DB, companyID, pl.ProductServiceID, qty); msg != "" {
+				row.Error = msg
+			}
+		}
+
+		lineFormRows = append(lineFormRows, row)
 		parsedLines = append(parsedLines, pl)
 	}
 

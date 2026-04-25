@@ -504,7 +504,6 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		if desc == "" {
 			row.Error = "Description is required."
 		}
-		lineFormRows = append(lineFormRows, row)
 
 		pl := parsedBillLine{Description: desc, Amount: amt, Unit: unitRaw}
 		if id64, err := strconv.ParseUint(psIDRaw, 10, 64); err == nil && id64 > 0 {
@@ -547,6 +546,18 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 			pl.TaskID = &id
 		}
 		pl.IsBillable = isBillable
+
+		// Stock-item integer rule (S1 / S4 batch follow-up). Only attach
+		// if the description check hasn't already failed — avoid stacking
+		// errors. Append-after-validation so the displayed row carries
+		// the new error; row is a value, not a pointer.
+		if row.Error == "" {
+			if msg := services.StockItemQtyRowError(s.DB, companyID, pl.ProductServiceID, pl.Qty); msg != "" {
+				row.Error = msg
+			}
+		}
+
+		lineFormRows = append(lineFormRows, row)
 		parsedLines = append(parsedLines, pl)
 	}
 

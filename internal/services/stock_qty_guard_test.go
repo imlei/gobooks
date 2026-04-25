@@ -169,6 +169,52 @@ func TestCreateCreditNoteDraft_RejectsFractionalStockQty(t *testing.T) {
 	}
 }
 
+// ── Row-friendly variant for handler-side editors ───────────────────────────
+
+// TestStockItemQtyRowError covers the user-facing wrapper used by Invoice +
+// Bill editor handlers: returns a short message (no "line N" prefix) when
+// the row should be flagged inline, "" otherwise.
+func TestStockItemQtyRowError(t *testing.T) {
+	db := stockGuardDB(t)
+	f := seedStockGuardFixture(t, db)
+
+	// Service item — fractional qty is OK, returns "".
+	svc := models.ProductService{
+		CompanyID: f.CompanyID, Name: "Consulting",
+		Type: models.ProductServiceTypeService, IsActive: true,
+	}
+	svc.ApplyTypeDefaults()
+	if err := db.Create(&svc).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name   string
+		psID   *uint
+		qty    string
+		want   string // "" = ok; non-empty = expected message substring
+	}{
+		{"nil product (free-text line) → ok", nil, "1.5", ""},
+		{"service item fractional → ok", &svc.ID, "1.5", ""},
+		{"stock item whole → ok", &f.StockItemID, "8", ""},
+		{"stock item fractional → row error", &f.StockItemID, "8.5", "whole-unit"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := StockItemQtyRowError(db, f.CompanyID, tc.psID, decimal.RequireFromString(tc.qty))
+			if tc.want == "" {
+				if got != "" {
+					t.Errorf("expected ok, got %q", got)
+				}
+				return
+			}
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("expected message containing %q, got %q", tc.want, got)
+			}
+		})
+	}
+}
+
 // ── Vendor Credit Note (AP) ──────────────────────────────────────────────────
 
 func TestCreateVendorCreditNote_RejectsFractionalStockQty(t *testing.T) {

@@ -50,3 +50,29 @@ func validateStockItemQty(db *gorm.DB, companyID uint, productServiceID *uint, q
 	}
 	return nil
 }
+
+// StockItemQtyRowError is the form-friendly variant. Returns an empty
+// string when the qty is acceptable; otherwise a short message suitable
+// for inline display next to the offending row (no "line N" prefix —
+// the row position is already obvious in the form).
+//
+// Used by handler-side editors (Invoice, Bill, etc.) that surface line
+// errors inline rather than as a single batch error returned by a service.
+func StockItemQtyRowError(db *gorm.DB, companyID uint, productServiceID *uint, qty decimal.Decimal) string {
+	if productServiceID == nil || *productServiceID == 0 {
+		return ""
+	}
+	var ps models.ProductService
+	if err := db.Select("id", "is_stock_item").
+		Where("id = ? AND company_id = ?", *productServiceID, companyID).
+		First(&ps).Error; err != nil {
+		return ""
+	}
+	if !ps.IsStockItem {
+		return ""
+	}
+	if !qty.Equal(qty.Truncate(0)) {
+		return "Stock items must use whole-unit quantities."
+	}
+	return ""
+}
