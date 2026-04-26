@@ -72,11 +72,7 @@ templ soEditorContent(vm SalesOrderDetailVM) {
 		)
 		@soMemoCard(vm)
 
-		if vm.Order.ID != 0 {
-			@soEditorActionButtons(vm)
-		}
-
-		@ui.DocEditorFooter(soFooterVM(vm))
+		@soEditorFooter(vm)
 	</form>
 }
 
@@ -628,30 +624,45 @@ templ soActionButtons(vm SalesOrderDetailVM) {
 	</div>
 }
 
-templ soEditorActionButtons(vm SalesOrderDetailVM) {
-	<div class="flex flex-wrap gap-3">
-		switch vm.Order.Status {
-			case models.SalesOrderStatusDraft:
+templ soEditorFooter(vm SalesOrderDetailVM) {
+	<div class="sticky bottom-0 -mx-6 border-t border-border bg-surface px-6 py-3 shadow-[0_-2px_4px_rgba(0,0,0,0.04)]">
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<a
+				href="/sales-orders"
+				class={ ui.ButtonSecondaryBaseClass() }
+			>
+				Back
+			</a>
+			<div class="flex flex-wrap items-center justify-end gap-3">
+				if vm.Order.ID != 0 && vm.Order.Status == models.SalesOrderStatusDraft {
+					<button
+						type="submit"
+						formaction={ templ.SafeURL("/sales-orders/" + Uitoa(vm.Order.ID) + "/confirm") }
+						formmethod="post"
+						formnovalidate
+						class={ ui.ButtonSecondaryBaseClass() }
+					>
+						Confirm Order
+					</button>
+					<button
+						type="submit"
+						formaction={ templ.SafeURL("/sales-orders/" + Uitoa(vm.Order.ID) + "/cancel") }
+						formmethod="post"
+						formnovalidate
+						onclick="return confirm('Cancel this sales order?')"
+						class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft"
+					>
+						Cancel Order
+					</button>
+				}
 				<button
 					type="submit"
-					formaction={ templ.SafeURL("/sales-orders/" + Uitoa(vm.Order.ID) + "/confirm") }
-					formmethod="post"
-					formnovalidate
-					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+					class={ ui.ButtonPrimaryBaseClass() }
 				>
-					Confirm Order
+					Save Order
 				</button>
-				<button
-					type="submit"
-					formaction={ templ.SafeURL("/sales-orders/" + Uitoa(vm.Order.ID) + "/cancel") }
-					formmethod="post"
-					formnovalidate
-					onclick="return confirm('Cancel this sales order?')"
-					class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft"
-				>
-					Cancel Order
-				</button>
-		}
+			</div>
+		</div>
 	</div>
 }
 

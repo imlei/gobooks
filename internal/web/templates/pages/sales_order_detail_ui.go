@@ -26,21 +26,6 @@ func soShellVM(vm SalesOrderDetailVM) ui.DocEditorShellVM {
 	}
 }
 
-// soFooterVM is the sticky bottom action bar for the SO editor.
-// Single Save button — status transitions are rendered separately so the
-// footer submit always targets /sales-orders/save.
-func soFooterVM(vm SalesOrderDetailVM) ui.DocEditorFooterVM {
-	return ui.DocEditorFooterVM{
-		Cancel: &ui.DocEditorFooterLink{
-			Label: "Cancel",
-			Href:  "/sales-orders",
-		},
-		Buttons: []ui.DocEditorFooterButton{
-			{Label: "Save Order", Variant: ui.FooterBtnPrimary, Type: "submit"},
-		},
-	}
-}
-
 // soProductsJSON mirrors quoteProductsJSON — same shape, kept separate so
 // either editor can extend its product-data shape independently.
 func soProductsJSON(products []models.ProductService) string {
