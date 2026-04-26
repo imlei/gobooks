@@ -272,6 +272,25 @@ func derivePOLineExpenseAccountID(pl models.PurchaseOrderLine) uint {
 	return 0
 }
 
+func billProductLinkedAccountID(products []models.ProductService, productID *uint) uint {
+	if productID == nil || *productID == 0 {
+		return 0
+	}
+	for _, p := range products {
+		if p.ID != *productID {
+			continue
+		}
+		if p.InventoryAccountID != nil && *p.InventoryAccountID != 0 {
+			return *p.InventoryAccountID
+		}
+		if p.COGSAccountID != nil && *p.COGSAccountID != 0 {
+			return *p.COGSAccountID
+		}
+		return 0
+	}
+	return 0
+}
+
 // handleBillEdit renders the editor pre-filled with an existing draft bill.
 func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 	companyID, ok := ActiveCompanyIDFromCtx(c)
@@ -536,6 +555,10 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		if id64, err := strconv.ParseUint(accIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
 			pl.ExpenseAccountID = &id
+		}
+		if linkedAccountID := billProductLinkedAccountID(vm.Products, pl.ProductServiceID); linkedAccountID != 0 {
+			pl.ExpenseAccountID = &linkedAccountID
+			row.ExpenseAccountID = strconv.FormatUint(uint64(linkedAccountID), 10)
 		}
 		if id64, err := strconv.ParseUint(tcIDRaw, 10, 64); err == nil && id64 > 0 {
 			id := uint(id64)
@@ -1028,6 +1051,14 @@ func (s *Server) loadBillEditorDropdowns(companyID uint, vm *pages.BillEditorVM)
 		if company.MultiCurrencyEnabled {
 			ccs, _ := services.ListCompanyCurrencies(s.DB, companyID)
 			vm.CompanyCurrencies = ccs
+			codes := make([]string, 0, 1+len(ccs))
+			codes = append(codes, company.BaseCurrencyCode)
+			for _, cc := range ccs {
+				codes = append(codes, cc.CurrencyCode)
+			}
+			if b, err := json.Marshal(codes); err == nil {
+				vm.QuickCreateCurrenciesJSON = string(b)
+			}
 		}
 	}
 	return nil

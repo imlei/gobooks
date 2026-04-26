@@ -172,6 +172,109 @@ func (s *Server) handleVendorCreate(c *fiber.Ctx) error {
 	return c.Redirect("/vendors?created=1", fiber.StatusSeeOther)
 }
 
+// handleVendorQuickCreate creates a vendor from an inline picker drawer and
+// returns the new record for immediate SmartPicker selection.
+func (s *Server) handleVendorQuickCreate(c *fiber.Ctx) error {
+	user := UserFromCtx(c)
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	var in struct {
+		Name         string `json:"name"`
+		Email        string `json:"email"`
+		Phone        string `json:"phone"`
+		Address      string `json:"address"`
+		CurrencyCode string `json:"currency_code"`
+		Notes        string `json:"notes"`
+		PaymentTerm  string `json:"payment_term"`
+	}
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body."})
+	}
+
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Vendor name is required."})
+	}
+	if len(name) > 200 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Name must be 200 characters or fewer."})
+	}
+
+	var count int64
+	if err := s.DB.Model(&models.Vendor{}).
+		Where("company_id = ? AND lower(name) = lower(?)", companyID, name).
+		Count(&count).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Could not validate vendor name."})
+	}
+	if count > 0 {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "A vendor with this name already exists."})
+	}
+
+	multiCurrency, _, _ := s.vendorCurrencyInfo(companyID)
+	currencyCode := strings.ToUpper(strings.TrimSpace(in.CurrencyCode))
+	if !multiCurrency {
+		currencyCode = ""
+	} else if currencyCode != "" && len(currencyCode) != 3 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid currency code."})
+	}
+
+	paymentTerm := strings.TrimSpace(in.PaymentTerm)
+	if paymentTerm != "" {
+		var termCount int64
+		if err := s.DB.Model(&models.PaymentTerm{}).
+			Where("company_id = ? AND code = ? AND is_active = true", companyID, paymentTerm).
+			Count(&termCount).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Could not validate payment term."})
+		}
+		if termCount == 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid payment term."})
+		}
+	}
+
+	vendor := models.Vendor{
+		CompanyID:              companyID,
+		Name:                   name,
+		Email:                  strings.TrimSpace(in.Email),
+		Phone:                  strings.TrimSpace(in.Phone),
+		Address:                strings.TrimSpace(in.Address),
+		CurrencyCode:           currencyCode,
+		Notes:                  strings.TrimSpace(in.Notes),
+		DefaultPaymentTermCode: paymentTerm,
+		IsActive:               true,
+	}
+	if err := s.DB.Create(&vendor).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Could not create vendor."})
+	}
+	_ = producers.ProjectVendor(c.Context(), s.DB, s.SearchProjector, companyID, vendor.ID)
+
+	cid := companyID
+	uid := user.ID
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+	services.TryWriteAuditLogWithContext(s.DB, "vendor.created", "vendor", vendor.ID, actor, map[string]any{
+		"name":       name,
+		"company_id": companyID,
+		"source":     "quick_create",
+	}, &cid, &uid)
+	if s.SPAcceleration != nil {
+		s.SPAcceleration.InvalidateCompany(companyID)
+	}
+
+	return c.JSON(fiber.Map{
+		"id":            vendor.ID,
+		"name":          vendor.Name,
+		"currency_code": vendor.CurrencyCode,
+		"payment_term":  vendor.DefaultPaymentTermCode,
+	})
+}
+
 // vendorsForCompany returns ACTIVE vendors for a company, alphabetical.
 // Mirror of customersForCompany — same reasoning: use this for every new-
 // document picker (bill, PO, expense, VCN, vendor prepayment/refund/return)

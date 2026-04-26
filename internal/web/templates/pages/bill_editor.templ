@@ -32,6 +32,7 @@ templ billEditorContent(vm BillEditorVM) {
 		data-initial-terms={ vm.TermCode }
 		data-initial-date={ vm.BillDate }
 		data-initial-due-date={ vm.DueDate }
+		@gobooks-picker-select="onPickerSelect($event)"
 	>
 		if vm.IsEdit {
 			<input type="hidden" name="bill_id" value={ Uitoa(vm.EditingID) }/>
@@ -47,6 +48,8 @@ templ billEditorContent(vm BillEditorVM) {
 			@billLineItemsCard(vm)
 		</fieldset>
 
+		@billVendorQuickCreateDrawer(vm)
+
 		<div
 			id="be-review-banner"
 			style={ editorDisplay(vm.ReviewLocked) }
@@ -61,7 +64,7 @@ templ billEditorContent(vm BillEditorVM) {
 
 		@ui.DocEditorFooter(billEditorFooterVM(vm))
 
-		<script src="/static/bill_editor.js?v=8"></script>
+		<script src="/static/bill_editor.js?v=9"></script>
 		<script>
 			function beExitReview() {
 				var fieldset = document.getElementById('be-fields');
@@ -79,20 +82,7 @@ templ billEditorContent(vm BillEditorVM) {
 
 // billHeaderLeft is the vendor / billing column of the header grid.
 templ billHeaderLeft(vm BillEditorVM) {
-	<div>
-		<label class={ compactLabelClass() }>Vendor *</label>
-		<select
-			name="vendor_id"
-			@change="onContactChange($event.target.value)"
-			class={ fieldClass(vm.VendorError != "") }
-		>
-			<option value="">— Select vendor —</option>
-			for _, v := range vm.Vendors {
-				<option value={ Uitoa(v.ID) } selected?={ Uitoa(v.ID) == vm.VendorID }>{ v.Name }</option>
-			}
-		</select>
-		@fieldError(vm.VendorError)
-	</div>
+	@ui.SmartPicker(billVendorSmartPickerVM(vm))
 	<div>
 		<label class={ compactLabelClass() }>Memo</label>
 		<input
@@ -268,17 +258,52 @@ templ billLineItemsCard(vm BillEditorVM) {
 								</select>
 							</td>
 							<td class="py-2 pr-3">
-								<select
-									:name="'line_expense_account_id[' + idx + ']'"
-									x-model="line.expense_account_id"
-									@change="onExpenseAccountChange(idx, $event.target.value)"
-									class="block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus"
-								>
-									<option value="">— None —</option>
-									<template x-for="a in accounts" :key="a.id">
-										<option :value="a.id" :selected="String(line.expense_account_id) === String(a.id)" x-text="a.code + ' ' + a.name"></option>
-									</template>
-								</select>
+								<div class="relative" @click.outside="closeCategoryPicker(idx)">
+									<input type="hidden" :name="'line_expense_account_id[' + idx + ']'" :value="line.expense_account_id || ''"/>
+									<input
+										type="text"
+										x-model="line.category_query"
+										@focus="onCategoryFocus(idx)"
+										@input="onCategoryInput(idx)"
+										@keydown="onCategoryKeydown(idx, $event)"
+										:readonly="isCategoryLocked(idx)"
+										:placeholder="isCategoryLocked(idx) ? '' : 'Category...'"
+										autocomplete="off"
+										role="combobox"
+										aria-autocomplete="list"
+										:aria-expanded="line.category_open && !isCategoryLocked(idx)"
+										:title="isCategoryLocked(idx) ? 'Controlled by selected item' : ''"
+										class="block w-full rounded-md border px-2 py-1.5 text-body outline-none"
+										:class="isCategoryLocked(idx)
+											? 'cursor-not-allowed border-border-input bg-background text-text-muted2'
+											: 'border-border-input bg-surface text-text placeholder:text-text-muted2 focus:ring-2 focus:ring-primary-focus'"
+									/>
+									<div
+										x-show="line.category_open && !isCategoryLocked(idx)"
+										x-cloak
+										style="display:none"
+										class="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-border bg-surface shadow-lg"
+										role="listbox"
+									>
+										<div x-show="line.category_loading" class="px-3 py-2 text-body text-text-muted2">Searching...</div>
+										<div x-show="line.category_failed" class="px-3 py-2 text-body text-danger">Could not search categories.</div>
+										<template x-for="(item, resultIdx) in line.category_results" :key="item.id">
+											<div
+												@mousedown.prevent="selectCategory(idx, item, resultIdx)"
+												@mouseenter="line.category_highlighted = resultIdx"
+												:class="line.category_highlighted === resultIdx ? 'cursor-pointer px-3 py-2 bg-background' : 'cursor-pointer px-3 py-2 hover:bg-background'"
+												role="option"
+											>
+												<div class="truncate text-body text-text" x-text="categoryCandidateLabel(item)"></div>
+												<div x-show="item.reason" class="truncate text-small text-text-muted2" x-text="item.reason"></div>
+											</div>
+										</template>
+										<div
+											x-show="!line.category_loading && !line.category_failed && line.category_results.length === 0"
+											class="px-3 py-2 text-body text-text-muted2"
+										>No matching category.</div>
+									</div>
+								</div>
 							</td>
 							<td class="py-2 pr-3">
 								<input
@@ -438,6 +463,116 @@ templ billLineItemsCard(vm BillEditorVM) {
 				</div>
 			</div>
 		</div>
+	</div>
+}
+
+func billVendorSmartPickerVM(vm BillEditorVM) ui.SmartPickerVM {
+	return ui.SmartPickerVM{
+		Label:         "Vendor *",
+		FieldName:     "vendor_id",
+		Entity:        "vendor",
+		Context:       "bill.vendor_picker",
+		Value:         vm.VendorID,
+		SelectedLabel: billVendorSelectedLabel(vm),
+		Placeholder:   "Search vendors...",
+		Required:      true,
+		AllowCreate:   true,
+		CreateLabel:   "Add new vendor",
+		Error:         vm.VendorError,
+		Limit:         20,
+	}
+}
+
+func billVendorSelectedLabel(vm BillEditorVM) string {
+	for _, v := range vm.Vendors {
+		if Uitoa(v.ID) == vm.VendorID {
+			return v.Name
+		}
+	}
+	return ""
+}
+
+// billVendorQuickCreateDrawer is a slide-over opened by the Vendor SmartPicker's
+// "+ Add new" row. It creates a minimal vendor and then selects it into the bill.
+templ billVendorQuickCreateDrawer(vm BillEditorVM) {
+	<div
+		x-data="gobooksVendorQuickCreate()"
+		data-currencies={ vm.QuickCreateCurrenciesJSON }
+		@gobooks-picker-create.window="onPickerCreate($event)"
+		@keydown.escape.window="if (drawerOpen) { cancel() }"
+	>
+		@ui.RightDrawerBackdrop()
+		@ui.RightDrawerPanel("quickCreateVendorPanel", "quick-create-vendor-title", "New Vendor", "", billVendorQuickCreateBody(vm))
+	</div>
+}
+
+templ billVendorQuickCreateBody(vm BillEditorVM) {
+	<div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+		<div>
+			<label class="block text-body font-medium text-text">Name *</label>
+			<input
+				type="text"
+				x-model="name"
+				x-ref="nameInput"
+				@keydown.enter.prevent="save()"
+				placeholder="Vendor name"
+				class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"
+				:class="nameError ? 'border-danger focus:ring-danger-focus' : ''"
+			/>
+			<div x-show="nameError" class="mt-1 text-small text-danger" x-text="nameError"></div>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Email</label>
+			<input type="email" x-model="email" placeholder="ap@example.com" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"/>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Phone</label>
+			<input type="text" x-model="phone" placeholder="Phone" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"/>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Address</label>
+			<textarea x-model="address" rows="3" placeholder="Mailing address" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"></textarea>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Payment Terms</label>
+			<select x-model="paymentTerm" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus">
+				<option value="">— Select —</option>
+				for _, pt := range vm.PaymentTerms {
+					<option value={ pt.Code }>{ pt.DropdownLabel() }</option>
+				}
+			</select>
+		</div>
+		<div x-show="currencies.length > 1" x-cloak>
+			<label class="block text-body font-medium text-text">Currency *</label>
+			<select
+				x-model="currency"
+				class="mt-2 block w-full rounded-md border bg-surface px-3 py-2 text-body outline-none focus:ring-2"
+				:class="currencyError ? 'border-danger focus:ring-danger-focus' : 'border-border-input focus:ring-primary-focus'"
+			>
+				<option value="">— Select currency —</option>
+				<template x-for="code in currencies" :key="code">
+					<option :value="code" x-text="code"></option>
+				</template>
+			</select>
+			<div x-show="currencyError" class="mt-1 text-small text-danger" x-text="currencyError"></div>
+		</div>
+		<div>
+			<label class="block text-body font-medium text-text">Notes</label>
+			<textarea x-model="notes" rows="3" placeholder="Internal notes" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus"></textarea>
+		</div>
+		<div x-show="formError" class="rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-small text-danger-hover" x-text="formError"></div>
+	</div>
+	<div class="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+		<button type="button" @click="cancel()" class="rounded-md border border-border-input px-4 py-2 text-body text-text-muted3 hover:bg-background">Cancel</button>
+		<button
+			type="button"
+			@click="save()"
+			:disabled="saving"
+			class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+		>
+			<span x-show="!saving">Create Vendor</span>
+			<span x-show="saving" x-cloak>Creating...</span>
+		</button>
 	</div>
 }
 

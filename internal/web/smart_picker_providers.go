@@ -313,17 +313,27 @@ func customerPickerPayload(db *gorm.DB, c models.Customer) map[string]string {
 
 // ── VendorProvider ───────────────────────────────────────────────────────────
 
-// VendorProvider handles entity="vendor". Vendors are company-scoped; the
-// current Vendor model has no IsActive field, so this provider does not invent
-// an active filter.
+// VendorProvider handles entity="vendor". New-document picker contexts return
+// active vendors only; reporting/filter contexts can still find historical
+// inactive vendors.
 type VendorProvider struct{}
 
 func (p *VendorProvider) EntityType() string { return "vendor" }
 
+func (p *VendorProvider) scopedQuery(db *gorm.DB, ctx SmartPickerContext) *gorm.DB {
+	q := db.Where("company_id = ?", ctx.CompanyID)
+	switch ctx.Context {
+	case "bills_filter", "purchase_orders_filter", "vendor_credit_notes_filter",
+		"vendor_prepayments_filter", "vendor_refunds_filter", "vendor_returns_filter":
+		return q
+	default:
+		return q.Where("is_active = true")
+	}
+}
+
 func (p *VendorProvider) Search(db *gorm.DB, ctx SmartPickerContext, query string) (*SmartPickerResult, error) {
 	var vendors []models.Vendor
-	q := db.
-		Where("company_id = ?", ctx.CompanyID).
+	q := p.scopedQuery(db, ctx).
 		Order("name ASC").
 		Limit(smartPickerLimit(ctx))
 	q = applySmartPickerTextSearch(q, db.Dialector.Name(), query,
@@ -342,8 +352,8 @@ func (p *VendorProvider) Search(db *gorm.DB, ctx SmartPickerContext, query strin
 
 func (p *VendorProvider) GetByID(db *gorm.DB, ctx SmartPickerContext, id string) (*SmartPickerItem, error) {
 	var vendor models.Vendor
-	err := db.
-		Where("id = ? AND company_id = ?", id, ctx.CompanyID).
+	err := p.scopedQuery(db, ctx).
+		Where("id = ?", id).
 		First(&vendor).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {

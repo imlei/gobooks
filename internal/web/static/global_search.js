@@ -69,9 +69,13 @@ function gobooksGlobalSearch() {
       if (e.key === "ArrowDown") { e.preventDefault(); this._move(1); return; }
       if (e.key === "ArrowUp")   { e.preventDefault(); this._move(-1); return; }
       if (e.key === "Enter") {
+        e.preventDefault();
         if (this.highlighted >= 0 && this.items[this.highlighted]) {
-          e.preventDefault();
           this.select(this.items[this.highlighted]);
+          return;
+        }
+        if (this.query.trim() !== "") {
+          this.openAdvanced();
         }
       }
     },

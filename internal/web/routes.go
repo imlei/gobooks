@@ -198,6 +198,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/api/smart-picker/usage", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSmartPickerUsage)
 	app.Post("/api/smart-picker/learning/run", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleSmartPickerLearningRun)
 	app.Post("/api/customers/quick-create", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleCustomerQuickCreate)
+	app.Post("/api/vendors/quick-create", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleVendorQuickCreate)
 
 	// AI 辅助端点（仅建议，非业务数据权威）
 	app.Post("/api/ai/invoice-memo-assist", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleAIMemoAssist)

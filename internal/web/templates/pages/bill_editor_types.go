@@ -79,6 +79,9 @@ type BillEditorVM struct {
 	// ExchangeRate is the manually-entered rate (base per 1 foreign unit).
 	// Optional: if empty the posting service looks it up from exchange_rates.
 	ExchangeRate string
+	// QuickCreateCurrenciesJSON is a JSON array of currency codes available for
+	// the inline New Vendor drawer.
+	QuickCreateCurrenciesJSON string
 }
 
 // BillLineFormRow carries one line's form values (and optional error) for
