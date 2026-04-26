@@ -116,21 +116,52 @@ func TestValidateUOMs(t *testing.T) {
 			wantErr: "purchase UOM factor must be > 0",
 		},
 		{
-			name: "non-stock item with non-default UOM — reject",
+			name: "non-stock service with non-default SellUOM — reject",
 			ps: ProductService{
 				Name: "Consulting", IsStockItem: false,
-				StockUOM: "HOUR", SellUOM: "HOUR", SellUOMFactor: decimal.NewFromInt(1),
+				ItemStructureType: ItemStructureSingle,
+				StockUOM:          "EA", SellUOM: "HOUR", SellUOMFactor: decimal.NewFromInt(1),
 				PurchaseUOM: "EA", PurchaseUOMFactor: decimal.NewFromInt(1),
 			},
-			wantErr: "UOM customisation only applies to stock-tracked items",
+			wantErr: "UOM customisation only applies to stock-tracked items or bundles",
 		},
 		{
-			name: "non-stock item with all defaults — ok",
+			name: "non-stock service with all defaults — ok",
 			ps: ProductService{
 				Name: "Consulting", IsStockItem: false,
-				StockUOM: "EA", SellUOM: "EA", SellUOMFactor: decimal.NewFromInt(1),
+				ItemStructureType: ItemStructureSingle,
+				StockUOM:          "EA", SellUOM: "EA", SellUOMFactor: decimal.NewFromInt(1),
 				PurchaseUOM: "EA", PurchaseUOMFactor: decimal.NewFromInt(1),
 			},
+		},
+		{
+			name: "bundle parent (non-stock) with custom SellUOM — ok",
+			ps: ProductService{
+				Name: "Gift Box", IsStockItem: false,
+				ItemStructureType: ItemStructureBundle,
+				StockUOM:          "EA", SellUOM: "PACK", SellUOMFactor: decimal.NewFromInt(1),
+				PurchaseUOM: "EA", PurchaseUOMFactor: decimal.NewFromInt(1),
+			},
+		},
+		{
+			name: "bundle parent with custom StockUOM — reject (no stock unit)",
+			ps: ProductService{
+				Name: "Gift Box", IsStockItem: false,
+				ItemStructureType: ItemStructureBundle,
+				StockUOM:          "PACK", SellUOM: "EA", SellUOMFactor: decimal.NewFromInt(1),
+				PurchaseUOM: "EA", PurchaseUOMFactor: decimal.NewFromInt(1),
+			},
+			wantErr: "non-stock items can only customise SellUOM",
+		},
+		{
+			name: "bundle parent with custom SellUOMFactor — reject (no stock to convert from)",
+			ps: ProductService{
+				Name: "Gift Box", IsStockItem: false,
+				ItemStructureType: ItemStructureBundle,
+				StockUOM:          "EA", SellUOM: "PACK", SellUOMFactor: decimal.NewFromInt(3),
+				PurchaseUOM: "EA", PurchaseUOMFactor: decimal.NewFromInt(1),
+			},
+			wantErr: "non-stock items can only customise SellUOM",
 		},
 	}
 	for _, tc := range cases {

@@ -29,6 +29,24 @@ import (
 // a given (company, warehouse) pair. Pass warehouseID=0 to skip the
 // override lookup (typical for SO-line writes that don't carry a per-line
 // warehouse — the company default applies).
+//
+// Where each layer fires today:
+//   * Company default — used by AdjustSalesOrderLineQty (S2). The SO
+//     line has no per-line warehouse field, and the destination
+//     warehouse isn't decided until Shipment time, so AdjustSO
+//     correctly uses the company-wide cap regardless of which
+//     warehouse will eventually fulfill.
+//   * Warehouse override — reserved for the Shipment / Receipt post
+//     paths (Phase H + I, future). When those slices land they should
+//     call this resolver with the actual warehouseID picked at post
+//     time so per-warehouse contracts (e.g. partner warehouses with
+//     stricter buffers) take precedence over the company default.
+//
+// Configuring a warehouse-level override TODAY only takes effect once
+// the Shipment/Receipt paths consume it. The Settings UI happily lets
+// operators set the value — but until the post paths wire in, the
+// override is dormant. This is documented so the configuration surface
+// doesn't surprise anyone reading the resolver in isolation.
 func ResolveOverShipmentPolicy(db *gorm.DB, companyID, warehouseID uint) (models.OverShipmentPolicy, error) {
 	if companyID == 0 {
 		return models.OverShipmentPolicy{}, errors.New("companyID is required")

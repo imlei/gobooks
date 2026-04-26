@@ -209,11 +209,24 @@ func (ps *ProductService) ValidateUOMs() error {
 			ps.StockUOM, ps.PurchaseUOMFactor.String())
 	}
 	if !ps.IsStockItem {
-		// Non-stock items don't have a stock unit. Reject any
-		// non-default config so the catalog stays honest.
-		if ps.StockUOM != "EA" || ps.SellUOM != "EA" || ps.PurchaseUOM != "EA" ||
+		// Non-stock items don't have a real stock unit. Two sub-rules:
+		//
+		//   * Bundle parents (per design §6.4 / §9.7) MAY carry a
+		//     custom SellUOM purely as a display label (e.g. "Gift Box"
+		//     sells as 1 EA — but a kit could also be "PACK"). They
+		//     still have no Stock or Purchase unit and no factor — both
+		//     factors are pinned to 1.
+		//   * All other non-stock items (Service / NonInventory single /
+		//     OtherCharge) must keep every UOM at the EA default. UOM
+		//     customisation on a service line makes no sense.
+		isBundle := ps.ItemStructureType == ItemStructureBundle
+		if !isBundle && ps.SellUOM != "EA" {
+			return fmt.Errorf("UOM customisation only applies to stock-tracked items or bundles; %q is %s",
+				ps.Name, ps.ItemStructureType)
+		}
+		if ps.StockUOM != "EA" || ps.PurchaseUOM != "EA" ||
 			!ps.SellUOMFactor.Equal(one) || !ps.PurchaseUOMFactor.Equal(one) {
-			return fmt.Errorf("UOM customisation only applies to stock-tracked items; %q is not stock-tracked",
+			return fmt.Errorf("non-stock items can only customise SellUOM (and only when bundle); StockUOM / PurchaseUOM / factors must stay at defaults — got %q",
 				ps.Name)
 		}
 	}

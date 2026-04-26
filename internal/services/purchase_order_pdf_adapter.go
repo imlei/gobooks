@@ -94,7 +94,7 @@ func buildPurchaseOrderLines(po models.PurchaseOrder, currency string) []pdf.Lin
 	for _, l := range po.Lines {
 		row := pdf.LineValues{
 			"lines.description": l.Description,
-			"lines.qty":         l.Qty.String(),
+			"lines.qty":         PDFQtyWithUOM(l.Qty, l.ProductService, l.LineUOM),
 			"lines.unit_price":  FormatPDFMoney(l.UnitPrice, currency),
 			"lines.line_net":    FormatPDFMoney(l.LineNet,   currency),
 			"lines.line_tax":    FormatPDFMoney(l.LineTax,   currency),

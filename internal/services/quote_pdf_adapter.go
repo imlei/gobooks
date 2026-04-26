@@ -91,9 +91,16 @@ func buildQuoteValues(q models.Quote, company models.Company, currency string) p
 func buildQuoteLines(q models.Quote, currency string) []pdf.LineValues {
 	out := make([]pdf.LineValues, 0, len(q.Lines))
 	for _, l := range q.Lines {
+		// QuoteLine doesn't carry a snapshot UOM (deferred to a later
+		// slice). Derive from the product's live SellUOM so the
+		// printed quote still shows "10 CASE" instead of "10".
+		quoteUOM := ""
+		if l.ProductService != nil {
+			quoteUOM = l.ProductService.SellUOM
+		}
 		row := pdf.LineValues{
 			"lines.description": l.Description,
-			"lines.qty":         l.Quantity.String(),
+			"lines.qty":         PDFQtyWithUOM(l.Quantity, l.ProductService, quoteUOM),
 			"lines.unit_price":  FormatPDFMoney(l.UnitPrice, currency),
 			"lines.line_net":    FormatPDFMoney(l.LineNet,   currency),
 			"lines.line_tax":    FormatPDFMoney(l.TaxAmount, currency),

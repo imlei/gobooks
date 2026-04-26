@@ -95,7 +95,7 @@ func buildSalesOrderLines(so models.SalesOrder, currency string) []pdf.LineValue
 	for _, l := range so.Lines {
 		row := pdf.LineValues{
 			"lines.description": l.Description,
-			"lines.qty":         l.Quantity.String(),
+			"lines.qty":         PDFQtyWithUOM(l.Quantity, l.ProductService, l.LineUOM),
 			"lines.unit_price":  FormatPDFMoney(l.UnitPrice, currency),
 			"lines.line_net":    FormatPDFMoney(l.LineNet,   currency),
 			"lines.line_tax":    FormatPDFMoney(l.TaxAmount, currency),

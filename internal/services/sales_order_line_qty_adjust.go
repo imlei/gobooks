@@ -85,6 +85,11 @@ func AdjustSalesOrderLineQty(
 	if !originalQty.IsPositive() {
 		originalQty = line.Quantity
 	}
+	// SO line has no per-line warehouse — the destination warehouse is
+	// chosen at Shipment time (Phase I, future).  Company default applies
+	// here; warehouse-level overrides will fire from the Shipment/Receipt
+	// post paths once those slices land. See ResolveOverShipmentPolicy
+	// doc for the full layering story.
 	policy, err := ResolveOverShipmentPolicy(db, companyID, 0)
 	if err != nil {
 		return nil, fmt.Errorf("resolve over-shipment policy: %w", err)
