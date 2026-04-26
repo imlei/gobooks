@@ -27,8 +27,8 @@ func soShellVM(vm SalesOrderDetailVM) ui.DocEditorShellVM {
 }
 
 // soFooterVM is the sticky bottom action bar for the SO editor.
-// Single Save button — status transitions are handled by separate
-// POST forms below the editor (Confirm, Cancel, Create Invoice).
+// Single Save button — status transitions are rendered separately so the
+// footer submit always targets /sales-orders/save.
 func soFooterVM(vm SalesOrderDetailVM) ui.DocEditorFooterVM {
 	return ui.DocEditorFooterVM{
 		Cancel: &ui.DocEditorFooterLink{

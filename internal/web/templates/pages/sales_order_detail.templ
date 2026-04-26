@@ -73,7 +73,7 @@ templ soEditorContent(vm SalesOrderDetailVM) {
 		@soMemoCard(vm)
 
 		if vm.Order.ID != 0 {
-			@soActionButtons(vm)
+			@soEditorActionButtons(vm)
 		}
 
 		@ui.DocEditorFooter(soFooterVM(vm))
@@ -624,6 +624,33 @@ templ soActionButtons(vm SalesOrderDetailVM) {
 				>
 					Create Invoice for Remaining
 				</a>
+		}
+	</div>
+}
+
+templ soEditorActionButtons(vm SalesOrderDetailVM) {
+	<div class="flex flex-wrap gap-3">
+		switch vm.Order.Status {
+			case models.SalesOrderStatusDraft:
+				<button
+					type="submit"
+					formaction={ templ.SafeURL("/sales-orders/" + Uitoa(vm.Order.ID) + "/confirm") }
+					formmethod="post"
+					formnovalidate
+					class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover"
+				>
+					Confirm Order
+				</button>
+				<button
+					type="submit"
+					formaction={ templ.SafeURL("/sales-orders/" + Uitoa(vm.Order.ID) + "/cancel") }
+					formmethod="post"
+					formnovalidate
+					onclick="return confirm('Cancel this sales order?')"
+					class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft"
+				>
+					Cancel Order
+				</button>
 		}
 	</div>
 }
