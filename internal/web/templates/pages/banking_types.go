@@ -51,6 +51,7 @@ type BankReconcileVM struct {
 
 	Candidates     []services.ReconcileCandidate
 	CandidatesJSON string // JSON for Alpine: [{id, amount}]
+	WorkspaceJSON  string // JSON for React reconciliation workspace.
 
 	StatementDateTime time.Time
 
@@ -59,11 +60,11 @@ type BankReconcileVM struct {
 	LatestReconciliation *models.Reconciliation
 
 	// Match-engine suggestion data
-	Suggestions        []MatchSuggestionVM
-	SuggestionCount    int
-	AcceptedLineIDs    []uint
+	Suggestions         []MatchSuggestionVM
+	SuggestionCount     int
+	AcceptedLineIDs     []uint
 	AcceptedLineIDsJSON string // JSON for Alpine pre-selection: [lineID, ...]
-	AutoMatchRan       bool   // true when redirected after /auto-match POST
+	AutoMatchRan        bool   // true when redirected after /auto-match POST
 }
 
 // ── Suggestion VM ─────────────────────────────────────────────────────────────
@@ -218,4 +219,3 @@ func BuildMatchSuggestionVMs(
 	}
 	return vms
 }
-

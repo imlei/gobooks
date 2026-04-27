@@ -34,6 +34,237 @@ func buildCandidatesJSON(cands []services.ReconcileCandidate) string {
 	return string(b)
 }
 
+type reconcileWorkspacePayload struct {
+	AccountID           string                       `json:"account_id"`
+	AccountName         string                       `json:"account_name"`
+	StatementDate       string                       `json:"statement_date"`
+	EndingBalance       string                       `json:"ending_balance"`
+	BeginningBalance    string                       `json:"beginning_balance"`
+	Candidates          []reconcileCandidatePayload  `json:"candidates"`
+	SelectedLineIDs     []string                     `json:"selected_line_ids"`
+	Suggestions         []reconcileSuggestionPayload `json:"suggestions"`
+	SaveDraftURL        string                       `json:"save_draft_url"`
+	SaveProgressURL     string                       `json:"save_progress_url"`
+	FinishURL           string                       `json:"finish_url"`
+	AutoMatchURL        string                       `json:"auto_match_url"`
+	AcceptSuggestionURL string                       `json:"accept_suggestion_url"`
+	RejectSuggestionURL string                       `json:"reject_suggestion_url"`
+}
+
+type reconcileCandidatePayload struct {
+	ID              string `json:"id"`
+	LineID          uint   `json:"line_id"`
+	JournalEntryID  uint   `json:"journal_entry_id"`
+	Date            string `json:"date"`
+	Type            string `json:"type"`
+	SourceType      string `json:"source_type"`
+	SourceID        uint   `json:"source_id"`
+	Reference       string `json:"reference"`
+	Payee           string `json:"payee"`
+	Memo            string `json:"memo"`
+	Amount          string `json:"amount"`
+	Payment         string `json:"payment"`
+	Deposit         string `json:"deposit"`
+	IsPayment       bool   `json:"is_payment"`
+	IsDeposit       bool   `json:"is_deposit"`
+	DetailURL       string `json:"detail_url"`
+	IsReversal      bool   `json:"is_reversal"`
+	IsReversalPair  bool   `json:"is_reversal_pair"`
+	ReversalPairKey string `json:"reversal_pair_key,omitempty"`
+}
+
+type reconcileSuggestionPayload struct {
+	ID            uint                        `json:"id"`
+	Status        string                      `json:"status"`
+	TypeLabel     string                      `json:"type_label"`
+	ConfidencePct string                      `json:"confidence_pct"`
+	Summary       string                      `json:"summary"`
+	NetAmount     string                      `json:"net_amount"`
+	LineIDs       []uint                      `json:"line_ids"`
+	JournalNos    []string                    `json:"journal_nos"`
+	Signals       []reconcileSuggestionSignal `json:"signals"`
+}
+
+type reconcileSuggestionSignal struct {
+	Name   string `json:"name"`
+	Detail string `json:"detail"`
+	Stars  string `json:"stars"`
+}
+
+func buildReconcileWorkspaceJSON(vm pages.BankReconcileVM) string {
+	payload := reconcileWorkspacePayload{
+		AccountID:           vm.AccountID,
+		AccountName:         vm.AccountName,
+		StatementDate:       vm.StatementDate,
+		EndingBalance:       vm.EndingBalance,
+		BeginningBalance:    vm.BeginningBalance,
+		Candidates:          buildReconcileCandidatePayloads(vm.Candidates),
+		SelectedLineIDs:     parseReconcileSelectedLineIDs(vm.AcceptedLineIDsJSON),
+		Suggestions:         buildReconcileSuggestionPayloads(vm.Suggestions),
+		SaveDraftURL:        "/api/banking/reconcile/draft",
+		SaveProgressURL:     "/banking/reconcile/save-progress",
+		FinishURL:           "/banking/reconcile",
+		AutoMatchURL:        "/banking/reconcile/auto-match",
+		AcceptSuggestionURL: "/banking/reconcile/suggest/accept",
+		RejectSuggestionURL: "/banking/reconcile/suggest/reject",
+	}
+	b, _ := json.Marshal(payload)
+	return string(b)
+}
+
+func buildReconcileCandidatePayloads(cands []services.ReconcileCandidate) []reconcileCandidatePayload {
+	reversalPairs := identifyReversalPairs(cands)
+	out := make([]reconcileCandidatePayload, 0, len(cands))
+	for _, cand := range cands {
+		pairKey := ""
+		if cand.ReversedFromID != nil {
+			pairKey = fmt.Sprintf("je:%d:%d", *cand.ReversedFromID, cand.JournalEntryID)
+		} else if reversalPairs[cand.JournalEntryID] {
+			pairKey = fmt.Sprintf("je:%d", cand.JournalEntryID)
+		}
+		out = append(out, reconcileCandidatePayload{
+			ID:              fmt.Sprintf("%d", cand.LineID),
+			LineID:          cand.LineID,
+			JournalEntryID:  cand.JournalEntryID,
+			Date:            cand.EntryDate.Format("2006-01-02"),
+			Type:            pages.SourceTypeLabel(cand.SourceType),
+			SourceType:      cand.SourceType,
+			SourceID:        cand.SourceID,
+			Reference:       reconcileReference(cand),
+			Payee:           cand.PayeeName,
+			Memo:            cand.Memo,
+			Amount:          cand.Amount.StringFixed(2),
+			Payment:         cand.Payment.StringFixed(2),
+			Deposit:         cand.Deposit.StringFixed(2),
+			IsPayment:       cand.Payment.IsPositive(),
+			IsDeposit:       cand.Deposit.IsPositive(),
+			DetailURL:       reconcileDocumentURL(cand.SourceType, cand.SourceID, cand.JournalEntryID),
+			IsReversal:      models.LedgerSourceType(cand.SourceType) == models.LedgerSourceReversal,
+			IsReversalPair:  reversalPairs[cand.JournalEntryID],
+			ReversalPairKey: pairKey,
+		})
+	}
+	return out
+}
+
+func identifyReversalPairs(cands []services.ReconcileCandidate) map[uint]bool {
+	byJE := make(map[uint]services.ReconcileCandidate, len(cands))
+	for _, cand := range cands {
+		byJE[cand.JournalEntryID] = cand
+	}
+	out := make(map[uint]bool)
+	tolerance := decimal.RequireFromString("0.005")
+	for _, cand := range cands {
+		if cand.ReversedFromID == nil {
+			continue
+		}
+		orig, ok := byJE[*cand.ReversedFromID]
+		if !ok {
+			continue
+		}
+		if cand.Amount.Add(orig.Amount).Abs().LessThan(tolerance) {
+			out[cand.JournalEntryID] = true
+			out[orig.JournalEntryID] = true
+		}
+	}
+	return out
+}
+
+func buildReconcileSuggestionPayloads(suggestions []pages.MatchSuggestionVM) []reconcileSuggestionPayload {
+	out := make([]reconcileSuggestionPayload, 0, len(suggestions))
+	for _, sugg := range suggestions {
+		signals := make([]reconcileSuggestionSignal, 0, len(sugg.Signals))
+		for _, sig := range sugg.Signals {
+			stars := strings.Repeat("*", sig.StarsFull) + strings.Repeat(".", sig.StarsEmpty)
+			signals = append(signals, reconcileSuggestionSignal{Name: sig.Name, Detail: sig.Detail, Stars: stars})
+		}
+		out = append(out, reconcileSuggestionPayload{
+			ID:            sugg.ID,
+			Status:        sugg.Status,
+			TypeLabel:     sugg.TypeLabel,
+			ConfidencePct: sugg.ConfidencePct,
+			Summary:       sugg.Summary,
+			NetAmount:     sugg.NetAmount,
+			LineIDs:       sugg.LineIDs,
+			JournalNos:    sugg.JournalNos,
+			Signals:       signals,
+		})
+	}
+	return out
+}
+
+func parseReconcileSelectedLineIDs(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return []string{}
+	}
+	var items []any
+	if err := json.Unmarshal([]byte(raw), &items); err != nil {
+		return []string{}
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		switch v := item.(type) {
+		case string:
+			if strings.TrimSpace(v) != "" {
+				out = append(out, strings.TrimSpace(v))
+			}
+		case float64:
+			if v > 0 {
+				out = append(out, fmt.Sprintf("%.0f", v))
+			}
+		}
+	}
+	return out
+}
+
+func reconcileReference(cand services.ReconcileCandidate) string {
+	if strings.TrimSpace(cand.JournalNo) != "" {
+		return cand.JournalNo
+	}
+	if cand.SourceID > 0 {
+		return fmt.Sprintf("%s-%d", pages.SourceTypeLabel(cand.SourceType), cand.SourceID)
+	}
+	return fmt.Sprintf("JE-%d", cand.JournalEntryID)
+}
+
+func reconcileDocumentURL(sourceType string, sourceID, journalEntryID uint) string {
+	if sourceID == 0 {
+		return reconcileJEURL(journalEntryID)
+	}
+	switch models.LedgerSourceType(sourceType) {
+	case models.LedgerSourceInvoice:
+		return fmt.Sprintf("/invoices/%d", sourceID)
+	case models.LedgerSourceBill:
+		return fmt.Sprintf("/bills/%d", sourceID)
+	case models.LedgerSourceExpense:
+		return fmt.Sprintf("/expenses/%d/edit", sourceID)
+	case models.LedgerSourceReceipt, models.LedgerSourceCustomerReceipt:
+		return fmt.Sprintf("/receipts/%d", sourceID)
+	case models.LedgerSourceCreditNote:
+		return fmt.Sprintf("/credit-notes/%d", sourceID)
+	case models.LedgerSourceVendorCreditNote:
+		return fmt.Sprintf("/vendor-credit-notes/%d", sourceID)
+	case models.LedgerSourceARRefund:
+		return fmt.Sprintf("/refunds/%d", sourceID)
+	case models.LedgerSourceVendorRefund:
+		return fmt.Sprintf("/vendor-refunds/%d", sourceID)
+	case models.LedgerSourceCustomerDeposit:
+		return fmt.Sprintf("/deposits/%d", sourceID)
+	case models.LedgerSourceVendorPrepayment:
+		return fmt.Sprintf("/vendor-prepayments/%d", sourceID)
+	default:
+		return reconcileJEURL(journalEntryID)
+	}
+}
+
+func reconcileJEURL(journalEntryID uint) string {
+	if journalEntryID == 0 {
+		return ""
+	}
+	return fmt.Sprintf("/journal-entry/%d", journalEntryID)
+}
+
 func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 	companyID, ok := ActiveCompanyIDFromCtx(c)
 	if !ok {
@@ -202,6 +433,7 @@ func (s *Server) handleBankReconcileForm(c *fiber.Ctx) error {
 		}
 		vm.ResumingDraft = true
 	}
+	vm.WorkspaceJSON = buildReconcileWorkspaceJSON(vm)
 
 	return pages.BankReconcile(vm).Render(c.Context(), c)
 }
@@ -366,6 +598,74 @@ func (s *Server) handleBankReconcileSaveProgress(c *fiber.Ctx) error {
 	_ = services.UpsertReconcileDraft(s.DB, companyID, accountID, statementDateStr, endingBalanceStr, lineIDsJSON)
 
 	return c.Redirect("/banking/reconcile?account_id="+accountIDStr+"&statement_date="+statementDateStr+"&ending_balance="+endingBalanceStr+"&progress_saved=1", fiber.StatusSeeOther)
+}
+
+type bankReconcileDraftRequest struct {
+	AccountID       string   `json:"account_id"`
+	StatementDate   string   `json:"statement_date"`
+	EndingBalance   string   `json:"ending_balance"`
+	SelectedLineIDs []string `json:"selected_line_ids"`
+}
+
+func (s *Server) handleBankReconcileDraftAPI(c *fiber.Ctx) error {
+	companyID, ok := ActiveCompanyIDFromCtx(c)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "company context required")
+	}
+
+	var req bankReconcileDraftRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid request")
+	}
+	accountIDStr := strings.TrimSpace(req.AccountID)
+	accountIDU64, err := services.ParseUint(accountIDStr)
+	if err != nil || accountIDU64 == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid account")
+	}
+	accountID := uint(accountIDU64)
+	if err := s.DB.Where("id = ? AND company_id = ?", accountID, companyID).First(new(models.Account)).Error; err != nil {
+		return fiber.NewError(fiber.StatusForbidden, "account not available")
+	}
+	statementDate, err := time.Parse("2006-01-02", strings.TrimSpace(req.StatementDate))
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid statement date")
+	}
+	if _, err := services.ParseDecimalMoney(strings.TrimSpace(req.EndingBalance)); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid ending balance")
+	}
+
+	candidates, err := services.ListReconcileCandidates(s.DB, companyID, accountID, statementDate)
+	if err != nil {
+		slog.Warn("bank reconcile draft candidate validation failed", "company_id", companyID, "account_id", accountID, "error", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "could not validate draft")
+	}
+	validIDs := make(map[string]struct{}, len(candidates))
+	for _, cand := range candidates {
+		validIDs[fmt.Sprintf("%d", cand.LineID)] = struct{}{}
+	}
+
+	selectedIDs := make([]string, 0, len(req.SelectedLineIDs))
+	for _, raw := range req.SelectedLineIDs {
+		id := strings.TrimSpace(raw)
+		u, err := services.ParseUint(id)
+		if err != nil || u == 0 {
+			continue
+		}
+		if _, ok := validIDs[id]; !ok {
+			continue
+		}
+		selectedIDs = append(selectedIDs, id)
+	}
+	lineIDsJSON := "[]"
+	if len(selectedIDs) > 0 {
+		b, _ := json.Marshal(selectedIDs)
+		lineIDsJSON = string(b)
+	}
+	if err := services.UpsertReconcileDraft(s.DB, companyID, accountID, strings.TrimSpace(req.StatementDate), strings.TrimSpace(req.EndingBalance), lineIDsJSON); err != nil {
+		slog.Warn("bank reconcile draft save failed", "company_id", companyID, "account_id", accountID, "error", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "could not save draft")
+	}
+	return c.JSON(fiber.Map{"ok": true})
 }
 
 func (s *Server) handleBankReconcileSubmit(c *fiber.Ctx) error {
@@ -1273,6 +1573,30 @@ func (s *Server) handleAcceptSuggestion(c *fiber.Ctx) error {
 		lineIDs = append(lineIDs, l.JournalLineID)
 	}
 	_ = services.UpdateMemoryFromAcceptedLines(s.DB, companyID, sugg.AccountID, lineIDs)
+
+	// Preserve current in-progress selections and add the accepted suggestion lines
+	// so a redirect/resume shows exactly what the user accepted.
+	selectedSet := map[string]struct{}{}
+	if draft, err := services.GetReconcileDraft(s.DB, companyID, sugg.AccountID); err == nil && draft != nil {
+		for _, id := range parseReconcileSelectedLineIDs(draft.SelectedLineIDs) {
+			selectedSet[id] = struct{}{}
+		}
+	}
+	for _, id := range lineIDs {
+		selectedSet[fmt.Sprintf("%d", id)] = struct{}{}
+	}
+	selectedIDs := make([]string, 0, len(selectedSet))
+	for id := range selectedSet {
+		selectedIDs = append(selectedIDs, id)
+	}
+	lineIDsJSON := "[]"
+	if len(selectedIDs) > 0 {
+		b, _ := json.Marshal(selectedIDs)
+		lineIDsJSON = string(b)
+	}
+	if statementDateStr != "" && endingBalanceStr != "" {
+		_ = services.UpsertReconcileDraft(s.DB, companyID, sugg.AccountID, statementDateStr, endingBalanceStr, lineIDsJSON)
+	}
 
 	// Audit log.
 	actor := user.Email

@@ -527,550 +527,550 @@ func bodyBankReconcile(vm BankReconcileVM) templ.Component {
 			}
 		}
 		if vm.EntryMode == "work" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<!-- Compact account / statement info bar --> <div class=\"mt-6 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-border bg-surface px-6 py-4\"><span class=\"text-body font-semibold text-text\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<div data-gb-react=\"bank-reconcile\" data-workspace=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
-			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountName)
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(vm.WorkspaceJSON)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 265, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 265, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</span> <span class=\"text-small text-text-muted2\">Statement: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\"><div class=\"mt-6 rounded-lg border border-border bg-surface p-6 text-small text-text-muted2\">Loading reconciliation workspace...</div></div><script type=\"module\" src=\"/static/react/bank_reconcile.js?v=1\"></script> <div class=\"hidden\" aria-hidden=\"true\"><!-- Compact account / statement info bar --><div class=\"mt-6 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-border bg-surface px-6 py-4\"><span class=\"text-body font-semibold text-text\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var31 string
-			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
+			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 266, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 276, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</span> <span class=\"text-small text-text-muted2\">Ending Balance: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</span> <span class=\"text-small text-text-muted2\">Statement: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var32 string
-			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 267, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 277, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</span> <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</span> <span class=\"text-small text-text-muted2\">Ending Balance: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var33 templ.SafeURL
-			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/banking/reconcile?account_id=" + vm.AccountID))
+			var templ_7745c5c3_Var33 string
+			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 269, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 278, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" class=\"ml-auto text-small text-primary hover:underline\">Edit Info</a></div><!-- Summary bar --> <div class=\"mt-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface p-6 md:grid-cols-4\"><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Statement Ending Balance</p><p class=\"mt-1 text-section font-semibold text-text\" x-text=\"fmt(endingBalance)\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</span> <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var34 string
-			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+			var templ_7745c5c3_Var34 templ.SafeURL
+			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/banking/reconcile?account_id=" + vm.AccountID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 278, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 280, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</p></div><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Beginning Balance</p><p class=\"mt-1 text-section font-semibold text-text\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\" class=\"ml-auto text-small text-primary hover:underline\">Edit Info</a></div><!-- Summary bar --><div class=\"mt-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface p-6 md:grid-cols-4\"><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Statement Ending Balance</p><p class=\"mt-1 text-section font-semibold text-text\" x-text=\"fmt(endingBalance)\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var35 string
-			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(vm.BeginningBalance)
+			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 282, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 289, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</p></div><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Cleared Balance</p><p class=\"mt-1 text-section font-semibold text-text\" x-text=\"fmt(clearedBalance())\"></p></div><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Difference</p><p class=\"mt-1 text-section font-semibold\" :class=\"diffOk() ? 'text-success-hover' : 'text-danger'\" x-text=\"fmt(difference())\"></p></div></div><!-- Auto-match suggestions panel --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</p></div><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Beginning Balance</p><p class=\"mt-1 text-section font-semibold text-text\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var36 string
+			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(vm.BeginningBalance)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 293, Col: 79}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</p></div><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Cleared Balance</p><p class=\"mt-1 text-section font-semibold text-text\" x-text=\"fmt(clearedBalance())\"></p></div><div class=\"text-center\"><p class=\"text-small uppercase tracking-wider text-text-muted\">Difference</p><p class=\"mt-1 text-section font-semibold\" :class=\"diffOk() ? 'text-success-hover' : 'text-danger'\" x-text=\"fmt(difference())\"></p></div></div><!-- Auto-match suggestions panel -->")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(vm.Suggestions) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<div class=\"mt-6 rounded-lg border border-border bg-surface\"><div class=\"flex items-center justify-between border-b border-border px-6 py-4\"><div><h2 class=\"text-section font-semibold text-text\">Auto-Match Suggestions</h2><p class=\"mt-0.5 text-small text-text-muted2\">Engine-generated candidates — you must accept before they affect the reconciliation.</p></div><span class=\"rounded-full bg-primary/10 px-3 py-1 text-small font-semibold text-primary\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<div class=\"mt-6 rounded-lg border border-border bg-surface\"><div class=\"flex items-center justify-between border-b border-border px-6 py-4\"><div><h2 class=\"text-section font-semibold text-text\">Auto-Match Suggestions</h2><p class=\"mt-0.5 text-small text-text-muted2\">Engine-generated candidates — you must accept before they affect the reconciliation.</p></div><span class=\"rounded-full bg-primary/10 px-3 py-1 text-small font-semibold text-primary\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var36 string
-				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(Itoa(len(vm.Suggestions)))
+				var templ_7745c5c3_Var37 string
+				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(Itoa(len(vm.Suggestions)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 307, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 318, Col: 34}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, " suggestion(s)</span></div><div class=\"divide-y divide-border\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, " suggestion(s)</span></div><div class=\"divide-y divide-border\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				for _, sugg := range vm.Suggestions {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"px-6 py-4\" x-data=\"{ expanded: false }\"><div class=\"flex flex-wrap items-start gap-4\"><!-- Confidence badge --><div class=\"flex items-center gap-2 shrink-0\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<div class=\"px-6 py-4\" x-data=\"{ expanded: false }\"><div class=\"flex flex-wrap items-start gap-4\"><!-- Confidence badge --><div class=\"flex items-center gap-2 shrink-0\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var37 = []any{"inline-flex items-center rounded-full px-2.5 py-0.5 text-small font-semibold " + ConfidenceTierBadgeClass(sugg.ConfidenceTier)}
-					templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var37...)
+					var templ_7745c5c3_Var38 = []any{"inline-flex items-center rounded-full px-2.5 py-0.5 text-small font-semibold " + ConfidenceTierBadgeClass(sugg.ConfidenceTier)}
+					templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var38...)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<span class=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var38 string
-					templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var37).String())
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 1, Col: 0}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<span class=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var39 string
-					templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.ConfidencePct)
+					templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var38).String())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 318, Col: 31}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 1, Col: 0}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</span> <span class=\"text-small text-text-muted\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var40 string
-					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.TypeLabel)
+					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.ConfidencePct)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 320, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 329, Col: 31}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</span></div><!-- Summary text --><div class=\"min-w-0 flex-1\"><p class=\"text-body font-medium text-text\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</span> <span class=\"text-small text-text-muted\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var41 string
-					templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.Summary)
+					templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.TypeLabel)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 325, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 331, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</p><p class=\"mt-0.5 text-small text-text-muted2\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</span></div><!-- Summary text --><div class=\"min-w-0 flex-1\"><p class=\"text-body font-medium text-text\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var42 string
+					templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.Summary)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 336, Col: 67}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</p><p class=\"mt-0.5 text-small text-text-muted2\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if len(sugg.JournalNos) > 0 {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "Refs: ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "Refs: ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						for i, jno := range sugg.JournalNos {
 							if i > 0 {
-								var templ_7745c5c3_Var42 string
-								templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(" · ")
+								var templ_7745c5c3_Var43 string
+								templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(" · ")
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 331, Col: 22}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 342, Col: 22}
 								}
-								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, " ")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, " ")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							var templ_7745c5c3_Var43 string
-							templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(jno)
+							var templ_7745c5c3_Var44 string
+							templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(jno)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 333, Col: 18}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 344, Col: 18}
 							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, " &nbsp;·&nbsp; ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, " &nbsp;·&nbsp; ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "Net: ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "Net: ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var44 string
-					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.NetAmount)
+					var templ_7745c5c3_Var45 string
+					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(sugg.NetAmount)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 337, Col: 32}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 348, Col: 32}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</p></div><!-- Actions --><div class=\"flex shrink-0 items-center gap-2\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</p></div><!-- Actions --><div class=\"flex shrink-0 items-center gap-2\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if sugg.Status == "pending" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<!-- Accept --> <form method=\"post\" action=\"/banking/reconcile/suggest/accept\"><input type=\"hidden\" name=\"suggestion_id\" value=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var45 string
-						templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(sugg.ID))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 346, Col: 76}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "\"> <input type=\"hidden\" name=\"account_id\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<!-- Accept --> <form method=\"post\" action=\"/banking/reconcile/suggest/accept\"><input type=\"hidden\" name=\"suggestion_id\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var46 string
-						templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
+						templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(sugg.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 347, Col: 71}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 357, Col: 76}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"> <input type=\"hidden\" name=\"account_id\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var47 string
-						templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
+						templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 348, Col: 79}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 358, Col: 71}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var48 string
-						templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+						templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 349, Col: 79}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 359, Col: 79}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\"> <button type=\"submit\" class=\"rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover\">Accept</button></form><!-- Reject --> <form method=\"post\" action=\"/banking/reconcile/suggest/reject\"><input type=\"hidden\" name=\"suggestion_id\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var49 string
-						templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(sugg.ID))
+						templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 357, Col: 76}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 360, Col: 79}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\"> <input type=\"hidden\" name=\"account_id\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\"> <button type=\"submit\" class=\"rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover\">Accept</button></form><!-- Reject --> <form method=\"post\" action=\"/banking/reconcile/suggest/reject\"><input type=\"hidden\" name=\"suggestion_id\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var50 string
-						templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
+						templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(sugg.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 358, Col: 71}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 368, Col: 76}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "\"> <input type=\"hidden\" name=\"account_id\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var51 string
-						templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
+						templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 359, Col: 79}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 369, Col: 71}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var52 string
-						templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+						templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 360, Col: 79}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 370, Col: 79}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "\"> <button type=\"submit\" class=\"rounded-md border border-border px-3 py-1.5 text-small font-semibold text-text hover:bg-background\">Reject</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var53 string
+						templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 371, Col: 79}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "\"> <button type=\"submit\" class=\"rounded-md border border-border px-3 py-1.5 text-small font-semibold text-text hover:bg-background\">Reject</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else if sugg.Status == "accepted" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<span class=\"rounded-full bg-success-soft px-2.5 py-0.5 text-small font-semibold text-success-hover\">Accepted</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<span class=\"rounded-full bg-success-soft px-2.5 py-0.5 text-small font-semibold text-success-hover\">Accepted</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else if sugg.Status == "rejected" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "<span class=\"rounded-full bg-background px-2.5 py-0.5 text-small font-semibold text-text-muted\">Rejected</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "<span class=\"rounded-full bg-background px-2.5 py-0.5 text-small font-semibold text-text-muted\">Rejected</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "<!-- Expand signals -->")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<!-- Expand signals -->")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if len(sugg.Signals) > 0 {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<button type=\"button\" @click=\"expanded = !expanded\" class=\"text-small text-primary hover:underline\"><span x-text=\"expanded ? 'Hide details' : 'View signals'\"></span></button>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "<button type=\"button\" @click=\"expanded = !expanded\" class=\"text-small text-primary hover:underline\"><span x-text=\"expanded ? 'Hide details' : 'View signals'\"></span></button>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</div></div><!-- Expandable signal detail (Layer 3 explanation) -->")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "</div></div><!-- Expandable signal detail (Layer 3 explanation) -->")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if len(sugg.Signals) > 0 {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<div x-show=\"expanded\" x-cloak class=\"mt-3 rounded-md border border-border-subtle bg-background p-4\"><p class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Scoring Signals</p><div class=\"space-y-2\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<div x-show=\"expanded\" x-cloak class=\"mt-3 rounded-md border border-border-subtle bg-background p-4\"><p class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Scoring Signals</p><div class=\"space-y-2\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						for _, sig := range sugg.Signals {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<div class=\"flex items-center gap-3 text-small\"><span class=\"w-40 shrink-0 text-text-muted\">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var53 string
-							templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(sig.Name)
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 388, Col: 67}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "</span> <span class=\"text-text-muted2\">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							for range sig.StarsFull {
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "&#9733; ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-							}
-							for range sig.StarsEmpty {
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "&#9734;")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</span> <span class=\"text-text-muted2\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<div class=\"flex items-center gap-3 text-small\"><span class=\"w-40 shrink-0 text-text-muted\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var54 string
-							templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(sig.Detail)
+							templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(sig.Name)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 397, Col: 56}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 399, Col: 67}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "</span></div>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "</span> <span class=\"text-text-muted2\">")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							for range sig.StarsFull {
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "&#9733; ")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+							}
+							for range sig.StarsEmpty {
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "&#9734;")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "</span> <span class=\"text-text-muted2\">")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							var templ_7745c5c3_Var55 string
+							templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(sig.Detail)
+							if templ_7745c5c3_Err != nil {
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 408, Col: 56}
+							}
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "</span></div>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "</div></div>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "</div></div>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, " <!-- Transaction table --> <div class=\"mt-6 rounded-lg border border-border bg-surface\"><div class=\"flex items-center justify-between border-b border-border px-6 py-4\"><h2 class=\"text-section font-semibold text-text\">Unreconciled Transactions</h2><span class=\"text-small text-text-muted2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<!-- Transaction table --><div class=\"mt-6 rounded-lg border border-border bg-surface\"><div class=\"flex items-center justify-between border-b border-border px-6 py-4\"><h2 class=\"text-section font-semibold text-text\">Unreconciled Transactions</h2><span class=\"text-small text-text-muted2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var55 string
-			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(Itoa(len(vm.Candidates)))
+			var templ_7745c5c3_Var56 string
+			templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(Itoa(len(vm.Candidates)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 413, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 424, Col: 73}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, " item(s)</span></div><div class=\"overflow-x-auto\"><table class=\"w-full text-left text-body\"><thead class=\"text-small uppercase tracking-wider text-text-muted\"><tr class=\"border-b border-border bg-background\"><th class=\"py-3 pl-6 pr-4 w-[4%]\"><input type=\"checkbox\" @change=\"toggleAll($event)\" class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"></th><th class=\"py-3 pr-4 w-[10%]\">Date</th><th class=\"py-3 pr-4 w-[9%]\">Type</th><th class=\"py-3 pr-4 w-[13%]\">Reference</th><th class=\"py-3 pr-4 w-[15%]\">Payee</th><th class=\"py-3 pr-4 w-[20%]\">Memo</th><th class=\"py-3 pr-4 w-[12%] text-right\">Payment</th><th class=\"py-3 pr-6 w-[12%] text-right\">Deposit</th></tr></thead> <tbody class=\"text-text\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, " item(s)</span></div><div class=\"overflow-x-auto\"><table class=\"w-full text-left text-body\"><thead class=\"text-small uppercase tracking-wider text-text-muted\"><tr class=\"border-b border-border bg-background\"><th class=\"py-3 pl-6 pr-4 w-[4%]\"><input type=\"checkbox\" @change=\"toggleAll($event)\" class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"></th><th class=\"py-3 pr-4 w-[10%]\">Date</th><th class=\"py-3 pr-4 w-[9%]\">Type</th><th class=\"py-3 pr-4 w-[13%]\">Reference</th><th class=\"py-3 pr-4 w-[15%]\">Payee</th><th class=\"py-3 pr-4 w-[20%]\">Memo</th><th class=\"py-3 pr-4 w-[12%] text-right\">Payment</th><th class=\"py-3 pr-6 w-[12%] text-right\">Deposit</th></tr></thead> <tbody class=\"text-text\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(vm.Candidates) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<tr><td colspan=\"8\" class=\"py-8 text-center text-text-muted2\">No unreconciled transactions for this period.</td></tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<tr><td colspan=\"8\" class=\"py-8 text-center text-text-muted2\">No unreconciled transactions for this period.</td></tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			for _, cand := range vm.Candidates {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<tr class=\"border-b border-border-subtle hover:bg-background\" :class=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var56 string
-				templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs("selected.includes('" + Uitoa(cand.LineID) + "') ? 'bg-primary/5' : ''")
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 441, Col: 89}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\"><td class=\"py-3 pl-6 pr-4\"><input type=\"checkbox\" x-model=\"selected\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "<tr class=\"border-b border-border-subtle hover:bg-background\" :class=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var57 string
-				templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(cand.LineID))
+				templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs("selected.includes('" + Uitoa(cand.LineID) + "') ? 'bg-primary/5' : ''")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 446, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 452, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "\" class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"> <input type=\"hidden\" name=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "\"><td class=\"py-3 pl-6 pr-4\"><input type=\"checkbox\" x-model=\"selected\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var58 string
-				templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs("line_amount_" + Uitoa(cand.LineID))
+				templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(Uitoa(cand.LineID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 449, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 457, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"> <input type=\"hidden\" name=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var59 string
-				templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(Money(cand.Amount))
+				templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs("line_amount_" + Uitoa(cand.LineID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 449, Col: 102}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 460, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "\"></td><td class=\"py-3 pr-4 text-text-muted2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var60 string
-				templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(cand.EntryDate.Format("2006-01-02"))
+				templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(Money(cand.Amount))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 451, Col: 85}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 460, Col: 102}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "</td><td class=\"py-3 pr-4\"><span class=\"rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "\"></td><td class=\"py-3 pr-4 text-text-muted2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var61 string
-				templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(SourceTypeLabel(cand.SourceType))
+				templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(cand.EntryDate.Format("2006-01-02"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 454, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 462, Col: 85}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var61))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "</span></td><td class=\"py-3 pr-4 font-medium\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "</td><td class=\"py-3 pr-4\"><span class=\"rounded-full bg-background px-2 py-0.5 text-small font-medium text-text-muted\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var62 string
-				templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs(cand.JournalNo)
+				templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs(SourceTypeLabel(cand.SourceType))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 457, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 465, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "</td><td class=\"py-3 pr-4 text-text-muted2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "</span></td><td class=\"py-3 pr-4 font-medium\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var63 string
-				templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(cand.PayeeName)
+				templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(cand.JournalNo)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 458, Col: 64}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 468, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 				if templ_7745c5c3_Err != nil {
@@ -1081,208 +1081,208 @@ func bodyBankReconcile(vm BankReconcileVM) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var64 string
-				templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(cand.Memo)
+				templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(cand.PayeeName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 459, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 469, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "</td><td class=\"py-3 pr-4 text-right\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "</td><td class=\"py-3 pr-4 text-text-muted2\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var65 string
+				templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(cand.Memo)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 470, Col: 59}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "</td><td class=\"py-3 pr-4 text-right\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if cand.Payment.IsPositive() {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "<span class=\"text-danger\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var65 string
-					templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(Money(cand.Payment))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 462, Col: 58}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "</span>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "</td><td class=\"py-3 pr-6 text-right\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				if cand.Deposit.IsPositive() {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "<span class=\"text-success-hover\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "<span class=\"text-danger\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var66 string
-					templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(Money(cand.Deposit))
+					templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(Money(cand.Payment))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 467, Col: 65}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 473, Col: 58}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "</td></tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "</td><td class=\"py-3 pr-6 text-right\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if cand.Deposit.IsPositive() {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "<span class=\"text-success-hover\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var67 string
+					templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(Money(cand.Deposit))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 478, Col: 65}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "</span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "</td></tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "</tbody></table></div><!-- Controls row --><div class=\"border-t border-border px-6 py-4\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between\"><div class=\"text-body text-text-muted2\"><span x-text=\"selected.length\"></span> item(s) selected &nbsp;·&nbsp; Net: <span class=\"font-semibold\" x-text=\"fmt(selectedNet())\"></span></div><div class=\"flex flex-wrap items-center gap-3\"><!-- Auto Match trigger --><form method=\"post\" action=\"/banking/reconcile/auto-match\"><input type=\"hidden\" name=\"account_id\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var67 string
-			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 487, Col: 67}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "</tbody></table></div><!-- Controls row --><div class=\"border-t border-border px-6 py-4\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between\"><div class=\"text-body text-text-muted2\"><span x-text=\"selected.length\"></span> item(s) selected &nbsp;·&nbsp; Net: <span class=\"font-semibold\" x-text=\"fmt(selectedNet())\"></span></div><div class=\"flex flex-wrap items-center gap-3\"><!-- Auto Match trigger --><form method=\"post\" action=\"/banking/reconcile/auto-match\"><input type=\"hidden\" name=\"account_id\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var68 string
-			templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
+			templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 488, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 498, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var69 string
-			templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+			templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 489, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 499, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\"> <button type=\"submit\" class=\"inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background\"><!-- sparkle icon --><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4 text-primary\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z\"></path></svg> Auto Match</button></form><!-- Save progress --><form method=\"post\" action=\"/banking/reconcile/save-progress\" @submit=\"beforeSave($event)\"><input type=\"hidden\" name=\"account_id\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var70 string
-			templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
+			templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 502, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 500, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "\"> <button type=\"submit\" class=\"inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background\"><!-- sparkle icon --><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4 text-primary\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z\"></path></svg> Auto Match</button></form><!-- Save progress --><form method=\"post\" action=\"/banking/reconcile/save-progress\" @submit=\"beforeSave($event)\"><input type=\"hidden\" name=\"account_id\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var71 string
-			templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
+			templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 503, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 513, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var72 string
-			templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+			templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 504, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 514, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "\"><template x-for=\"id in selected\" :key=\"id\"><input type=\"hidden\" name=\"line_ids\" :value=\"id\"></template><button type=\"submit\" class=\"rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background\">Save</button></form><form method=\"post\" action=\"/banking/reconcile\" @submit=\"beforeSubmit($event)\"><input type=\"hidden\" name=\"account_id\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var73 string
-			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
+			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 515, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 515, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "\"><template x-for=\"id in selected\" :key=\"id\"><input type=\"hidden\" name=\"line_ids\" :value=\"id\"></template><button type=\"submit\" class=\"rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background\">Save</button></form><form method=\"post\" action=\"/banking/reconcile\" @submit=\"beforeSubmit($event)\"><input type=\"hidden\" name=\"account_id\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var74 string
-			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
+			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 516, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 526, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "\"> <input type=\"hidden\" name=\"statement_date\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var75 string
-			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(vm.StatementDate)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 517, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 527, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "\"><template x-for=\"id in selected\" :key=\"id\"><input type=\"hidden\" name=\"line_ids\" :value=\"id\"></template><button type=\"submit\" :disabled=\"!diffOk()\" :class=\"diffOk() ? 'bg-primary hover:bg-primary-hover text-onPrimary' : 'bg-disabled-bg text-disabled-text cursor-not-allowed'\" class=\"rounded-md px-4 py-2 text-body font-semibold\">Finish Now</button></form></div></div></div></div><!-- Previous Reconciliation / Void section --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "\"> <input type=\"hidden\" name=\"ending_balance\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var76 string
+			templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(vm.EndingBalance)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 528, Col: 75}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "\"><template x-for=\"id in selected\" :key=\"id\"><input type=\"hidden\" name=\"line_ids\" :value=\"id\"></template><button type=\"submit\" :disabled=\"!diffOk()\" :class=\"diffOk() ? 'bg-primary hover:bg-primary-hover text-onPrimary' : 'bg-disabled-bg text-disabled-text cursor-not-allowed'\" class=\"rounded-md px-4 py-2 text-body font-semibold\">Finish Now</button></form></div></div></div></div></div><!-- Previous Reconciliation / Void section --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if vm.LatestReconciliation != nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "<div class=\"mt-6 rounded-lg border border-border bg-surface p-6\"><h2 class=\"text-section font-semibold text-text\">Previous Reconciliation</h2><p class=\"mt-1 text-small text-text-muted2\">Only the most recent reconciliation may be voided.</p><div class=\"mt-4 overflow-x-auto\"><table class=\"w-full text-left text-body\"><thead class=\"text-small uppercase tracking-wider text-text-muted\"><tr class=\"border-b border-border\"><th class=\"py-3 pr-4\">Statement Date</th><th class=\"py-3 pr-4 text-right\">Ending Balance</th><th class=\"py-3 pr-4 text-right\">Cleared Balance</th><th class=\"py-3 pr-0\"></th></tr></thead> <tbody class=\"text-text\"><tr class=\"border-b border-border-subtle\"><td class=\"py-3 pr-4\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var76 string
-				templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(vm.LatestReconciliation.StatementDate.Format("2006-01-02"))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 555, Col: 91}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "</td><td class=\"py-3 pr-4 text-right\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "<div class=\"mt-6 rounded-lg border border-border bg-surface p-6\"><h2 class=\"text-section font-semibold text-text\">Previous Reconciliation</h2><p class=\"mt-1 text-small text-text-muted2\">Only the most recent reconciliation may be voided.</p><div class=\"mt-4 overflow-x-auto\"><table class=\"w-full text-left text-body\"><thead class=\"text-small uppercase tracking-wider text-text-muted\"><tr class=\"border-b border-border\"><th class=\"py-3 pr-4\">Statement Date</th><th class=\"py-3 pr-4 text-right\">Ending Balance</th><th class=\"py-3 pr-4 text-right\">Cleared Balance</th><th class=\"py-3 pr-0\"></th></tr></thead> <tbody class=\"text-text\"><tr class=\"border-b border-border-subtle\"><td class=\"py-3 pr-4\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var77 string
-				templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(Money(vm.LatestReconciliation.EndingBalance))
+				templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(vm.LatestReconciliation.StatementDate.Format("2006-01-02"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 556, Col: 88}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 567, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 				if templ_7745c5c3_Err != nil {
@@ -1293,47 +1293,60 @@ func bodyBankReconcile(vm BankReconcileVM) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var78 string
-				templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(Money(vm.LatestReconciliation.ClearedBalance))
+				templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(Money(vm.LatestReconciliation.EndingBalance))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 557, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 568, Col: 88}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "</td><td class=\"py-3 pr-0 text-right\"><button type=\"button\" @click=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "</td><td class=\"py-3 pr-4 text-right\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var79 string
-				templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs("openVoidModal(" + Uitoa(vm.LatestReconciliation.ID) + ", '" + vm.LatestReconciliation.StatementDate.Format("2006-01-02") + "')")
+				templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(Money(vm.LatestReconciliation.ClearedBalance))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 561, Col: 148}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 569, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "\" class=\"rounded-md border border-border-danger px-3 py-1.5 text-small font-semibold text-danger hover:bg-danger-soft\">Void</button></td></tr></tbody></table></div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "</td><td class=\"py-3 pr-0 text-right\"><button type=\"button\" @click=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var80 string
+				templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs("openVoidModal(" + Uitoa(vm.LatestReconciliation.ID) + ", '" + vm.LatestReconciliation.StatementDate.Format("2006-01-02") + "')")
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 573, Col: 148}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "\" class=\"rounded-md border border-border-danger px-3 py-1.5 text-small font-semibold text-danger hover:bg-danger-soft\">Void</button></td></tr></tbody></table></div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "<!-- Void confirmation modal --><div x-show=\"showVoidModal\" x-cloak class=\"fixed inset-0 z-50 flex items-center justify-center bg-black/40\" @keydown.escape.window=\"showVoidModal = false\"><div class=\"w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-xl\" @click.stop><h3 class=\"text-section font-semibold text-text\">Void Reconciliation</h3><p class=\"mt-2 text-body text-text-muted2\">This will unreconcile all transactions from the <span class=\"font-semibold text-text\" x-text=\"voidDate\"></span> reconciliation. This action cannot be undone.</p><form method=\"post\" action=\"/banking/reconcile/void\" class=\"mt-4\"><input type=\"hidden\" name=\"rec_id\" :value=\"voidRecID\"> <input type=\"hidden\" name=\"account_id\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "<!-- Void confirmation modal --><div x-show=\"showVoidModal\" x-cloak class=\"fixed inset-0 z-50 flex items-center justify-center bg-black/40\" @keydown.escape.window=\"showVoidModal = false\"><div class=\"w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-xl\" @click.stop><h3 class=\"text-section font-semibold text-text\">Void Reconciliation</h3><p class=\"mt-2 text-body text-text-muted2\">This will unreconcile all transactions from the <span class=\"font-semibold text-text\" x-text=\"voidDate\"></span> reconciliation. This action cannot be undone.</p><form method=\"post\" action=\"/banking/reconcile/void\" class=\"mt-4\"><input type=\"hidden\" name=\"rec_id\" :value=\"voidRecID\"> <input type=\"hidden\" name=\"account_id\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var80 string
-		templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
+		var templ_7745c5c3_Var81 string
+		templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(vm.AccountID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 592, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/banking_reconcile.templ`, Line: 604, Col: 64}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "\"><div><label class=\"block text-body font-medium text-text\">Reason *</label> <input type=\"text\" name=\"void_reason\" x-model=\"voidReason\" maxlength=\"500\" placeholder=\"Enter reason for voiding...\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus [color-scheme:dark]\"><p x-show=\"voidSubmitted && !voidReason.trim()\" class=\"mt-1 text-small text-danger\">Reason is required.</p></div><div class=\"mt-6 flex items-center justify-end gap-3\"><button type=\"button\" @click=\"showVoidModal = false\" class=\"rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background\">Cancel</button> <button type=\"submit\" @click=\"voidSubmitted = true; if (!voidReason.trim()) $event.preventDefault()\" class=\"rounded-md bg-danger px-4 py-2 text-body font-semibold text-onPrimary hover:bg-danger-hover\">Void Reconciliation</button></div></form></div></div></div><script>\n\t\tfunction reconcilePage() {\n\t\t\treturn {\n\t\t\t\theader: { account_id: \"\", statement_date: \"\", ending_balance: \"\" },\n\t\t\t\tendingBalance: 0,\n\t\t\t\tbeginningBalance: 0,\n\t\t\t\tcandidates: [],  // [{id: string, amount: number}]\n\t\t\t\tselected: [],    // string IDs of checked lines\n\n\t\t\t\tshowVoidModal: false,\n\t\t\t\tvoidRecID: 0,\n\t\t\t\tvoidDate: \"\",\n\t\t\t\tvoidReason: \"\",\n\t\t\t\tvoidSubmitted: false,\n\n\t\t\t\tinit() {\n\t\t\t\t\tconst url = new URL(window.location.href);\n\t\t\t\t\tthis.header.account_id     = url.searchParams.get(\"account_id\")     || \"\";\n\t\t\t\t\tthis.header.statement_date = url.searchParams.get(\"statement_date\") || \"\";\n\t\t\t\t\tthis.header.ending_balance = url.searchParams.get(\"ending_balance\") || \"\";\n\n\t\t\t\t\tconst eb = parseFloat(url.searchParams.get(\"ending_balance\") || \"0\");\n\t\t\t\t\tthis.endingBalance = isNaN(eb) ? 0 : eb;\n\n\t\t\t\t\tconst bb = parseFloat(this.$el.dataset.beginning || \"0\");\n\t\t\t\t\tthis.beginningBalance = isNaN(bb) ? 0 : bb;\n\n\t\t\t\t\ttry {\n\t\t\t\t\t\tconst raw = JSON.parse(this.$el.dataset.candidates || \"[]\");\n\t\t\t\t\t\tthis.candidates = raw.map(c => ({ id: String(c.id), amount: parseFloat(c.amount) || 0 }));\n\t\t\t\t\t} catch (_) { this.candidates = []; }\n\n\t\t\t\t\t// Pre-select lines from accepted suggestions.\n\t\t\t\t\ttry {\n\t\t\t\t\t\tconst accepted = JSON.parse(this.$el.dataset.acceptedLines || \"[]\");\n\t\t\t\t\t\tfor (const id of accepted) {\n\t\t\t\t\t\t\tconst sid = String(id);\n\t\t\t\t\t\t\tif (!this.selected.includes(sid)) {\n\t\t\t\t\t\t\t\tthis.selected.push(sid);\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t} catch (_) {}\n\t\t\t\t},\n\n\t\t\t\tselectedNet() {\n\t\t\t\t\treturn this.selected.reduce((sum, id) => {\n\t\t\t\t\t\tconst c = this.candidates.find(c => c.id === id);\n\t\t\t\t\t\treturn c ? sum + c.amount : sum;\n\t\t\t\t\t}, 0);\n\t\t\t\t},\n\n\t\t\t\tclearedBalance() { return this.beginningBalance + this.selectedNet(); },\n\t\t\t\tdifference()     { return this.endingBalance - this.clearedBalance(); },\n\t\t\t\tdiffOk()         { return Math.abs(this.difference()) < 0.005; },\n\n\t\t\t\tfmt(n) {\n\t\t\t\t\tconst v = typeof n === \"number\" ? n : parseFloat(n) || 0;\n\t\t\t\t\treturn v.toFixed(2);\n\t\t\t\t},\n\n\t\t\t\ttoggleAll(e) {\n\t\t\t\t\tif (e.target.checked) {\n\t\t\t\t\t\tthis.selected = this.candidates.map(c => c.id);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tthis.selected = [];\n\t\t\t\t\t}\n\t\t\t\t},\n\n\t\t\t\topenVoidModal(recID, date) {\n\t\t\t\t\tthis.voidRecID = recID;\n\t\t\t\t\tthis.voidDate  = date;\n\t\t\t\t\tthis.voidReason = \"\";\n\t\t\t\t\tthis.voidSubmitted = false;\n\t\t\t\t\tthis.showVoidModal = true;\n\t\t\t\t},\n\n\t\t\t\tbeforeSave(_e) {\n\t\t\t\t\t// Save is always allowed regardless of difference — no validation needed.\n\t\t\t\t},\n\n\t\t\t\tbeforeSubmit(e) {\n\t\t\t\t\tif (!this.diffOk()) e.preventDefault();\n\t\t\t\t},\n\t\t\t};\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "\"><div><label class=\"block text-body font-medium text-text\">Reason *</label> <input type=\"text\" name=\"void_reason\" x-model=\"voidReason\" maxlength=\"500\" placeholder=\"Enter reason for voiding...\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus [color-scheme:dark]\"><p x-show=\"voidSubmitted && !voidReason.trim()\" class=\"mt-1 text-small text-danger\">Reason is required.</p></div><div class=\"mt-6 flex items-center justify-end gap-3\"><button type=\"button\" @click=\"showVoidModal = false\" class=\"rounded-md border border-border px-4 py-2 text-body font-semibold text-text hover:bg-background\">Cancel</button> <button type=\"submit\" @click=\"voidSubmitted = true; if (!voidReason.trim()) $event.preventDefault()\" class=\"rounded-md bg-danger px-4 py-2 text-body font-semibold text-onPrimary hover:bg-danger-hover\">Void Reconciliation</button></div></form></div></div></div><script>\r\n\t\tfunction reconcilePage() {\r\n\t\t\treturn {\r\n\t\t\t\theader: { account_id: \"\", statement_date: \"\", ending_balance: \"\" },\r\n\t\t\t\tendingBalance: 0,\r\n\t\t\t\tbeginningBalance: 0,\r\n\t\t\t\tcandidates: [],  // [{id: string, amount: number}]\r\n\t\t\t\tselected: [],    // string IDs of checked lines\r\n\r\n\t\t\t\tshowVoidModal: false,\r\n\t\t\t\tvoidRecID: 0,\r\n\t\t\t\tvoidDate: \"\",\r\n\t\t\t\tvoidReason: \"\",\r\n\t\t\t\tvoidSubmitted: false,\r\n\r\n\t\t\t\tinit() {\r\n\t\t\t\t\tconst url = new URL(window.location.href);\r\n\t\t\t\t\tthis.header.account_id     = url.searchParams.get(\"account_id\")     || \"\";\r\n\t\t\t\t\tthis.header.statement_date = url.searchParams.get(\"statement_date\") || \"\";\r\n\t\t\t\t\tthis.header.ending_balance = url.searchParams.get(\"ending_balance\") || \"\";\r\n\r\n\t\t\t\t\tconst eb = parseFloat(url.searchParams.get(\"ending_balance\") || \"0\");\r\n\t\t\t\t\tthis.endingBalance = isNaN(eb) ? 0 : eb;\r\n\r\n\t\t\t\t\tconst bb = parseFloat(this.$el.dataset.beginning || \"0\");\r\n\t\t\t\t\tthis.beginningBalance = isNaN(bb) ? 0 : bb;\r\n\r\n\t\t\t\t\ttry {\r\n\t\t\t\t\t\tconst raw = JSON.parse(this.$el.dataset.candidates || \"[]\");\r\n\t\t\t\t\t\tthis.candidates = raw.map(c => ({ id: String(c.id), amount: parseFloat(c.amount) || 0 }));\r\n\t\t\t\t\t} catch (_) { this.candidates = []; }\r\n\r\n\t\t\t\t\t// Pre-select lines from accepted suggestions.\r\n\t\t\t\t\ttry {\r\n\t\t\t\t\t\tconst accepted = JSON.parse(this.$el.dataset.acceptedLines || \"[]\");\r\n\t\t\t\t\t\tfor (const id of accepted) {\r\n\t\t\t\t\t\t\tconst sid = String(id);\r\n\t\t\t\t\t\t\tif (!this.selected.includes(sid)) {\r\n\t\t\t\t\t\t\t\tthis.selected.push(sid);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t} catch (_) {}\r\n\t\t\t\t},\r\n\r\n\t\t\t\tselectedNet() {\r\n\t\t\t\t\treturn this.selected.reduce((sum, id) => {\r\n\t\t\t\t\t\tconst c = this.candidates.find(c => c.id === id);\r\n\t\t\t\t\t\treturn c ? sum + c.amount : sum;\r\n\t\t\t\t\t}, 0);\r\n\t\t\t\t},\r\n\r\n\t\t\t\tclearedBalance() { return this.beginningBalance + this.selectedNet(); },\r\n\t\t\t\tdifference()     { return this.endingBalance - this.clearedBalance(); },\r\n\t\t\t\tdiffOk()         { return Math.abs(this.difference()) < 0.005; },\r\n\r\n\t\t\t\tfmt(n) {\r\n\t\t\t\t\tconst v = typeof n === \"number\" ? n : parseFloat(n) || 0;\r\n\t\t\t\t\treturn v.toFixed(2);\r\n\t\t\t\t},\r\n\r\n\t\t\t\ttoggleAll(e) {\r\n\t\t\t\t\tif (e.target.checked) {\r\n\t\t\t\t\t\tthis.selected = this.candidates.map(c => c.id);\r\n\t\t\t\t\t} else {\r\n\t\t\t\t\t\tthis.selected = [];\r\n\t\t\t\t\t}\r\n\t\t\t\t},\r\n\r\n\t\t\t\topenVoidModal(recID, date) {\r\n\t\t\t\t\tthis.voidRecID = recID;\r\n\t\t\t\t\tthis.voidDate  = date;\r\n\t\t\t\t\tthis.voidReason = \"\";\r\n\t\t\t\t\tthis.voidSubmitted = false;\r\n\t\t\t\t\tthis.showVoidModal = true;\r\n\t\t\t\t},\r\n\r\n\t\t\t\tbeforeSave(_e) {\r\n\t\t\t\t\t// Save is always allowed regardless of difference — no validation needed.\r\n\t\t\t\t},\r\n\r\n\t\t\t\tbeforeSubmit(e) {\r\n\t\t\t\t\tif (!this.diffOk()) e.preventDefault();\r\n\t\t\t\t},\r\n\t\t\t};\r\n\t\t}\r\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -15,14 +15,17 @@ import (
 
 // ReconcileCandidate is one unreconciled journal line for an account.
 type ReconcileCandidate struct {
-	LineID    uint
-	EntryDate time.Time
-	JournalNo string
-	SourceType string
-	PayeeName  string
-	Memo       string
-	Debit      decimal.Decimal
-	Credit     decimal.Decimal
+	LineID         uint
+	JournalEntryID uint
+	EntryDate      time.Time
+	JournalNo      string
+	SourceType     string
+	SourceID       uint
+	ReversedFromID *uint
+	PayeeName      string
+	Memo           string
+	Debit          decimal.Decimal
+	Credit         decimal.Decimal
 
 	// Amount is a convenience: for the bank account (asset),
 	// amount = debit - credit.
@@ -42,9 +45,12 @@ func ListReconcileCandidates(db *gorm.DB, companyID, accountID uint, statementDa
 		`
 SELECT
   jl.id AS line_id,
+  je.id AS journal_entry_id,
   je.entry_date AS entry_date,
   je.journal_no AS journal_no,
   COALESCE(je.source_type, '') AS source_type,
+  COALESCE(je.source_id, 0) AS source_id,
+  je.reversed_from_id AS reversed_from_id,
   COALESCE(
     CASE
       WHEN jl.party_type = 'customer' THEN (SELECT name FROM customers WHERE id = jl.party_id LIMIT 1)
@@ -288,10 +294,10 @@ func VoidReconciliation(db *gorm.DB, companyID uint, recID uint, userID uuid.UUI
 		// Mark the reconciliation as voided.
 		now := time.Now()
 		if err := tx.Model(&rec).Updates(map[string]any{
-			"is_voided":           true,
-			"void_reason":         reason,
-			"voided_at":           &now,
-			"voided_by_user_id":   userID,
+			"is_voided":         true,
+			"void_reason":       reason,
+			"voided_at":         &now,
+			"voided_by_user_id": userID,
 		}).Error; err != nil {
 			return err
 		}

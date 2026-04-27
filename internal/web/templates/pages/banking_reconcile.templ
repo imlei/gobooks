@@ -260,6 +260,17 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 
 		// ── Work mode: full working reconciliation page ───────────────────────────
 		if vm.EntryMode == "work" {
+			<div
+				data-gb-react="bank-reconcile"
+				data-workspace={ vm.WorkspaceJSON }
+			>
+				<div class="mt-6 rounded-lg border border-border bg-surface p-6 text-small text-text-muted2">
+					Loading reconciliation workspace...
+				</div>
+			</div>
+			<script type="module" src="/static/react/bank_reconcile.js?v=1"></script>
+
+			<div class="hidden" aria-hidden="true">
 			<!-- Compact account / statement info bar -->
 			<div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-border bg-surface px-6 py-4">
 				<span class="text-body font-semibold text-text">{ vm.AccountName }</span>
@@ -532,6 +543,7 @@ templ bodyBankReconcile(vm BankReconcileVM) {
 						</div>
 					</div>
 				</div>
+			</div>
 			</div>
 
 			<!-- Previous Reconciliation / Void section -->
