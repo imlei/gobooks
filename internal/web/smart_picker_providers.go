@@ -4,6 +4,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -154,12 +155,36 @@ func (p *CompanyProvider) scopedQuery(db *gorm.DB, ctx SmartPickerContext) *gorm
 
 func (p *CompanyProvider) Search(db *gorm.DB, ctx SmartPickerContext, query string) (*SmartPickerResult, error) {
 	var companies []models.Company
+	limit := smartPickerLimit(ctx)
+	fetchLimit := limit
+	if strings.TrimSpace(query) != "" {
+		fetchLimit = limit * 4
+		if fetchLimit < 50 {
+			fetchLimit = 50
+		}
+		if fetchLimit > 100 {
+			fetchLimit = 100
+		}
+	}
 	q := p.scopedQuery(db, ctx).
 		Order("companies.name ASC").
-		Limit(smartPickerLimit(ctx))
+		Limit(fetchLimit)
 	q = applySmartPickerTextSearch(q, db.Dialector.Name(), query, "companies.name")
 	if err := q.Find(&companies).Error; err != nil {
 		return nil, fmt.Errorf("company search: %w", err)
+	}
+	if strings.TrimSpace(query) != "" {
+		sort.Slice(companies, func(i, j int) bool {
+			leftRank := companyNameMatchRank(companies[i].Name, query)
+			rightRank := companyNameMatchRank(companies[j].Name, query)
+			if leftRank != rightRank {
+				return leftRank < rightRank
+			}
+			return companies[i].Name < companies[j].Name
+		})
+		if len(companies) > limit {
+			companies = companies[:limit]
+		}
 	}
 
 	items := make([]SmartPickerItem, 0, len(companies))

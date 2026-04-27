@@ -100,6 +100,7 @@ func (s *Server) buildSelectCompanyRows(userID uuid.UUID) ([]pages.SelectCompany
 }
 
 func (s *Server) buildSelectCompanyRowsFiltered(userID uuid.UUID, companyNameQuery string) ([]pages.SelectCompanyRowVM, error) {
+	companyNameQuery = strings.TrimSpace(companyNameQuery)
 	memRepo := repository.NewMembershipRepository(s.DB)
 	memberships, err := memRepo.ListMembershipsByUser(userID)
 	if err != nil {
@@ -116,7 +117,7 @@ func (s *Server) buildSelectCompanyRowsFiltered(userID uuid.UUID, companyNameQue
 	}
 	var companies []models.Company
 	q := s.DB.Where("id IN ? AND is_active = true", ids)
-	if strings.TrimSpace(companyNameQuery) != "" {
+	if companyNameQuery != "" {
 		q = applySmartPickerTextSearch(q, s.DB.Dialector.Name(), companyNameQuery, "name")
 	}
 	if err := q.Find(&companies).Error; err != nil {
@@ -141,9 +142,36 @@ func (s *Server) buildSelectCompanyRowsFiltered(userID uuid.UUID, companyNameQue
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool {
+		if companyNameQuery != "" {
+			leftRank := companyNameMatchRank(rows[i].Name, companyNameQuery)
+			rightRank := companyNameMatchRank(rows[j].Name, companyNameQuery)
+			if leftRank != rightRank {
+				return leftRank < rightRank
+			}
+		}
 		return rows[i].Name < rows[j].Name
 	})
 	return rows, nil
+}
+
+func companyNameMatchRank(name string, query string) int {
+	name = strings.ToLower(strings.TrimSpace(name))
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return 0
+	}
+	switch {
+	case name == query:
+		return 0
+	case strings.HasPrefix(name, query):
+		return 1
+	case strings.Contains(name, " "+query):
+		return 2
+	case strings.Contains(name, query):
+		return 3
+	default:
+		return 4
+	}
 }
 
 func (s *Server) recordCompanySwitcherSelection(companyID uint, user *models.User, sess *models.Session, c *fiber.Ctx) {

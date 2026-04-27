@@ -90,20 +90,20 @@ func bodyCompanies(vm CompaniesVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><a href=\"/setup\" class=\"inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4v16m8-8H4\"></path></svg> New Company</a></div><form method=\"get\" action=\"/companies\" class=\"mt-6 rounded-lg border border-border bg-surface p-4\"><label for=\"company-search\" class=\"block text-label uppercase tracking-wide text-text-muted3\">Search</label><div class=\"mt-2 flex items-center gap-2\"><input id=\"company-search\" name=\"q\" type=\"search\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><a href=\"/setup\" class=\"inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4v16m8-8H4\"></path></svg> New Company</a></div><form method=\"get\" action=\"/companies\" hx-get=\"/companies\" hx-target=\"#companies-list\" hx-select=\"#companies-list\" hx-push-url=\"true\" class=\"mt-6 rounded-lg border border-border bg-surface p-4\"><label for=\"company-search\" class=\"block text-label uppercase tracking-wide text-text-muted3\">Search</label><div class=\"mt-2 flex items-center gap-2\"><input id=\"company-search\" name=\"q\" type=\"search\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vm.SearchQuery)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 43, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 51, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" placeholder=\"Company name...\" class=\"min-w-0 flex-1 rounded-md border border-border-input bg-background px-3 py-2 text-body text-text placeholder:text-text-muted3 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary\"> <button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus\">Search</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" placeholder=\"Company name...\" hx-get=\"/companies\" hx-trigger=\"input changed delay:200ms, search\" hx-target=\"#companies-list\" hx-select=\"#companies-list\" hx-push-url=\"true\" class=\"min-w-0 flex-1 rounded-md border border-border-input bg-background px-3 py-2 text-body text-text placeholder:text-text-muted3 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary\"> <button type=\"submit\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus\">Search</button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -113,7 +113,7 @@ func bodyCompanies(vm CompaniesVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></form><!-- Company list --><div class=\"mt-6 space-y-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></form><!-- Company list --><div id=\"companies-list\" class=\"mt-6 space-y-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -146,7 +146,7 @@ func bodyCompanies(vm CompaniesVM) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(row.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 86, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 99, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -169,7 +169,7 @@ func bodyCompanies(vm CompaniesVM) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(row.RoleLabel)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 91, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 104, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -192,7 +192,7 @@ func bodyCompanies(vm CompaniesVM) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(row.CompanyIDStr)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 100, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/companies.templ`, Line: 113, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {

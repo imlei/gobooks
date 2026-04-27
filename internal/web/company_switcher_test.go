@@ -61,10 +61,12 @@ func TestCompaniesSearchIsLimitedToCurrentUserMemberships(t *testing.T) {
 	db := testRouteDB(t)
 	visible := seedCompany(t, db, "Taxdeep Corp.")
 	otherVisible := seedCompany(t, db, "Carote Kitchenware")
+	containedMatch := seedCompany(t, db, "Alpha Taxdeep Services")
 	hidden := seedCompany(t, db, "Taxdeep Hidden")
 	user, rawToken := seedUserSession(t, db, &visible)
 	seedMembership(t, db, user.ID, visible)
 	seedMembership(t, db, user.ID, otherVisible)
+	seedMembership(t, db, user.ID, containedMatch)
 	otherUser := models.User{
 		ID:           uuid.New(),
 		Email:        "hidden-" + strings.ReplaceAll(t.Name(), "/", "-") + "@example.com",
@@ -87,11 +89,27 @@ func TestCompaniesSearchIsLimitedToCurrentUserMemberships(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := string(body)
-	if !strings.Contains(html, "Taxdeep Corp.") {
-		t.Fatalf("expected visible company in search results, got %q", html)
+	listStart := strings.Index(html, `id="companies-list"`)
+	if listStart == -1 {
+		t.Fatalf("expected companies-list in response, got %q", html)
 	}
-	if strings.Contains(html, "Taxdeep Hidden") {
-		t.Fatalf("search leaked another user's company: %q", html)
+	listHTML := html[listStart:]
+	if !strings.Contains(listHTML, "Taxdeep Corp.") {
+		t.Fatalf("expected visible company in search results, got %q", listHTML)
+	}
+	if strings.Contains(listHTML, "Carote Kitchenware") {
+		t.Fatalf("expected search results to filter non-matching user company: %q", listHTML)
+	}
+	firstPrefix := strings.Index(listHTML, "Taxdeep Corp.")
+	firstContained := strings.Index(listHTML, "Alpha Taxdeep Services")
+	if firstPrefix == -1 || firstContained == -1 || firstPrefix > firstContained {
+		t.Fatalf("expected prefix company match first, got %q", listHTML)
+	}
+	if strings.Contains(listHTML, "Taxdeep Hidden") {
+		t.Fatalf("search leaked another user's company: %q", listHTML)
+	}
+	if !strings.Contains(html, `hx-trigger="input changed delay:200ms, search"`) {
+		t.Fatalf("expected company search input to auto-match while typing, got %q", html)
 	}
 }
 
