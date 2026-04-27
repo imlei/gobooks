@@ -227,6 +227,69 @@ func TestCustomerDetailPageHappyPath(t *testing.T) {
 	}
 }
 
+func TestCustomerDetailsTabRequiresEditMode(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Customer Details Edit Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+
+	customerID := seedValidationCustomer(t, db, companyID, "Editable Customer")
+	if err := db.Model(&models.Customer{}).
+		Where("id = ?", customerID).
+		Updates(map[string]any{
+			"email":        "editable@example.com",
+			"addr_street1": "456 Detail Ave",
+			"addr_city":    "Vancouver",
+			"addr_country": "Canada",
+		}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	readResp := performRequest(t, app, fmt.Sprintf("/customers/%d?tab=details", customerID), rawToken)
+	if readResp.StatusCode != http.StatusOK {
+		t.Fatalf("details read mode: expected %d, got %d", http.StatusOK, readResp.StatusCode)
+	}
+	readBody := readResponseBody(t, readResp)
+	for _, want := range []string{
+		"Customer Details",
+		"Editable Customer",
+		"editable@example.com",
+		"456 Detail Ave",
+		"edit=1",
+	} {
+		if !strings.Contains(readBody, want) {
+			t.Fatalf("expected read-only details to contain %q, got %q", want, readBody)
+		}
+	}
+	for _, notWant := range []string{
+		`name="name"`,
+		"Deactivate customer",
+		fmt.Sprintf("/customers/%d/deactivate", customerID),
+	} {
+		if strings.Contains(readBody, notWant) {
+			t.Fatalf("read-only details should not contain %q, got %q", notWant, readBody)
+		}
+	}
+
+	editResp := performRequest(t, app, fmt.Sprintf("/customers/%d?tab=details&edit=1", customerID), rawToken)
+	if editResp.StatusCode != http.StatusOK {
+		t.Fatalf("details edit mode: expected %d, got %d", http.StatusOK, editResp.StatusCode)
+	}
+	editBody := readResponseBody(t, editResp)
+	for _, want := range []string{
+		`name="name"`,
+		"Save",
+		"Cancel",
+		"Deactivate customer",
+		fmt.Sprintf("/customers/%d/deactivate", customerID),
+	} {
+		if !strings.Contains(editBody, want) {
+			t.Fatalf("expected edit details to contain %q, got %q", want, editBody)
+		}
+	}
+}
+
 func TestInvoicesListFiltersByCustomerID(t *testing.T) {
 	db := testRouteDB(t)
 	companyID := seedCompany(t, db, "Invoice Customer Filter Co")

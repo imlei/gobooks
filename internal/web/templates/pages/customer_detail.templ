@@ -104,8 +104,6 @@ templ customerDetailHeader(vm CustomerDetailVM) {
 				@customerFinancialSummary(vm)
 				<div class="flex flex-wrap items-center gap-2">
 					<a href={ templ.SafeURL(fmt.Sprintf("/invoices/new?customer_id=%d", vm.Customer.ID)) } class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">New Invoice</a>
-					<a href={ customerDetailsHref(vm.Customer.ID, "") } class="rounded-md border border-border-input px-3 py-1.5 text-small font-medium text-text hover:bg-background">Edit</a>
-					@customerLifecycleActions(vm)
 				</div>
 			</div>
 		</div>
@@ -204,8 +202,12 @@ templ customerDetailTabBody(vm CustomerDetailVM) {
 			case "addresses":
 				@customerShippingAddressesCard(vm)
 			case "details":
-				@customerEditCard(vm)
-				@customerCurrencyPolicySection(vm)
+				if vm.Editing {
+					@customerEditCard(vm)
+					@customerCurrencyPolicySection(vm)
+				} else {
+					@customerDetailsReadCard(vm)
+				}
 			case "notes":
 				@tabNotesPlaceholder(vm)
 		}
@@ -469,6 +471,56 @@ templ tabNotesPlaceholder(_ CustomerDetailVM) {
 // renders customerEditCard + customerCurrencyPolicySection; Addresses
 // tab renders customerShippingAddressesCard. Definitions below.
 
+templ customerDetailsReadCard(vm CustomerDetailVM) {
+	<div class="rounded-lg border border-border bg-surface p-5">
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<h2 class="text-section font-semibold text-text">Customer Details</h2>
+			<a href={ templ.SafeURL(fmt.Sprintf("/customers/%d?tab=details&edit=1", vm.Customer.ID)) } class="rounded-md border border-border-input px-3 py-1.5 text-small font-medium text-text hover:bg-background">Edit</a>
+		</div>
+		<dl class="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
+			@customerReadOnlyField("Name", vm.Customer.Name)
+			@customerReadOnlyField("Email", vm.Customer.Email)
+			@customerReadOnlyField("Default Payment Term", vm.DefaultPaymentTermLabel)
+			@customerReadOnlyField("Currency", customerCurrencyDisplay(vm))
+			<div class="md:col-span-2">
+				@customerReadOnlyField("Billing Address", customerBillingLine(vm.Customer))
+			</div>
+			<div>
+				<dt class="text-small font-medium text-text-muted">Status</dt>
+				<dd class="mt-1 text-body text-text">
+					if vm.Customer.IsActive {
+						Active
+					} else {
+						Inactive
+					}
+				</dd>
+			</div>
+			<div>
+				<dt class="text-small font-medium text-text-muted">Currency Policy</dt>
+				<dd class="mt-1 flex items-center gap-2 text-body text-text">
+					@customerCurrencyPolicyBadge(vm.Customer.CurrencyPolicy)
+					if vm.Customer.CurrencyPolicy == models.CustomerCurrencyPolicyMultiAllowed && len(vm.AllowedCurrencies) > 0 {
+						<span class="text-small text-text-muted2">{ Itoa(len(vm.AllowedCurrencies)) } allowed</span>
+					}
+				</dd>
+			</div>
+		</dl>
+	</div>
+}
+
+templ customerReadOnlyField(label, value string) {
+	<div>
+		<dt class="text-small font-medium text-text-muted">{ label }</dt>
+		<dd class="mt-1 text-body text-text">
+			if value != "" {
+				{ value }
+			} else {
+				<span class="text-text-muted2">—</span>
+			}
+		</dd>
+	</div>
+}
+
 templ customerCurrencyPolicySection(vm CustomerDetailVM) {
 	<div class="mt-4 rounded-lg border border-border bg-surface p-5">
 		<div class="flex items-center justify-between mb-4">
@@ -631,13 +683,22 @@ templ customerEditCard(vm CustomerDetailVM) {
 					Save
 				</button>
 				<a
-					href={ templ.SafeURL(fmt.Sprintf("/customers/%d?tab=transactions", vm.Customer.ID)) }
+					href={ templ.SafeURL(fmt.Sprintf("/customers/%d?tab=details", vm.Customer.ID)) }
 					class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text hover:bg-background"
 				>
 					Cancel
 				</a>
 			</div>
 		</form>
+		<div class="mt-5 border-t border-border-subtle pt-4">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<p class="text-body font-semibold text-text">Customer status</p>
+					<p class="mt-1 text-small text-text-muted2">Control whether this customer appears in new transaction pickers. Historical records stay intact.</p>
+				</div>
+				@customerLifecycleActions(vm)
+			</div>
+		</div>
 	</div>
 }
 
@@ -747,19 +808,13 @@ templ customerLifecycleActions(vm CustomerDetailVM) {
 	if !vm.Customer.IsActive {
 		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/reactivate", vm.Customer.ID)) } class="inline">
 			<button type="submit" class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-small font-medium text-text hover:bg-background">
-				Reactivate
-			</button>
-		</form>
-	} else if vm.HasRecords {
-		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/deactivate", vm.Customer.ID)) } class="inline" onsubmit="return confirm('Deactivate this customer? They will be hidden from pickers but historical records remain. You can reactivate later.');">
-			<button type="submit" class="rounded-md border border-border-input bg-surface px-3 py-1.5 text-small font-medium text-text hover:bg-background">
-				Deactivate
+				Activate customer
 			</button>
 		</form>
 	} else {
-		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/delete", vm.Customer.ID)) } class="inline" onsubmit="return confirm('Permanently delete this customer? This cannot be undone. (Only available because no invoices, quotes or other records reference this customer.)');">
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/deactivate", vm.Customer.ID)) } class="inline" onsubmit="return confirm('Deactivate this customer? They will be hidden from pickers but historical records remain. You can reactivate later.');">
 			<button type="submit" class="rounded-md border border-border-danger bg-danger-soft px-3 py-1.5 text-small font-medium text-danger hover:bg-danger-soft">
-				Delete
+				Deactivate customer
 			</button>
 		</form>
 	}

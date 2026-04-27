@@ -82,7 +82,7 @@ func setCustomerActiveAndRedirect(s *Server, c *fiber.Ctx, active bool, auditAct
 	}
 
 	if err := services.SetCustomerActive(s.DB, companyID, customerID, active); err != nil {
-		return redirectErr(c, "/customers/"+c.Params("id"), "Could not update customer status.")
+		return redirectErr(c, "/customers/"+c.Params("id")+"?tab=details&edit=1", "Could not update customer status.")
 	}
 	// Re-project so the row's status flips (active/inactive) in search.
 	_ = producers.ProjectCustomer(c.Context(), s.DB, s.SearchProjector, companyID, customerID)
@@ -98,5 +98,5 @@ func setCustomerActiveAndRedirect(s *Server, c *fiber.Ctx, active bool, auditAct
 	}, &cid, &uid)
 	s.SPAcceleration.InvalidateCompany(companyID)
 
-	return c.Redirect("/customers/"+c.Params("id")+"?"+queryFlag+"=1", fiber.StatusSeeOther)
+	return c.Redirect("/customers/"+c.Params("id")+"?tab=details&"+queryFlag+"=1", fiber.StatusSeeOther)
 }

@@ -195,16 +195,13 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		AllowedCurrencies:       allowedCurrencies,
 		BaseCurrencyCode:        baseCurrencyCode,
 		CurrencyPolicySaved:     c.Query("policy_saved") == "1",
-		// Details tab is always-editable now (no display/edit toggle).
-		// Keep the Editing flag true whenever the tab is Details so the
-		// existing customerEditCard / POST-rerender logic still works.
-		Editing:           tab == "details",
-		Saved:             c.Query("saved") == "1",
-		HasRecords:        hasRecords,
-		Deactivated:       c.Query("deactivated") == "1",
-		Reactivated:       c.Query("reactivated") == "1",
-		LifecycleErr:      strings.TrimSpace(c.Query("error")),
-		ShippingAddresses: shippingAddrs,
+		Editing:                 tab == "details" && editFlag,
+		Saved:                   c.Query("saved") == "1",
+		HasRecords:              hasRecords,
+		Deactivated:             c.Query("deactivated") == "1",
+		Reactivated:             c.Query("reactivated") == "1",
+		LifecycleErr:            strings.TrimSpace(c.Query("error")),
+		ShippingAddresses:       shippingAddrs,
 	}
 
 	// Seed the Details-tab form from the current customer record.
@@ -566,15 +563,16 @@ func (s *Server) handleCustomerCurrencyPolicySet(c *fiber.Ctx) error {
 		return redirectErr(c, "/customers", "invalid customer ID")
 	}
 	customerID := uint(customerID64)
+	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=details&edit=1"
 
 	policy := models.CustomerCurrencyPolicy(strings.TrimSpace(c.FormValue("policy")))
 	if policy != models.CustomerCurrencyPolicySingle && policy != models.CustomerCurrencyPolicyMultiAllowed {
 		policy = models.CustomerCurrencyPolicySingle
 	}
 	if err := services.SetCustomerCurrencyPolicy(s.DB, companyID, customerID, policy); err != nil {
-		return redirectErr(c, "/customers/"+strconv.FormatUint(customerID64, 10), "failed to update currency policy")
+		return redirectErr(c, detailEditPath, "failed to update currency policy")
 	}
-	return c.Redirect("/customers/"+strconv.FormatUint(customerID64, 10)+"?policy_saved=1", fiber.StatusSeeOther)
+	return c.Redirect(detailEditPath+"&policy_saved=1", fiber.StatusSeeOther)
 }
 
 // handleCustomerCurrencyPolicyAdd adds a currency to the customer's allowed currency list.
@@ -588,19 +586,19 @@ func (s *Server) handleCustomerCurrencyPolicyAdd(c *fiber.Ctx) error {
 		return redirectErr(c, "/customers", "invalid customer ID")
 	}
 	customerID := uint(customerID64)
-	idStr := strconv.FormatUint(customerID64, 10)
+	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=details&edit=1"
 
 	code := strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code_manual")))
 	if code == "" {
 		code = strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
 	}
 	if len(code) != 3 {
-		return redirectErr(c, "/customers/"+idStr, "currency code must be 3 letters")
+		return redirectErr(c, detailEditPath, "currency code must be 3 letters")
 	}
 	if err := services.AddCustomerAllowedCurrency(s.DB, companyID, customerID, code); err != nil {
-		return redirectErr(c, "/customers/"+idStr, "could not add currency: "+err.Error())
+		return redirectErr(c, detailEditPath, "could not add currency: "+err.Error())
 	}
-	return c.Redirect("/customers/"+idStr+"?policy_saved=1", fiber.StatusSeeOther)
+	return c.Redirect(detailEditPath+"&policy_saved=1", fiber.StatusSeeOther)
 }
 
 // handleCustomerCurrencyPolicyRemove removes a currency from the customer's allowed currency list.
@@ -614,16 +612,16 @@ func (s *Server) handleCustomerCurrencyPolicyRemove(c *fiber.Ctx) error {
 		return redirectErr(c, "/customers", "invalid customer ID")
 	}
 	customerID := uint(customerID64)
-	idStr := strconv.FormatUint(customerID64, 10)
+	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=details&edit=1"
 
 	code := strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
 	if len(code) != 3 {
-		return redirectErr(c, "/customers/"+idStr, "invalid currency code")
+		return redirectErr(c, detailEditPath, "invalid currency code")
 	}
 	if err := services.RemoveCustomerAllowedCurrency(s.DB, companyID, customerID, code); err != nil {
-		return redirectErr(c, "/customers/"+idStr, "could not remove currency")
+		return redirectErr(c, detailEditPath, "could not remove currency")
 	}
-	return c.Redirect("/customers/"+idStr, fiber.StatusSeeOther)
+	return c.Redirect(detailEditPath+"&policy_saved=1", fiber.StatusSeeOther)
 }
 
 // handleCustomerQuickCreate creates a minimal customer record from an inline

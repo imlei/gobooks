@@ -14,9 +14,10 @@ import (
 // Details tab. The optional `focus` hint (email / billing / etc.) is
 // reserved for a future "scroll to this field" enhancement — for now
 // the link just opens the tab. Kept as one function so every "Add X"
-// link on the page points at the same place.
+// link on the page points at the same place. Because "Add X" is an edit
+// intent, these links open Details in edit mode.
 func customerDetailsHref(customerID uint, _ string) string {
-	return fmt.Sprintf("/customers/%d?tab=details", customerID)
+	return fmt.Sprintf("/customers/%d?tab=details&edit=1", customerID)
 }
 
 // customerBillingLine renders the customer's billing address as a
