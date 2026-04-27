@@ -74,6 +74,8 @@ templ salesTxKPICell(href, amount, label, _ string) {
 // the page is fully server-rendered.
 templ salesTxFilterBar(vm SalesTxVM) {
 	<form method="get" action="/sales-transactions" class="rounded-lg border border-border bg-surface p-3 shadow-sm">
+		<input type="hidden" name="sort" value={ vm.SortBy }/>
+		<input type="hidden" name="dir" value={ vm.SortDir }/>
 		<div class="flex flex-wrap items-end gap-3">
 			<div class="min-w-[120px]">
 				<label class={ compactLabelClass() }>Batch actions</label>
@@ -179,13 +181,13 @@ templ salesTxTable(vm SalesTxVM) {
 				<thead class="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
 					<tr>
 						<th class="w-10 px-3 py-2"></th>
-						<th class="px-3 py-2">Date</th>
-						<th class="px-3 py-2">Type</th>
-						<th class="px-3 py-2">No.</th>
-						<th class="px-3 py-2">Customer</th>
+						@salesTxSortableHeader(vm, services.SalesTxSortDate, "Date", "")
+						@salesTxSortableHeader(vm, services.SalesTxSortType, "Type", "")
+						@salesTxSortableHeader(vm, services.SalesTxSortNumber, "No.", "")
+						@salesTxSortableHeader(vm, services.SalesTxSortCustomer, "Customer", "")
 						<th class="px-3 py-2">Memo</th>
-						<th class="px-3 py-2 text-right">Amount</th>
-						<th class="px-3 py-2">Status</th>
+						@salesTxSortableHeader(vm, services.SalesTxSortAmount, "Amount", "text-right")
+						@salesTxSortableHeader(vm, services.SalesTxSortStatus, "Status", "")
 						<th class="w-36 px-3 py-2 text-right">Action</th>
 					</tr>
 				</thead>
@@ -212,6 +214,15 @@ templ salesTxTable(vm SalesTxVM) {
 			</table>
 		</div>
 	</div>
+}
+
+templ salesTxSortableHeader(vm SalesTxVM, field string, label string, extraClass string) {
+	<th class={ "px-3 py-2 " + extraClass }>
+		<a href={ templ.SafeURL(salesTxSortHref(vm, field)) } class={ salesTxSortHeaderClass(extraClass) }>
+			<span>{ label }</span>
+			<span class={ salesTxSortIconClass(vm, field) }>{ salesTxSortIcon(vm, field) }</span>
+		</a>
+	</th>
 }
 
 templ salesTxRow(r services.SalesTxRow) {

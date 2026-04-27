@@ -237,6 +237,12 @@ func Migrate(db *gorm.DB) error {
 		&models.AIJobRun{},
 		&models.AIRequestLog{},
 		&models.SmartPickerDecisionTrace{},
+		&models.ReportUsageEvent{},
+		&models.ReportUsageStat{},
+		&models.DashboardUserWidget{},
+		&models.DashboardWidgetSuggestion{},
+		&models.ActionCenterTask{},
+		&models.ActionCenterTaskEvent{},
 		// User preferences (number format, etc.) — one row per user
 		&models.UserPreference{},
 		// Phase 8: per-secondary-book accounted amounts for each journal line.
@@ -1959,9 +1965,10 @@ func migratePhase12(db *gorm.DB) error {
 // AutoMigrate handles fresh installs; this guard adds the tables on live databases.
 //
 // Tables: quotes, quote_lines, sales_orders, sales_order_lines,
-//         customer_deposits, customer_deposit_applications,
-//         customer_receipts, payment_applications,
-//         ar_returns, ar_refunds.
+//
+//	customer_deposits, customer_deposit_applications,
+//	customer_receipts, payment_applications,
+//	ar_returns, ar_refunds.
 func migratePhase13(db *gorm.DB) error {
 	stmts := []string{
 		// quotes

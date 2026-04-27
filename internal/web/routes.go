@@ -197,6 +197,18 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	// SmartPicker 使用事件（fire-and-forget，用于未来的排名信号）
 	app.Post("/api/smart-picker/usage", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSmartPickerUsage)
 	app.Post("/api/smart-picker/learning/run", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleSmartPickerLearningRun)
+	app.Post("/api/report-usage", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleReportUsage)
+	app.Post("/api/dashboard/suggestions/run", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDashboardSuggestionsRun)
+	app.Get("/api/dashboard/suggestions", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDashboardSuggestionsList)
+	app.Post("/api/dashboard/suggestions/:id/accept", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDashboardSuggestionAccept)
+	app.Post("/api/dashboard/suggestions/:id/dismiss", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDashboardSuggestionDismiss)
+	app.Post("/api/dashboard/suggestions/:id/snooze", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleDashboardSuggestionSnooze)
+	app.Post("/api/action-center/tasks/run", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleActionCenterRun)
+	app.Get("/api/action-center/tasks", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleActionCenterTasks)
+	app.Post("/api/action-center/tasks/:id/start", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleActionCenterTaskStart)
+	app.Post("/api/action-center/tasks/:id/done", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleActionCenterTaskDone)
+	app.Post("/api/action-center/tasks/:id/dismiss", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleActionCenterTaskDismiss)
+	app.Post("/api/action-center/tasks/:id/snooze", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleActionCenterTaskSnooze)
 	app.Post("/api/customers/quick-create", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handleCustomerQuickCreate)
 	app.Post("/api/vendors/quick-create", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillCreate), s.handleVendorQuickCreate)
 
@@ -230,25 +242,25 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	// Legacy Invoice /pdf stays until G4-cleanup confirms parity. The other
 	// five document types had no PDF route at all before — pdf-v2 is the
 	// first PDF endpoint for Quote / SO / Bill / PO / Shipment.
-	app.Get("/invoices/:id/pdf-v2",         s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoicePDFV2)
-	app.Get("/quotes/:id/pdf-v2",           s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleQuotePDFV2)
-	app.Get("/sales-orders/:id/pdf-v2",     s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesOrderPDFV2)
-	app.Get("/bills/:id/pdf-v2",            s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBillPDFV2)
-	app.Get("/purchase-orders/:id/pdf-v2",  s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePurchaseOrderPDFV2)
-	app.Get("/shipments/:id/pdf-v2",        s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleShipmentPDFV2)
+	app.Get("/invoices/:id/pdf-v2", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoicePDFV2)
+	app.Get("/quotes/:id/pdf-v2", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleQuotePDFV2)
+	app.Get("/sales-orders/:id/pdf-v2", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesOrderPDFV2)
+	app.Get("/bills/:id/pdf-v2", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleBillPDFV2)
+	app.Get("/purchase-orders/:id/pdf-v2", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePurchaseOrderPDFV2)
+	app.Get("/shipments/:id/pdf-v2", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleShipmentPDFV2)
 	// Phase 3 G6: PDF template management page (list / clone / set-default / delete / preview).
 	// Editing the schema_json itself is G7 — this commit only exposes the
 	// "pick which template renders" surface area.
-	app.Get("/pdf-templates",                 s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatesList)
-	app.Get("/pdf-templates/:id/preview",     s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatePreview)
-	app.Post("/pdf-templates/:id/clone",      s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateClone)
+	app.Get("/pdf-templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatesList)
+	app.Get("/pdf-templates/:id/preview", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatePreview)
+	app.Post("/pdf-templates/:id/clone", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateClone)
 	app.Post("/pdf-templates/:id/set-default", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateSetDefault)
-	app.Post("/pdf-templates/:id/delete",     s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateDelete)
+	app.Post("/pdf-templates/:id/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateDelete)
 	// Phase 3 G7: visual editor + save endpoints + HTML preview backend.
-	app.Get("/pdf-templates/:id/edit",        s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplateEdit)
+	app.Get("/pdf-templates/:id/edit", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplateEdit)
 	app.Post("/pdf-templates/:id/save-schema", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateSaveSchema)
-	app.Post("/pdf-templates/:id/save-as",    s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateSaveAs)
-	app.Post("/pdf-templates/preview-html",   s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatePreviewHTML)
+	app.Post("/pdf-templates/:id/save-as", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceCreate), s.handlePDFTemplateSaveAs)
+	app.Post("/pdf-templates/preview-html", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handlePDFTemplatePreviewHTML)
 
 	// Invoice lifecycle management (issue → send → mark paid / void)
 	app.Post("/invoices/:id/save-task-draft", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceUpdate), s.handleInvoiceSaveTaskDraft)

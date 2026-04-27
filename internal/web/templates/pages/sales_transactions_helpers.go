@@ -273,6 +273,26 @@ func salesTxPageEnd(vm SalesTxVM) int {
 // salesTxPageHref builds a URL preserving the current filter state plus
 // a target page number. Preserves every filter the VM echoes back.
 func salesTxPageHref(vm SalesTxVM, page int) string {
+	q := salesTxQueryValues(vm)
+	if vm.PageSize != 0 && vm.PageSize != 50 {
+		q.Set("size", strconv.Itoa(vm.PageSize))
+	}
+	q.Set("page", strconv.Itoa(page))
+	return "/sales-transactions?" + q.Encode()
+}
+
+func salesTxSortHref(vm SalesTxVM, field string) string {
+	q := salesTxQueryValues(vm)
+	q.Set("sort", field)
+	q.Set("dir", salesTxNextSortDir(vm, field))
+	if vm.PageSize != 0 && vm.PageSize != 50 {
+		q.Set("size", strconv.Itoa(vm.PageSize))
+	}
+	q.Set("page", "1")
+	return "/sales-transactions?" + q.Encode()
+}
+
+func salesTxQueryValues(vm SalesTxVM) url.Values {
 	q := url.Values{}
 	if vm.TypeFilter != "" {
 		q.Set("type", vm.TypeFilter)
@@ -295,10 +315,54 @@ func salesTxPageHref(vm SalesTxVM, page int) string {
 	if vm.Search != "" {
 		q.Set("q", vm.Search)
 	}
-	if vm.PageSize != 0 && vm.PageSize != 50 {
-		q.Set("size", strconv.Itoa(vm.PageSize))
+	if vm.SortBy != "" {
+		q.Set("sort", vm.SortBy)
 	}
-	q.Set("page", strconv.Itoa(page))
-	return "/sales-transactions?" + q.Encode()
+	if vm.SortDir != "" {
+		q.Set("dir", vm.SortDir)
+	}
+	return q
 }
 
+func salesTxNextSortDir(vm SalesTxVM, field string) string {
+	sortBy, sortDir := services.NormalizeSalesTxSort(vm.SortBy, vm.SortDir)
+	if sortBy == field {
+		if sortDir == services.SalesTxSortAsc {
+			return services.SalesTxSortDesc
+		}
+		return services.SalesTxSortAsc
+	}
+	switch field {
+	case services.SalesTxSortType, services.SalesTxSortNumber, services.SalesTxSortCustomer, services.SalesTxSortStatus:
+		return services.SalesTxSortAsc
+	default:
+		return services.SalesTxSortDesc
+	}
+}
+
+func salesTxSortIcon(vm SalesTxVM, field string) string {
+	sortBy, sortDir := services.NormalizeSalesTxSort(vm.SortBy, vm.SortDir)
+	if sortBy != field {
+		return ""
+	}
+	if sortDir == services.SalesTxSortAsc {
+		return "↑"
+	}
+	return "↓"
+}
+
+func salesTxSortHeaderClass(extraClass string) string {
+	base := "inline-flex items-center gap-1 hover:text-text"
+	if strings.Contains(extraClass, "text-right") {
+		return base + " w-full justify-end"
+	}
+	return base
+}
+
+func salesTxSortIconClass(vm SalesTxVM, field string) string {
+	sortBy, _ := services.NormalizeSalesTxSort(vm.SortBy, vm.SortDir)
+	if sortBy == field {
+		return "text-primary"
+	}
+	return "text-text-muted3"
+}

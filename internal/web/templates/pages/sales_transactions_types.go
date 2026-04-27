@@ -26,6 +26,8 @@ type SalesTxVM struct {
 	CustomerID     uint
 	CustomerLabel  string
 	Search         string
+	SortBy         string
+	SortDir        string
 
 	// Dropdown sources.
 	Customers []models.Customer
@@ -34,9 +36,9 @@ type SalesTxVM struct {
 	Rows []services.SalesTxRow
 
 	// Pagination.
-	Page     int
-	PageSize int
-	Total    int
+	Page       int
+	PageSize   int
+	Total      int
 	TotalPages int
 
 	// SelectedTotal — when the UI passes selected row IDs back via

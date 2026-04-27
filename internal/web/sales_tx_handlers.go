@@ -38,6 +38,7 @@ func (s *Server) handleSalesTransactions(c *fiber.Ctx) error {
 	customTo := strings.TrimSpace(c.Query("to"))
 	statusFilter := strings.TrimSpace(c.Query("status"))
 	search := strings.TrimSpace(c.Query("q"))
+	sortBy, sortDir := services.NormalizeSalesTxSort(c.Query("sort"), c.Query("dir"))
 
 	var customerID uint
 	if cid := strings.TrimSpace(c.Query("customer_id")); cid != "" {
@@ -67,6 +68,8 @@ func (s *Server) handleSalesTransactions(c *fiber.Ctx) error {
 		CustomerID: customerID,
 		Status:     statusFilter,
 		Search:     search,
+		SortBy:     sortBy,
+		SortDir:    sortDir,
 	}
 
 	rows, total, err := services.ListSalesTransactions(s.DB, companyID, filter, page, size)
@@ -107,6 +110,8 @@ func (s *Server) handleSalesTransactions(c *fiber.Ctx) error {
 		CustomerID:    customerID,
 		CustomerLabel: customerLabel,
 		Search:        search,
+		SortBy:        sortBy,
+		SortDir:       sortDir,
 		Customers:     customers,
 		Rows:          rows,
 		Page:          page,

@@ -16,8 +16,14 @@ const (
 	TaskSmartPickerLearningSummary       TaskType = "smartpicker_learning_summary"
 	TaskSmartPickerAliasSuggestion       TaskType = "smartpicker_alias_suggestion"
 	TaskSmartPickerRankingHintGeneration TaskType = "smartpicker_ranking_hint_generation"
+	TaskReportUsageSummary               TaskType = "report_usage_summary"
+	TaskDashboardWidgetRecommendation    TaskType = "dashboard_widget_recommendation"
+	TaskDashboardSummary                 TaskType = "dashboard_summary"
+	TaskTaskPrioritySummary              TaskType = "task_priority_summary"
+	TaskBusinessActionSuggestion         TaskType = "business_action_suggestion"
 	TaskReceiptOCRExtract                TaskType = "receipt_ocr_extract"
 	TaskInvoiceFieldExtract              TaskType = "invoice_field_extract"
+	TaskBillFieldExtract                 TaskType = "bill_field_extract"
 	TaskBankMemoParse                    TaskType = "bank_memo_parse"
 	TaskAccountingCommandParse           TaskType = "accounting_command_parse"
 	TaskFinancialInsightSummary          TaskType = "financial_insight_summary"
@@ -105,9 +111,9 @@ func (r ModelRouter) SelectModel(_ context.Context, taskType TaskType, _ uint, _
 	provider := r.cfg.AIDefaultProvider
 	model := r.cfg.AIDefaultCheapModel
 	switch taskType {
-	case TaskReceiptOCRExtract:
+	case TaskReceiptOCRExtract, TaskInvoiceFieldExtract, TaskBillFieldExtract:
 		model = firstNonEmptyModel(r.cfg.AIDefaultVisionModel, r.cfg.AIDefaultAdvancedModel, r.cfg.AIDefaultCheapModel)
-	case TaskAccountingCommandParse, TaskFinancialInsightSummary, TaskAnomalyExplanation:
+	case TaskAccountingCommandParse, TaskFinancialInsightSummary, TaskAnomalyExplanation, TaskBusinessActionSuggestion:
 		model = firstNonEmptyModel(r.cfg.AIDefaultAdvancedModel, r.cfg.AIDefaultCheapModel)
 	default:
 		model = firstNonEmptyModel(r.cfg.AIDefaultCheapModel, r.cfg.AIDefaultAdvancedModel)
@@ -124,6 +130,9 @@ func NewPromptRegistry() PromptRegistry {
 		TaskSmartPickerLearningSummary:       "smartpicker_learning_summary.v1",
 		TaskSmartPickerAliasSuggestion:       "smartpicker_alias_suggestion.v1",
 		TaskSmartPickerRankingHintGeneration: "smartpicker_ranking_hint_generation.v1",
+		TaskReportUsageSummary:               "report_usage_summary.v1",
+		TaskDashboardWidgetRecommendation:    "dashboard_widget_recommendation.v1",
+		TaskTaskPrioritySummary:              "task_priority_summary.v1",
 		TaskAccountingCommandParse:           "accounting_command_parse.v1",
 	}}
 }

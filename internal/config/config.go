@@ -63,6 +63,10 @@ type Config struct {
 	SmartPickerAIHintAutoApply         bool
 	SmartPickerTraceEnabled            bool
 	SmartPickerDecisionTraceSampleRate float64
+	ReportUsageLearningEnabled         bool
+	DashboardRecommendationEnabled     bool
+	ActionCenterEnabled                bool
+	AITaskSuggestionsEnabled           bool
 
 	// Provider-agnostic AI gateway foundation. Disabled unless explicitly enabled.
 	AIGatewayEnabled       bool
@@ -101,6 +105,10 @@ func Load() (Config, error) {
 		SmartPickerAIHintAutoApply:         getenvBool("SMART_PICKER_AI_HINT_AUTO_APPLY", false),
 		SmartPickerTraceEnabled:            getenvBool("SMART_PICKER_TRACE_ENABLED", false),
 		SmartPickerDecisionTraceSampleRate: clamp01(getenvFloat("SMART_PICKER_DECISION_TRACE_SAMPLE_RATE", 0)),
+		ReportUsageLearningEnabled:         getenvBool("REPORT_USAGE_LEARNING_ENABLED", true),
+		DashboardRecommendationEnabled:     getenvBool("DASHBOARD_RECOMMENDATION_ENABLED", true),
+		ActionCenterEnabled:                getenvBool("ACTION_CENTER_ENABLED", true),
+		AITaskSuggestionsEnabled:           getenvBool("AI_TASK_SUGGESTIONS_ENABLED", false),
 		AIGatewayEnabled:                   getenvBool("AI_GATEWAY_ENABLED", false),
 		AIDefaultProvider:                  getenv("AI_DEFAULT_PROVIDER", ""),
 		AIDefaultCheapModel:                getenv("AI_DEFAULT_CHEAP_MODEL", ""),

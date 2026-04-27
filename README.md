@@ -11,6 +11,7 @@ Built on Go · Fiber · GORM · PostgreSQL · Templ · Alpine.js · Tailwind CSS
 ## Table of Contents
 
 - [What's new in 0.0.16](#whats-new-in-0016)
+- [AI Product Architecture](#ai-product-architecture)
 - [Quick Start — Docker](#quick-start--docker)
 - [Local Development](#local-development)
 - [Production Deployment](#production-deployment)
@@ -36,6 +37,21 @@ This release establishes the SmartPicker recommendation and AI learning foundati
 - Natural-language accounting copilot interfaces are scaffolded for future draft/review workflows, with no auto-posting.
 
 See `RELEASE_NOTES_0.0.16.md` for the implementation record.
+
+---
+
+## AI Product Architecture
+
+GoBooks AI is governed by `AI_PRODUCT_ARCHITECTURE.md`.
+
+The architecture separates four layers:
+
+- Business Truth Layer: accounting, posting, tax, reconciliation, permission, and audit engines remain authoritative.
+- AI Learning Module: learns company-scoped behavior and habits without mutating accounting truth.
+- AI Output Module: turns learning into recommendations, dashboard suggestions, tasks, insights, OCR output, and reviewable drafts.
+- AI Infrastructure Layer: owns AI Gateway, model routing, prompts, job runs, request logs, validation, traces, cost controls, and feature flags.
+
+Core rule: AI can assist, but GoBooks backend engines remain the accountant of record.
 
 ---
 

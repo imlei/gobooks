@@ -29,21 +29,37 @@ type SalesTxFilter struct {
 	Status string
 	// Search does a LIKE match on document number and memo.
 	Search string
+	// SortBy / SortDir control the merged feed order before pagination.
+	// Empty or invalid values fall back to date desc.
+	SortBy  string
+	SortDir string
 }
 
 // SalesTxType constants — the canonical "type" discriminator for rows
 // returned by ListSalesTransactions. These double as filter values.
 const (
-	SalesTxTypeInvoice      = "invoice"
-	SalesTxTypeQuote        = "quote"
-	SalesTxTypeSalesOrder   = "sales_order"
-	SalesTxTypePayment      = "payment"     // CustomerReceipt
-	SalesTxTypeCreditNote   = "credit_note"
-	SalesTxTypeReturn       = "return"
+	SalesTxTypeInvoice    = "invoice"
+	SalesTxTypeQuote      = "quote"
+	SalesTxTypeSalesOrder = "sales_order"
+	SalesTxTypePayment    = "payment" // CustomerReceipt
+	SalesTxTypeCreditNote = "credit_note"
+	SalesTxTypeReturn     = "return"
 
 	// Pseudo-types: map to a base type + pre-applied filter.
 	SalesTxPseudoUnbilled     = "unbilled"      // confirmed/partial SOs
 	SalesTxPseudoRecentlyPaid = "recently_paid" // confirmed customer receipts, last 7d
+)
+
+const (
+	SalesTxSortDate     = "date"
+	SalesTxSortType     = "type"
+	SalesTxSortNumber   = "number"
+	SalesTxSortCustomer = "customer"
+	SalesTxSortAmount   = "amount"
+	SalesTxSortStatus   = "status"
+
+	SalesTxSortAsc  = "asc"
+	SalesTxSortDesc = "desc"
 )
 
 // SalesTxRow is one row in the unified Sales Transactions list.
@@ -61,7 +77,7 @@ type SalesTxRow struct {
 	Memo         string
 	Amount       decimal.Decimal
 	Currency     string
-	Status       string    // native status string for the document
+	Status       string     // native status string for the document
 	DueDate      *time.Time // only populated for Invoice (drives Overdue display)
 	// DetailURL is the canonical deep-link for this row's View/Edit action.
 	DetailURL string
@@ -96,8 +112,8 @@ type SalesTxKPI struct {
 }
 
 // ListSalesTransactions returns a page of unified sales transaction rows
-// for the given company + filter combination. Rows are sorted by date
-// DESC (then ID DESC for stable ordering on same-date rows).
+// for the given company + filter combination. Rows are sorted after the
+// per-type slices are merged, then paginated.
 //
 // Implementation: loads each document type separately (respecting the
 // filter's Type selector to skip irrelevant types), merges into a single
@@ -186,16 +202,7 @@ func ListSalesTransactions(db *gorm.DB, companyID uint, f SalesTxFilter, page, s
 		all = append(all, rows...)
 	}
 
-	// Sort DESC by Date, then by Type+ID for stability.
-	sort.SliceStable(all, func(i, j int) bool {
-		if !all[i].Date.Equal(all[j].Date) {
-			return all[i].Date.After(all[j].Date)
-		}
-		if all[i].Type != all[j].Type {
-			return all[i].Type < all[j].Type
-		}
-		return all[i].ID > all[j].ID
-	})
+	sortSalesTransactions(all, f.SortBy, f.SortDir)
 
 	total := len(all)
 	start := (page - 1) * size
@@ -213,6 +220,93 @@ func ListSalesTransactions(db *gorm.DB, companyID uint, f SalesTxFilter, page, s
 // Per-type loaders. Each applies the shared filter's date range + customer
 // + search + status (when applicable) and emits a slice of SalesTxRow.
 // ──────────────────────────────────────────────────────────────────────
+
+func NormalizeSalesTxSort(sortBy, sortDir string) (string, string) {
+	field := strings.ToLower(strings.TrimSpace(sortBy))
+	switch field {
+	case "", SalesTxSortDate:
+		field = SalesTxSortDate
+	case SalesTxSortType, SalesTxSortNumber, SalesTxSortCustomer, SalesTxSortAmount, SalesTxSortStatus:
+	default:
+		return SalesTxSortDate, SalesTxSortDesc
+	}
+
+	dir := strings.ToLower(strings.TrimSpace(sortDir))
+	switch dir {
+	case SalesTxSortAsc, SalesTxSortDesc:
+	default:
+		dir = salesTxDefaultSortDir(field)
+	}
+	return field, dir
+}
+
+func salesTxDefaultSortDir(field string) string {
+	switch field {
+	case SalesTxSortType, SalesTxSortNumber, SalesTxSortCustomer, SalesTxSortStatus:
+		return SalesTxSortAsc
+	default:
+		return SalesTxSortDesc
+	}
+}
+
+func sortSalesTransactions(rows []SalesTxRow, sortBy, sortDir string) {
+	field, dir := NormalizeSalesTxSort(sortBy, sortDir)
+	sort.SliceStable(rows, func(i, j int) bool {
+		cmp := compareSalesTxRows(rows[i], rows[j], field)
+		if cmp == 0 {
+			return compareSalesTxRowsFallback(rows[i], rows[j]) < 0
+		}
+		if dir == SalesTxSortAsc {
+			return cmp < 0
+		}
+		return cmp > 0
+	})
+}
+
+func compareSalesTxRows(a, b SalesTxRow, field string) int {
+	switch field {
+	case SalesTxSortDate:
+		return compareSalesTxTime(a.Date, b.Date)
+	case SalesTxSortType:
+		return strings.Compare(strings.ToLower(a.Type), strings.ToLower(b.Type))
+	case SalesTxSortNumber:
+		return strings.Compare(strings.ToLower(a.Number), strings.ToLower(b.Number))
+	case SalesTxSortCustomer:
+		return strings.Compare(strings.ToLower(a.CustomerName), strings.ToLower(b.CustomerName))
+	case SalesTxSortAmount:
+		return a.Amount.Cmp(b.Amount)
+	case SalesTxSortStatus:
+		return strings.Compare(strings.ToLower(a.Status), strings.ToLower(b.Status))
+	default:
+		return compareSalesTxTime(a.Date, b.Date)
+	}
+}
+
+func compareSalesTxRowsFallback(a, b SalesTxRow) int {
+	if cmp := compareSalesTxTime(a.Date, b.Date); cmp != 0 {
+		return -cmp // fallback date desc
+	}
+	if a.Type != b.Type {
+		return strings.Compare(a.Type, b.Type)
+	}
+	if a.ID < b.ID {
+		return 1 // fallback ID desc
+	}
+	if a.ID > b.ID {
+		return -1
+	}
+	return 0
+}
+
+func compareSalesTxTime(a, b time.Time) int {
+	if a.Before(b) {
+		return -1
+	}
+	if a.After(b) {
+		return 1
+	}
+	return 0
+}
 
 func loadInvoicesForSalesTx(db *gorm.DB, companyID uint, f SalesTxFilter) ([]SalesTxRow, error) {
 	q := db.Model(&models.Invoice{}).
