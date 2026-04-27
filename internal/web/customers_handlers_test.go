@@ -60,6 +60,70 @@ func TestCustomersPageShowsBillableSummary(t *testing.T) {
 	}
 }
 
+func TestCustomersPageOmitsSearchAndSortsNameEmail(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Customer Sort Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+
+	alphaID := seedValidationCustomer(t, db, companyID, "Alpha Sort Customer")
+	zuluID := seedValidationCustomer(t, db, companyID, "Zulu Sort Customer")
+	if err := db.Model(&models.Customer{}).Where("id = ?", alphaID).Update("email", "alpha@example.com").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&models.Customer{}).Where("id = ?", zuluID).Update("email", "zeta@example.com").Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	resp := performRequest(t, app, "/customers?q=alpha", rawToken)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	body := readResponseBody(t, resp)
+	for _, notWant := range []string{"customers-filter-q", "Name or email"} {
+		if strings.Contains(body, notWant) {
+			t.Fatalf("customers page should not render search control %q", notWant)
+		}
+	}
+	for _, want := range []string{"Alpha Sort Customer", "Zulu Sort Customer", "sort=name", "sort=email", "dir=desc"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected customers page to contain %q", want)
+		}
+	}
+	if strings.Index(body, "Alpha Sort Customer") > strings.Index(body, "Zulu Sort Customer") {
+		t.Fatal("default customer sort should be name ascending")
+	}
+
+	resp = performRequest(t, app, "/customers?sort=email&dir=desc", rawToken)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	body = readResponseBody(t, resp)
+	for _, want := range []string{"zeta@example.com", "alpha@example.com"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected customers page to contain %q", want)
+		}
+	}
+	if strings.Index(body, "zeta@example.com") > strings.Index(body, "alpha@example.com") {
+		t.Fatal("email descending sort should put zeta@example.com before alpha@example.com")
+	}
+
+	resp = performRequest(t, app, "/customers?sort=unsafe&dir=drop", rawToken)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	body = readResponseBody(t, resp)
+	for _, want := range []string{"Alpha Sort Customer", "Zulu Sort Customer"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected customers page to contain %q", want)
+		}
+	}
+	if strings.Index(body, "Alpha Sort Customer") > strings.Index(body, "Zulu Sort Customer") {
+		t.Fatal("invalid customer sort should fall back to name ascending")
+	}
+}
+
 func TestCustomerDetailPageHappyPath(t *testing.T) {
 	db := testRouteDB(t)
 	companyID := seedCompany(t, db, "Customer Workspace Co")

@@ -43,11 +43,15 @@ type CustomersVM struct {
 
 	BillableSummaries map[uint]services.CustomerBillableSummary
 
-	// FilterQ is the search box value — substring match against name + email.
+	// FilterQ is retained for old /customers?q=... links but no longer filters
+	// the list page because the customer search box was removed from the UI.
 	FilterQ string
 	// FilterStatus is one of "active" (default), "inactive", "all". Echoed
 	// back into the Status select.
 	FilterStatus string
+	// SortBy is one of "name" or "email"; SortDir is "asc" or "desc".
+	SortBy  string
+	SortDir string
 	// InactiveCustomerCount is the total inactive count regardless of the
 	// current filter. Surfaces in the Status select option label so the
 	// operator sees how many records are hidden by the default filter.
@@ -130,8 +134,8 @@ type CustomerDetailVM struct {
 	RefundTotal decimal.Decimal
 
 	// Phase 12: currency policy management
-	AllowedCurrencies []models.CustomerAllowedCurrency
-	BaseCurrencyCode  string
+	AllowedCurrencies   []models.CustomerAllowedCurrency
+	BaseCurrencyCode    string
 	CurrencyPolicySaved bool
 	CurrencyPolicyError string
 
@@ -165,10 +169,10 @@ type CustomerDetailVM struct {
 	// Lifecycle: drives the Delete / Deactivate / Reactivate button set in the
 	// page header. HasRecords = true means any AR document references this
 	// customer — full deletion is blocked; Deactivate is the only option.
-	HasRecords    bool
-	Deactivated   bool // flash banner: just deactivated
-	Reactivated   bool // flash banner: just reactivated
-	LifecycleErr  string
+	HasRecords   bool
+	Deactivated  bool // flash banner: just deactivated
+	Reactivated  bool // flash banner: just reactivated
+	LifecycleErr string
 
 	// Migration 088: multi-shipping-address catalogue. Rendered as a dedicated
 	// card on the detail page with inline add form + per-row delete / set-default.

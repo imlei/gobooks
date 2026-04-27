@@ -3,6 +3,8 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
+
 	"gobooks/internal/web/templates/layout"
 	"gobooks/internal/web/templates/ui"
 )
@@ -53,16 +55,13 @@ templ bodyCustomers(vm CustomersVM) {
 			</div>
 		}
 
-		// Filter bar — Search box + Status select. Mirrors the AR/AP list-page
-		// pattern (Sales Orders, Quotes, etc.). The Status select replaces the
+		// Filter bar. The Status select replaces the
 		// old "Show inactive (N)" link — same info (inactive count appears in
 		// the option label), but now you can also pick "All" to see both.
 		<form method="get" action="/customers" class="mt-6 rounded-lg border border-border bg-surface p-4">
+			<input type="hidden" name="sort" value={ vm.SortBy }/>
+			<input type="hidden" name="dir" value={ vm.SortDir }/>
 			<div class="flex flex-wrap items-end gap-3">
-				<div class="min-w-[260px] flex-1">
-					<label for="customers-filter-q" class={ compactLabelClass() }>Search</label>
-					<input id="customers-filter-q" type="text" name="q" value={ vm.FilterQ } placeholder="Name or email…" autocomplete="off" class={ listFilterInputClass() }/>
-				</div>
 				<div class="min-w-[180px]">
 					<label for="customers-filter-status" class={ compactLabelClass() }>Status</label>
 					<select id="customers-filter-status" name="status" class={ listFilterInputClass() }>
@@ -84,8 +83,18 @@ templ bodyCustomers(vm CustomersVM) {
 				<table class="w-full text-left text-body">
 					<thead class="text-small uppercase tracking-wider text-text-muted">
 						<tr class="border-b border-border">
-							<th class="py-3 pr-4">Name</th>
-							<th class="py-3 pr-4">Email</th>
+							<th class="py-3 pr-4">
+								<a href={ customerSortHref(vm, "name") } class="inline-flex items-center gap-1 hover:text-text">
+									<span>Name</span>
+									<span class={ customerSortIconClass(vm, "name") }>{ customerSortIcon(vm, "name") }</span>
+								</a>
+							</th>
+							<th class="py-3 pr-4">
+								<a href={ customerSortHref(vm, "email") } class="inline-flex items-center gap-1 hover:text-text">
+									<span>Email</span>
+									<span class={ customerSortIconClass(vm, "email") }>{ customerSortIcon(vm, "email") }</span>
+								</a>
+							</th>
 							<th class="py-3 pr-4">Address</th>
 							<th class="py-3 pr-4">Payment term</th>
 							<th class="py-3 pr-4">Unbilled labor</th>
@@ -339,6 +348,40 @@ func custInputClass(hasErr bool) string {
 		return base + "border-danger focus:ring-danger-focus"
 	}
 	return base + "border-border-input focus:ring-primary-focus"
+}
+
+func customerSortHref(vm CustomersVM, field string) string {
+	q := url.Values{}
+	if vm.FilterStatus != "" && vm.FilterStatus != "active" {
+		q.Set("status", vm.FilterStatus)
+	}
+	q.Set("sort", field)
+	q.Set("dir", customerNextSortDir(vm, field))
+	return "/customers?" + q.Encode()
+}
+
+func customerNextSortDir(vm CustomersVM, field string) string {
+	if vm.SortBy == field && vm.SortDir == "asc" {
+		return "desc"
+	}
+	return "asc"
+}
+
+func customerSortIcon(vm CustomersVM, field string) string {
+	if vm.SortBy != field {
+		return ""
+	}
+	if vm.SortDir == "desc" {
+		return "v"
+	}
+	return "^"
+}
+
+func customerSortIconClass(vm CustomersVM, field string) string {
+	if vm.SortBy == field {
+		return "text-primary"
+	}
+	return "text-text-muted3"
 }
 
 // custCurrencyOptions converts the VM currency list to SelectOption slice.

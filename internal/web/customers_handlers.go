@@ -27,6 +27,7 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 
 	filterQ := strings.TrimSpace(c.Query("q"))
 	filterStatus := normaliseListStatus(c.Query("status"))
+	sortBy, sortDir, orderClause := normaliseCustomerListSort(c.Query("sort"), c.Query("dir"))
 
 	vm := pages.CustomersVM{
 		HasCompany:       true,
@@ -38,6 +39,8 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 		Currencies:       currencies,
 		FilterQ:          filterQ,
 		FilterStatus:     filterStatus,
+		SortBy:           sortBy,
+		SortDir:          sortDir,
 	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
@@ -53,11 +56,7 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 	default:
 		listQuery = listQuery.Where("is_active = true")
 	}
-	if filterQ != "" {
-		like := "%" + strings.ToLower(filterQ) + "%"
-		listQuery = listQuery.Where("LOWER(name) LIKE ? OR LOWER(email) LIKE ?", like, like)
-	}
-	if err := listQuery.Order("name asc").Find(&vm.Customers).Error; err != nil {
+	if err := listQuery.Order(orderClause).Find(&vm.Customers).Error; err != nil {
 		vm.FormError = "Could not load customers."
 		vm.Customers = []models.Customer{}
 		return pages.Customers(vm).Render(c.Context(), c)
@@ -93,6 +92,27 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 	}
 
 	return pages.Customers(vm).Render(c.Context(), c)
+}
+
+func normaliseCustomerListSort(rawSort, rawDir string) (string, string, string) {
+	sortBy := strings.ToLower(strings.TrimSpace(rawSort))
+	switch sortBy {
+	case "email":
+	default:
+		sortBy = "name"
+	}
+
+	sortDir := strings.ToLower(strings.TrimSpace(rawDir))
+	if sortDir != "desc" {
+		sortDir = "asc"
+	}
+
+	switch sortBy {
+	case "email":
+		return sortBy, sortDir, "LOWER(email) " + sortDir + ", LOWER(name) asc, id asc"
+	default:
+		return sortBy, sortDir, "LOWER(name) " + sortDir + ", id asc"
+	}
 }
 
 func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
