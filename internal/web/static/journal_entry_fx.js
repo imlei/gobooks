@@ -1,5 +1,5 @@
 // journal_entry_fx.js — GoBooks Journal Entry Alpine component.
-// v=2
+// v=4
 function gobooksJournalEntryDraft() {
   let accounts = [];
   try {
@@ -22,6 +22,7 @@ function gobooksJournalEntryDraft() {
   }
 
   const RECENT_MAX = 8;
+  const MAX_LINES = 50;
   const RECENT_LS_PREFIX = "gobooks:journalRecentAccountIds:v1:";
 
   function recentStorageKey(companyId) {
@@ -278,17 +279,18 @@ function gobooksJournalEntryDraft() {
       this.persist();
     },
 
-    selectAccount(line, account) {
+    selectAccount(line, account, idx) {
       line.account_id = String(account.id);
       line.acctQuery = this.formatAccountLabel(account);
       line.acctOpen = false;
       line.acctHi = -1;
       this.recordRecentAccountId(account.id);
       this.recalc();
+      this.autoGrowIfNeeded(line, idx);
       this.persist();
     },
 
-    onAcctKeydown(line, event) {
+    onAcctKeydown(line, event, idx) {
       if (!line.acctOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
         line.acctOpen = true;
       }
@@ -320,11 +322,11 @@ function gobooksJournalEntryDraft() {
       if (event.key === "Enter") {
         event.preventDefault();
         if (list.length === 1) {
-          this.selectAccount(line, list[0]);
+          this.selectAccount(line, list[0], idx);
           return;
         }
         if (line.acctHi >= 0 && line.acctHi < list.length) {
-          this.selectAccount(line, list[line.acctHi]);
+          this.selectAccount(line, list[line.acctHi], idx);
         }
       }
     },
@@ -361,6 +363,9 @@ function gobooksJournalEntryDraft() {
             this.header = { ...this.header, ...draft.header };
             this.fx = { ...this.fx, ...(draft.fx || {}) };
             this.lines = draft.lines.map((line) => this.normalizeLine(line));
+            if (this.lines.length > MAX_LINES) {
+              this.lines = this.lines.slice(0, MAX_LINES);
+            }
           }
         } catch (e) {}
       }
@@ -427,7 +432,20 @@ function gobooksJournalEntryDraft() {
     },
 
     addLine() {
+      if (this.lines.length >= MAX_LINES) {
+        return;
+      }
       this.lines.push(this.newLine());
+      this.recalc();
+      this.persist();
+    },
+
+    insertLineBelow(idx) {
+      if (this.lines.length >= MAX_LINES) {
+        return;
+      }
+      const pos = Math.max(0, Math.min(this.lines.length, idx + 1));
+      this.lines.splice(pos, 0, this.newLine());
       this.recalc();
       this.persist();
     },
@@ -441,19 +459,52 @@ function gobooksJournalEntryDraft() {
       this.persist();
     },
 
-    onDebitInput(line) {
+    lineIndex(line) {
+      if (!line || !line.key) {
+        return -1;
+      }
+      return this.lines.findIndex((row) => row.key === line.key);
+    },
+
+    lineIsComplete(line) {
+      if (!line || line.account_id === "") {
+        return false;
+      }
+      const debit = this.parseMoney(line.debit);
+      const credit = this.parseMoney(line.credit);
+      return (debit && debit > 0) || (credit && credit > 0);
+    },
+
+    autoGrowIfNeeded(line, idx) {
+      const pos = Number.isInteger(idx) ? idx : this.lineIndex(line);
+      if (pos < 0 || pos !== this.lines.length - 1 || this.lines.length >= MAX_LINES) {
+        return;
+      }
+      if (this.lineIsComplete(line)) {
+        this.lines.push(this.newLine());
+      }
+    },
+
+    onLineTouched(line, idx) {
+      this.autoGrowIfNeeded(line, idx);
+      this.persist();
+    },
+
+    onDebitInput(line, idx) {
       if (line.debit && line.debit.trim() !== "") {
         line.credit = "";
       }
       this.recalc();
+      this.autoGrowIfNeeded(line, idx);
       this.persist();
     },
 
-    onCreditInput(line) {
+    onCreditInput(line, idx) {
       if (line.credit && line.credit.trim() !== "") {
         line.debit = "";
       }
       this.recalc();
+      this.autoGrowIfNeeded(line, idx);
       this.persist();
     },
 

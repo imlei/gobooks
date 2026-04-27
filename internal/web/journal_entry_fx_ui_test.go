@@ -34,15 +34,22 @@ func TestJournalEntryPage_UsesFXBlockDarkControlsAndSingleInitPath(t *testing.T)
 		`@input="onRateInput()"`,
 		`Transaction Difference`,
 		`Base Difference`,
-		`/static/journal_entry_fx.js?v=3`,
+		`/static/journal_entry_fx.js?v=4`,
 		`text-right font-mono tabular-nums`,
 		`bg-surface px-3 py-2 text-body text-text`,
 		// JE Date drives FX date: @change handler must be wired on the date input.
 		`@change="onDateChange()"`,
+		`@click="insertLineBelow(idx)"`,
+		`@click="removeLine(idx)"`,
+		`:class="line.acctOpen ? 'relative z-50' : 'relative z-0'"`,
+		`w-[360px] max-w-[40vw]`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("expected journal entry HTML to contain %q", want)
 		}
+	}
+	if strings.Contains(html, `@click="addLine()"><span>+</span><span>Add</span></button>`) {
+		t.Fatal("journal entry lines should use per-row insert controls instead of a top-right add button")
 	}
 	if strings.Contains(html, `x-init="init()"`) {
 		t.Fatal("journal entry page should rely on Alpine auto-init and must not call init() twice")
@@ -119,10 +126,10 @@ func TestJournalEntryDetailPage_RendersImmutableFXSnapshotBlock(t *testing.T) {
 			{AccountCode: "1000", AccountName: "Cash", TxDebit: "100.00", Debit: "137.00"},
 			{AccountCode: "4000", AccountName: "Revenue", TxCredit: "100.00", Credit: "137.00"},
 		},
-		TxDebitTotal:   "100.00",
-		TxCreditTotal:  "100.00",
-		BaseDebitTotal: "137.00",
-		BaseCreditTotal:"137.00",
+		TxDebitTotal:    "100.00",
+		TxCreditTotal:   "100.00",
+		BaseDebitTotal:  "137.00",
+		BaseCreditTotal: "137.00",
 	}
 
 	var sb strings.Builder
