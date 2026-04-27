@@ -11,6 +11,7 @@ export default defineConfig({
     minify: true,
     rollupOptions: {
       input: {
+        dashboard: resolve(__dirname, "internal/web/react/dashboard/main.tsx"),
         sales_transactions: resolve(__dirname, "internal/web/react/sales_transactions/main.tsx")
       },
       output: {

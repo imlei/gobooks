@@ -15,8 +15,6 @@ import (
 	"gobooks/internal/models"
 	"gobooks/internal/services"
 	"gobooks/internal/web/templates/pages"
-
-	"github.com/shopspring/decimal"
 )
 
 func (s *Server) handleDashboard(c *fiber.Ctx) error {
@@ -25,92 +23,7 @@ func (s *Server) handleDashboard(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 
-	// Dashboard MVP: calculate a lightweight P&L + expenses breakdown and
-	// show recent revenue trend. We keep everything simple and non-dense.
-	now := time.Now()
-	fromDate := now.AddDate(0, 0, -30)
-	toDate := now
-
-	toMoneyVM := func(d decimal.Decimal) pages.MoneyVM {
-		return pages.MoneyVM{
-			Value:      pages.Money(d),
-			IsPositive: d.GreaterThanOrEqual(decimal.Zero),
-		}
-	}
-
-	vm := pages.DashboardVM{
-		HasCompany:   true,
-		RangeLabel:   "Last 30 days",
-		RevenueTrend: []pages.RevenueTrendPointVM{},
-	}
-
-	// Profit & Loss summary (and expenses list are derived from the same report).
-	if report, err := services.IncomeStatementReport(s.DB, companyID, fromDate, toDate); err == nil {
-		vm.PnL.Revenue = toMoneyVM(report.TotalRevenue)
-		// Expenses are typically outflows; show as negative so we can color red.
-		vm.PnL.Expenses = toMoneyVM(report.TotalExpenses.Neg())
-		vm.PnL.NetIncome = toMoneyVM(report.NetIncome)
-
-		vm.Expenses.Total = vm.PnL.Expenses
-		// Top expense accounts by absolute value (now already positive cost -> we negate for display).
-		// Note: report.Expenses is naturally "expense" accounts (expense/cost_of_sales not included).
-		top := report.Expenses
-		if len(top) > 6 {
-			top = top[:6]
-		}
-		vm.Expenses.TopLines = make([]pages.ExpenseLineVM, 0, len(top))
-		for _, l := range top {
-			amt := l.Amount.Neg()
-			vm.Expenses.TopLines = append(vm.Expenses.TopLines, pages.ExpenseLineVM{
-				Account: l.Name,
-				Amount:  toMoneyVM(amt),
-			})
-		}
-	}
-
-	// Optional: revenue trend for last 3 calendar months.
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	for i := 2; i >= 0; i-- {
-		ms := monthStart.AddDate(0, -i, 0)
-		me := ms.AddDate(0, 1, -1)
-		rep, err := services.IncomeStatementReport(s.DB, companyID, ms, me)
-		if err != nil {
-			continue
-		}
-		vm.RevenueTrend = append(vm.RevenueTrend, pages.RevenueTrendPointVM{
-			Label: ms.Format("2006-01"),
-			Revenue: pages.MoneyVM{
-				Value:      pages.Money(rep.TotalRevenue),
-				IsPositive: rep.TotalRevenue.GreaterThanOrEqual(decimal.Zero),
-			},
-		})
-	}
-
-	// Right column: bank accounts list (best-effort MVP heuristic).
-	var assetAccounts []models.Account
-	if err := s.DB.Where("company_id = ? AND root_account_type = ?", companyID, models.RootAsset).Order("code asc").Limit(50).Find(&assetAccounts).Error; err == nil {
-		bankAccounts := make([]models.Account, 0, len(assetAccounts))
-		for _, a := range assetAccounts {
-			if a.DetailAccountType == models.DetailBank || strings.Contains(strings.ToLower(a.Name), "bank") {
-				bankAccounts = append(bankAccounts, a)
-			}
-		}
-		if len(bankAccounts) == 0 {
-			bankAccounts = assetAccounts
-		}
-		if len(bankAccounts) > 5 {
-			bankAccounts = bankAccounts[:5]
-		}
-		vm.BankAccounts = make([]pages.BankAccountVM, 0, len(bankAccounts))
-		for _, a := range bankAccounts {
-			vm.BankAccounts = append(vm.BankAccounts, pages.BankAccountVM{
-				Code: a.Code,
-				Name: a.Name,
-			})
-		}
-	}
-
-	return pages.Dashboard(vm).Render(c.Context(), c)
+	return pages.Dashboard(buildDashboardVM(s.DB, companyID)).Render(c.Context(), c)
 }
 
 func (s *Server) handleSetupForm(c *fiber.Ctx) error {

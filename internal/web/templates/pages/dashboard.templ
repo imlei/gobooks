@@ -13,7 +13,12 @@ templ Dashboard(vm DashboardVM) {
 }
 
 templ bodyDashboard(vm DashboardVM) {
-	<div class="max-w-[95%] space-y-6">
+	<div
+		id="dashboard-island"
+		data-gb-react="dashboard"
+		data-api-url="/api/dashboard/overview"
+	>
+		<div class="max-w-[95%] space-y-6" data-dashboard-fallback>
 		<div class="flex flex-wrap items-end justify-between gap-3">
 			<div>
 				<h1 class="text-title font-semibold">Dashboard</h1>
@@ -52,7 +57,9 @@ templ bodyDashboard(vm DashboardVM) {
 				@ui.Card(cardQuickActions())
 			</div>
 		</div>
+		</div>
 	</div>
+	<script type="module" src="/static/react/dashboard.js?v=1"></script>
 }
 
 // dashboardKPI renders one top-row KPI card. kind switches the accent colour.

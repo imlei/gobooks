@@ -568,7 +568,7 @@ func billsDueSoonTasks(db *gorm.DB, companyID uint, userID *uuid.UUID, now time.
 		priority = models.ActionTaskPriorityHigh
 	}
 	reason := fmt.Sprintf("There are %d unpaid bills due within the next 7 days or overdue.", len(bills))
-	return []models.ActionCenterTask{newActionCenterTask(companyID, userID, "bills_due_soon", "ap_engine", "rule", "Review bills due soon", reason, priority, "/pay-bills", "ap:bills_due_soon:v1", map[string]any{
+	return []models.ActionCenterTask{newActionCenterTask(companyID, userID, "bills_due_soon", "ap_engine", "rule", "Review bills due soon", reason, priority, "/banking/pay-bills", "ap:bills_due_soon:v1", map[string]any{
 		"count":        len(bills),
 		"total_amount": total.StringFixed(2),
 		"overdue":      overdue,
