@@ -58,9 +58,10 @@ func (s *Server) handleCustomerDetailUpdate(c *fiber.Ctx) error {
 	buildEditVM := func(nameErr, currencyErr, formErr string) pages.CustomerDetailVM {
 		vm := pages.CustomerDetailVM{
 			HasCompany:         true,
-			Tab:                "details",
+			Tab:                "profile",
 			Customer:           existing,
 			Editing:            true,
+			DrawerMode:         "edit",
 			FormName:           name,
 			FormEmail:          email,
 			FormCurrencyCode:   currencyCode,
@@ -127,5 +128,5 @@ func (s *Server) handleCustomerDetailUpdate(c *fiber.Ctx) error {
 	}, &cid, &uid)
 	s.SPAcceleration.InvalidateCompany(companyID)
 
-	return c.Redirect("/customers/"+c.Params("id")+"?tab=details&saved=1", fiber.StatusSeeOther)
+	return c.Redirect("/customers/"+c.Params("id")+"?tab=profile&saved=1", fiber.StatusSeeOther)
 }

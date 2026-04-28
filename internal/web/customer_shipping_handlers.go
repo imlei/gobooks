@@ -55,7 +55,7 @@ func (s *Server) handleCustomerShippingAddressCreate(c *fiber.Ctx) error {
 	if _, err := services.AddCustomerShippingAddress(s.DB, companyID, customerID, in); err != nil {
 		return redirectErr(c, customerDetailURL(customerID), err.Error())
 	}
-	return c.Redirect(customerDetailURL(customerID)+"?saved=1", fiber.StatusSeeOther)
+	return c.Redirect(customerDetailURL(customerID)+"&saved=1", fiber.StatusSeeOther)
 }
 
 // POST /customers/:id/shipping-addresses/:addrID/delete
@@ -75,7 +75,7 @@ func (s *Server) handleCustomerShippingAddressDelete(c *fiber.Ctx) error {
 	if err := services.DeleteCustomerShippingAddress(s.DB, companyID, customerID, addrID); err != nil {
 		return redirectErr(c, customerDetailURL(customerID), err.Error())
 	}
-	return c.Redirect(customerDetailURL(customerID)+"?saved=1", fiber.StatusSeeOther)
+	return c.Redirect(customerDetailURL(customerID)+"&saved=1", fiber.StatusSeeOther)
 }
 
 // POST /customers/:id/shipping-addresses/:addrID/set-default
@@ -95,9 +95,9 @@ func (s *Server) handleCustomerShippingAddressSetDefault(c *fiber.Ctx) error {
 	if err := services.SetDefaultCustomerShippingAddress(s.DB, companyID, customerID, addrID); err != nil {
 		return redirectErr(c, customerDetailURL(customerID), err.Error())
 	}
-	return c.Redirect(customerDetailURL(customerID)+"?saved=1", fiber.StatusSeeOther)
+	return c.Redirect(customerDetailURL(customerID)+"&saved=1", fiber.StatusSeeOther)
 }
 
 func customerDetailURL(customerID uint) string {
-	return "/customers/" + strconv.FormatUint(uint64(customerID), 10)
+	return "/customers/" + strconv.FormatUint(uint64(customerID), 10) + "?tab=profile"
 }

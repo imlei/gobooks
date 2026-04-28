@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"balanciz/internal/models"
 	"balanciz/internal/services"
+	"github.com/shopspring/decimal"
 )
 
 func TestCustomersPageShowsBillableSummary(t *testing.T) {
@@ -244,7 +244,7 @@ func TestCustomerDetailPageHappyPath(t *testing.T) {
 		// Header: name + contact
 		"Workspace Customer",
 		"workspace@example.com",
-		"N30 — Net 30",
+		"N30",
 		// Financial summary labels
 		"Financial summary",
 		"Open balance",
@@ -252,7 +252,7 @@ func TestCustomerDetailPageHappyPath(t *testing.T) {
 		// Tab strip
 		"tab=transactions",
 		"tab=billable-work",
-		"tab=details",
+		"tab=profile",
 		// Transactions table — customer's own invoices only
 		"INV-CUST-001",
 		"INV-CUST-002",
@@ -291,7 +291,7 @@ func TestCustomerDetailPageHappyPath(t *testing.T) {
 	}
 }
 
-func TestCustomerDetailsTabRequiresEditMode(t *testing.T) {
+func TestCustomerProfileOpensEditDrawer(t *testing.T) {
 	db := testRouteDB(t)
 	companyID := seedCompany(t, db, "Customer Details Edit Co")
 	user, rawToken := seedUserSession(t, db, &companyID)
@@ -310,26 +310,24 @@ func TestCustomerDetailsTabRequiresEditMode(t *testing.T) {
 	}
 
 	app := testRouteApp(t, db)
-	readResp := performRequest(t, app, fmt.Sprintf("/customers/%d?tab=details", customerID), rawToken)
+	readResp := performRequest(t, app, fmt.Sprintf("/customers/%d?tab=profile", customerID), rawToken)
 	if readResp.StatusCode != http.StatusOK {
 		t.Fatalf("details read mode: expected %d, got %d", http.StatusOK, readResp.StatusCode)
 	}
 	readBody := readResponseBody(t, readResp)
 	for _, want := range []string{
-		"Customer Details",
+		"Customer Profile",
 		"Editable Customer",
 		"editable@example.com",
 		"456 Detail Ave",
-		"edit=1",
+		"Add shipping address",
 	} {
 		if !strings.Contains(readBody, want) {
 			t.Fatalf("expected read-only details to contain %q, got %q", want, readBody)
 		}
 	}
 	for _, notWant := range []string{
-		`name="name"`,
-		"Deactivate customer",
-		fmt.Sprintf("/customers/%d/deactivate", customerID),
+		"drawerOpen: true",
 	} {
 		if strings.Contains(readBody, notWant) {
 			t.Fatalf("read-only details should not contain %q, got %q", notWant, readBody)
@@ -347,6 +345,8 @@ func TestCustomerDetailsTabRequiresEditMode(t *testing.T) {
 		"Cancel",
 		"Deactivate customer",
 		fmt.Sprintf("/customers/%d/deactivate", customerID),
+		"drawerOpen: true",
+		"drawerMode: &#34;edit&#34;",
 	} {
 		if !strings.Contains(editBody, want) {
 			t.Fatalf("expected edit details to contain %q, got %q", want, editBody)

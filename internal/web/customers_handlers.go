@@ -181,19 +181,28 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 	// customer is referenced by any AR document.
 	hasRecords, _ := services.CustomerHasRecords(s.DB, companyID, uint(customerID64))
 
-	// Migration 088: shipping-address catalogue for the dedicated card.
+	// Migration 088: shipping-address catalogue for the profile card.
 	// Best-effort: errors leave the list empty (card shows "no addresses").
 	shippingAddrs, _ := services.ListCustomerShippingAddresses(s.DB, companyID, uint(customerID64))
 
-	// Legacy ?edit=1 URL → redirect to details tab with edit intent so
+	// Legacy ?edit=1 URL opens the profile drawer with edit intent so
 	// bookmarks + external links keep working.
 	editFlag := c.Query("edit") == "1"
 	tab := normaliseCustomerDetailTab(c.Query("tab"))
-	if editFlag && tab == "" {
-		tab = "details"
+	if editFlag {
+		tab = "profile"
 	}
 	if tab == "" {
 		tab = "transactions"
+	}
+	drawerMode := ""
+	switch strings.ToLower(strings.TrimSpace(c.Query("drawer"))) {
+	case "shipping":
+		drawerMode = "shipping"
+		tab = "profile"
+	}
+	if editFlag {
+		drawerMode = "edit"
 	}
 
 	vm := pages.CustomerDetailVM{
@@ -215,7 +224,8 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		AllowedCurrencies:       allowedCurrencies,
 		BaseCurrencyCode:        baseCurrencyCode,
 		CurrencyPolicySaved:     c.Query("policy_saved") == "1",
-		Editing:                 tab == "details" && editFlag,
+		Editing:                 drawerMode == "edit",
+		DrawerMode:              drawerMode,
 		Saved:                   c.Query("saved") == "1",
 		HasRecords:              hasRecords,
 		Deactivated:             c.Query("deactivated") == "1",
@@ -224,20 +234,20 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		ShippingAddresses:       shippingAddrs,
 	}
 
-	// Seed the Details-tab form from the current customer record.
-	if vm.Editing {
-		s.loadCustomerEditFormData(companyID, &vm)
-		vm.FormName = workspace.Customer.Name
-		vm.FormEmail = workspace.Customer.Email
-		vm.FormCurrencyCode = workspace.Customer.CurrencyCode
-		vm.FormPaymentTerm = workspace.Customer.DefaultPaymentTermCode
-		vm.FormAddrStreet1 = workspace.Customer.AddrStreet1
-		vm.FormAddrStreet2 = workspace.Customer.AddrStreet2
-		vm.FormAddrCity = workspace.Customer.AddrCity
-		vm.FormAddrProvince = workspace.Customer.AddrProvince
-		vm.FormAddrPostalCode = workspace.Customer.AddrPostalCode
-		vm.FormAddrCountry = workspace.Customer.AddrCountry
-	}
+	// Seed the drawer forms from the current customer record. The drawer can
+	// open client-side from the read-only Profile tab, so its fields need data
+	// even when the initial request is not ?edit=1.
+	s.loadCustomerEditFormData(companyID, &vm)
+	vm.FormName = workspace.Customer.Name
+	vm.FormEmail = workspace.Customer.Email
+	vm.FormCurrencyCode = workspace.Customer.CurrencyCode
+	vm.FormPaymentTerm = workspace.Customer.DefaultPaymentTermCode
+	vm.FormAddrStreet1 = workspace.Customer.AddrStreet1
+	vm.FormAddrStreet2 = workspace.Customer.AddrStreet2
+	vm.FormAddrCity = workspace.Customer.AddrCity
+	vm.FormAddrProvince = workspace.Customer.AddrProvince
+	vm.FormAddrPostalCode = workspace.Customer.AddrPostalCode
+	vm.FormAddrCountry = workspace.Customer.AddrCountry
 
 	// Lazy-load the Transactions tab's unified list only when the tab
 	// is active. Other tabs reuse the already-loaded workspace data.
@@ -271,8 +281,10 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 // (default) via the caller.
 func normaliseCustomerDetailTab(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "transactions", "quotes-orders", "billable-work", "addresses", "details", "notes":
+	case "transactions", "quotes-orders", "billable-work", "profile", "notes":
 		return strings.ToLower(strings.TrimSpace(raw))
+	case "addresses", "details":
+		return "profile"
 	default:
 		return ""
 	}
@@ -583,7 +595,7 @@ func (s *Server) handleCustomerCurrencyPolicySet(c *fiber.Ctx) error {
 		return redirectErr(c, "/customers", "invalid customer ID")
 	}
 	customerID := uint(customerID64)
-	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=details&edit=1"
+	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=profile&edit=1"
 
 	policy := models.CustomerCurrencyPolicy(strings.TrimSpace(c.FormValue("policy")))
 	if policy != models.CustomerCurrencyPolicySingle && policy != models.CustomerCurrencyPolicyMultiAllowed {
@@ -606,7 +618,7 @@ func (s *Server) handleCustomerCurrencyPolicyAdd(c *fiber.Ctx) error {
 		return redirectErr(c, "/customers", "invalid customer ID")
 	}
 	customerID := uint(customerID64)
-	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=details&edit=1"
+	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=profile&edit=1"
 
 	code := strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code_manual")))
 	if code == "" {
@@ -632,7 +644,7 @@ func (s *Server) handleCustomerCurrencyPolicyRemove(c *fiber.Ctx) error {
 		return redirectErr(c, "/customers", "invalid customer ID")
 	}
 	customerID := uint(customerID64)
-	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=details&edit=1"
+	detailEditPath := "/customers/" + strconv.FormatUint(customerID64, 10) + "?tab=profile&edit=1"
 
 	code := strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
 	if len(code) != 3 {
