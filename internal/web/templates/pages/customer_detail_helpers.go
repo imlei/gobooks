@@ -15,9 +15,9 @@ import (
 // reserved for a future "scroll to this field" enhancement — for now
 // the link just opens the tab. Kept as one function so every "Add X"
 // link on the page points at the same place. Because "Add X" is an edit
-// intent, these links open Details in edit mode.
+// intent, these links open the Profile drawer in edit mode.
 func customerDetailsHref(customerID uint, _ string) string {
-	return fmt.Sprintf("/customers/%d?tab=details&edit=1", customerID)
+	return fmt.Sprintf("/customers/%d?tab=profile&edit=1", customerID)
 }
 
 // customerBillingLine renders the customer's billing address as a
@@ -73,6 +73,37 @@ func customerShippingSummary(vm CustomerDetailVM) string {
 	default:
 		return fmt.Sprintf("%d addresses", n)
 	}
+}
+
+func customerDefaultShippingLine(vm CustomerDetailVM) string {
+	if len(vm.ShippingAddresses) == 0 {
+		return ""
+	}
+	for _, addr := range vm.ShippingAddresses {
+		if addr.IsDefault {
+			return strings.ReplaceAll(addr.FormattedAddress(), "\n", ", ")
+		}
+	}
+	return strings.ReplaceAll(vm.ShippingAddresses[0].FormattedAddress(), "\n", ", ")
+}
+
+func customerStatusLabel(c models.Customer) string {
+	if c.IsActive {
+		return "Active"
+	}
+	return "Inactive"
+}
+
+func customerDetailDrawerData(vm CustomerDetailVM) string {
+	mode := strings.TrimSpace(vm.DrawerMode)
+	open := "false"
+	if mode != "" {
+		open = "true"
+	}
+	if mode != "shipping" {
+		mode = "edit"
+	}
+	return fmt.Sprintf(`{ drawerOpen: %s, drawerMode: %q, menuOpen: false }`, open, mode)
 }
 
 // nonEmpty drops empty / whitespace-only strings from a slice, used by

@@ -26,11 +26,18 @@ templ CustomerDetail(vm CustomerDetailVM) {
 // tabs. The header stays pinned at the top regardless of which tab is
 // active so the customer's key numbers are always visible.
 templ bodyCustomerDetail(vm CustomerDetailVM) {
-	<div class="max-w-[95%]">
+	<div
+		class="max-w-[95%]"
+		x-data={ customerDetailDrawerData(vm) }
+		x-init="if (drawerOpen) { $nextTick(() => { const el = $refs.customerDetailDrawer?.querySelector('input:not([readonly]),select,textarea'); if (el) el.focus(); }); }"
+		@keydown.escape.window="if (drawerOpen) { drawerOpen = false } else { menuOpen = false }"
+	>
 		@customerDetailFlashes(vm)
 		@customerDetailHeader(vm)
 		@customerDetailTabs(vm)
 		@customerDetailTabBody(vm)
+		@ui.RightDrawerBackdrop()
+		@ui.RightDrawerPanel("customerDetailDrawer", "customer-detail-drawer-title", "Customer", "", customerDetailDrawerContent(vm))
 	</div>
 }
 
@@ -167,8 +174,7 @@ templ customerDetailTabs(vm CustomerDetailVM) {
 			@customerTabLink(vm, "transactions", "Transactions")
 			@customerTabLink(vm, "quotes-orders", "Quotes & Orders")
 			@customerTabLink(vm, "billable-work", "Billable Work")
-			@customerTabLink(vm, "addresses", "Addresses")
-			@customerTabLink(vm, "details", "Details")
+			@customerTabLink(vm, "profile", "Profile")
 			@customerTabLink(vm, "notes", "Notes")
 		</nav>
 	</div>
@@ -199,15 +205,8 @@ templ customerDetailTabBody(vm CustomerDetailVM) {
 				@tabQuotesOrders(vm)
 			case "billable-work":
 				@tabBillableWork(vm)
-			case "addresses":
-				@customerShippingAddressesCard(vm)
-			case "details":
-				if vm.Editing {
-					@customerEditCard(vm)
-					@customerCurrencyPolicySection(vm)
-				} else {
-					@customerDetailsReadCard(vm)
-				}
+			case "profile":
+				@customerDetailsReadCard(vm)
 			case "notes":
 				@tabNotesPlaceholder(vm)
 		}
@@ -464,48 +463,124 @@ templ tabNotesPlaceholder(_ CustomerDetailVM) {
 	</div>
 }
 
-// ── Reused: edit form / currency policy / shipping catalogue / lifecycle ───
-//
-// These sections were already well-factored in the old single-page
-// layout. The new tab shell re-uses them unchanged — Details tab
-// renders customerEditCard + customerCurrencyPolicySection; Addresses
-// tab renders customerShippingAddressesCard. Definitions below.
+// Profile read view plus right-drawer edit and shipping address forms.
 
 templ customerDetailsReadCard(vm CustomerDetailVM) {
 	<div class="rounded-lg border border-border bg-surface p-5">
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<h2 class="text-section font-semibold text-text">Customer Details</h2>
-			<a href={ templ.SafeURL(fmt.Sprintf("/customers/%d?tab=details&edit=1", vm.Customer.ID)) } class="rounded-md border border-border-input px-3 py-1.5 text-small font-medium text-text hover:bg-background">Edit</a>
+			<h2 class="text-section font-semibold text-text">Customer Profile</h2>
+			@customerProfileSplitButton(vm)
 		</div>
-		<dl class="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
-			@customerReadOnlyField("Name", vm.Customer.Name)
-			@customerReadOnlyField("Email", vm.Customer.Email)
-			@customerReadOnlyField("Default Payment Term", vm.DefaultPaymentTermLabel)
-			@customerReadOnlyField("Currency", customerCurrencyDisplay(vm))
-			<div class="md:col-span-2">
-				@customerReadOnlyField("Billing Address", customerBillingLine(vm.Customer))
-			</div>
-			<div>
-				<dt class="text-small font-medium text-text-muted">Status</dt>
-				<dd class="mt-1 text-body text-text">
-					if vm.Customer.IsActive {
-						Active
-					} else {
-						Inactive
-					}
-				</dd>
-			</div>
-			<div>
-				<dt class="text-small font-medium text-text-muted">Currency Policy</dt>
-				<dd class="mt-1 flex items-center gap-2 text-body text-text">
-					@customerCurrencyPolicyBadge(vm.Customer.CurrencyPolicy)
-					if vm.Customer.CurrencyPolicy == models.CustomerCurrencyPolicyMultiAllowed && len(vm.AllowedCurrencies) > 0 {
-						<span class="text-small text-text-muted2">{ Itoa(len(vm.AllowedCurrencies)) } allowed</span>
-					}
-				</dd>
-			</div>
-		</dl>
+		<div class="mt-4 grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-2">
+			<section>
+				<h3 class="border-b border-border-subtle pb-1 text-small font-semibold text-text">Contact info</h3>
+				<dl class="divide-y divide-border-subtle text-small">
+					@customerDenseReadRow("Customer", vm.Customer.Name)
+					@customerDenseReadRow("Email", vm.Customer.Email)
+					@customerDenseReadRow("Phone", "")
+					@customerDenseReadRow("Mobile", "")
+					@customerDenseReadRow("Fax", "")
+					@customerDenseReadRow("Website", "")
+				</dl>
+			</section>
+			<section>
+				<h3 class="border-b border-border-subtle pb-1 text-small font-semibold text-text">Additional info</h3>
+				<dl class="divide-y divide-border-subtle text-small">
+					@customerDenseReadRow("Billing address", customerBillingLine(vm.Customer))
+					@customerDenseReadRow("Shipping address", customerDefaultShippingLine(vm))
+					@customerDenseReadRow("Terms", vm.DefaultPaymentTermLabel)
+					@customerDenseReadRow("Currency", customerCurrencyDisplay(vm))
+					@customerDenseReadRow("Preferred delivery method", "None")
+					@customerDenseReadRow("Status", customerStatusLabel(vm.Customer))
+				</dl>
+			</section>
+		</div>
+		<div class="mt-6 grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-2">
+			<section>
+				<h3 class="border-b border-border-subtle pb-1 text-small font-semibold text-text">Shipping addresses</h3>
+				@customerShippingAddressesReadOnlyTable(vm)
+			</section>
+			<section>
+				<h3 class="border-b border-border-subtle pb-1 text-small font-semibold text-text">Currency policy</h3>
+				<div class="flex items-center justify-between border-b border-border-subtle py-2 text-small">
+					<span class="text-text-muted2">Policy</span>
+					<span class="flex items-center gap-2 text-right text-text">
+						@customerCurrencyPolicyBadge(vm.Customer.CurrencyPolicy)
+						if vm.Customer.CurrencyPolicy == models.CustomerCurrencyPolicyMultiAllowed && len(vm.AllowedCurrencies) > 0 {
+							<span class="text-text-muted2">{ Itoa(len(vm.AllowedCurrencies)) } allowed</span>
+						}
+					</span>
+				</div>
+			</section>
+		</div>
 	</div>
+}
+
+templ customerProfileSplitButton(vm CustomerDetailVM) {
+	<div class="relative inline-flex" @click.outside="menuOpen = false">
+		<button type="button" class="rounded-l-md border border-success bg-surface px-3 py-1.5 text-small font-semibold text-success-hover hover:bg-success-soft" @click="drawerMode = 'edit'; drawerOpen = true; menuOpen = false">Edit</button>
+		<button type="button" class="-ml-px rounded-r-md border border-success bg-surface px-2 py-1.5 text-small font-semibold text-success-hover hover:bg-success-soft" @click="menuOpen = !menuOpen" aria-label="Customer edit options">
+			<svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+				<path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"></path>
+			</svg>
+		</button>
+		<div x-show="menuOpen" x-cloak x-transition class="absolute right-0 top-full z-30 mt-1 w-52 rounded-md border border-border bg-surface py-1 shadow-lg">
+			<button type="button" class="block w-full px-3 py-2 text-left text-small text-text hover:bg-background" @click="drawerMode = 'shipping'; drawerOpen = true; menuOpen = false">Add shipping address</button>
+		</div>
+	</div>
+}
+
+templ customerDenseReadRow(label, value string) {
+	<div class="grid grid-cols-[minmax(120px,35%)_1fr] gap-4 py-2">
+		<dt class="text-text">{ label }</dt>
+		<dd class="min-w-0 text-text">
+			if value != "" {
+				{ value }
+			} else {
+				<span class="text-text-muted2">-</span>
+			}
+		</dd>
+	</div>
+}
+
+templ customerShippingAddressesReadOnlyTable(vm CustomerDetailVM) {
+	if len(vm.ShippingAddresses) == 0 {
+		<p class="py-3 text-small text-text-muted2">No shipping addresses.</p>
+	} else {
+		<div class="overflow-x-auto">
+			<table class="w-full text-left text-small">
+				<tbody class="divide-y divide-border-subtle text-text">
+					for _, addr := range vm.ShippingAddresses {
+						<tr class="align-top">
+							<td class="w-36 py-2 pr-4 font-medium">
+								if addr.Label != "" {
+									{ addr.Label }
+								} else {
+									<span class="text-text-muted2">-</span>
+								}
+								if addr.IsDefault {
+									<span class="ml-2 rounded bg-primary-soft px-1.5 py-0.5 text-[11px] font-medium text-primary">Default</span>
+								}
+							</td>
+							<td class="py-2 whitespace-pre-line text-text-muted2">{ addr.FormattedAddress() }</td>
+							<td class="w-32 py-2 text-right">
+								<div class="flex justify-end gap-2">
+									if !addr.IsDefault {
+										<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/shipping-addresses/%d/set-default", vm.Customer.ID, addr.ID)) } class="inline">
+											<button type="submit" class="text-primary hover:underline">Set default</button>
+										</form>
+									}
+									<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/shipping-addresses/%d/delete", vm.Customer.ID, addr.ID)) } class="inline" onsubmit="return confirm('Delete this shipping address? Historical documents that used it keep their snapshot.')">
+										<button type="submit" class="text-danger hover:underline">Delete</button>
+									</form>
+								</div>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
 }
 
 templ customerReadOnlyField(label, value string) {
@@ -802,6 +877,162 @@ templ customerShippingAddressesCard(vm CustomerDetailVM) {
 			</div>
 		</form>
 	</div>
+}
+
+templ customerDetailDrawerContent(vm CustomerDetailVM) {
+	<div class="flex min-h-0 flex-1 flex-col">
+		<div x-show="drawerMode === 'edit'" x-cloak class="contents">
+			@customerEditDrawerForm(vm)
+		</div>
+		<div x-show="drawerMode === 'shipping'" x-cloak class="contents">
+			@customerShippingAddressDrawerForm(vm)
+		</div>
+	</div>
+}
+
+templ customerEditDrawerForm(vm CustomerDetailVM) {
+	<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/update", vm.Customer.ID)) } class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+			<section class="rounded-md border border-border bg-surface p-4">
+				<div class="mb-4 flex items-center justify-between gap-3">
+					<h3 class="text-body font-semibold text-text">Name and contact</h3>
+				</div>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div class="sm:col-span-2">
+						<label class="block text-small font-medium text-text-muted">Customer *</label>
+						<input type="text" name="name" value={ vm.FormName } required maxlength="200" autocomplete="organization" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+						if vm.NameError != "" {
+							<p class="mt-1 text-small text-danger">{ vm.NameError }</p>
+						}
+					</div>
+					<div class="sm:col-span-2">
+						<label class="block text-small font-medium text-text-muted">Email</label>
+						<input type="email" name="email" value={ vm.FormEmail } autocomplete="email" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					if vm.MultiCurrency {
+						<div>
+							<label class="block text-small font-medium text-text-muted">Default currency</label>
+							<select name="currency_code" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus">
+								<option value="" selected?={ vm.FormCurrencyCode == "" }>- Use company base ({ vm.BaseCurrencyCode }) -</option>
+								for _, cur := range vm.Currencies {
+									<option value={ cur.Code } selected?={ vm.FormCurrencyCode == cur.Code }>{ cur.Code }</option>
+								}
+							</select>
+							if vm.CurrencyError != "" {
+								<p class="mt-1 text-small text-danger">{ vm.CurrencyError }</p>
+							}
+						</div>
+					}
+					<div>
+						<label class="block text-small font-medium text-text-muted">Default payment term</label>
+						<select name="payment_term" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus">
+							<option value="" selected?={ vm.FormPaymentTerm == "" }>- Use company default -</option>
+							for _, pt := range vm.PaymentTerms {
+								<option value={ pt.Code } selected?={ vm.FormPaymentTerm == pt.Code }>{ pt.Description }</option>
+							}
+						</select>
+					</div>
+				</div>
+			</section>
+
+			<section class="rounded-md border border-border bg-surface p-4">
+				<h3 class="mb-4 text-body font-semibold text-text">Billing address</h3>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div class="sm:col-span-2">
+						<label class="block text-small font-medium text-text-muted">Street 1</label>
+						<input type="text" name="addr_street1" value={ vm.FormAddrStreet1 } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div class="sm:col-span-2">
+						<label class="block text-small font-medium text-text-muted">Street 2</label>
+						<input type="text" name="addr_street2" value={ vm.FormAddrStreet2 } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">City</label>
+						<input type="text" name="addr_city" value={ vm.FormAddrCity } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">Province / State</label>
+						<input type="text" name="addr_province" value={ vm.FormAddrProvince } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">Postal / ZIP</label>
+						<input type="text" name="addr_postal_code" value={ vm.FormAddrPostalCode } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">Country</label>
+						<input type="text" name="addr_country" value={ vm.FormAddrCountry } class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+				</div>
+			</section>
+
+			<section class="rounded-md border border-border bg-surface p-4">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<h3 class="text-body font-semibold text-text">Customer status</h3>
+						<p class="mt-1 text-small text-text-muted2">Control whether this customer appears in new transaction pickers. Historical records stay intact.</p>
+					</div>
+					@customerLifecycleActions(vm)
+				</div>
+			</section>
+		</div>
+		<div class="flex shrink-0 items-center justify-end gap-3 border-t border-border p-4">
+			<button type="button" class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text hover:bg-background" @click="drawerOpen = false">Cancel</button>
+			<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Save</button>
+		</div>
+	</form>
+}
+
+templ customerShippingAddressDrawerForm(vm CustomerDetailVM) {
+	<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/customers/%d/shipping-addresses", vm.Customer.ID)) } class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 overflow-y-auto p-4">
+			<section class="rounded-md border border-border bg-surface p-4">
+				<div class="mb-4 flex items-center justify-between gap-3">
+					<h3 class="text-body font-semibold text-text">Add shipping address</h3>
+					<button type="button" class="text-small font-medium text-primary hover:underline" @click="drawerMode = 'edit'">Customer info</button>
+				</div>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div>
+						<label class="block text-small font-medium text-text-muted">Label</label>
+						<input type="text" name="label" maxlength="64" placeholder="e.g. Warehouse A" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">Country</label>
+						<input type="text" name="addr_country" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div class="sm:col-span-2">
+						<label class="block text-small font-medium text-text-muted">Street 1</label>
+						<input type="text" name="addr_street1" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div class="sm:col-span-2">
+						<label class="block text-small font-medium text-text-muted">Street 2</label>
+						<input type="text" name="addr_street2" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">City</label>
+						<input type="text" name="addr_city" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">Province / State</label>
+						<input type="text" name="addr_province" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div>
+						<label class="block text-small font-medium text-text-muted">Postal Code</label>
+						<input type="text" name="addr_postal_code" class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus"/>
+					</div>
+					<div class="flex items-end">
+						<label class="inline-flex items-center gap-2 text-body text-text">
+							<input type="checkbox" name="is_default" value="1" class="h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus"/>
+							Set as default
+						</label>
+					</div>
+				</div>
+			</section>
+		</div>
+		<div class="flex shrink-0 items-center justify-end gap-3 border-t border-border p-4">
+			<button type="button" class="rounded-md border border-border-input px-4 py-2 text-body font-medium text-text hover:bg-background" @click="drawerMode = 'edit'">Back to customer</button>
+			<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Add shipping address</button>
+		</div>
+	</form>
 }
 
 templ customerLifecycleActions(vm CustomerDetailVM) {

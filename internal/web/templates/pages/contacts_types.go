@@ -2,9 +2,9 @@
 package pages
 
 import (
-	"github.com/shopspring/decimal"
 	"balanciz/internal/models"
 	"balanciz/internal/services"
+	"github.com/shopspring/decimal"
 )
 
 type CustomersVM struct {
@@ -88,12 +88,11 @@ type CustomerDetailVM struct {
 	HasCompany bool
 
 	// Tab drives the active content pane. One of:
-	//   "transactions" (default) — unified AR document list
-	//   "quotes-orders"          — Quote + SalesOrder pipeline
-	//   "billable-work"          — unbilled tasks/expenses summary
-	//   "addresses"              — shipping address catalogue
-	//   "details"                — editable profile + currency policy
-	//   "notes"                  — future; placeholder for now
+	//   "transactions" (default) - unified AR document list
+	//   "quotes-orders"          - Quote + SalesOrder pipeline
+	//   "billable-work"          - unbilled tasks/expenses summary
+	//   "profile"                - dense read-only customer profile
+	//   "notes"                  - future; placeholder for now
 	Tab string
 
 	Customer                models.Customer
@@ -139,10 +138,11 @@ type CustomerDetailVM struct {
 	CurrencyPolicySaved bool
 	CurrencyPolicyError string
 
-	// Inline edit mode — set by ?edit=1 on the detail route. Mirrors the
-	// VendorDetailVM edit fields so the two pages stay aligned.
-	Editing bool
-	Saved   bool // flash "Customer saved" banner after a successful round-trip
+	// Drawer edit mode, set by ?edit=1 on the detail route or validation
+	// re-render. Mirrors the VendorDetailVM edit fields where practical.
+	Editing    bool
+	Saved      bool // flash "Customer saved" banner after a successful round-trip
+	DrawerMode string
 
 	// Form round-trip state (only populated in Editing mode or after a
 	// validation failure re-render).
