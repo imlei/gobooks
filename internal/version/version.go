@@ -2,25 +2,15 @@
 package version
 
 const (
-	// Major is the decimal major release component.
+	// Major, Minor, and Patch are decimal release components.
 	Major = 0
-
-	// ChannelCode is a fixed-width uppercase base36 release channel marker.
-	ChannelCode = "00"
-
-	// Patch is the decimal patch/build-train component.
+	Minor = 0
 	Patch = 0
 
 	// BuildCode is a fixed-width uppercase base36 build counter.
-	BuildCode = "0000"
+	BuildCode = "0001"
 
-	// Revision is the decimal release revision component.
-	Revision = 0
-
-	// VariantCode is a single-character uppercase base36 variant marker.
-	VariantCode = "0"
-
-	// Version format: X.YY.XXX.YYYY.XX.Y
-	// X/XXX/XX are decimal; YY/YYYY/Y are uppercase base36.
-	Version = "0.00.000.0000.00.0"
+	// Version format: M.mm.ppp.BBBB
+	// M/mm/ppp are decimal; BBBB is a four-character base36 build code.
+	Version = "0.00.000.0001"
 )
