@@ -177,11 +177,7 @@ func (s *Server) prefillBillFromPO(companyID, poID uint, vm *pages.BillEditorVM)
 			vm.ExchangeRate = po.ExchangeRate.String()
 		}
 	}
-	if strings.TrimSpace(po.Notes) != "" {
-		// PO's operator-facing Notes maps to Bill's Memo (the bill
-		// model uses Memo, not Notes, for the same concept).
-		vm.Memo = po.Notes
-	}
+	vm.Memo = billMemoFromPO(po)
 	// Line pre-fill: one bill line per PO line, Amount = LineNet
 	// (qty × unit_price). Bill form is amount-based; tax is applied
 	// at bill time so we deliberately do NOT carry over a TaxCode —
@@ -247,6 +243,20 @@ func (s *Server) prefillBillFromPO(companyID, poID uint, vm *pages.BillEditorVM)
 		vm.Lines = rows
 	}
 	return true
+}
+
+func billMemoFromPO(po *models.PurchaseOrder) string {
+	if po == nil {
+		return ""
+	}
+	parts := make([]string, 0, 2)
+	if poNo := strings.TrimSpace(po.PONumber); poNo != "" {
+		parts = append(parts, "PO #: "+poNo)
+	}
+	if notes := strings.TrimSpace(po.Notes); notes != "" {
+		parts = append(parts, notes)
+	}
+	return strings.Join(parts, " - ")
 }
 
 // derivePOLineExpenseAccountID picks the best account to pre-populate
@@ -405,16 +415,16 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 	}
 
 	vm := pages.BillEditorVM{
-		HasCompany:  true,
-		IsEdit:      isEdit,
-		EditingID:   editingID,
-		BillNumber:  billNo,
-		VendorID:    vendorRaw,
-		BillDate:    dateRaw,
-		TermCode:    termsRaw,
-		DueDate:     dueDateRaw,
-		Memo:        memo,
-		WarehouseID: warehouseIDRaw,
+		HasCompany:   true,
+		IsEdit:       isEdit,
+		EditingID:    editingID,
+		BillNumber:   billNo,
+		VendorID:     vendorRaw,
+		BillDate:     dateRaw,
+		TermCode:     termsRaw,
+		DueDate:      dueDateRaw,
+		Memo:         memo,
+		WarehouseID:  warehouseIDRaw,
 		CurrencyCode: currencyCodeRaw,
 		ExchangeRate: exchangeRateRaw,
 	}
@@ -910,9 +920,9 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 				LineUOM:            uom.LineUOM,
 				LineUOMFactor:      uom.LineUOMFactor,
 				QtyInStockUOM:      uom.QtyInStockUOM,
-				LineNet:             cl.LineNet,
-				LineTax:             cl.LineTax,
-				LineTotal:           cl.LineTotal,
+				LineNet:            cl.LineNet,
+				LineTax:            cl.LineTax,
+				LineTotal:          cl.LineTotal,
 				ExpenseAccountID:   cl.ExpenseAccountID,
 				TaxCodeID:          cl.TaxCodeID,
 				TaskID:             cl.TaskID,
