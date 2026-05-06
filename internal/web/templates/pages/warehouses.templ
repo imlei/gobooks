@@ -4,6 +4,7 @@ package pages
 import (
 	"fmt"
 	"balanciz/internal/models"
+	"balanciz/internal/services"
 	"balanciz/internal/web/templates/layout"
 	"balanciz/internal/web/templates/ui"
 )
@@ -28,6 +29,27 @@ func warehouseStatusLabel(w models.Warehouse) string {
 		return "Default"
 	}
 	return "Active"
+}
+
+func warehouseQueueDateLabel(item services.WarehouseQueueItem) string {
+	if item.DueDate == nil {
+		return "No date"
+	}
+	return item.DueDate.Format("Jan 2, 2006")
+}
+
+func warehouseQueueAmountLabel(item services.WarehouseQueueItem) string {
+	if item.CurrencyCode == "" {
+		return item.Amount.StringFixed(2)
+	}
+	return item.CurrencyCode + " " + item.Amount.StringFixed(2)
+}
+
+func warehouseQueueNumber(item services.WarehouseQueueItem) string {
+	if item.Number != "" {
+		return item.Number
+	}
+	return fmt.Sprintf("#%d", item.ID)
 }
 
 templ Warehouses(vm WarehousesVM) {
@@ -65,8 +87,66 @@ templ bodyWarehouses(vm WarehousesVM) {
 			@ui.AlertSuccess("Warehouse created successfully.")
 		}
 
+		@warehouseActionGrid()
+
 		@ui.SectionCard("All Warehouses", "", warehouseListTable(vm))
+
+		@warehouseQueueCards(vm.WarehouseQueue)
 	</div>
+}
+
+templ warehouseActionGrid() {
+	<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+		@warehouseActionButton("/purchase-orders", "Receiving", "receiving")
+		@warehouseActionButton("/vendor-return-shipments/new", "Return", "return")
+		@warehouseActionButton("/sales-orders", "Shipping", "shipping")
+		@warehouseActionButton("/ar-return-receipts", "Return Receipts", "receipts")
+	</div>
+}
+
+templ warehouseActionButton(href string, label string, icon string) {
+	<a
+		href={ templ.SafeURL(href) }
+		class="flex h-20 items-center gap-4 rounded-md bg-primary px-6 text-left text-onPrimary shadow-sm transition-colors duration-75 hover:bg-primary-hover active:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+	>
+		<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-white/15 text-onPrimary">
+			@warehouseActionIcon(icon)
+		</span>
+		<span class="text-body font-semibold">{ label }</span>
+	</a>
+}
+
+templ warehouseActionIcon(icon string) {
+	if icon == "receiving" {
+		<svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+			<path d="M12 3v9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+			<path d="m8.5 8.5 3.5 3.5 3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+			<path d="M4.5 13.5h4l1.5 2h4l1.5-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+			<path d="M5 13.5 6.2 20h11.6l1.2-6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+		</svg>
+	} else if icon == "return" {
+		<svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+			<path d="M9 7H5V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+			<path d="M5.6 7.6A8 8 0 1 1 4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+			<path d="M13 9h4v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+			<path d="m17 9-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+		</svg>
+	} else if icon == "shipping" {
+		<svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+			<path d="M3.5 6.5h10v10h-10z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+			<path d="M13.5 9h3.7l3.3 3.5v4h-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+			<path d="M7 19.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke="currentColor" stroke-width="1.8"></path>
+			<path d="M17 19.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke="currentColor" stroke-width="1.8"></path>
+			<path d="M6.5 10h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+		</svg>
+	} else {
+		<svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+			<path d="M7 3.5h10a1.5 1.5 0 0 1 1.5 1.5v15.5l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V5A1.5 1.5 0 0 1 7 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+			<path d="M8.5 8h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+			<path d="M8.5 12h4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+			<path d="m13.5 15.5 1.4 1.4 2.6-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+		</svg>
+	}
 }
 
 templ warehouseListTable(vm WarehousesVM) {
@@ -117,4 +197,46 @@ templ warehouseListTable(vm WarehousesVM) {
 			</tbody>
 		</table>
 	</div>
+}
+
+templ warehouseQueueCards(queue *services.WarehouseQueueSummary) {
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		if queue == nil {
+			@warehouseQueueCard("Waiting to Receive", nil, "No purchase orders waiting to receive.")
+			@warehouseQueueCard("Waiting to Ship", nil, "No sales orders waiting to ship.")
+		} else {
+			@warehouseQueueCard("Waiting to Receive", queue.WaitingToReceive, "No purchase orders waiting to receive.")
+			@warehouseQueueCard("Waiting to Ship", queue.WaitingToShip, "No sales orders waiting to ship.")
+		}
+	</div>
+}
+
+templ warehouseQueueCard(title string, items []services.WarehouseQueueItem, emptyText string) {
+	<section class="rounded-md border border-border bg-surface shadow-sm">
+		<div class="border-b border-border-subtle px-4 py-3">
+			<h2 class="text-body font-semibold text-text">{ title }</h2>
+		</div>
+		<div class="divide-y divide-border-subtle">
+			if len(items) == 0 {
+				<div class="px-4 py-8 text-center text-small text-text-muted2">{ emptyText }</div>
+			}
+			for _, item := range items {
+				<a href={ templ.SafeURL(item.Href) } class="block px-4 py-3 transition-colors duration-75 hover:bg-surface-rowHover">
+					<div class="flex items-start justify-between gap-4">
+						<div class="min-w-0">
+							<div class="truncate text-body font-semibold text-primary">{ warehouseQueueNumber(item) }</div>
+							<div class="mt-1 truncate text-small text-text-muted2">{ item.Counterparty }</div>
+						</div>
+						<div class="shrink-0 text-right">
+							<div class="text-small font-medium text-text">{ warehouseQueueAmountLabel(item) }</div>
+							<div class="mt-1 text-small text-text-muted2">{ warehouseQueueDateLabel(item) }</div>
+						</div>
+					</div>
+					<div class="mt-2">
+						<span class="inline-block rounded border border-primary-soft bg-primary-soft px-2 py-0.5 text-small font-medium text-primary">{ item.Status }</span>
+					</div>
+				</a>
+			}
+		</div>
+	</section>
 }

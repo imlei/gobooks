@@ -22,10 +22,12 @@ func (s *Server) handleWarehouseList(c *fiber.Ctx) error {
 	}
 
 	ws, _ := services.ListWarehouses(s.DB, companyID)
+	queue, _ := services.GetWarehouseQueueSummary(s.DB, companyID, 5)
 	return pages.Warehouses(pages.WarehousesVM{
-		HasCompany: true,
-		Warehouses: ws,
-		Created:    c.Query("created") == "1",
+		HasCompany:     true,
+		Warehouses:     ws,
+		WarehouseQueue: queue,
+		Created:        c.Query("created") == "1",
 	}).Render(c.Context(), c)
 }
 
