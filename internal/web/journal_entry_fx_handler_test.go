@@ -1038,14 +1038,11 @@ func TestJournalEntryList_LegacyForeignJournalEntriesRenderHonestFXSummaries(t *
 	if reconstructableSnippet == "" {
 		t.Fatalf("expected reconstructable legacy JE in list, got %q", body)
 	}
-	if !strings.Contains(reconstructableSnippet, ">USD</div>") {
+	if !strings.Contains(reconstructableSnippet, ">USD</td>") {
 		t.Fatalf("expected reconstructable legacy JE to show resolved USD currency, got %q", reconstructableSnippet)
 	}
-	if strings.Contains(reconstructableSnippet, ">CAD</div>") {
+	if strings.Contains(reconstructableSnippet, ">CAD</td>") {
 		t.Fatalf("legacy list row should not surface raw backfilled CAD semantics, got %q", reconstructableSnippet)
-	}
-	if !strings.Contains(reconstructableSnippet, "Unavailable (legacy)") {
-		t.Fatalf("expected reconstructable legacy JE to carry honest legacy source label, got %q", reconstructableSnippet)
 	}
 	if strings.Contains(reconstructableSnippet, services.LegacyForeignJournalEntryReversalBlockedMessage) {
 		t.Fatalf("reconstructable legacy JE should remain reversible once the shared resolver reconstructs header truth, got %q", reconstructableSnippet)
@@ -1055,7 +1052,7 @@ func TestJournalEntryList_LegacyForeignJournalEntriesRenderHonestFXSummaries(t *
 	if unavailableSnippet == "" {
 		t.Fatalf("expected unavailable legacy JE in list, got %q", body)
 	}
-	if strings.Contains(unavailableSnippet, ">CAD</div>") {
+	if strings.Contains(unavailableSnippet, ">CAD</td>") {
 		t.Fatalf("legacy missing-source JE should not show backfilled CAD as trustworthy tx currency, got %q", unavailableSnippet)
 	}
 	if !strings.Contains(unavailableSnippet, "Unavailable (legacy)") {

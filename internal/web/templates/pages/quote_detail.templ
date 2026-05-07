@@ -487,50 +487,57 @@ templ quoteReadOnlyBody(vm QuoteDetailVM) {
 }
 
 templ quoteActionButtons(vm QuoteDetailVM) {
-	<div class="flex flex-wrap gap-3">
-		switch vm.Quote.Status {
-			case models.QuoteStatusDraft:
-				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/send") }>
-					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
-						Mark as Sent
-					</button>
-				</form>
-				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/cancel") }
-					onsubmit="return confirm('Cancel this quote?')">
-					<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
-						Cancel Quote
-					</button>
-				</form>
-			case models.QuoteStatusSent:
-				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/accept") }>
-					<button type="submit" class="rounded-md bg-success px-4 py-2 text-body font-semibold text-onPrimary hover:bg-success-hover">
-						Mark Accepted
-					</button>
-				</form>
-				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/reject") }>
-					<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
-						Mark Rejected
-					</button>
-				</form>
+	switch vm.Quote.Status {
+		case models.QuoteStatusDraft:
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div class="flex flex-wrap gap-3">
+					<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/cancel") }
+						onsubmit="return confirm('Cancel this quote?')">
+						<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
+							Cancel
+						</button>
+					</form>
+				</div>
+				<div class="flex flex-wrap justify-end gap-3">
+					<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/send") }>
+						<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+							Mark as Sent
+						</button>
+					</form>
+				</div>
+			</div>
+		case models.QuoteStatusSent:
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div class="flex flex-wrap gap-3">
+					<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/cancel") }
+						onsubmit="return confirm('Cancel this quote?')">
+						<button type="submit" class="rounded-md border border-border px-4 py-2 text-body text-text-muted hover:bg-background">
+							Cancel
+						</button>
+					</form>
+					<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/reject") }>
+						<button type="submit" class="rounded-md border border-border-danger px-4 py-2 text-body font-semibold text-danger hover:bg-danger-soft">
+							Reject
+						</button>
+					</form>
+				</div>
+				<div class="flex flex-wrap justify-end gap-3">
+					<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/convert") }>
+						<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
+							Accepted & Convert
+						</button>
+					</form>
+				</div>
+			</div>
+		case models.QuoteStatusAccepted:
+			<div class="flex flex-wrap justify-end gap-3">
 				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/convert") }>
 					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
-						Convert to Sales Order
+						Accepted & Convert
 					</button>
 				</form>
-				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/cancel") }
-					onsubmit="return confirm('Cancel this quote?')">
-					<button type="submit" class="rounded-md border border-border px-4 py-2 text-body text-text-muted hover:bg-background">
-						Cancel Quote
-					</button>
-				</form>
-			case models.QuoteStatusAccepted:
-				<form method="post" action={ templ.SafeURL("/quotes/" + Uitoa(vm.Quote.ID) + "/convert") }>
-					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">
-						Convert to Sales Order
-					</button>
-				</form>
-		}
-	</div>
+			</div>
+	}
 }
 
 // quoteExpiryVal returns the expiry date as a string for the form input.

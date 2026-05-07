@@ -128,7 +128,26 @@ func TestJournalEntryListPage_UsesSingleRowFilterGrid(t *testing.T) {
 		FilterAccount:      "7",
 		FilterAccountLabel: "Cash (1000)",
 		Items: []pages.JournalEntryListItem{
-			{ID: 70, EntryDate: "2099-12-31", JournalNo: "JE-0070", LineCount: 2, TotalDebit: "15,270.50", TotalCredit: "15,270.50"},
+			{
+				ID:                         70,
+				EntryDate:                  "2099-12-31",
+				JournalNo:                  "JE-0070",
+				TransactionCurrencyDisplay: "CAD",
+				ExchangeRateSourceLabel:    "Identity",
+				LineCount:                  2,
+				TotalDebit:                 "15,270.50",
+				TotalCredit:                "15,270.50",
+			},
+			{
+				ID:                         71,
+				EntryDate:                  "2099-12-31",
+				JournalNo:                  "JE-0071",
+				TransactionCurrencyDisplay: "USD",
+				ExchangeRateSourceLabel:    "Manual",
+				LineCount:                  2,
+				TotalDebit:                 "15,270.50",
+				TotalCredit:                "15,270.50",
+			},
 		},
 	}
 
@@ -151,6 +170,9 @@ func TestJournalEntryListPage_UsesSingleRowFilterGrid(t *testing.T) {
 		`space-y-3`,
 		`overflow-hidden rounded-md border border-border bg-surface shadow-sm`,
 		`<table class="w-full min-w-[1120px] border-collapse text-left text-small">`,
+		`>Currency</th>`,
+		`>CAD</td>`,
+		`>USD</td>`,
 		`px-2 py-2 text-right font-mono tabular-nums`,
 		`px-2.5 py-1.5 text-small font-semibold`,
 	} {
@@ -166,6 +188,15 @@ func TestJournalEntryListPage_UsesSingleRowFilterGrid(t *testing.T) {
 	}
 	if strings.Contains(html, `name="reverse_date"`) {
 		t.Fatal("journal entry list actions should not render per-row reverse date inputs")
+	}
+	for _, notWant := range []string{
+		`>Tx Currency</th>`,
+		`>Identity</div>`,
+		`>Manual</div>`,
+	} {
+		if strings.Contains(html, notWant) {
+			t.Fatalf("expected journal entry list HTML not to contain %q", notWant)
+		}
 	}
 }
 

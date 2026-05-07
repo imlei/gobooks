@@ -48,6 +48,51 @@ func TestQuoteReadOnlyLineItemsShowProductService(t *testing.T) {
 	}
 }
 
+func TestQuoteReadOnlySentActionsAreSplitAndMerged(t *testing.T) {
+	var sb strings.Builder
+	vm := QuoteDetailVM{
+		HasCompany: true,
+		Quote: models.Quote{
+			ID:           42,
+			QuoteNumber:  "QUO-0042",
+			Status:       models.QuoteStatusSent,
+			QuoteDate:    time.Date(2026, 5, 6, 0, 0, 0, 0, time.UTC),
+			CurrencyCode: "USD",
+			Customer:     models.Customer{Name: "TEST USD"},
+		},
+	}
+
+	if err := QuoteDetail(vm).Render(context.Background(), &sb); err != nil {
+		t.Fatalf("render quote detail: %v", err)
+	}
+	html := sb.String()
+	for _, want := range []string{
+		`class="flex flex-wrap items-center justify-between gap-3"`,
+		`action="/quotes/42/cancel"`,
+		`>Cancel</button>`,
+		`action="/quotes/42/reject"`,
+		`>Reject</button>`,
+		`class="flex flex-wrap justify-end gap-3"`,
+		`action="/quotes/42/convert"`,
+		`>Accepted & Convert</button>`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("expected quote detail HTML to contain %q", want)
+		}
+	}
+	for _, notWant := range []string{
+		`action="/quotes/42/accept"`,
+		"Mark Accepted",
+		"Mark Rejected",
+		"Convert to Sales Order",
+		"Cancel Quote",
+	} {
+		if strings.Contains(html, notWant) {
+			t.Fatalf("expected quote detail HTML not to contain %q", notWant)
+		}
+	}
+}
+
 func TestQuoteEditorCustomerUsesSmartPicker(t *testing.T) {
 	customer := models.Customer{ID: 11, Name: "Smart Quote Customer", Email: "smart@example.com", CurrencyCode: "USD"}
 	var sb strings.Builder

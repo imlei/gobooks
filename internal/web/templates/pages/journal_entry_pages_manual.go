@@ -221,7 +221,7 @@ func renderJournalEntryListHTML(vm JournalEntryListVM) string {
 	b.WriteString(`<th class="border-b border-r border-border px-2 py-2">ID</th>`)
 	b.WriteString(`<th class="border-b border-r border-border px-2 py-2">Date</th>`)
 	b.WriteString(`<th class="border-b border-r border-border px-2 py-2">Journal No.</th>`)
-	b.WriteString(`<th class="border-b border-r border-border px-2 py-2">Tx Currency</th>`)
+	b.WriteString(`<th class="border-b border-r border-border px-2 py-2">Currency</th>`)
 	b.WriteString(`<th class="border-b border-r border-border px-2 py-2 text-right">Lines</th>`)
 	b.WriteString(`<th class="border-b border-r border-border px-2 py-2 text-right">Debits</th>`)
 	b.WriteString(`<th class="border-b border-r border-border px-2 py-2 text-right">Credits</th>`)
@@ -236,11 +236,7 @@ func renderJournalEntryListHTML(vm JournalEntryListVM) string {
 		b.WriteString(`<td class="whitespace-nowrap border-r border-border-subtle px-2 py-2 font-mono text-text-muted2">` + itemID + `</td>`)
 		b.WriteString(`<td class="whitespace-nowrap border-r border-border-subtle px-2 py-2">` + esc(item.EntryDate) + `</td>`)
 		b.WriteString(`<td class="border-r border-border-subtle px-2 py-2"><a href="/journal-entry/` + itemID + `" onclick="event.stopPropagation()" class="font-semibold text-primary hover:text-primary-hover">` + esc(item.JournalNo) + `</a></td>`)
-		b.WriteString(`<td class="border-r border-border-subtle px-2 py-2"><div class="font-medium text-text">` + esc(item.TransactionCurrencyDisplay) + `</div>`)
-		if sourceLabel := strings.TrimSpace(item.ExchangeRateSourceLabel); sourceLabel != "" {
-			b.WriteString(`<div class="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-text-muted2">` + esc(sourceLabel) + `</div>`)
-		}
-		b.WriteString(`</td>`)
+		b.WriteString(`<td class="border-r border-border-subtle px-2 py-2 font-medium text-text">` + esc(item.TransactionCurrencyDisplay) + `</td>`)
 		b.WriteString(`<td class="border-r border-border-subtle px-2 py-2 text-right font-mono tabular-nums">` + esc(Itoa(item.LineCount)) + `</td>`)
 		b.WriteString(`<td class="border-r border-border-subtle px-2 py-2 text-right font-mono tabular-nums">` + esc(item.TotalDebit) + `</td>`)
 		b.WriteString(`<td class="border-r border-border-subtle px-2 py-2 text-right font-mono tabular-nums">` + esc(item.TotalCredit) + `</td>`)
