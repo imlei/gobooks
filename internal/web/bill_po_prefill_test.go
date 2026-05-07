@@ -45,6 +45,16 @@ func TestPrefillBillFromPOCarriesPONumberIntoMemo(t *testing.T) {
 	if err := db.Create(&line).Error; err != nil {
 		t.Fatalf("create PO line: %v", err)
 	}
+	blankLine := models.PurchaseOrderLine{
+		CompanyID:       companyID,
+		PurchaseOrderID: po.ID,
+		Qty:             decimal.NewFromInt(1),
+		UnitPrice:       decimal.Zero,
+		LineNet:         decimal.Zero,
+	}
+	if err := db.Create(&blankLine).Error; err != nil {
+		t.Fatalf("create blank PO line: %v", err)
+	}
 
 	vm := pages.BillEditorVM{
 		BillNumber:       "BILL019",
@@ -62,6 +72,12 @@ func TestPrefillBillFromPOCarriesPONumberIntoMemo(t *testing.T) {
 	}
 	if vm.VendorID == "" || vm.CurrencyCode != "USD" || vm.ExchangeRate == "" {
 		t.Fatalf("expected existing PO header prefill to remain intact: %#v", vm)
+	}
+	if len(vm.Lines) != 1 {
+		t.Fatalf("expected PO prefill to skip default blank lines, got %d rows", len(vm.Lines))
+	}
+	if vm.Lines[0].Description != "Computer 1" || vm.Lines[0].Amount != "100.00" {
+		t.Fatalf("unexpected PO prefill line: %#v", vm.Lines[0])
 	}
 }
 

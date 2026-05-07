@@ -158,6 +158,37 @@ func TestPO_CreateDraft(t *testing.T) {
 	}
 }
 
+func TestPO_CreateDraftSkipsDefaultBlankLines(t *testing.T) {
+	db := phaseADB(t)
+	companyID, vendorA, _, _, _, _, _ := phaseASetup(t, db)
+
+	po, err := CreatePurchaseOrder(db, companyID, POInput{
+		VendorID: vendorA,
+		PODate:   time.Now(),
+		Lines: []POLineInput{
+			{Description: "Computer 1", Qty: decimal.NewFromInt(1), UnitPrice: decimal.NewFromInt(150)},
+			{Qty: decimal.NewFromInt(1), UnitPrice: decimal.Zero},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var lines []models.PurchaseOrderLine
+	if err := db.Where("purchase_order_id = ?", po.ID).Find(&lines).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(lines) != 1 {
+		t.Fatalf("expected only the real PO line to persist, got %d", len(lines))
+	}
+	if lines[0].Description != "Computer 1" {
+		t.Fatalf("unexpected persisted line: %#v", lines[0])
+	}
+	if !po.Amount.Equal(decimal.NewFromInt(150)) {
+		t.Fatalf("expected amount=150, got %s", po.Amount)
+	}
+}
+
 func TestPO_UsesVendorCurrency(t *testing.T) {
 	db := phaseADB(t)
 	companyID, vendorA, _, _, _, _, _ := phaseASetup(t, db)

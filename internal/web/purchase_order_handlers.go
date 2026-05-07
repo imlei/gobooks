@@ -313,7 +313,7 @@ func parsePOInput(c *fiber.Ctx) (services.POInput, error) {
 		desc := strings.TrimSpace(c.FormValue(prefix + "[description]"))
 		qtyStr := strings.TrimSpace(c.FormValue(prefix + "[qty]"))
 		priceStr := strings.TrimSpace(c.FormValue(prefix + "[unit_price]"))
-		if itemStr == "" && desc == "" && qtyStr == "" && priceStr == "" {
+		if itemStr == "" && expenseAccountStr == "" && desc == "" && qtyStr == "" && priceStr == "" {
 			break
 		}
 		qty, _ := decimal.NewFromString(qtyStr)
@@ -334,9 +334,12 @@ func parsePOInput(c *fiber.Ctx) (services.POInput, error) {
 				expenseAccountID = &aid
 			}
 		}
+		if productServiceID == nil && expenseAccountID == nil && desc == "" && !price.GreaterThan(decimal.Zero) {
+			continue
+		}
 
 		lines = append(lines, services.POLineInput{
-			SortOrder:        uint(i + 1),
+			SortOrder:        uint(len(lines) + 1),
 			ProductServiceID: productServiceID,
 			ExpenseAccountID: expenseAccountID,
 			Description:      desc,

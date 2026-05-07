@@ -203,6 +203,9 @@ func (s *Server) prefillBillFromPO(companyID, poID uint, vm *pages.BillEditorVM)
 	//      free-form lines fall through here.
 	rows := make([]pages.BillLineFormRow, 0, len(po.Lines))
 	for _, pl := range po.Lines {
+		if blankPOLineForBillPrefill(pl) {
+			continue
+		}
 		desc := strings.TrimSpace(pl.Description)
 		if desc == "" && pl.ProductService != nil {
 			desc = pl.ProductService.Name
@@ -243,6 +246,14 @@ func (s *Server) prefillBillFromPO(companyID, poID uint, vm *pages.BillEditorVM)
 		vm.Lines = rows
 	}
 	return true
+}
+
+func blankPOLineForBillPrefill(pl models.PurchaseOrderLine) bool {
+	return pl.ProductServiceID == nil &&
+		pl.ExpenseAccountID == nil &&
+		strings.TrimSpace(pl.Description) == "" &&
+		!pl.LineNet.GreaterThan(decimal.Zero) &&
+		!pl.UnitPrice.GreaterThan(decimal.Zero)
 }
 
 func billMemoFromPO(po *models.PurchaseOrder) string {

@@ -16,6 +16,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -55,6 +56,25 @@ type POInput struct {
 	Notes        string
 	Memo         string
 	Lines        []POLineInput
+}
+
+func blankPurchaseOrderLineInput(in POLineInput) bool {
+	return in.ProductServiceID == nil &&
+		in.ExpenseAccountID == nil &&
+		strings.TrimSpace(in.Description) == "" &&
+		!in.UnitPrice.GreaterThan(decimal.Zero)
+}
+
+func cleanPurchaseOrderLineInputs(lines []POLineInput) []POLineInput {
+	out := make([]POLineInput, 0, len(lines))
+	for _, line := range lines {
+		line.Description = strings.TrimSpace(line.Description)
+		if blankPurchaseOrderLineInput(line) {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -176,6 +196,7 @@ func CreatePurchaseOrder(db *gorm.DB, companyID uint, in POInput) (*models.Purch
 	if in.VendorID == 0 {
 		return nil, errors.New("vendor is required")
 	}
+	in.Lines = cleanPurchaseOrderLineInputs(in.Lines)
 	if len(in.Lines) == 0 {
 		return nil, errors.New("at least one line is required")
 	}
@@ -298,6 +319,10 @@ func UpdatePurchaseOrder(db *gorm.DB, companyID, poID uint, in POInput) (*models
 	}
 	if po.Status != models.POStatusDraft {
 		return nil, fmt.Errorf("%w: only draft purchase orders may be edited", ErrPOInvalidStatus)
+	}
+	in.Lines = cleanPurchaseOrderLineInputs(in.Lines)
+	if len(in.Lines) == 0 {
+		return nil, errors.New("at least one line is required")
 	}
 
 	currencyCode, err := purchaseOrderCurrencyForVendor(db, companyID, in.VendorID)
