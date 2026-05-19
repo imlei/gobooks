@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"balanciz/internal/models"
 	"balanciz/internal/services"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -763,6 +763,46 @@ func TestTasksListFiltersByCustomerID(t *testing.T) {
 	}
 	if strings.Contains(body, "Customer B Task") {
 		t.Fatalf("expected filtered task list to exclude other customer task, got %q", body)
+	}
+}
+
+func TestTasksListActionsUseTaskPermissions(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Task Action Permissions Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	customerID := seedValidationCustomer(t, db, companyID, "Task Customer")
+	taskID := seedTaskForWeb(t, db, companyID, customerID, models.TaskStatusOpen, "Visible task")
+
+	for _, permission := range []string{PermTaskCreate, PermTaskUpdate, PermTaskBill} {
+		if err := db.Create(&models.UserCompanyPermission{
+			UserID:     user.ID,
+			CompanyID:  companyID,
+			Permission: permission,
+			Granted:    false,
+			GrantedBy:  user.ID,
+		}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	app := testRouteApp(t, db)
+	resp := performRequest(t, app, "/tasks", rawToken)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	body := readResponseBody(t, resp)
+	for _, forbidden := range []string{
+		`href="/tasks/new"`,
+		`href="/tasks/billable-work"`,
+		fmt.Sprintf(`href="/tasks/%d/edit"`, taskID),
+	} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("did not expect denied task action %q in page body", forbidden)
+		}
+	}
+	if !strings.Contains(body, "Visible task") {
+		t.Fatalf("expected read access to keep task visible, got %q", body)
 	}
 }
 

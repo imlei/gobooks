@@ -47,6 +47,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -56,10 +57,10 @@ import (
 )
 
 // ErrInvoiceNotDraft is returned when posting is attempted on a non-draft invoice.
-var ErrInvoiceNotDraft = errors.New("only draft invoices can be posted")
+var ErrInvoiceNotDraft = NewPostingError("POSTING_INVOICE_NOT_DRAFT", "only draft invoices can be posted", http.StatusConflict)
 
 // ErrNoARAccount is returned when no active Accounts Receivable account exists for the company.
-var ErrNoARAccount = errors.New("no active Accounts Receivable account found — create one in your Chart of Accounts first")
+var ErrNoARAccount = NewPostingError("POSTING_AR_ACCOUNT_MISSING", "no active Accounts Receivable account found — create one in your Chart of Accounts first", http.StatusUnprocessableEntity)
 
 // PostInvoice transitions a draft invoice to "sent" and generates a double-entry
 // journal entry in a single transaction.

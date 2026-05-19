@@ -39,11 +39,12 @@ func (s *Server) handleSetupForm(c *fiber.Ctx) error {
 func (s *Server) handleReportsHub(c *fiber.Ctx) error {
 	companyID, hasCompany := ActiveCompanyIDFromCtx(c)
 	user := UserFromCtx(c)
+	visibility := s.reportHubVisibility(c, companyID, hasCompany)
 
 	vm := pages.ReportsHubVM{
 		HasCompany:  hasCompany,
-		CoreEntries: buildReportsHubItems(services.CoreReports()),
-		Categories:  buildReportsHubCategories(),
+		CoreEntries: buildReportsHubItems(s.filterReportsForHub(services.CoreReports(), visibility)),
+		Categories:  buildReportsHubCategories(s, visibility),
 	}
 	// Favourites only exist when both user + company are resolved.
 	// Pre-company users (mid-onboarding) get the categorized list with
@@ -52,25 +53,79 @@ func (s *Server) handleReportsHub(c *fiber.Ctx) error {
 		favs, err := services.ListUserReportFavourites(s.DB, user.ID, companyID)
 		if err == nil {
 			vm.Favourites = favs
-			vm.FavouriteEntries = collectFavouriteEntries(favs)
+			vm.FavouriteEntries = collectFavouriteEntries(s, favs, visibility)
 		}
 	}
 	return pages.ReportsHub(vm).Render(c.Context(), c)
 }
 
+type reportHubVisibility struct {
+	EnabledFeatures map[models.FeatureKey]bool
+	AllowedActions  map[string]bool
+}
+
+func (s *Server) reportHubVisibility(c *fiber.Ctx, companyID uint, hasCompany bool) reportHubVisibility {
+	visibility := reportHubVisibility{
+		EnabledFeatures: map[models.FeatureKey]bool{},
+		AllowedActions: map[string]bool{
+			ActionPayrollViewDetails: CanFromCtx(c, ActionPayrollViewDetails),
+			ActionPayrollExport:      CanFromCtx(c, ActionPayrollExport),
+			ActionTaskView:           CanFromCtx(c, ActionTaskView),
+		},
+	}
+	if hasCompany {
+		for _, def := range models.AllCompanyFeatureDefinitions() {
+			enabled, err := services.IsCompanyFeatureEnabled(s.DB, companyID, def.Key)
+			visibility.EnabledFeatures[def.Key] = err == nil && enabled
+		}
+	}
+	return visibility
+}
+
+func (v reportHubVisibility) hasFeature(feature models.FeatureKey) bool {
+	if feature == "" {
+		return true
+	}
+	return v.EnabledFeatures[feature]
+}
+
+func (v reportHubVisibility) can(action string) bool {
+	if action == "" {
+		return true
+	}
+	return v.AllowedActions[action]
+}
+
 // buildReportsHubCategories transforms the registry into the per-
 // category VM slices the templ iterates. One pass; cheap.
-func buildReportsHubCategories() []pages.ReportsHubCategoryVM {
+func buildReportsHubCategories(s *Server, visibility reportHubVisibility) []pages.ReportsHubCategoryVM {
 	cats := services.Categories()
 	out := make([]pages.ReportsHubCategoryVM, 0, len(cats))
 	for _, c := range cats {
-		items := buildReportsHubItems(services.ReportsByCategory(c))
+		items := buildReportsHubItems(s.filterReportsForHub(services.ReportsByCategory(c), visibility))
+		if len(items) == 0 {
+			continue
+		}
 		out = append(out, pages.ReportsHubCategoryVM{
 			Key:         string(c),
 			Label:       services.ReportCategoryLabel(c),
 			Description: services.ReportCategoryDescription(c),
 			Items:       items,
 		})
+	}
+	return out
+}
+
+func (s *Server) filterReportsForHub(entries []services.ReportEntry, visibility reportHubVisibility) []services.ReportEntry {
+	out := make([]services.ReportEntry, 0, len(entries))
+	for _, entry := range entries {
+		if !visibility.hasFeature(entry.RequiredFeature) || !visibility.can(entry.RequiredAction) {
+			continue
+		}
+		if entry.CSVHref != "" && !visibility.can(entry.CSVAction) {
+			entry.CSVHref = ""
+		}
+		out = append(out, entry)
 	}
 	return out
 }
@@ -113,12 +168,12 @@ func reportCapabilities(e services.ReportEntry) []string {
 // collectFavouriteEntries returns the registry rows for keys the user
 // has starred, in registry order. Used by the templ's Favourites
 // section so the order is stable across renders.
-func collectFavouriteEntries(favs map[string]bool) []pages.ReportsHubItemVM {
+func collectFavouriteEntries(s *Server, favs map[string]bool, visibility reportHubVisibility) []pages.ReportsHubItemVM {
 	if len(favs) == 0 {
 		return nil
 	}
 	out := []pages.ReportsHubItemVM{}
-	for _, e := range services.AllReports() {
+	for _, e := range s.filterReportsForHub(services.AllReports(), visibility) {
 		if favs[e.Key] {
 			out = append(out, buildReportsHubItems([]services.ReportEntry{e})[0])
 		}
@@ -338,6 +393,16 @@ func (s *Server) handleReportFavouriteToggle(c *fiber.Ctx) error {
 	}
 
 	reportKey := strings.TrimSpace(c.FormValue("report_key"))
+	report := services.ReportByKey(reportKey)
+	if report == nil {
+		slog.Warn("report favourite toggle rejected unknown report", "user_id", user.ID, "company_id", companyID, "report_key", reportKey)
+		return c.Redirect("/reports", fiber.StatusSeeOther)
+	}
+	visibility := s.reportHubVisibility(c, companyID, true)
+	if len(s.filterReportsForHub([]services.ReportEntry{*report}, visibility)) == 0 {
+		slog.Warn("report favourite toggle rejected hidden report", "user_id", user.ID, "company_id", companyID, "report_key", reportKey)
+		return c.Redirect("/reports", fiber.StatusSeeOther)
+	}
 	if _, err := services.ToggleReportFavourite(s.DB, user.ID, companyID, reportKey); err != nil {
 		// ErrUnknownReportKey or DB failure — log and bounce back to the
 		// hub. The hub still renders correctly without the toggle

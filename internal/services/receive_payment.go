@@ -4,6 +4,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -131,7 +132,7 @@ type ReceivePaymentInput struct {
 // Unlinked path (Allocations empty, InvoiceID nil): simple 2-line JE.
 //
 // Returns the new journal entry ID.
-func RecordReceivePayment(tx *gorm.DB, in ReceivePaymentInput) (uint, error) {
+func RecordReceivePayment(db *gorm.DB, in ReceivePaymentInput) (uint, error) {
 	if in.CompanyID == 0 {
 		return 0, fmt.Errorf("company is required")
 	}
@@ -146,11 +147,29 @@ func RecordReceivePayment(tx *gorm.DB, in ReceivePaymentInput) (uint, error) {
 	// document-style AR object. A standalone NewDepositAmount is the
 	// Receive Payment "customer paid, do not apply yet" path.
 	if len(in.Allocations) > 0 || len(in.Deposits) > 0 || len(in.CreditNotes) > 0 || in.NewDepositAmount.IsPositive() {
-		return recordReceivePaymentAllocations(tx, in)
+		var jeID uint
+		err := db.Transaction(func(tx *gorm.DB) error {
+			var err error
+			jeID, err = recordReceivePaymentAllocations(tx, in)
+			return err
+		})
+		if err != nil {
+			return 0, err
+		}
+		return jeID, nil
 	}
 
 	// Legacy / unlinked path — behaviour identical to pre-Phase-4.
-	return recordReceivePaymentLegacy(tx, in)
+	var jeID uint
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		jeID, err = recordReceivePaymentLegacy(tx, in)
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	return jeID, nil
 }
 
 // invoiceProRata splits a single document-currency total (Σ CN or Σ deposit
@@ -258,13 +277,17 @@ func recordReceivePaymentAllocations(tx *gorm.DB, in ReceivePaymentInput) (uint,
 	mixedCurrency := false
 	hasFX := false
 
-	for i, alloc := range in.Allocations {
+	allocations := append([]InvoiceAllocation(nil), in.Allocations...)
+	sort.Slice(allocations, func(i, j int) bool {
+		return allocations[i].InvoiceID < allocations[j].InvoiceID
+	})
+	for i, alloc := range allocations {
 		if alloc.Amount.LessThanOrEqual(decimal.Zero) {
 			return 0, fmt.Errorf("allocation %d: amount must be > 0", i+1)
 		}
 
 		var inv models.Invoice
-		if err := tx.Where("id = ? AND company_id = ?", alloc.InvoiceID, in.CompanyID).First(&inv).Error; err != nil {
+		if err := applyLockForUpdate(tx.Where("id = ? AND company_id = ?", alloc.InvoiceID, in.CompanyID)).First(&inv).Error; err != nil {
 			return 0, fmt.Errorf("allocation %d: invoice not found", i+1)
 		}
 		if inv.CustomerID != in.CustomerID {
@@ -347,12 +370,16 @@ func recordReceivePaymentAllocations(tx *gorm.DB, in ReceivePaymentInput) (uint,
 	depositRecords := make([]depositRecord, 0, len(in.Deposits))
 	totalDepositDoc := decimal.Zero
 
-	for i, da := range in.Deposits {
+	deposits := append([]DepositApplication(nil), in.Deposits...)
+	sort.Slice(deposits, func(i, j int) bool {
+		return deposits[i].DepositID < deposits[j].DepositID
+	})
+	for i, da := range deposits {
 		if da.Amount.LessThanOrEqual(decimal.Zero) {
 			return 0, fmt.Errorf("deposit application %d: amount must be > 0", i+1)
 		}
 		var dep models.CustomerDeposit
-		if err := tx.Where("id = ? AND company_id = ?", da.DepositID, in.CompanyID).First(&dep).Error; err != nil {
+		if err := applyLockForUpdate(tx.Where("id = ? AND company_id = ?", da.DepositID, in.CompanyID)).First(&dep).Error; err != nil {
 			return 0, fmt.Errorf("deposit application %d: deposit not found", i+1)
 		}
 		if dep.CustomerID != in.CustomerID {
@@ -395,12 +422,16 @@ func recordReceivePaymentAllocations(tx *gorm.DB, in ReceivePaymentInput) (uint,
 	}
 	cnRecords := make([]cnRecord, 0, len(in.CreditNotes))
 	totalCNDoc := decimal.Zero
-	for i, cnApp := range in.CreditNotes {
+	creditNotes := append([]CreditNoteConsumption(nil), in.CreditNotes...)
+	sort.Slice(creditNotes, func(i, j int) bool {
+		return creditNotes[i].CreditNoteID < creditNotes[j].CreditNoteID
+	})
+	for i, cnApp := range creditNotes {
 		if cnApp.Amount.LessThanOrEqual(decimal.Zero) {
 			return 0, fmt.Errorf("credit note application %d: amount must be > 0", i+1)
 		}
 		var cn models.CreditNote
-		if err := tx.Where("id = ? AND company_id = ?", cnApp.CreditNoteID, in.CompanyID).First(&cn).Error; err != nil {
+		if err := applyLockForUpdate(tx.Where("id = ? AND company_id = ?", cnApp.CreditNoteID, in.CompanyID)).First(&cn).Error; err != nil {
 			return 0, fmt.Errorf("credit note application %d: credit note not found", i+1)
 		}
 		if cn.CustomerID != in.CustomerID {
@@ -931,7 +962,7 @@ func recordReceivePaymentLegacy(tx *gorm.DB, in ReceivePaymentInput) (uint, erro
 	// Legacy invoice full-settlement check (preserved from pre-Phase-4).
 	if in.InvoiceID != nil && *in.InvoiceID != 0 {
 		var inv models.Invoice
-		if err := tx.Where("id = ? AND company_id = ?", *in.InvoiceID, in.CompanyID).First(&inv).Error; err != nil {
+		if err := applyLockForUpdate(tx.Where("id = ? AND company_id = ?", *in.InvoiceID, in.CompanyID)).First(&inv).Error; err != nil {
 			return 0, fmt.Errorf("linked invoice not found")
 		}
 		if inv.CustomerID != in.CustomerID {

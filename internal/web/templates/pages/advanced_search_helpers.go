@@ -104,13 +104,19 @@ func AdvSearchPayload(payload map[string]string, key string) string {
 // dropdown's <optgroup> rendering. The order of groups matches the
 // dropdown's display order: Transactions → Contacts → Products. Each
 // group preserves the input order from AdvancedSearchEntityOptions.
-func AdvSearchEntityGroups() []advSearchOptGroup {
+func AdvSearchEntityGroups(options []EntityTypeOption) []advSearchOptGroup {
+	if options == nil {
+		options = AdvancedSearchEntityOptions()
+	}
 	groups := []advSearchOptGroup{
 		{Label: "Transactions"},
 		{Label: "Contacts"},
 		{Label: "Products"},
+		{Label: "Work"},
+		{Label: "People"},
+		{Label: "Payroll"},
 	}
-	for _, opt := range AdvancedSearchEntityOptions() {
+	for _, opt := range options {
 		for i := range groups {
 			if groups[i].Label == opt.Group {
 				groups[i].Options = append(groups[i].Options, opt)
@@ -118,7 +124,13 @@ func AdvSearchEntityGroups() []advSearchOptGroup {
 			}
 		}
 	}
-	return groups
+	out := make([]advSearchOptGroup, 0, len(groups))
+	for _, group := range groups {
+		if len(group.Options) > 0 {
+			out = append(out, group)
+		}
+	}
+	return out
 }
 
 // advSearchOptGroup is a one-shot bucket struct used by the templ to

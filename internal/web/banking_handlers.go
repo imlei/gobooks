@@ -253,6 +253,12 @@ func reconcileDocumentURL(sourceType string, sourceID, journalEntryID uint) stri
 		return fmt.Sprintf("/deposits/%d", sourceID)
 	case models.LedgerSourceVendorPrepayment:
 		return fmt.Sprintf("/vendor-prepayments/%d", sourceID)
+	case models.LedgerSourcePayrollRun:
+		return fmt.Sprintf("/payroll/runs/%d", sourceID)
+	case models.LedgerSourceCheque:
+		return "/cheques"
+	case models.LedgerSourcePayrollRemittance:
+		return "/payroll/remittances"
 	default:
 		return reconcileJEURL(journalEntryID)
 	}

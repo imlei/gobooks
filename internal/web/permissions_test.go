@@ -14,9 +14,12 @@ func TestCanPerformActionPermissionMatrix(t *testing.T) {
 		{name: "accountant can approve invoices", role: "accountant", action: ActionInvoiceApprove, want: true},
 		{name: "accountant cannot update settings", role: "accountant", action: ActionSettingsUpdate, want: false},
 		{name: "bookkeeper can create invoices", role: "bookkeeper", action: ActionInvoiceCreate, want: true},
+		{name: "bookkeeper can create tasks", role: "bookkeeper", action: ActionTaskCreate, want: true},
 		{name: "bookkeeper can access reconciliation writes", role: "bookkeeper", action: ActionJournalCreate, want: true},
 		{name: "bookkeeper cannot approve invoices", role: "bookkeeper", action: ActionInvoiceApprove, want: false},
 		{name: "ap can pay bills", role: "ap", action: ActionBillPay, want: true},
+		{name: "ap can view tasks", role: "ap", action: ActionTaskView, want: true},
+		{name: "ap cannot create tasks", role: "ap", action: ActionTaskCreate, want: false},
 		{name: "ap cannot access ar write flows", role: "ap", action: ActionInvoiceCreate, want: false},
 		{name: "ap cannot access reconciliation writes", role: "ap", action: ActionJournalCreate, want: false},
 		{name: "ap cannot view reports", role: "ap", action: ActionReportView, want: false},
@@ -32,5 +35,25 @@ func TestCanPerformActionPermissionMatrix(t *testing.T) {
 				t.Fatalf("CanPerformAction(%q, %q) = %v, want %v", tc.role, tc.action, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestPermissionOverrides(t *testing.T) {
+	denyAR := newPermissionOverrides([]permissionOverride{{Permission: PermARAccess, Granted: false}})
+	if CanPerformActionWithOverrides("bookkeeper", ActionInvoiceCreate, denyAR) {
+		t.Fatalf("deny override should block role-granted AR access")
+	}
+
+	grantPayroll := newPermissionOverrides([]permissionOverride{{Permission: PermPayrollView, Granted: true}})
+	if !CanPerformActionWithOverrides("ap", ActionPayrollView, grantPayroll) {
+		t.Fatalf("grant override should allow payroll view")
+	}
+
+	denyWins := newPermissionOverrides([]permissionOverride{
+		{Permission: PermPayrollView, Granted: true},
+		{Permission: PermPayrollView, Granted: false},
+	})
+	if CanPerformActionWithOverrides("owner", ActionPayrollView, denyWins) {
+		t.Fatalf("deny override should win over grant and base role")
 	}
 }

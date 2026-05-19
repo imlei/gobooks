@@ -42,6 +42,9 @@ type BillEditorVM struct {
 	PaymentTerms    []models.PaymentTerm
 	SelectableTasks []models.Task
 	Warehouses      []models.Warehouse
+	// TaskModuleEnabled controls whether task costing controls are visible
+	// and accepted from the bill editor.
+	TaskModuleEnabled bool
 	// Products is the catalog of ProductService rows for the line-level
 	// Item picker (IN.1 / Rule #4 item-aware bill lines). Consumed as
 	// the ProductsJSON dataset by the Alpine bill editor.

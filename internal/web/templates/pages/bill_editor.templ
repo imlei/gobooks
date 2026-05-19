@@ -215,7 +215,9 @@ templ billLineItemsCard(vm BillEditorVM) {
 		<div class="flex items-center justify-between">
 			<div>
 				<h2 class="text-section font-semibold text-text">Line Items</h2>
-				<p class="mt-1 text-small text-text-muted2">Task-linked lines inherit billable customer from the selected task. Only open or completed tasks can be chosen.</p>
+				if vm.TaskModuleEnabled {
+					<p class="mt-1 text-small text-text-muted2">Task-linked lines inherit billable customer from the selected task. Only open or completed tasks can be chosen.</p>
+				}
 			</div>
 			<button
 				type="button"
@@ -247,8 +249,10 @@ templ billLineItemsCard(vm BillEditorVM) {
 						<th class="py-2 pr-3 w-28">Unit Price</th>
 						<th class="py-2 pr-3 w-28">Amount</th>
 						<th class="py-2 pr-3 w-32">Tax</th>
-						<th class="py-2 pr-3 w-44">Task</th>
-						<th class="py-2 pr-3 w-24">Billing</th>
+						if vm.TaskModuleEnabled {
+							<th class="py-2 pr-3 w-44">Task</th>
+							<th class="py-2 pr-3 w-24">Billing</th>
+						}
 						<th class="py-2 w-10"></th>
 					</tr>
 				</thead>
@@ -393,6 +397,7 @@ templ billLineItemsCard(vm BillEditorVM) {
 									</template>
 								</select>
 							</td>
+							if vm.TaskModuleEnabled {
 							<td class="py-2 pr-3">
 								<select
 									:name="'line_task_id[' + idx + ']'"
@@ -417,6 +422,7 @@ templ billLineItemsCard(vm BillEditorVM) {
 									<span>Billable</span>
 								</label>
 							</td>
+							}
 							<td class="py-2 text-center">
 								<button
 									type="button"

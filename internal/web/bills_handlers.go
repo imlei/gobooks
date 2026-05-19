@@ -359,6 +359,10 @@ func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 		vm.DueDate = bill.DueDate.Format("2006-01-02")
 	}
 
+	if err := s.loadBillEditorDropdowns(companyID, &vm); err != nil {
+		vm.FormError = "Could not load dropdown data."
+	}
+	hasHiddenTaskLinks := false
 	for _, l := range bill.Lines {
 		// Rule #4 / IN.1: ProductServiceID, Qty and UnitPrice MUST
 		// round-trip through the form reload. A prior revision only
@@ -368,7 +372,7 @@ func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 		// Qty to the default 1 / UnitPrice to 0. Submit would then
 		// either re-save garbage or fail the post with no stack trace
 		// visible to the operator.
-		vm.Lines = append(vm.Lines, pages.BillLineFormRow{
+		row := pages.BillLineFormRow{
 			ProductServiceID: optUintStr(l.ProductServiceID),
 			ExpenseAccountID: optUintStr(l.ExpenseAccountID),
 			Description:      l.Description,
@@ -376,16 +380,20 @@ func (s *Server) handleBillEdit(c *fiber.Ctx) error {
 			UnitPrice:        l.UnitPrice.StringFixed(4),
 			Amount:           l.LineNet.StringFixed(2),
 			TaxCodeID:        optUintStr(l.TaxCodeID),
-			TaskID:           optUintStr(l.TaskID),
-			IsBillable:       l.IsBillable,
 			LineNet:          l.LineNet.StringFixed(2),
 			LineTax:          l.LineTax.StringFixed(2),
 			LineTotal:        l.LineTotal.StringFixed(2),
-		})
+		}
+		if vm.TaskModuleEnabled {
+			row.TaskID = optUintStr(l.TaskID)
+			row.IsBillable = l.IsBillable
+		} else if l.TaskID != nil || l.IsBillable {
+			hasHiddenTaskLinks = true
+		}
+		vm.Lines = append(vm.Lines, row)
 	}
-
-	if err := s.loadBillEditorDropdowns(companyID, &vm); err != nil {
-		vm.FormError = "Could not load dropdown data."
+	if hasHiddenTaskLinks && vm.FormError == "" {
+		vm.FormError = "This draft has task-linked lines. Enable Tasks before editing those line links."
 	}
 	vm.InitialLinesJSON = buildBillInitialLinesJSON(vm.Lines)
 	return pages.BillEditor(vm).Render(c.Context(), c)
@@ -443,6 +451,13 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		vm.SubmitPath = fmt.Sprintf("/bills/%d/post", editingID)
 	}
 	_ = s.loadBillEditorDropdowns(companyID, &vm)
+	if !vm.TaskModuleEnabled && isEdit {
+		hasTaskLinks, err := s.billDraftHasTaskLinks(companyID, editingID)
+		if err == nil && hasTaskLinks {
+			vm.FormError = "This draft has task-linked lines. Enable Tasks before editing it."
+			return pages.BillEditor(vm).Render(c.Context(), c)
+		}
+	}
 
 	// ── Validate header ───────────────────────────────────────────────────────
 	if billNo != "" {
@@ -519,6 +534,7 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 		tcIDRaw := strings.TrimSpace(c.FormValue(key("line_tax_code_id")))
 		taskIDRaw := strings.TrimSpace(c.FormValue(key("line_task_id")))
 		isBillable := c.FormValue(key("line_is_billable")) == "1"
+		taskLinkSubmittedWhileDisabled := !vm.TaskModuleEnabled && (taskIDRaw != "" || isBillable)
 
 		if isBillPlaceholderLine(desc, amtRaw, accIDRaw, tcIDRaw, taskIDRaw, isBillable) {
 			continue
@@ -535,6 +551,13 @@ func (s *Server) handleBillSaveDraft(c *fiber.Ctx) error {
 			TaxCodeID:        tcIDRaw,
 			TaskID:           taskIDRaw,
 			IsBillable:       isBillable,
+		}
+		if taskLinkSubmittedWhileDisabled {
+			row.TaskID = ""
+			row.IsBillable = false
+			row.Error = "Enable Tasks before linking bill lines to tasks."
+			taskIDRaw = ""
+			isBillable = false
 		}
 
 		amt, aErr := decimal.NewFromString(amtRaw)
@@ -1039,11 +1062,18 @@ func (s *Server) loadBillEditorDropdowns(companyID uint, vm *pages.BillEditorVM)
 		Find(&vm.PaymentTerms).Error; err != nil {
 		return err
 	}
-	selectableTasks, err := services.ListSelectableTasks(s.DB, companyID)
+	taskModuleEnabled, err := s.taskModuleEnabledForEditor(companyID)
 	if err != nil {
 		return err
 	}
-	vm.SelectableTasks = selectableTasks
+	vm.TaskModuleEnabled = taskModuleEnabled
+	if taskModuleEnabled {
+		selectableTasks, err := services.ListSelectableTasks(s.DB, companyID)
+		if err != nil {
+			return err
+		}
+		vm.SelectableTasks = selectableTasks
+	}
 	vm.Warehouses, _ = services.ListWarehouses(s.DB, companyID)
 
 	// Rule #4 / IN.1: product catalog for line-level Item picker. Same
@@ -1083,6 +1113,28 @@ func (s *Server) loadBillEditorDropdowns(companyID uint, vm *pages.BillEditorVM)
 		}
 	}
 	return nil
+}
+
+func (s *Server) billDraftHasTaskLinks(companyID, billID uint) (bool, error) {
+	var count int64
+	err := s.DB.Model(&models.BillLine{}).
+		Where("company_id = ? AND bill_id = ? AND (task_id IS NOT NULL OR is_billable = true)", companyID, billID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (s *Server) taskModuleEnabledForEditor(companyID uint) (bool, error) {
+	enabled, err := services.IsCompanyFeatureEnabled(s.DB, companyID, models.FeatureKeyTask)
+	if err == nil {
+		return enabled, nil
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "no such table: company_features") {
+		return true, nil
+	}
+	return false, err
 }
 
 type billAccountJSONItem struct {

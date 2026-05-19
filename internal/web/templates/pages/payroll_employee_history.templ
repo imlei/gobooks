@@ -1,0 +1,143 @@
+package pages
+
+import "balanciz/internal/models"
+import "balanciz/internal/web/templates/layout"
+import "balanciz/internal/web/templates/ui"
+
+templ PayrollEmployeeHistoryReport(vm PayrollEmployeeHistoryReportVM) {
+	@layout.Layout(
+		"Balanciz - Employee Payroll History",
+		ui.SidebarVM{Active: "Payroll Reports", HasCompany: vm.HasCompany},
+		bodyPayrollEmployeeHistoryReport(vm),
+	)
+}
+
+templ bodyPayrollEmployeeHistoryReport(vm PayrollEmployeeHistoryReportVM) {
+	<div class="max-w-[95%]">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<a href="/payroll/runs" class="text-body text-text-muted3 hover:text-text">Back to Payroll Runs</a>
+				<h1 class="mt-2 text-title font-semibold">Employee Payroll History</h1>
+				<p class="mt-2 text-text-muted2">Review payroll entry totals by employee and pay date without exposing employee profile secrets.</p>
+			</div>
+		</div>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		<form method="get" action="/payroll/reports/employee-history" class="mt-6 rounded-lg border border-border bg-surface p-5">
+			<input type="hidden" name="period" value={ vm.Toolbar.Preset }/>
+			<input type="hidden" name="from" value={ vm.From }/>
+			<input type="hidden" name="to" value={ vm.To }/>
+			<div class="flex flex-wrap items-end gap-3">
+				<div class="min-w-[260px]">
+					<label class="block text-small font-medium text-text-muted">Employee</label>
+					<select name="employee_id" class="mt-1 w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus">
+						<option value="">All employees</option>
+						for _, employee := range vm.Employees {
+							<option value={ Uitoa(employee.ID) } selected?={ employee.ID == vm.EmployeeID }>{ payrollEmployeeHistoryEmployeeLabel(employee) }</option>
+						}
+					</select>
+				</div>
+				<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Apply</button>
+			</div>
+		</form>
+
+		@ReportToolbar(vm.Toolbar)
+
+		<div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Gross Pay</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-text">{ Money(vm.Report.TotalGross) }</div>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Deductions</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-text">{ Money(vm.Report.TotalDeductions) }</div>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Net Pay</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-text">{ Money(vm.Report.TotalNetPay) }</div>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Employer Contributions</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-text">{ Money(vm.Report.TotalEmployerContribute) }</div>
+			</div>
+		</div>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Payroll Entries</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Employee</th>
+							<th class="py-3 pr-4">Run</th>
+							<th class="py-3 pr-4">Pay Date</th>
+							<th class="py-3 pr-4 text-right">Hours</th>
+							<th class="py-3 pr-4 text-right">Gross</th>
+							<th class="py-3 pr-4 text-right">Tax</th>
+							<th class="py-3 pr-4 text-right">CPP</th>
+							<th class="py-3 pr-4 text-right">EI</th>
+							<th class="py-3 pr-4 text-right">Deductions</th>
+							<th class="py-3 pr-0 text-right">Net</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						if len(vm.Report.Rows) == 0 {
+							<tr>
+								<td colspan="10" class="py-6 text-text-muted2">No payroll entries found in this period.</td>
+							</tr>
+						}
+						for _, row := range vm.Report.Rows {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4">
+									<div class="font-medium">{ row.EmployeeName }</div>
+									if row.EmployeeNo != "" {
+										<div class="text-small text-text-muted2">{ row.EmployeeNo }</div>
+									}
+								</td>
+								<td class="py-3 pr-4">
+									<a href={ "/payroll/runs/" + Uitoa(row.PayrollRunID) + "#entry-" + Uitoa(row.PayrollEntryID) } class="font-medium text-primary hover:text-primary-hover hover:underline">{ payrollSummaryRunNumber(row.RunNumber, row.PayrollRunID) }</a>
+									<div class="text-small text-text-muted2">{ row.PeriodStart.Format("2006-01-02") } to { row.PeriodEnd.Format("2006-01-02") }</div>
+								</td>
+								<td class="py-3 pr-4">{ row.PayDate.Format("2006-01-02") }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ row.Hours.StringFixed(2) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.GrossPay) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.EmployeeTax) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.EmployeeCPP) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.EmployeeEI) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.TotalDeductions) }</td>
+								<td class="py-3 pr-0 text-right tabular-nums font-medium">{ Money(row.NetPay) }</td>
+							</tr>
+						}
+					</tbody>
+					if len(vm.Report.Rows) > 0 {
+						<tfoot class="border-t border-border bg-surface-tableHeader">
+							<tr class="font-semibold text-text">
+								<td class="py-3 pr-4" colspan="4">Total</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalGross) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalEmployeeTax) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalEmployeeCPP) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalEmployeeEI) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalDeductions) }</td>
+								<td class="py-3 pr-0 text-right tabular-nums">{ Money(vm.Report.TotalNetPay) }</td>
+							</tr>
+						</tfoot>
+					}
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+func payrollEmployeeHistoryEmployeeLabel(employee models.Employee) string {
+	name := employee.SearchName()
+	if name == "" {
+		name = "Employee " + Uitoa(employee.ID)
+	}
+	if employee.EmployeeNo != "" {
+		return name + " (" + employee.EmployeeNo + ")"
+	}
+	return name
+}

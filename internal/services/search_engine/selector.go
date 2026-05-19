@@ -91,9 +91,10 @@ type Engine interface {
 // in Phase 0 — Phase 4 adds entity-type filters, group-restriction flags,
 // pagination cursor, etc.
 type SearchRequest struct {
-	CompanyID uint
-	Query     string
-	Limit     int
+	CompanyID          uint
+	Query              string
+	Limit              int
+	AllowedEntityTypes []string
 }
 
 // AdvancedRequest powers the /advanced-search full-page view. Filters
@@ -111,6 +112,9 @@ type AdvancedRequest struct {
 	// Status filters by native status string (e.g. "paid", "voided").
 	// Empty = all statuses.
 	Status string
+	// AllowedEntityTypes is a permission boundary supplied by the web layer.
+	// nil = unrestricted legacy/internal caller; empty slice = no visibility.
+	AllowedEntityTypes []string
 	// Page is 1-indexed; PageSize must be in (0, 200].
 	Page     int
 	PageSize int
@@ -175,6 +179,9 @@ const (
 	GroupTransactions = "transactions"
 	GroupContacts     = "contacts"
 	GroupProducts     = "products"
+	GroupWork         = "work"
+	GroupPayroll      = "payroll"
+	GroupPeople       = "people"
 )
 
 // Selector picks the right Engine implementation for the configured Mode

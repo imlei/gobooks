@@ -290,6 +290,44 @@ func TestEntEngine_GroupingByEntityType(t *testing.T) {
 	}
 }
 
+func TestEntEngine_AllowedEntityTypesFilter(t *testing.T) {
+	c := newTestClient(t)
+	defer c.Close()
+	seedDoc(t, c, 1, "invoice", 1, "Alpha invoice", "INV-1")
+	seedDoc(t, c, 1, "payroll_entry", 2, "Alpha payroll", "PAY-1")
+
+	e, _ := NewEntEngine(c, searchprojection.AsciiNormalizer{})
+	resp, err := e.Search(context.Background(), SearchRequest{
+		CompanyID:          1,
+		Query:              "Alpha",
+		AllowedEntityTypes: []string{"invoice"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cnd := range resp.Candidates {
+		if cnd.EntityType != "invoice" {
+			t.Fatalf("unauthorized entity leaked into dropdown search: %+v", cnd)
+		}
+	}
+
+	adv, err := e.SearchAdvanced(context.Background(), AdvancedRequest{
+		CompanyID:          1,
+		Query:              "Alpha",
+		AllowedEntityTypes: []string{"invoice"},
+		Page:               1,
+		PageSize:           50,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range adv.Rows {
+		if row.EntityType != "invoice" {
+			t.Fatalf("unauthorized entity leaked into advanced search: %+v", row)
+		}
+	}
+}
+
 func TestEntEngine_RefusesZeroCompanyID(t *testing.T) {
 	c := newTestClient(t)
 	defer c.Close()

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -148,6 +149,34 @@ func TestResolveExchangeRateSnapshot_ProviderFailureReturnsError(t *testing.T) {
 	}
 }
 
+func TestResolveExchangeRateSnapshot_ProviderFailureFallsBackToNearestPriorLocalRate(t *testing.T) {
+	db := testCurrencyDB(t)
+	insertRate(t, db, nil, "USD", "CAD", fxRate(1.31), fxDate(2026, 4, 8))
+	insertRate(t, db, nil, "USD", "CAD", fxRate(1.33), fxDate(2026, 4, 9))
+	provider := &fakeExchangeRateProvider{err: errors.New("provider down")}
+
+	snapshot, err := ResolveExchangeRateSnapshot(context.Background(), db, ExchangeRateResolveOptions{
+		CompanyID:               1,
+		TransactionCurrencyCode: "USD",
+		BaseCurrencyCode:        "CAD",
+		Date:                    fxDate(2026, 4, 10),
+		AllowProviderFetch:      true,
+		Provider:                provider,
+	})
+	if err != nil {
+		t.Fatalf("ResolveExchangeRateSnapshot: %v", err)
+	}
+	if provider.calls != 1 {
+		t.Fatalf("expected provider to be attempted once, got %d calls", provider.calls)
+	}
+	if !snapshot.ExchangeRate.Equal(fxRate(1.33)) {
+		t.Fatalf("expected nearest prior fallback 1.33, got %s", snapshot.ExchangeRate)
+	}
+	if !snapshot.ExchangeRateDate.Equal(fxDate(2026, 4, 9)) {
+		t.Fatalf("expected fallback date 2026-04-09, got %s", snapshot.ExchangeRateDate.Format("2006-01-02"))
+	}
+}
+
 func TestResolveExchangeRateSnapshot_HistoricalNearestPriorLocalRate(t *testing.T) {
 	db := testCurrencyDB(t)
 	insertRate(t, db, nil, "USD", "CAD", fxRate(1.31), fxDate(2026, 4, 8))
@@ -239,6 +268,34 @@ func TestFrankfurterProvider_FetchRate_ProviderFailurePath(t *testing.T) {
 	}
 	if _, err := provider.FetchRate(context.Background(), "USD", "CAD", fxDate(2026, 4, 10)); err == nil {
 		t.Fatal("expected provider failure")
+	}
+}
+
+func TestFrankfurterProvider_FetchRate_OpensCircuitAfterFailures(t *testing.T) {
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.Error(w, "upstream failure", http.StatusBadGateway)
+	}))
+	defer server.Close()
+
+	provider := &FrankfurterProvider{
+		BaseURL:    server.URL + "/v2",
+		HTTPClient: server.Client(),
+		CircuitBreaker: &exchangeRateProviderCircuitBreaker{
+			failureThreshold: 1,
+			cooldown:         time.Hour,
+		},
+	}
+	if _, err := provider.FetchRate(context.Background(), "USD", "CAD", fxDate(2026, 4, 10)); err == nil {
+		t.Fatal("expected first provider failure")
+	}
+	_, err := provider.FetchRate(context.Background(), "USD", "CAD", fxDate(2026, 4, 10))
+	if err == nil || !strings.Contains(err.Error(), "circuit is open") {
+		t.Fatalf("expected open circuit error, got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("expected second call to be blocked by circuit, got %d upstream calls", calls)
 	}
 }
 

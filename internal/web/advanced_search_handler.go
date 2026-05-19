@@ -66,6 +66,10 @@ func (s *Server) handleAdvancedSearch(c *fiber.Ctx) error {
 	if entityType != "" && !isKnownAdvancedEntityType(entityType) {
 		entityType = ""
 	}
+	allowedEntityTypes := s.allowedGlobalSearchEntityTypes(c)
+	if !entityTypeAllowed(entityType, allowedEntityTypes) {
+		entityType = ""
+	}
 
 	// Date parsing: tolerate empty / unparseable inputs by treating them as
 	// "no bound". We don't surface a parse error in the UI because the date
@@ -85,14 +89,15 @@ func (s *Server) handleAdvancedSearch(c *fiber.Ctx) error {
 	}
 
 	resp, err := s.SearchSelector.SearchAdvanced(c.Context(), search_engine.AdvancedRequest{
-		CompanyID:  companyID,
-		Query:      q,
-		EntityType: entityType,
-		DateFrom:   dateFrom,
-		DateTo:     dateTo,
-		Status:     status,
-		Page:       page,
-		PageSize:   size,
+		CompanyID:          companyID,
+		Query:              q,
+		EntityType:         entityType,
+		DateFrom:           dateFrom,
+		DateTo:             dateTo,
+		Status:             status,
+		AllowedEntityTypes: allowedEntityTypes,
+		Page:               page,
+		PageSize:           size,
 	})
 	if err != nil {
 		// Engine failure shouldn't 500 the whole page — render with empty
@@ -106,6 +111,12 @@ func (s *Server) handleAdvancedSearch(c *fiber.Ctx) error {
 		}
 	}
 
+	originalRowCount := len(resp.Rows)
+	resp.Rows = s.sanitizeSearchCandidatesForContext(c, allowedEntityTypes, resp.Rows)
+	if len(resp.Rows) != originalRowCount {
+		resp.Total = len(resp.Rows)
+	}
+
 	vm := pages.AdvancedSearchVM{
 		HasCompany:        true,
 		Query:             q,
@@ -117,7 +128,7 @@ func (s *Server) handleAdvancedSearch(c *fiber.Ctx) error {
 		Total:             resp.Total,
 		Page:              resp.Page,
 		PageSize:          resp.PageSize,
-		EntityTypeOptions: pages.AdvancedSearchEntityOptions(),
+		EntityTypeOptions: filterAdvancedSearchEntityOptions(pages.AdvancedSearchEntityOptions(), allowedEntityTypes),
 		Mode:              string(s.SearchSelector.Mode()),
 	}
 	return pages.AdvancedSearch(vm).Render(c.Context(), c)

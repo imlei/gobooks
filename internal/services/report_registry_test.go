@@ -1,7 +1,11 @@
 // 遵循project_guide.md
 package services
 
-import "testing"
+import (
+	"testing"
+
+	"balanciz/internal/models"
+)
 
 // TestReportRegistry_NoDuplicateKeys is the most important contract:
 // report keys are persisted in report_favourites, so a duplicate or
@@ -81,6 +85,24 @@ func TestReportsByCategory_FiltersCorrectly(t *testing.T) {
 	for _, r := range finReports {
 		if r.Category != ReportCategoryFinancials {
 			t.Errorf("ReportsByCategory(financials) returned %q from category %q", r.Key, r.Category)
+		}
+	}
+}
+
+func TestTaskReportsDeclareModuleVisibility(t *testing.T) {
+	for _, key := range []string{"task-monthly-summary", "task-billable-work"} {
+		r := ReportByKey(key)
+		if r == nil {
+			t.Fatalf("ReportByKey(%s) returned nil", key)
+		}
+		if r.Category != ReportCategoryTasks {
+			t.Errorf("%s category = %q, want tasks", key, r.Category)
+		}
+		if r.RequiredFeature != models.FeatureKeyTask {
+			t.Errorf("%s RequiredFeature = %q, want task", key, r.RequiredFeature)
+		}
+		if r.RequiredAction != "task:view" {
+			t.Errorf("%s RequiredAction = %q, want task:view", key, r.RequiredAction)
 		}
 	}
 }

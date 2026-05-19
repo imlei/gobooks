@@ -27,6 +27,18 @@ type SidebarData struct {
 	// NumberFormat is the user's preferred number display format (e.g. "comma_dot").
 	// Injected into the layout as a data attribute; applied client-side by num-format.js.
 	NumberFormat string
+	// Module navigation is pre-filtered by the web layer using both company
+	// feature flags and the current member's effective permissions.
+	ShowEmployees      bool
+	ShowTasks          bool
+	ShowPayroll        bool
+	ShowPayrollDetails bool
+	ShowPayrollReports bool
+	ShowCheques        bool
+	CanCreateEmployee  bool
+	CanCreateTask      bool
+	CanCreatePayroll   bool
+	CanCreateCheque    bool
 }
 
 // SwitcherRow is one entry in the company-switcher dropdown.

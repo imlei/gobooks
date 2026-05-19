@@ -30,6 +30,9 @@ func (s *Server) handleSmartPickerSearch(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
+	if err := s.requireSmartPickerContextAccess(c, def); err != nil {
+		return smartPickerAccessResponse(c, err)
+	}
 
 	provider, ok := defaultSmartPickerRegistry.get(entity)
 	if !ok {
@@ -115,6 +118,9 @@ func (s *Server) handleSmartPickerUsage(c *fiber.Ctx) error {
 	if err := json.Unmarshal(c.Body(), &body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON body"})
 	}
+	if err := s.requireSmartPickerUsageContextAccess(c, body); err != nil {
+		return smartPickerAccessResponse(c, err)
+	}
 
 	slog.Info("smart_picker.usage",
 		"entity", firstNonEmpty(body.EntityType, body.Entity),
@@ -167,8 +173,48 @@ func (s *Server) smartPickerAnchorFromQuery(companyID uint, c *fiber.Ctx) (strin
 	if err != nil {
 		return "", "", nil, smartPickerUsageError{status: fiber.StatusBadRequest, message: "invalid anchor context"}
 	}
+	if err := s.requireSmartPickerContextAccess(c, def); err != nil {
+		return "", "", nil, err
+	}
 	if err := validateSmartPickerEntityID(s.DB, companyID, smartPickerUserID(c), def.ProviderContext, anchorEntityType, *anchorID); err != nil {
 		return "", "", nil, err
 	}
 	return def.ProviderContext, anchorEntityType, anchorID, nil
+}
+
+func (s *Server) requireSmartPickerUsageContextAccess(c *fiber.Ctx, body smartPickerUsageEventInput) error {
+	entityType := firstNonEmpty(body.EntityType, body.Entity)
+	def, err := validateSmartPickerContext(entityType, body.Context)
+	if err != nil {
+		return smartPickerUsageError{status: fiber.StatusBadRequest, message: err.Error()}
+	}
+	if err := s.requireSmartPickerContextAccess(c, def); err != nil {
+		return err
+	}
+	if body.AnchorContext == "" && body.AnchorEntityType == "" && body.AnchorEntityID == "" {
+		return nil
+	}
+	anchorDef, err := validateSmartPickerContext(body.AnchorEntityType, body.AnchorContext)
+	if err != nil {
+		return smartPickerUsageError{status: fiber.StatusBadRequest, message: "invalid anchor context"}
+	}
+	return s.requireSmartPickerContextAccess(c, anchorDef)
+}
+
+func (s *Server) requireSmartPickerContextAccess(c *fiber.Ctx, def smartPickerContextDefinition) error {
+	if def.RequiredFeature != "" && !s.searchFeatureEnabled(c, def.RequiredFeature) {
+		return smartPickerUsageError{status: fiber.StatusForbidden, message: "smart picker context is not enabled"}
+	}
+	if def.RequiredAction != "" && !CanFromCtx(c, def.RequiredAction) {
+		return smartPickerUsageError{status: fiber.StatusForbidden, message: "smart picker context is not permitted"}
+	}
+	return nil
+}
+
+func smartPickerAccessResponse(c *fiber.Ctx, err error) error {
+	var usageErr smartPickerUsageError
+	if errors.As(err, &usageErr) {
+		return c.Status(usageErr.status).JSON(fiber.Map{"error": usageErr.message})
+	}
+	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "smart picker context is not permitted"})
 }

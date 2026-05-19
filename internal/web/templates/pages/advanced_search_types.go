@@ -70,5 +70,14 @@ func AdvancedSearchEntityOptions() []EntityTypeOption {
 		{Value: "vendor", Label: "Vendor", Group: "Contacts"},
 		// Products
 		{Value: "product_service", Label: "Product / Service", Group: "Products"},
+		// Work
+		{Value: "task", Label: "Task", Group: "Work"},
+		// People
+		{Value: "employee", Label: "Employee", Group: "People"},
+		// Payroll
+		{Value: "payroll_run", Label: "Payroll Run", Group: "Payroll"},
+		{Value: "payroll_entry", Label: "Payroll Entry", Group: "Payroll"},
+		{Value: "payroll_remittance", Label: "Payroll Remittance", Group: "Payroll"},
+		{Value: "cheque", Label: "Cheque", Group: "Payroll"},
 	}
 }

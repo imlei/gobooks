@@ -24,6 +24,9 @@ type FeatureKey string
 const (
 	FeatureKeyInventory FeatureKey = "inventory"
 	FeatureKeyTask      FeatureKey = "task"
+	FeatureKeyEmployee  FeatureKey = "employee"
+	FeatureKeyPayroll   FeatureKey = "payroll"
+	FeatureKeyCheque    FeatureKey = "cheque"
 )
 
 // ── Feature status ───────────────────────────────────────────────────────────
@@ -61,11 +64,11 @@ const (
 type ReasonCode string
 
 const (
-	ReasonCodeTrialPilot              ReasonCode = "trial_pilot"
-	ReasonCodeStartInventoryWorkflow  ReasonCode = "start_inventory_workflow"
-	ReasonCodeMigration               ReasonCode = "migration"
-	ReasonCodeSuggestedBySupport      ReasonCode = "suggested_by_support"
-	ReasonCodeOther                   ReasonCode = "other"
+	ReasonCodeTrialPilot             ReasonCode = "trial_pilot"
+	ReasonCodeStartInventoryWorkflow ReasonCode = "start_inventory_workflow"
+	ReasonCodeMigration              ReasonCode = "migration"
+	ReasonCodeSuggestedBySupport     ReasonCode = "suggested_by_support"
+	ReasonCodeOther                  ReasonCode = "other"
 )
 
 // AllReasonCodes returns the enumerated set in display order.
@@ -143,12 +146,40 @@ func AllCompanyFeatureDefinitions() []CompanyFeatureDefinition {
 			AckVersion:       AckVersionInventoryAlphaV1,
 		},
 		{
-			Key:             FeatureKeyTask,
-			Label:           "Task",
-			Maturity:        FeatureMaturityComingSoon,
-			Description:     "Task and project tracking integrated with billable time, expenses, and reinvoice workflows.",
-			FitDescription:  "Not yet available for self-enablement.",
-			SelfServeEnable: false,
+			Key:              FeatureKeyTask,
+			Label:            "Task",
+			Maturity:         FeatureMaturityBeta,
+			Description:      "Task and project tracking integrated with billable time, expenses, and reinvoice workflows.",
+			FitDescription:   "Fits service teams that track billable work and need task reporting inside Balanciz.",
+			SelfServeEnable:  true,
+			TypedConfirmText: "ENABLE TASK",
+		},
+		{
+			Key:              FeatureKeyEmployee,
+			Label:            "Employee",
+			Maturity:         FeatureMaturityBeta,
+			Description:      "Employee records and employment profile data that can be shared by payroll, cheque, and reporting modules.",
+			FitDescription:   "Fits companies that need employee master data without duplicating contact records.",
+			SelfServeEnable:  true,
+			TypedConfirmText: "ENABLE EMPLOYEE",
+		},
+		{
+			Key:              FeatureKeyPayroll,
+			Label:            "Payroll",
+			Maturity:         FeatureMaturityBeta,
+			Description:      "Canadian payroll runs, statutory deductions, employee pay entries, and payroll export workflows.",
+			FitDescription:   "Fits Canadian companies that want payroll data inside Balanciz with strict permission controls.",
+			SelfServeEnable:  true,
+			TypedConfirmText: "ENABLE PAYROLL",
+		},
+		{
+			Key:              FeatureKeyCheque,
+			Label:            "Cheque",
+			Maturity:         FeatureMaturityBeta,
+			Description:      "Cheque writing and print workflows connected to vendors, employees, payroll, and bank accounts.",
+			FitDescription:   "Fits companies that still issue paper cheques and need controlled print access.",
+			SelfServeEnable:  true,
+			TypedConfirmText: "ENABLE CHEQUE",
 		},
 	}
 }
@@ -197,8 +228,8 @@ func InventoryAlphaRequiredAcknowledgements() []string {
 //   - Row with status='enabled' = currently enabled. enabled_at /
 //     enabled_by_user_id / acknowledged_at / ack_version all populated.
 type CompanyFeature struct {
-	ID        uint       `gorm:"primaryKey"`
-	CompanyID uint       `gorm:"not null;index"`
+	ID         uint       `gorm:"primaryKey"`
+	CompanyID  uint       `gorm:"not null;index"`
 	FeatureKey FeatureKey `gorm:"column:feature_key;type:text;not null"`
 
 	Status   FeatureStatus   `gorm:"type:text;not null;default:'off'"`
@@ -207,7 +238,7 @@ type CompanyFeature struct {
 	EnabledAt       *time.Time
 	EnabledByUserID *uuid.UUID `gorm:"type:uuid"`
 	AcknowledgedAt  *time.Time
-	AckVersion      string `gorm:"not null;default:''"`
+	AckVersion      string     `gorm:"not null;default:''"`
 	ReasonCode      ReasonCode `gorm:"column:reason_code;type:text;not null;default:''"`
 	ReasonNote      string     `gorm:"not null;default:''"`
 

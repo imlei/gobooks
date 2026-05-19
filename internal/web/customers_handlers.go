@@ -28,6 +28,7 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 	filterQ := strings.TrimSpace(c.Query("q"))
 	filterStatus := normaliseListStatus(c.Query("status"))
 	sortBy, sortDir, orderClause := normaliseCustomerListSort(c.Query("sort"), c.Query("dir"))
+	showBillableWork := s.customerBillableWorkVisible(c)
 
 	vm := pages.CustomersVM{
 		HasCompany:       true,
@@ -41,6 +42,7 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 		FilterStatus:     filterStatus,
 		SortBy:           sortBy,
 		SortDir:          sortDir,
+		ShowBillableWork: showBillableWork,
 	}
 	_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
 
@@ -66,8 +68,10 @@ func (s *Server) handleCustomers(c *fiber.Ctx) error {
 		Where("company_id = ? AND is_active = false", companyID).
 		Count(&inactiveCount)
 	vm.InactiveCustomerCount = int(inactiveCount)
-	if summaries, err := services.ListCustomerBillableSummaries(s.DB, companyID); err == nil {
-		vm.BillableSummaries = summaries
+	if showBillableWork {
+		if summaries, err := services.ListCustomerBillableSummaries(s.DB, companyID); err == nil {
+			vm.BillableSummaries = summaries
+		}
 	}
 
 	// Handle ?edit=ID — open drawer pre-populated with the customer's data.
@@ -188,9 +192,13 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 	// Legacy ?edit=1 URL opens the profile drawer with edit intent so
 	// bookmarks + external links keep working.
 	editFlag := c.Query("edit") == "1"
+	showBillableWork := s.customerBillableWorkVisible(c)
 	tab := normaliseCustomerDetailTab(c.Query("tab"))
 	if editFlag {
 		tab = "profile"
+	}
+	if tab == "billable-work" && !showBillableWork {
+		tab = "transactions"
 	}
 	if tab == "" {
 		tab = "transactions"
@@ -211,6 +219,7 @@ func (s *Server) handleCustomerDetail(c *fiber.Ctx) error {
 		Customer:                workspace.Customer,
 		DefaultPaymentTermLabel: workspace.DefaultPaymentTermLabel,
 		BillableSummary:         workspace.BillableSummary,
+		ShowBillableWork:        showBillableWork,
 		ARSummary:               workspace.ARSummary,
 		OutstandingInvoices:     workspace.OutstandingInvoices,
 		RecentInvoices:          workspace.RecentInvoices,
@@ -288,6 +297,10 @@ func normaliseCustomerDetailTab(raw string) string {
 	default:
 		return ""
 	}
+}
+
+func (s *Server) customerBillableWorkVisible(c *fiber.Ctx) bool {
+	return s.searchFeatureEnabled(c, models.FeatureKeyTask) && CanFromCtx(c, ActionTaskView)
 }
 
 // loadCustomerEditFormData populates dropdown data for the inline edit form.
@@ -430,6 +443,7 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 	}
 
 	multiCurrency, baseCurrency, currencies := s.vendorCurrencyInfo(companyID)
+	showBillableWork := s.customerBillableWorkVisible(c)
 	name, email, currencyCode, paymentTerm, addrStreet1, addrStreet2, addrCity, addrProvince, addrPostalCode, addrCountry := parseCustomerForm(c)
 
 	// Build a VM for re-rendering the list page with the drawer open on error.
@@ -454,11 +468,14 @@ func (s *Server) handleCustomerUpdate(c *fiber.Ctx) error {
 			MultiCurrency:          multiCurrency,
 			BaseCurrencyCode:       baseCurrency,
 			Currencies:             currencies,
+			ShowBillableWork:       showBillableWork,
 		}
 		_ = s.DB.Where("company_id = ?", companyID).Order("name asc").Find(&vm.Customers)
 		_ = s.DB.Where("company_id = ? AND is_active = true", companyID).Order("sort_order asc, code asc").Find(&vm.PaymentTerms)
-		if summaries, err := services.ListCustomerBillableSummaries(s.DB, companyID); err == nil {
-			vm.BillableSummaries = summaries
+		if showBillableWork {
+			if summaries, err := services.ListCustomerBillableSummaries(s.DB, companyID); err == nil {
+				vm.BillableSummaries = summaries
+			}
 		}
 		return vm
 	}

@@ -185,7 +185,9 @@ templ customerDetailTabs(vm CustomerDetailVM) {
 		<nav class="flex flex-wrap gap-1" aria-label="Customer sections">
 			@customerTabLink(vm, "transactions", "Transactions")
 			@customerTabLink(vm, "quotes-orders", "Quotes & Orders")
-			@customerTabLink(vm, "billable-work", "Billable Work")
+			if vm.ShowBillableWork {
+				@customerTabLink(vm, "billable-work", "Billable Work")
+			}
 			@customerTabLink(vm, "profile", "Profile")
 			@customerTabLink(vm, "notes", "Notes")
 		</nav>
@@ -216,7 +218,11 @@ templ customerDetailTabBody(vm CustomerDetailVM) {
 			case "quotes-orders":
 				@tabQuotesOrders(vm)
 			case "billable-work":
-				@tabBillableWork(vm)
+				if vm.ShowBillableWork {
+					@tabBillableWork(vm)
+				} else {
+					@tabTransactions(vm)
+				}
 			case "profile":
 				@customerDetailsReadCard(vm)
 			case "notes":

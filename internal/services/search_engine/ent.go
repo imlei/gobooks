@@ -72,6 +72,9 @@ func (e *EntEngine) Search(ctx context.Context, req SearchRequest) (*SearchRespo
 	if req.CompanyID == 0 {
 		return nil, errors.New("search_engine: CompanyID is required")
 	}
+	if req.AllowedEntityTypes != nil && len(req.AllowedEntityTypes) == 0 {
+		return &SearchResponse{Candidates: []Candidate{}, Source: "permission_empty"}, nil
+	}
 
 	q := strings.TrimSpace(req.Query)
 	if q == "" {
@@ -86,7 +89,7 @@ func (e *EntEngine) Search(ctx context.Context, req SearchRequest) (*SearchRespo
 // via the NullsLast order below.
 func (e *EntEngine) searchEmpty(ctx context.Context, req SearchRequest) (*SearchResponse, error) {
 	rows, err := e.client.SearchDocument.Query().
-		Where(dropdownPredicates(req.CompanyID)...).
+		Where(dropdownPredicates(req)...).
 		Order(searchdocument.ByDocDate(entsql.OrderDesc(), entsql.OrderNullsLast())).
 		Limit(recentLimit).
 		All(ctx)
@@ -118,7 +121,7 @@ func (e *EntEngine) searchRanked(ctx context.Context, req SearchRequest, rawQ st
 	// (company_id, entity_type, doc_number) btree — index narrows to the
 	// company's docs first, then filters.
 	tier1, err := e.client.SearchDocument.Query().
-		Where(dropdownPredicates(req.CompanyID,
+		Where(dropdownPredicates(req,
 			searchdocument.Or(
 				searchdocument.DocNumberEqualFold(rawQ),
 				searchdocument.DocNumberContainsFold(rawQ),
@@ -134,7 +137,7 @@ func (e *EntEngine) searchRanked(ctx context.Context, req SearchRequest, rawQ st
 
 	// Tier 2: substring on title_native (counterparty / entity name).
 	tier2, err := e.client.SearchDocument.Query().
-		Where(dropdownPredicates(req.CompanyID,
+		Where(dropdownPredicates(req,
 			searchdocument.TitleNativeContainsFold(normalized),
 		)...).
 		Order(searchdocument.ByDocDate(entsql.OrderDesc(), entsql.OrderNullsLast())).
@@ -148,7 +151,7 @@ func (e *EntEngine) searchRanked(ctx context.Context, req SearchRequest, rawQ st
 	if amountToken, ok := normalizedSearchAmountToken(rawQ); ok {
 		amountNative := e.normalizer.Native(amountToken)
 		tierAmount, err = e.client.SearchDocument.Query().
-			Where(dropdownPredicates(req.CompanyID,
+			Where(dropdownPredicates(req,
 				searchdocument.Or(
 					searchdocument.AmountContainsFold(amountToken),
 					searchdocument.MemoNativeContainsFold(amountNative),
@@ -164,7 +167,7 @@ func (e *EntEngine) searchRanked(ctx context.Context, req SearchRequest, rawQ st
 
 	// Tier 3: substring on memo_native (descriptions, notes).
 	tier3, err := e.client.SearchDocument.Query().
-		Where(dropdownPredicates(req.CompanyID,
+		Where(dropdownPredicates(req,
 			searchdocument.MemoNativeContainsFold(normalized),
 		)...).
 		Order(searchdocument.ByDocDate(entsql.OrderDesc(), entsql.OrderNullsLast())).
@@ -213,14 +216,17 @@ func (e *EntEngine) searchRanked(ctx context.Context, req SearchRequest, rawQ st
 	}, nil
 }
 
-func dropdownPredicates(companyID uint, extras ...predicate.SearchDocument) []predicate.SearchDocument {
+func dropdownPredicates(req SearchRequest, extras ...predicate.SearchDocument) []predicate.SearchDocument {
 	preds := []predicate.SearchDocument{
-		searchdocument.CompanyIDEQ(companyID),
+		searchdocument.CompanyIDEQ(req.CompanyID),
 		searchdocument.StatusNotIn("voided", "reversed"),
 		searchdocument.Not(searchdocument.And(
 			searchdocument.EntityTypeEQ("journal_entry"),
 			searchdocument.SubtitleContainsFold("source=reversal"),
 		)),
+	}
+	if req.AllowedEntityTypes != nil {
+		preds = append(preds, searchdocument.EntityTypeIn(req.AllowedEntityTypes...))
 	}
 	return append(preds, extras...)
 }
@@ -240,6 +246,9 @@ func groupAndCap(rows []*ent.SearchDocument, cap int) []*ent.SearchDocument {
 		{GroupTransactions, isTransactionType, nil},
 		{GroupContacts, isContactType, nil},
 		{GroupProducts, isProductType, nil},
+		{GroupWork, isWorkType, nil},
+		{GroupPayroll, isPayrollType, nil},
+		{GroupPeople, isPeopleType, nil},
 		{"other", func(string) bool { return true }, nil},
 	}
 	for _, r := range rows {
@@ -292,6 +301,27 @@ func isContactType(t string) bool { return t == "customer" || t == "vendor" }
 
 func isProductType(t string) bool { return t == "product_service" }
 
+func isWorkType(t string) bool { return t == "task" }
+
+func isPayrollType(t string) bool {
+	switch t {
+	case "payroll_run", "payroll_entry", "payroll_remittance", "cheque":
+		return true
+	}
+	return false
+}
+
+func isPeopleType(t string) bool { return t == "employee" }
+
+func entityTypeIn(entityType string, allowed []string) bool {
+	for _, t := range allowed {
+		if t == entityType {
+			return true
+		}
+	}
+	return false
+}
+
 // rowsToCandidates projects ent rows to the engine's Candidate shape,
 // stamping group metadata and action kind based on entity type.
 func rowsToCandidates(rows []*ent.SearchDocument) []Candidate {
@@ -325,6 +355,12 @@ func groupKeyFor(entityType string) string {
 		return GroupContacts
 	case isProductType(entityType):
 		return GroupProducts
+	case isWorkType(entityType):
+		return GroupWork
+	case isPayrollType(entityType):
+		return GroupPayroll
+	case isPeopleType(entityType):
+		return GroupPeople
 	default:
 		return entityType
 	}
@@ -338,6 +374,12 @@ func groupLabelFor(entityType string) string {
 		return "Contacts"
 	case GroupProducts:
 		return "Products & Services"
+	case GroupWork:
+		return "Work"
+	case GroupPayroll:
+		return "Payroll"
+	case GroupPeople:
+		return "People"
 	}
 	return entityType
 }
@@ -357,6 +399,14 @@ func (e *EntEngine) SearchAdvanced(ctx context.Context, req AdvancedRequest) (*A
 	if req.CompanyID == 0 {
 		return nil, errors.New("search_engine: CompanyID is required")
 	}
+	if req.AllowedEntityTypes != nil && len(req.AllowedEntityTypes) == 0 {
+		return &AdvancedResponse{
+			Rows:     []Candidate{},
+			Total:    0,
+			Page:     maxInt(req.Page, 1),
+			PageSize: req.PageSize,
+		}, nil
+	}
 	page := req.Page
 	if page < 1 {
 		page = 1
@@ -375,6 +425,17 @@ func (e *EntEngine) SearchAdvanced(ctx context.Context, req AdvancedRequest) (*A
 	// from a sidebar link rather than from the dropdown).
 	preds := []predicate.SearchDocument{
 		searchdocument.CompanyIDEQ(req.CompanyID),
+	}
+	if req.AllowedEntityTypes != nil {
+		if req.EntityType != "" && !entityTypeIn(req.EntityType, req.AllowedEntityTypes) {
+			return &AdvancedResponse{
+				Rows:     []Candidate{},
+				Total:    0,
+				Page:     page,
+				PageSize: pageSize,
+			}, nil
+		}
+		preds = append(preds, searchdocument.EntityTypeIn(req.AllowedEntityTypes...))
 	}
 	if req.EntityType != "" {
 		preds = append(preds, searchdocument.EntityTypeEQ(req.EntityType))
@@ -488,4 +549,11 @@ func uintKey(id uint) string {
 		id /= 10
 	}
 	return string(buf[i:])
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

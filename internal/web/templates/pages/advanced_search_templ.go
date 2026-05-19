@@ -243,7 +243,7 @@ func advSearchFilterBar(vm AdvancedSearchVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, g := range AdvSearchEntityGroups() {
+		for _, g := range AdvSearchEntityGroups(vm.EntityTypeOptions) {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<optgroup label=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

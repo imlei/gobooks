@@ -114,6 +114,12 @@ func SourceTypeLabel(t string) string {
 		return "Bill"
 	case "payment":
 		return "Payment"
+	case "payroll_run":
+		return "Payroll Run"
+	case "cheque":
+		return "Cheque"
+	case "payroll_remittance":
+		return "Payroll Remit."
 	case "reversal":
 		return "Reversal"
 	case "opening_balance":

@@ -74,16 +74,19 @@ func (s *Server) handleGlobalSearch(c *fiber.Ctx) error {
 		limit = v
 	}
 
+	allowedEntityTypes := s.allowedGlobalSearchEntityTypes(c)
 	resp, err := s.SearchSelector.Search(c.Context(), search_engine.SearchRequest{
-		CompanyID: companyID,
-		Query:     q,
-		Limit:     limit,
+		CompanyID:          companyID,
+		Query:              q,
+		Limit:              limit,
+		AllowedEntityTypes: allowedEntityTypes,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).
 			JSON(fiber.Map{"error": "search failed"})
 	}
 	resp.Candidates = s.applyGlobalSearchUsageBoosts(companyID, smartPickerUserID(c), q, resp.Candidates)
+	resp.Candidates = s.sanitizeSearchCandidatesForContext(c, allowedEntityTypes, resp.Candidates)
 
 	out := globalSearchResponse{
 		Source: resp.Source,

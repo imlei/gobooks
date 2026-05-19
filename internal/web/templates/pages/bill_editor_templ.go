@@ -1094,7 +1094,37 @@ func billLineItemsCard(vm BillEditorVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "\"><div class=\"flex items-center justify-between\"><div><h2 class=\"text-section font-semibold text-text\">Line Items</h2><p class=\"mt-1 text-small text-text-muted2\">Task-linked lines inherit billable customer from the selected task. Only open or completed tasks can be chosen.</p></div><button type=\"button\" @click=\"addLine()\" class=\"rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background\">+ Add Line</button></div><p class=\"mt-1 text-small text-text-muted2\">Pick an <strong>Item</strong> on any line you want to track in inventory — stock items route through the inventory ledger on bill post. Leave Item blank on pure expense lines (utilities, fees, labour) and enter the Amount directly.</p><div class=\"mt-4 overflow-x-auto\" :class=\"lines.some(line => line.category_open) ? 'pb-64' : ''\"><table class=\"w-full text-left text-body\"><thead class=\"text-small uppercase tracking-wider text-text-muted\"><tr class=\"border-b border-border\"><th class=\"py-2 pr-3 w-48\">Item</th><th class=\"py-2 pr-3 w-44\">Category</th><th class=\"py-2 pr-3\">Description</th><th class=\"py-2 pr-3 w-20\">Qty</th><th class=\"py-2 pr-3 w-28\">Unit Price</th><th class=\"py-2 pr-3 w-28\">Amount</th><th class=\"py-2 pr-3 w-32\">Tax</th><th class=\"py-2 pr-3 w-44\">Task</th><th class=\"py-2 pr-3 w-24\">Billing</th><th class=\"py-2 w-10\"></th></tr></thead> <tbody><template x-for=\"(line, idx) in lines\" :key=\"idx\"><tr class=\"border-b border-border-subtle align-top\"><td class=\"py-2 pr-3\"><select :name=\"'line_product_service_id[' + idx + ']'\" x-model=\"line.product_service_id\" @change=\"onProductChange(idx, $event.target.value)\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— Expense only (no item) —</option><template x-for=\"p in products\" :key=\"p.id\"><option :value=\"p.id\" :selected=\"String(line.product_service_id) === String(p.id)\" x-text=\"productLabel(p)\"></option></template></select></td><td class=\"relative py-2 pr-3\" :class=\"line.category_open && !isCategoryLocked(idx) ? 'z-[80]' : 'z-0'\"><div class=\"relative\" @click.outside=\"closeCategoryPicker(idx)\"><input type=\"hidden\" :name=\"'line_expense_account_id[' + idx + ']'\" :value=\"line.expense_account_id || ''\"> <input type=\"text\" x-model=\"line.category_query\" @focus=\"onCategoryFocus(idx)\" @input=\"onCategoryInput(idx)\" @keydown=\"onCategoryKeydown(idx, $event)\" :readonly=\"isCategoryLocked(idx)\" :placeholder=\"isCategoryLocked(idx) ? '' : 'Category...'\" autocomplete=\"off\" role=\"combobox\" aria-autocomplete=\"list\" :aria-expanded=\"line.category_open && !isCategoryLocked(idx)\" :title=\"isCategoryLocked(idx) ? 'Controlled by selected item' : ''\" class=\"block w-full rounded-md border px-2 py-1.5 text-body outline-none\" :class=\"isCategoryLocked(idx)\r\n\t\t\t\t\t\t\t\t\t\t\t? 'cursor-not-allowed border-border-input bg-background text-text-muted2'\r\n\t\t\t\t\t\t\t\t\t\t\t: 'border-border-input bg-surface text-text placeholder:text-text-muted2 focus:ring-2 focus:ring-primary-focus'\"><div x-show=\"line.category_open && !isCategoryLocked(idx)\" x-cloak style=\"display:none\" class=\"absolute z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-border bg-surface shadow-lg\" role=\"listbox\"><div x-show=\"line.category_loading\" class=\"px-3 py-2 text-body text-text-muted2\">Searching...</div><div x-show=\"line.category_failed\" class=\"px-3 py-2 text-body text-danger\">Could not search categories.</div><template x-for=\"(item, resultIdx) in line.category_results\" :key=\"item.id\"><div @mousedown.prevent=\"selectCategory(idx, item, resultIdx)\" @mouseenter=\"line.category_highlighted = resultIdx\" :class=\"line.category_highlighted === resultIdx ? 'cursor-pointer px-3 py-2 bg-background' : 'cursor-pointer px-3 py-2 hover:bg-background'\" role=\"option\"><div class=\"truncate text-body text-text\" x-text=\"categoryCandidateLabel(item)\"></div><div x-show=\"item.reason\" class=\"truncate text-small text-text-muted2\" x-text=\"item.reason\"></div></div></template><div x-show=\"!line.category_loading && !line.category_failed && line.category_results.length === 0\" class=\"px-3 py-2 text-body text-text-muted2\">No matching category.</div></div></div></td><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_description[' + idx + ']'\" x-model=\"line.description\" placeholder=\"Description\" autocomplete=\"off\" @input=\"calcLine(idx)\" class=\"block w-full rounded-md bg-surface px-2 py-1.5 text-body text-text placeholder:text-text-muted2 outline-none\" :class=\"line.error\r\n\t\t\t\t\t\t\t\t\t\t? 'border border-danger focus:ring-2 focus:ring-danger-focus'\r\n\t\t\t\t\t\t\t\t\t\t: 'border border-border-input focus:ring-2 focus:ring-primary-focus'\"><p x-cloak x-show=\"line.error\" x-text=\"line.error\" class=\"mt-1 text-small text-danger\"></p></td><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_qty[' + idx + ']'\" x-model=\"line.qty\" :disabled=\"!line.product_service_id\" @input=\"onQtyOrPriceInput(idx)\" @blur=\"onQtyBlur(idx)\" inputmode=\"decimal\" placeholder=\"1\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40\"></td><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_unit_price[' + idx + ']'\" x-model=\"line.unit_price\" :disabled=\"!line.product_service_id\" @input=\"onQtyOrPriceInput(idx)\" @blur=\"onUnitPriceBlur(idx)\" inputmode=\"decimal\" placeholder=\"0.00\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40\"></td><input type=\"hidden\" :name=\"'line_unit[' + idx + ']'\" :value=\"line.unit || ''\"><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_amount[' + idx + ']'\" x-model=\"line.amount\" :readonly=\"Boolean(line.product_service_id)\" @input=\"calcLine(idx)\" @blur=\"onAmountBlur(idx)\" inputmode=\"decimal\" placeholder=\"0.00\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus\" :class=\"line.product_service_id ? 'opacity-70' : ''\"></td><td class=\"py-2 pr-3\"><select :name=\"'line_tax_code_id[' + idx + ']'\" x-model=\"line.tax_code_id\" @change=\"onTaxCodeChange(idx)\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— None —</option><template x-for=\"tc in taxCodes\" :key=\"tc.id\"><option :value=\"tc.id\" :selected=\"String(line.tax_code_id) === String(tc.id)\" x-text=\"tc.code + ' — ' + tc.name\"></option></template></select></td><td class=\"py-2 pr-3\"><select :name=\"'line_task_id[' + idx + ']'\" x-model=\"line.task_id\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— No task —</option><template x-for=\"task in tasks\" :key=\"task.id\"><option :value=\"task.id\" :selected=\"String(line.task_id) === String(task.id)\" x-text=\"task.title + ' — ' + task.customer_name\"></option></template></select></td><td class=\"py-2 pr-3\"><label class=\"inline-flex items-center gap-2 text-body text-text\"><input type=\"checkbox\" :name=\"'line_is_billable[' + idx + ']'\" value=\"1\" x-model=\"line.is_billable\" class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"> <span>Billable</span></label></td><td class=\"py-2 text-center\"><button type=\"button\" @click=\"removeLine(idx)\" :disabled=\"lines.length === 1\" class=\"rounded p-1 text-text-muted3 hover:text-danger disabled:opacity-30\" title=\"Remove line\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></td></tr></template></tbody></table></div><input type=\"hidden\" name=\"line_count\" :value=\"lines.length\"><div class=\"mt-4 flex justify-end\"><div class=\"w-72 space-y-1 text-body\"><div class=\"flex items-center justify-between\"><span class=\"text-text-muted\">Pre-tax subtotal</span> <span class=\"tabular-nums text-text\" x-text=\"subtotal()\"></span></div><template x-for=\"tc in taxBreakdown()\" :key=\"tc.id\"><div class=\"flex items-center justify-between gap-2\"><span class=\"text-small text-text-muted truncate\" x-text=\"tc.code + ' @ ' + (tc.rate * 100).toFixed(2).replace(/\\.?0+$/, '') + '%'\"></span> <input type=\"text\" inputmode=\"decimal\" :value=\"taxAdjValue(tc.id)\" @input=\"onTaxAdjInput(tc.id, $event.target.value)\" @blur=\"if (!$event.target.value.trim()) { $event.target.value = taxAdjValue(tc.id) }\" class=\"w-24 rounded-md border border-border-input bg-surface px-2 py-0.5 text-right text-body text-text tabular-nums outline-none focus:ring-2 focus:ring-primary-focus\"></div></template><template x-if=\"taxBreakdown().length > 0\"><span><input type=\"hidden\" name=\"tax_adj_count\" :value=\"taxBreakdown().length\"><template x-for=\"(tc, i) in taxBreakdown()\" :key=\"tc.id\"><span><input type=\"hidden\" :name=\"'tax_adj_id[' + i + ']'\" :value=\"tc.id\"> <input type=\"hidden\" :name=\"'tax_adj_amount[' + i + ']'\" :value=\"taxAdjValue(tc.id)\"></span></template></span></template><div class=\"flex items-center justify-between border-t border-border pt-2 font-semibold\"><span>Total</span> <span class=\"tabular-nums\" x-text=\"grandTotal()\"></span></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "\"><div class=\"flex items-center justify-between\"><div><h2 class=\"text-section font-semibold text-text\">Line Items</h2>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if vm.TaskModuleEnabled {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<p class=\"mt-1 text-small text-text-muted2\">Task-linked lines inherit billable customer from the selected task. Only open or completed tasks can be chosen.</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "</div><button type=\"button\" @click=\"addLine()\" class=\"rounded-md border border-border-input bg-surface px-3 py-1.5 text-body font-medium text-text hover:bg-background\">+ Add Line</button></div><p class=\"mt-1 text-small text-text-muted2\">Pick an <strong>Item</strong> on any line you want to track in inventory — stock items route through the inventory ledger on bill post. Leave Item blank on pure expense lines (utilities, fees, labour) and enter the Amount directly.</p><div class=\"mt-4 overflow-x-auto\" :class=\"lines.some(line => line.category_open) ? 'pb-64' : ''\"><table class=\"w-full text-left text-body\"><thead class=\"text-small uppercase tracking-wider text-text-muted\"><tr class=\"border-b border-border\"><th class=\"py-2 pr-3 w-48\">Item</th><th class=\"py-2 pr-3 w-44\">Category</th><th class=\"py-2 pr-3\">Description</th><th class=\"py-2 pr-3 w-20\">Qty</th><th class=\"py-2 pr-3 w-28\">Unit Price</th><th class=\"py-2 pr-3 w-28\">Amount</th><th class=\"py-2 pr-3 w-32\">Tax</th>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if vm.TaskModuleEnabled {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<th class=\"py-2 pr-3 w-44\">Task</th><th class=\"py-2 pr-3 w-24\">Billing</th>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<th class=\"py-2 w-10\"></th></tr></thead> <tbody><template x-for=\"(line, idx) in lines\" :key=\"idx\"><tr class=\"border-b border-border-subtle align-top\"><td class=\"py-2 pr-3\"><select :name=\"'line_product_service_id[' + idx + ']'\" x-model=\"line.product_service_id\" @change=\"onProductChange(idx, $event.target.value)\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— Expense only (no item) —</option><template x-for=\"p in products\" :key=\"p.id\"><option :value=\"p.id\" :selected=\"String(line.product_service_id) === String(p.id)\" x-text=\"productLabel(p)\"></option></template></select></td><td class=\"relative py-2 pr-3\" :class=\"line.category_open && !isCategoryLocked(idx) ? 'z-[80]' : 'z-0'\"><div class=\"relative\" @click.outside=\"closeCategoryPicker(idx)\"><input type=\"hidden\" :name=\"'line_expense_account_id[' + idx + ']'\" :value=\"line.expense_account_id || ''\"> <input type=\"text\" x-model=\"line.category_query\" @focus=\"onCategoryFocus(idx)\" @input=\"onCategoryInput(idx)\" @keydown=\"onCategoryKeydown(idx, $event)\" :readonly=\"isCategoryLocked(idx)\" :placeholder=\"isCategoryLocked(idx) ? '' : 'Category...'\" autocomplete=\"off\" role=\"combobox\" aria-autocomplete=\"list\" :aria-expanded=\"line.category_open && !isCategoryLocked(idx)\" :title=\"isCategoryLocked(idx) ? 'Controlled by selected item' : ''\" class=\"block w-full rounded-md border px-2 py-1.5 text-body outline-none\" :class=\"isCategoryLocked(idx)\r\n\t\t\t\t\t\t\t\t\t\t\t? 'cursor-not-allowed border-border-input bg-background text-text-muted2'\r\n\t\t\t\t\t\t\t\t\t\t\t: 'border-border-input bg-surface text-text placeholder:text-text-muted2 focus:ring-2 focus:ring-primary-focus'\"><div x-show=\"line.category_open && !isCategoryLocked(idx)\" x-cloak style=\"display:none\" class=\"absolute z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-border bg-surface shadow-lg\" role=\"listbox\"><div x-show=\"line.category_loading\" class=\"px-3 py-2 text-body text-text-muted2\">Searching...</div><div x-show=\"line.category_failed\" class=\"px-3 py-2 text-body text-danger\">Could not search categories.</div><template x-for=\"(item, resultIdx) in line.category_results\" :key=\"item.id\"><div @mousedown.prevent=\"selectCategory(idx, item, resultIdx)\" @mouseenter=\"line.category_highlighted = resultIdx\" :class=\"line.category_highlighted === resultIdx ? 'cursor-pointer px-3 py-2 bg-background' : 'cursor-pointer px-3 py-2 hover:bg-background'\" role=\"option\"><div class=\"truncate text-body text-text\" x-text=\"categoryCandidateLabel(item)\"></div><div x-show=\"item.reason\" class=\"truncate text-small text-text-muted2\" x-text=\"item.reason\"></div></div></template><div x-show=\"!line.category_loading && !line.category_failed && line.category_results.length === 0\" class=\"px-3 py-2 text-body text-text-muted2\">No matching category.</div></div></div></td><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_description[' + idx + ']'\" x-model=\"line.description\" placeholder=\"Description\" autocomplete=\"off\" @input=\"calcLine(idx)\" class=\"block w-full rounded-md bg-surface px-2 py-1.5 text-body text-text placeholder:text-text-muted2 outline-none\" :class=\"line.error\r\n\t\t\t\t\t\t\t\t\t\t? 'border border-danger focus:ring-2 focus:ring-danger-focus'\r\n\t\t\t\t\t\t\t\t\t\t: 'border border-border-input focus:ring-2 focus:ring-primary-focus'\"><p x-cloak x-show=\"line.error\" x-text=\"line.error\" class=\"mt-1 text-small text-danger\"></p></td><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_qty[' + idx + ']'\" x-model=\"line.qty\" :disabled=\"!line.product_service_id\" @input=\"onQtyOrPriceInput(idx)\" @blur=\"onQtyBlur(idx)\" inputmode=\"decimal\" placeholder=\"1\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40\"></td><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_unit_price[' + idx + ']'\" x-model=\"line.unit_price\" :disabled=\"!line.product_service_id\" @input=\"onQtyOrPriceInput(idx)\" @blur=\"onUnitPriceBlur(idx)\" inputmode=\"decimal\" placeholder=\"0.00\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus disabled:opacity-40\"></td><input type=\"hidden\" :name=\"'line_unit[' + idx + ']'\" :value=\"line.unit || ''\"><td class=\"py-2 pr-3\"><input type=\"text\" :name=\"'line_amount[' + idx + ']'\" x-model=\"line.amount\" :readonly=\"Boolean(line.product_service_id)\" @input=\"calcLine(idx)\" @blur=\"onAmountBlur(idx)\" inputmode=\"decimal\" placeholder=\"0.00\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body text-text text-right placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus\" :class=\"line.product_service_id ? 'opacity-70' : ''\"></td><td class=\"py-2 pr-3\"><select :name=\"'line_tax_code_id[' + idx + ']'\" x-model=\"line.tax_code_id\" @change=\"onTaxCodeChange(idx)\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— None —</option><template x-for=\"tc in taxCodes\" :key=\"tc.id\"><option :value=\"tc.id\" :selected=\"String(line.tax_code_id) === String(tc.id)\" x-text=\"tc.code + ' — ' + tc.name\"></option></template></select></td>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if vm.TaskModuleEnabled {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<td class=\"py-2 pr-3\"><select :name=\"'line_task_id[' + idx + ']'\" x-model=\"line.task_id\" class=\"block w-full rounded-md border border-border-input bg-surface px-2 py-1.5 text-body outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— No task —</option><template x-for=\"task in tasks\" :key=\"task.id\"><option :value=\"task.id\" :selected=\"String(line.task_id) === String(task.id)\" x-text=\"task.title + ' — ' + task.customer_name\"></option></template></select></td><td class=\"py-2 pr-3\"><label class=\"inline-flex items-center gap-2 text-body text-text\"><input type=\"checkbox\" :name=\"'line_is_billable[' + idx + ']'\" value=\"1\" x-model=\"line.is_billable\" class=\"h-4 w-4 rounded border-border-input text-primary focus:ring-primary-focus\"> <span>Billable</span></label></td>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "<td class=\"py-2 text-center\"><button type=\"button\" @click=\"removeLine(idx)\" :disabled=\"lines.length === 1\" class=\"rounded p-1 text-text-muted3 hover:text-danger disabled:opacity-30\" title=\"Remove line\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></td></tr></template></tbody></table></div><input type=\"hidden\" name=\"line_count\" :value=\"lines.length\"><div class=\"mt-4 flex justify-end\"><div class=\"w-72 space-y-1 text-body\"><div class=\"flex items-center justify-between\"><span class=\"text-text-muted\">Pre-tax subtotal</span> <span class=\"tabular-nums text-text\" x-text=\"subtotal()\"></span></div><template x-for=\"tc in taxBreakdown()\" :key=\"tc.id\"><div class=\"flex items-center justify-between gap-2\"><span class=\"text-small text-text-muted truncate\" x-text=\"tc.code + ' @ ' + (tc.rate * 100).toFixed(2).replace(/\\.?0+$/, '') + '%'\"></span> <input type=\"text\" inputmode=\"decimal\" :value=\"taxAdjValue(tc.id)\" @input=\"onTaxAdjInput(tc.id, $event.target.value)\" @blur=\"if (!$event.target.value.trim()) { $event.target.value = taxAdjValue(tc.id) }\" class=\"w-24 rounded-md border border-border-input bg-surface px-2 py-0.5 text-right text-body text-text tabular-nums outline-none focus:ring-2 focus:ring-primary-focus\"></div></template><template x-if=\"taxBreakdown().length > 0\"><span><input type=\"hidden\" name=\"tax_adj_count\" :value=\"taxBreakdown().length\"><template x-for=\"(tc, i) in taxBreakdown()\" :key=\"tc.id\"><span><input type=\"hidden\" :name=\"'tax_adj_id[' + i + ']'\" :value=\"tc.id\"> <input type=\"hidden\" :name=\"'tax_adj_amount[' + i + ']'\" :value=\"taxAdjValue(tc.id)\"></span></template></span></template><div class=\"flex items-center justify-between border-t border-border pt-2 font-semibold\"><span>Total</span> <span class=\"tabular-nums\" x-text=\"grandTotal()\"></span></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1151,20 +1181,20 @@ func billVendorQuickCreateDrawer(vm BillEditorVM) templ.Component {
 			templ_7745c5c3_Var70 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "<div x-data=\"balancizVendorQuickCreate()\" data-currencies=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "<div x-data=\"balancizVendorQuickCreate()\" data-currencies=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var71 string
 		templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(vm.QuickCreateCurrenciesJSON)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 514, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 520, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "\" @balanciz-picker-create.window=\"onPickerCreate($event)\" @keydown.escape.window=\"if (drawerOpen) { cancel() }\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "\" @balanciz-picker-create.window=\"onPickerCreate($event)\" @keydown.escape.window=\"if (drawerOpen) { cancel() }\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1176,7 +1206,7 @@ func billVendorQuickCreateDrawer(vm BillEditorVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1205,43 +1235,43 @@ func billVendorQuickCreateBody(vm BillEditorVM) templ.Component {
 			templ_7745c5c3_Var72 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<div class=\"flex-1 overflow-y-auto px-6 py-5 space-y-4\"><div><label class=\"block text-body font-medium text-text\">Name *</label> <input type=\"text\" x-model=\"name\" x-ref=\"nameInput\" @keydown.enter.prevent=\"save()\" placeholder=\"Vendor name\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\" :class=\"nameError ? 'border-danger focus:ring-danger-focus' : ''\"><div x-show=\"nameError\" class=\"mt-1 text-small text-danger\" x-text=\"nameError\"></div></div><div><label class=\"block text-body font-medium text-text\">Email</label> <input type=\"email\" x-model=\"email\" placeholder=\"ap@example.com\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></div><div><label class=\"block text-body font-medium text-text\">Phone</label> <input type=\"text\" x-model=\"phone\" placeholder=\"Phone\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></div><div><label class=\"block text-body font-medium text-text\">Address</label> <textarea x-model=\"address\" rows=\"3\" placeholder=\"Mailing address\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></textarea></div><div><label class=\"block text-body font-medium text-text\">Payment Terms</label> <select x-model=\"paymentTerm\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— Select —</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "<div class=\"flex-1 overflow-y-auto px-6 py-5 space-y-4\"><div><label class=\"block text-body font-medium text-text\">Name *</label> <input type=\"text\" x-model=\"name\" x-ref=\"nameInput\" @keydown.enter.prevent=\"save()\" placeholder=\"Vendor name\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\" :class=\"nameError ? 'border-danger focus:ring-danger-focus' : ''\"><div x-show=\"nameError\" class=\"mt-1 text-small text-danger\" x-text=\"nameError\"></div></div><div><label class=\"block text-body font-medium text-text\">Email</label> <input type=\"email\" x-model=\"email\" placeholder=\"ap@example.com\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></div><div><label class=\"block text-body font-medium text-text\">Phone</label> <input type=\"text\" x-model=\"phone\" placeholder=\"Phone\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></div><div><label class=\"block text-body font-medium text-text\">Address</label> <textarea x-model=\"address\" rows=\"3\" placeholder=\"Mailing address\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></textarea></div><div><label class=\"block text-body font-medium text-text\">Payment Terms</label> <select x-model=\"paymentTerm\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text outline-none focus:ring-2 focus:ring-primary-focus\"><option value=\"\">— Select —</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, pt := range vm.PaymentTerms {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<option value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var73 string
 			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(pt.Code)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 555, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 561, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var74 string
 			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(pt.DropdownLabel())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 555, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 561, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "</option>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "</option>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "</select></div><div x-show=\"currencies.length > 1\" x-cloak><label class=\"block text-body font-medium text-text\">Currency *</label> <select x-model=\"currency\" class=\"mt-2 block w-full rounded-md border bg-surface px-3 py-2 text-body outline-none focus:ring-2\" :class=\"currencyError ? 'border-danger focus:ring-danger-focus' : 'border-border-input focus:ring-primary-focus'\"><option value=\"\">— Select currency —</option><template x-for=\"code in currencies\" :key=\"code\"><option :value=\"code\" x-text=\"code\"></option></template></select><div x-show=\"currencyError\" class=\"mt-1 text-small text-danger\" x-text=\"currencyError\"></div></div><div><label class=\"block text-body font-medium text-text\">Notes</label> <textarea x-model=\"notes\" rows=\"3\" placeholder=\"Internal notes\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></textarea></div><div x-show=\"formError\" class=\"rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-small text-danger-hover\" x-text=\"formError\"></div></div><div class=\"flex items-center justify-end gap-3 border-t border-border px-6 py-4\"><button type=\"button\" @click=\"cancel()\" class=\"rounded-md border border-border-input px-4 py-2 text-body text-text-muted3 hover:bg-background\">Cancel</button> <button type=\"button\" @click=\"save()\" :disabled=\"saving\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed\"><span x-show=\"!saving\">Create Vendor</span> <span x-show=\"saving\" x-cloak>Creating...</span></button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "</select></div><div x-show=\"currencies.length > 1\" x-cloak><label class=\"block text-body font-medium text-text\">Currency *</label> <select x-model=\"currency\" class=\"mt-2 block w-full rounded-md border bg-surface px-3 py-2 text-body outline-none focus:ring-2\" :class=\"currencyError ? 'border-danger focus:ring-danger-focus' : 'border-border-input focus:ring-primary-focus'\"><option value=\"\">— Select currency —</option><template x-for=\"code in currencies\" :key=\"code\"><option :value=\"code\" x-text=\"code\"></option></template></select><div x-show=\"currencyError\" class=\"mt-1 text-small text-danger\" x-text=\"currencyError\"></div></div><div><label class=\"block text-body font-medium text-text\">Notes</label> <textarea x-model=\"notes\" rows=\"3\" placeholder=\"Internal notes\" class=\"mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted outline-none focus:ring-2 focus:ring-primary-focus\"></textarea></div><div x-show=\"formError\" class=\"rounded-md border border-border-danger bg-danger-soft px-4 py-3 text-small text-danger-hover\" x-text=\"formError\"></div></div><div class=\"flex items-center justify-end gap-3 border-t border-border px-6 py-4\"><button type=\"button\" @click=\"cancel()\" class=\"rounded-md border border-border-input px-4 py-2 text-body text-text-muted3 hover:bg-background\">Cancel</button> <button type=\"button\" @click=\"save()\" :disabled=\"saving\" class=\"rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed\"><span x-show=\"!saving\">Create Vendor</span> <span x-show=\"saving\" x-cloak>Creating...</span></button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1272,7 +1302,7 @@ func billWarehouseCombobox(vm BillEditorVM) templ.Component {
 			templ_7745c5c3_Var75 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "<div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "<div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1281,7 +1311,7 @@ func billWarehouseCombobox(vm BillEditorVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "<label class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "<label class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1294,46 +1324,46 @@ func billWarehouseCombobox(vm BillEditorVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\">Warehouse <span class=\"text-danger\">*</span></label><div x-data=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 107, "\">Warehouse <span class=\"text-danger\">*</span></label><div x-data=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var78 string
 		templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(billWarehouseComboboxData())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 599, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 605, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\" x-init=\"init()\" data-warehouses=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 108, "\" x-init=\"init()\" data-warehouses=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var79 string
 		templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(vm.WarehousesJSON)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 601, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 607, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "\" data-initial-id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "\" data-initial-id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var80 string
 		templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(vm.WarehouseID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 602, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/bill_editor.templ`, Line: 608, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"relative mt-2\" @click.outside=\"open = false\"><input type=\"text\" x-model=\"query\" @focus=\"open = true; filter()\" @input=\"filter()\" @keydown.arrow-down.prevent=\"move(1)\" @keydown.arrow-up.prevent=\"move(-1)\" @keydown.enter.prevent=\"pickHighlighted()\" @keydown.escape=\"open = false\" placeholder=\"Type to search (name, code, city)...\" autocomplete=\"off\" required aria-autocomplete=\"list\" :aria-expanded=\"open\" role=\"combobox\" class=\"block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus\"> <input type=\"hidden\" name=\"warehouse_id\" :value=\"selectedId\" required><div x-show=\"open\" x-cloak style=\"display:none\" class=\"absolute z-50 mt-1 w-full overflow-y-auto rounded-md border border-border bg-surface shadow-lg\" role=\"listbox\"><template x-for=\"(w, idx) in filtered\" :key=\"w.id\"><div @click=\"pick(w)\" @mouseenter=\"highlighted = idx\" :class=\"highlighted === idx ? 'cursor-pointer px-3 py-2 bg-background' : 'cursor-pointer px-3 py-2 hover:bg-background'\" role=\"option\" :aria-selected=\"selectedId == w.id\"><div class=\"text-body text-text\" x-text=\"w.label\"></div><div x-show=\"w.addr\" class=\"text-small text-text-muted2\" x-text=\"w.addr\"></div></div></template><div x-show=\"filtered.length === 0\" class=\"px-3 py-2 text-body text-text-muted2\">No matching warehouse.</div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 110, "\" class=\"relative mt-2\" @click.outside=\"open = false\"><input type=\"text\" x-model=\"query\" @focus=\"open = true; filter()\" @input=\"filter()\" @keydown.arrow-down.prevent=\"move(1)\" @keydown.arrow-up.prevent=\"move(-1)\" @keydown.enter.prevent=\"pickHighlighted()\" @keydown.escape=\"open = false\" placeholder=\"Type to search (name, code, city)...\" autocomplete=\"off\" required aria-autocomplete=\"list\" :aria-expanded=\"open\" role=\"combobox\" class=\"block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body text-text placeholder:text-text-muted2 outline-none focus:ring-2 focus:ring-primary-focus\"> <input type=\"hidden\" name=\"warehouse_id\" :value=\"selectedId\" required><div x-show=\"open\" x-cloak style=\"display:none\" class=\"absolute z-50 mt-1 w-full overflow-y-auto rounded-md border border-border bg-surface shadow-lg\" role=\"listbox\"><template x-for=\"(w, idx) in filtered\" :key=\"w.id\"><div @click=\"pick(w)\" @mouseenter=\"highlighted = idx\" :class=\"highlighted === idx ? 'cursor-pointer px-3 py-2 bg-background' : 'cursor-pointer px-3 py-2 hover:bg-background'\" role=\"option\" :aria-selected=\"selectedId == w.id\"><div class=\"text-body text-text\" x-text=\"w.label\"></div><div x-show=\"w.addr\" class=\"text-small text-text-muted2\" x-text=\"w.addr\"></div></div></template><div x-show=\"filtered.length === 0\" class=\"px-3 py-2 text-body text-text-muted2\">No matching warehouse.</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1342,7 +1372,7 @@ func billWarehouseCombobox(vm BillEditorVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "<p class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<p class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1355,7 +1385,7 @@ func billWarehouseCombobox(vm BillEditorVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "\">Inventory received from this bill will be routed to the selected warehouse.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "\">Inventory received from this bill will be routed to the selected warehouse.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

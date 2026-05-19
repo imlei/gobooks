@@ -36,6 +36,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -53,7 +54,7 @@ var (
 	// (which rejects bad assignment) so the remediation is
 	// unambiguous: one says "set it", the other says "pick a
 	// different account".
-	ErrGRIRAccountNotConfigured = errors.New("gr_ir_clearing: companies.gr_ir_clearing_account_id not configured — PostReceipt under receipt_required=true requires it")
+	ErrGRIRAccountNotConfigured = NewPostingError("POSTING_GRIR_ACCOUNT_MISSING", "gr_ir_clearing: companies.gr_ir_clearing_account_id not configured — PostReceipt under receipt_required=true requires it", http.StatusUnprocessableEntity)
 
 	// ErrInboundReceiptInventoryAccountMissing — a stock-item line on
 	// the receipt has no inventory_account_id configured on its

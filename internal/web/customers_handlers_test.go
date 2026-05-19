@@ -60,6 +60,36 @@ func TestCustomersPageShowsBillableSummary(t *testing.T) {
 	}
 }
 
+func TestCustomerSurfacesHideBillableWorkWhenTaskFeatureDisabled(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Customer Task Off Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	customerID := seedValidationCustomer(t, db, companyID, "Task Hidden Customer")
+	if err := db.Model(&models.CompanyFeature{}).
+		Where("company_id = ? AND feature_key = ?", companyID, models.FeatureKeyTask).
+		Update("status", models.FeatureStatusOff).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	for _, path := range []string{"/customers", fmt.Sprintf("/customers/%d?tab=billable-work", customerID)} {
+		resp := performRequest(t, app, path, rawToken)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s: expected %d, got %d", path, http.StatusOK, resp.StatusCode)
+		}
+		body := readResponseBody(t, resp)
+		for _, notWant := range []string{"Billable Work", "/tasks", "Unbilled labor", "Unbilled expenses"} {
+			if strings.Contains(body, notWant) {
+				t.Fatalf("%s: expected task-derived customer surface to be hidden; found %q in %q", path, notWant, body)
+			}
+		}
+		if !strings.Contains(body, "Transactions") {
+			t.Fatalf("%s: expected safe default customer content, got %q", path, body)
+		}
+	}
+}
+
 func TestCustomersPageOmitsSearchAndSortsNameEmail(t *testing.T) {
 	db := testRouteDB(t)
 	companyID := seedCompany(t, db, "Customer Sort Co")

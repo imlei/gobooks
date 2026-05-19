@@ -23,21 +23,24 @@ type CompanyFeaturesVM struct {
 // FeatureCardVM is one row in the Features grid. Matches
 // services.FeatureView plus handful of UI-ready derived fields.
 type FeatureCardVM struct {
-	Key              models.FeatureKey
-	Label            string
-	Maturity         models.FeatureMaturity
-	Description      string
-	FitDescription   string
-	SelfServeEnable  bool
-	TypedConfirmText string
-	AckVersion       string
-	RequiredAcks     []string
+	Key                 models.FeatureKey
+	Label               string
+	Maturity            models.FeatureMaturity
+	Description         string
+	FitDescription      string
+	SelfServeEnable     bool
+	TypedConfirmText    string
+	AckVersion          string
+	RequiredAcks        []string
+	BeforeEnableText    string
+	BeforeEnableBullets []string
+	PermissionHint      string
 
-	Status           models.FeatureStatus
-	EnabledAt        *time.Time
-	EnabledByUserID  *uuid.UUID
-	ReasonCode       models.ReasonCode
-	ReasonNote       string
+	Status          models.FeatureStatus
+	EnabledAt       *time.Time
+	EnabledByUserID *uuid.UUID
+	ReasonCode      models.ReasonCode
+	ReasonNote      string
 
 	ReasonCodeOptions []ReasonCodeOption
 }
@@ -53,8 +56,11 @@ type ReasonCodeOption struct {
 // redirect. Either a success message or an error; rendered as a
 // toast banner at the top of the page.
 type CompanyFeaturesFlash struct {
-	Success string
-	Error   string
+	Success     string
+	Error       string
+	ActionText  string
+	ActionHref  string
+	ActionLabel string
 }
 
 // IsEnabled is the short-circuit used by the templ to choose between

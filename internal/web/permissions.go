@@ -12,6 +12,34 @@ import "github.com/gofiber/fiber/v2"
 // ─────────────────────────────────────────────────────────────────────────────
 
 const (
+	ActionInventoryView   = "inventory:view"
+	ActionInventoryCreate = "inventory:create"
+	ActionInventoryUpdate = "inventory:update"
+	ActionInventoryPost   = "inventory:post"
+	ActionWarehouseView   = "warehouse:view"
+	ActionWarehouseCreate = "warehouse:create"
+	ActionWarehouseUpdate = "warehouse:update"
+
+	ActionTaskView   = "task:view"
+	ActionTaskCreate = "task:create"
+	ActionTaskUpdate = "task:update"
+	ActionTaskBill   = "task:bill"
+
+	ActionEmployeeView          = "employee:view"
+	ActionEmployeeManage        = "employee:manage"
+	ActionEmployeeViewSensitive = "employee:view_sensitive"
+
+	ActionPayrollView        = "payroll:view"
+	ActionPayrollViewDetails = "payroll:view_details"
+	ActionPayrollRun         = "payroll:run"
+	ActionPayrollFinalize    = "payroll:finalize"
+	ActionPayrollExport      = "payroll:export"
+	ActionPayrollSettings    = "payroll:settings"
+
+	ActionChequeView       = "cheque:view"
+	ActionChequePrint      = "cheque:print"
+	ActionChequeManageBank = "cheque:manage_bank"
+
 	// 发票（应收账款端）
 	ActionInvoiceView    = "invoice:view"    // 查看发票列表 / 详情（仅需成员资格）
 	ActionInvoiceCreate  = "invoice:create"  // 创建 / 保存草稿
@@ -81,28 +109,59 @@ const (
 //   - viewer：只读，仅有报表查看权；所有写操作由 RequireMembership 的 GET-only 规则兜底拦截
 // ─────────────────────────────────────────────────────────────────────────────
 
+const PermInventoryAccess = "inventory_access"
+
+const (
+	PermTaskAccess        = "task_access"
+	PermTaskCreate        = "task_create"
+	PermTaskUpdate        = "task_update"
+	PermTaskBill          = "task_bill"
+	PermEmployeeView      = "employee_view"
+	PermEmployeeManage    = "employee_manage"
+	PermEmployeeSensitive = "employee_sensitive"
+	PermPayrollView       = "payroll_view"
+	PermPayrollRun        = "payroll_run"
+	PermPayrollFinalize   = "payroll_finalize"
+	PermPayrollExport     = "payroll_export"
+	PermPayrollSettings   = "payroll_settings"
+	PermPayrollDetails    = "payroll_details"
+	PermChequeView        = "cheque_view"
+	PermChequePrint       = "cheque_print"
+	PermChequeManageBank  = "cheque_manage_bank"
+)
+
 var rolePermissions = map[string][]string{
 	"owner": {
 		PermARAccess, PermAPAccess, PermApproveTransactions,
-		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers,
+		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
+		PermEmployeeView, PermEmployeeManage, PermEmployeeSensitive,
+		PermPayrollView, PermPayrollRun, PermPayrollFinalize, PermPayrollExport, PermPayrollSettings, PermPayrollDetails,
+		PermChequeView, PermChequePrint, PermChequeManageBank,
 	},
 	"admin": {
 		PermARAccess, PermAPAccess, PermApproveTransactions,
-		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers,
+		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
+		PermEmployeeView, PermEmployeeManage, PermEmployeeSensitive,
+		PermPayrollView, PermPayrollRun, PermPayrollFinalize, PermPayrollExport, PermPayrollSettings, PermPayrollDetails,
+		PermChequeView, PermChequePrint, PermChequeManageBank,
 	},
 	"accountant": {
-		PermARAccess, PermAPAccess, PermApproveTransactions,
+		PermARAccess, PermAPAccess, PermApproveTransactions, PermInventoryAccess,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
 		PermViewReports, PermViewAuditLog,
 	},
 	"bookkeeper": {
-		PermARAccess, PermAPAccess,
+		PermARAccess, PermAPAccess, PermInventoryAccess,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
 		PermViewReports, PermViewAuditLog,
 	},
 	"ap": {
-		PermAPAccess,
+		PermAPAccess, PermInventoryAccess, PermTaskAccess,
 	},
 	"viewer": {
-		PermViewReports,
+		PermViewReports, PermTaskAccess,
 		// viewer 无任何写权限；RequireMembership 已对非 GET 请求一律返回 403
 	},
 }
@@ -116,6 +175,26 @@ var rolePermissions = map[string][]string{
 // ─────────────────────────────────────────────────────────────────────────────
 
 var actionPermissions = map[string]string{
+	ActionTaskView:   PermTaskAccess,
+	ActionTaskCreate: PermTaskCreate,
+	ActionTaskUpdate: PermTaskUpdate,
+	ActionTaskBill:   PermTaskBill,
+
+	ActionEmployeeView:          PermEmployeeView,
+	ActionEmployeeManage:        PermEmployeeManage,
+	ActionEmployeeViewSensitive: PermEmployeeSensitive,
+
+	ActionPayrollView:        PermPayrollView,
+	ActionPayrollViewDetails: PermPayrollDetails,
+	ActionPayrollRun:         PermPayrollRun,
+	ActionPayrollFinalize:    PermPayrollFinalize,
+	ActionPayrollExport:      PermPayrollExport,
+	ActionPayrollSettings:    PermPayrollSettings,
+
+	ActionChequeView:       PermChequeView,
+	ActionChequePrint:      PermChequePrint,
+	ActionChequeManageBank: PermChequeManageBank,
+
 	// 发票写操作 ────────────────────────────────
 	ActionInvoiceCreate:  PermARAccess,            // bookkeeper 及以上
 	ActionInvoiceUpdate:  PermARAccess,            // bookkeeper 及以上
@@ -136,9 +215,14 @@ var actionPermissions = map[string]string{
 
 	// 科目表写操作 ──────────────────────────────
 	// 科目表属于基础主数据，由 owner / admin 维护
-	ActionAccountCreate: PermManageSettings,
-	ActionAccountUpdate: PermManageSettings,
-	ActionAccountDelete: PermManageSettings,
+	ActionAccountCreate:   PermManageSettings,
+	ActionAccountUpdate:   PermManageSettings,
+	ActionAccountDelete:   PermManageSettings,
+	ActionInventoryCreate: PermInventoryAccess,
+	ActionInventoryUpdate: PermInventoryAccess,
+	ActionInventoryPost:   PermApproveTransactions,
+	ActionWarehouseCreate: PermInventoryAccess,
+	ActionWarehouseUpdate: PermInventoryAccess,
 
 	// 系统设置写操作 ────────────────────────────
 	// 包含公司档案、编号规则、AI 设置、产品目录
@@ -180,12 +264,72 @@ func HasPermission(role string, permission string) bool {
 // CanPerformAction 检查指定角色是否能执行某个操作。
 //
 // 若该操作未出现在 actionPermissions 映射中，则默认拒绝（返回 false）。
+type permissionOverride struct {
+	Permission string
+	Granted    bool
+}
+
+type permissionOverrides struct {
+	granted map[string]bool
+	denied  map[string]bool
+}
+
+func newPermissionOverrides(rows []permissionOverride) *permissionOverrides {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := &permissionOverrides{
+		granted: make(map[string]bool, len(rows)),
+		denied:  make(map[string]bool, len(rows)),
+	}
+	for _, row := range rows {
+		if row.Permission == "" {
+			continue
+		}
+		if row.Granted {
+			out.granted[row.Permission] = true
+			continue
+		}
+		out.denied[row.Permission] = true
+	}
+	if len(out.granted) == 0 && len(out.denied) == 0 {
+		return nil
+	}
+	return out
+}
+
+func permissionOverridesFromCtx(c *fiber.Ctx) *permissionOverrides {
+	if c == nil {
+		return nil
+	}
+	v := c.Locals(LocalsPermissionOverrides)
+	if v == nil {
+		return nil
+	}
+	overrides, _ := v.(*permissionOverrides)
+	return overrides
+}
+
+func HasPermissionWithOverrides(role string, permission string, overrides *permissionOverrides) bool {
+	if overrides != nil && overrides.denied[permission] {
+		return false
+	}
+	if overrides != nil && overrides.granted[permission] {
+		return true
+	}
+	return HasPermission(role, permission)
+}
+
 func CanPerformAction(role string, action string) bool {
+	return CanPerformActionWithOverrides(role, action, nil)
+}
+
+func CanPerformActionWithOverrides(role string, action string, overrides *permissionOverrides) bool {
 	perm, required := actionPermissions[action]
 	if !required {
 		return false
 	}
-	return HasPermission(role, perm)
+	return HasPermissionWithOverrides(role, perm, overrides)
 }
 
 // CanFromCtx 从 Fiber 请求上下文读取当前成员角色，判断其是否能执行指定操作。
@@ -195,5 +339,5 @@ func CanFromCtx(c *fiber.Ctx, action string) bool {
 	if m == nil {
 		return false
 	}
-	return CanPerformAction(string(m.Role), action)
+	return CanPerformActionWithOverrides(string(m.Role), action, permissionOverridesFromCtx(c))
 }

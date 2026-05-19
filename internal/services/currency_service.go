@@ -4,6 +4,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 
 // ErrNoRate is returned by GetExchangeRate when no applicable rate exists
 // for the given currency pair, scope, and date.
-var ErrNoRate = errors.New("no exchange rate found")
+var ErrNoRate = NewServiceError("FX_RATE_NOT_FOUND", "no exchange rate found", http.StatusUnprocessableEntity)
 
 // GetExchangeRate returns the best available exchange rate for the currency pair
 // on the given date, using the following priority order:
