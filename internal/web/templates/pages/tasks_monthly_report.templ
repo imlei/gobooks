@@ -2,6 +2,7 @@
 package pages
 
 import "fmt"
+import "sort"
 import "time"
 import "balanciz/internal/models"
 import "balanciz/internal/services"
@@ -169,11 +170,23 @@ func monthForward(year, month int) struct{ Year, Month int } {
 }
 
 func getSortedCustomers(summary *services.MonthlyTaskSummary) []*services.CustomerTaskSummary {
-	// Return customers sorted by amount (descending)
 	customers := make([]*services.CustomerTaskSummary, 0)
+	if summary == nil {
+		return customers
+	}
 	for _, c := range summary.ByCustomer {
 		customers = append(customers, c)
 	}
-	// Simple sort by amount desc (in production use proper sorting)
+	sort.SliceStable(customers, func(i, j int) bool {
+		left := customers[i]
+		right := customers[j]
+		if !left.Amount.Equal(right.Amount) {
+			return left.Amount.GreaterThan(right.Amount)
+		}
+		if left.CustomerName != right.CustomerName {
+			return left.CustomerName < right.CustomerName
+		}
+		return left.CustomerID < right.CustomerID
+	})
 	return customers
 }
