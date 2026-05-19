@@ -4,6 +4,7 @@ package web
 import (
 	"encoding/csv"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,37 +23,11 @@ func (s *Server) handleTasksExportCSV(c *fiber.Ctx) error {
 		})
 	}
 
-	// Optional filters from query params
-	filterCustomerID := c.Query("customer_id")
-	filterStatus := c.Query("status")
-	filterFrom := c.Query("from")
-	filterTo := c.Query("to")
-
-	filter := services.TaskListFilter{CompanyID: companyID}
-	if filterCustomerID != "" {
-		if id64, err := services.ParseUint(filterCustomerID); err == nil && id64 > 0 {
-			id := uint(id64)
-			filter.CustomerID = &id
-		}
-	}
-	if filterStatus != "" {
-		status := models.TaskStatus(filterStatus)
-		for _, allowed := range models.AllTaskStatuses() {
-			if allowed == status {
-				filter.Status = &status
-				break
-			}
-		}
-	}
-	if filterFrom != "" {
-		if from, err := time.Parse("2006-01-02", filterFrom); err == nil {
-			filter.From = &from
-		}
-	}
-	if filterTo != "" {
-		if to, err := time.Parse("2006-01-02", filterTo); err == nil {
-			filter.To = &to
-		}
+	filter, err := taskExportFilterFromQuery(companyID, c)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	// Get tasks matching filters
@@ -75,7 +50,8 @@ func (s *Server) handleTasksExportCSV(c *fiber.Ctx) error {
 		"Description",
 		"Quantity",
 		"Unit Type",
-		"Rate (" + c.Query("currency", "CAD") + ")",
+		"Rate",
+		"Currency",
 		"Amount",
 		"Billable",
 		"Status",
@@ -94,6 +70,7 @@ func (s *Server) handleTasksExportCSV(c *fiber.Ctx) error {
 			task.Quantity.String(),
 			task.UnitType,
 			task.Rate.String(),
+			task.CurrencyCode,
 			task.BillableAmount().String(),
 			fmt.Sprintf("%v", task.IsBillable),
 			string(task.Status),
@@ -109,4 +86,61 @@ func (s *Server) handleTasksExportCSV(c *fiber.Ctx) error {
 	c.Set("Content-Length", fmt.Sprintf("%d", len(csvBuf.String())))
 
 	return c.SendString(csvBuf.String())
+}
+
+func taskExportFilterFromQuery(companyID uint, c *fiber.Ctx) (services.TaskListFilter, error) {
+	filter := services.TaskListFilter{CompanyID: companyID}
+
+	yearStr := strings.TrimSpace(c.Query("year"))
+	monthStr := strings.TrimSpace(c.Query("month"))
+	if yearStr != "" || monthStr != "" {
+		if yearStr == "" || monthStr == "" {
+			return filter, fmt.Errorf("year and month are required together")
+		}
+		year, err := strconv.Atoi(yearStr)
+		if err != nil || year < 1900 || year > 9999 {
+			return filter, fmt.Errorf("report year is invalid")
+		}
+		month, err := strconv.Atoi(monthStr)
+		if err != nil || month < 1 || month > 12 {
+			return filter, fmt.Errorf("report month is invalid")
+		}
+
+		from := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+		to := from.AddDate(0, 1, -1)
+		filter.From = &from
+		filter.To = &to
+	}
+
+	filterCustomerID := strings.TrimSpace(c.Query("customer_id"))
+	if filterCustomerID != "" {
+		if id64, err := services.ParseUint(filterCustomerID); err == nil && id64 > 0 {
+			id := uint(id64)
+			filter.CustomerID = &id
+		}
+	}
+
+	filterStatus := strings.TrimSpace(c.Query("status"))
+	if filterStatus != "" {
+		status := models.TaskStatus(filterStatus)
+		for _, allowed := range models.AllTaskStatuses() {
+			if allowed == status {
+				filter.Status = &status
+				break
+			}
+		}
+	}
+
+	if filterFrom := strings.TrimSpace(c.Query("from")); filterFrom != "" {
+		if from, err := time.Parse("2006-01-02", filterFrom); err == nil {
+			filter.From = &from
+		}
+	}
+	if filterTo := strings.TrimSpace(c.Query("to")); filterTo != "" {
+		if to, err := time.Parse("2006-01-02", filterTo); err == nil {
+			filter.To = &to
+		}
+	}
+
+	return filter, nil
 }

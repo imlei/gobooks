@@ -2,6 +2,7 @@
 package web
 
 import (
+	"encoding/csv"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -803,6 +804,83 @@ func TestTasksListActionsUseTaskPermissions(t *testing.T) {
 	}
 	if !strings.Contains(body, "Visible task") {
 		t.Fatalf("expected read access to keep task visible, got %q", body)
+	}
+}
+
+func TestTasksExportRequiresTaskExportPermission(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Task Export Permission Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	customerID := seedValidationCustomer(t, db, companyID, "Task Customer")
+	_ = seedTaskForWeb(t, db, companyID, customerID, models.TaskStatusOpen, "Visible task")
+
+	if err := db.Create(&models.UserCompanyPermission{
+		UserID:     user.ID,
+		CompanyID:  companyID,
+		Permission: PermTaskExport,
+		Granted:    false,
+		GrantedBy:  user.ID,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	exportResp := performRequest(t, app, "/api/tasks/export", rawToken)
+	if exportResp.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected %d, got %d", http.StatusForbidden, exportResp.StatusCode)
+	}
+
+	listResp := performRequest(t, app, "/tasks", rawToken)
+	if listResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, listResp.StatusCode)
+	}
+	body := readResponseBody(t, listResp)
+	if strings.Contains(body, `href="/api/tasks/export"`) {
+		t.Fatalf("task export link should be hidden without export permission, got %q", body)
+	}
+	if !strings.Contains(body, "Visible task") {
+		t.Fatalf("expected task read access to remain visible, got %q", body)
+	}
+}
+
+func TestTasksExportYearMonthFiltersCurrentMonth(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Task Export Month Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	customerID := seedValidationCustomer(t, db, companyID, "Task Customer")
+
+	aprilID := seedTaskForWeb(t, db, companyID, customerID, models.TaskStatusCompleted, "April export task")
+	mayID := seedTaskForWeb(t, db, companyID, customerID, models.TaskStatusCompleted, "May export task")
+	if err := db.Model(&models.Task{}).Where("id = ?", aprilID).Update("task_date", time.Date(2026, 4, 30, 23, 59, 59, int(500*time.Millisecond), time.UTC)).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&models.Task{}).Where("id = ?", mayID).Update("task_date", time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	resp := performRequest(t, app, "/api/tasks/export?year=2026&month=4", rawToken)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	body := readResponseBody(t, resp)
+	records, err := csv.NewReader(strings.NewReader(body)).ReadAll()
+	if err != nil {
+		t.Fatalf("parse csv: %v\n%s", err, body)
+	}
+	if len(records) != 2 {
+		t.Fatalf("expected header plus 1 April task, got %d records: %v", len(records), records)
+	}
+	if strings.Join(records[0], "|") != "Task ID|Date|Customer|Description|Quantity|Unit Type|Rate|Currency|Amount|Billable|Status|Notes" {
+		t.Fatalf("unexpected header: %v", records[0])
+	}
+	if records[1][3] != "April export task" {
+		t.Fatalf("expected April task row, got %v", records[1])
+	}
+	if strings.Contains(body, "May export task") {
+		t.Fatalf("did not expect May task in April export:\n%s", body)
 	}
 }
 

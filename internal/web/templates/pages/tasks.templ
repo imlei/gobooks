@@ -34,12 +34,14 @@ templ bodyTasks(vm TasksVM) {
 				>
 					📊 Monthly Report
 				</a>
-				<a
-					href="/api/tasks/export"
-					class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background"
-				>
+				if vm.CanExport {
+					<a
+						href="/api/tasks/export"
+						class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background"
+					>
 					📥 Export CSV
-				</a>
+					</a>
+				}
 				if vm.CanBill {
 					<a
 						href="/tasks/billable-work"

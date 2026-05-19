@@ -24,6 +24,7 @@ const (
 	ActionTaskCreate = "task:create"
 	ActionTaskUpdate = "task:update"
 	ActionTaskBill   = "task:bill"
+	ActionTaskExport = "task:export"
 
 	ActionEmployeeView          = "employee:view"
 	ActionEmployeeManage        = "employee:manage"
@@ -116,6 +117,7 @@ const (
 	PermTaskCreate        = "task_create"
 	PermTaskUpdate        = "task_update"
 	PermTaskBill          = "task_bill"
+	PermTaskExport        = "task_export"
 	PermEmployeeView      = "employee_view"
 	PermEmployeeManage    = "employee_manage"
 	PermEmployeeSensitive = "employee_sensitive"
@@ -134,7 +136,7 @@ var rolePermissions = map[string][]string{
 	"owner": {
 		PermARAccess, PermAPAccess, PermApproveTransactions,
 		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
-		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermEmployeeView, PermEmployeeManage, PermEmployeeSensitive,
 		PermPayrollView, PermPayrollRun, PermPayrollFinalize, PermPayrollExport, PermPayrollSettings, PermPayrollDetails,
 		PermChequeView, PermChequePrint, PermChequeManageBank,
@@ -142,19 +144,19 @@ var rolePermissions = map[string][]string{
 	"admin": {
 		PermARAccess, PermAPAccess, PermApproveTransactions,
 		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
-		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermEmployeeView, PermEmployeeManage, PermEmployeeSensitive,
 		PermPayrollView, PermPayrollRun, PermPayrollFinalize, PermPayrollExport, PermPayrollSettings, PermPayrollDetails,
 		PermChequeView, PermChequePrint, PermChequeManageBank,
 	},
 	"accountant": {
 		PermARAccess, PermAPAccess, PermApproveTransactions, PermInventoryAccess,
-		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermViewReports, PermViewAuditLog,
 	},
 	"bookkeeper": {
 		PermARAccess, PermAPAccess, PermInventoryAccess,
-		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill,
+		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermViewReports, PermViewAuditLog,
 	},
 	"ap": {
@@ -179,6 +181,7 @@ var actionPermissions = map[string]string{
 	ActionTaskCreate: PermTaskCreate,
 	ActionTaskUpdate: PermTaskUpdate,
 	ActionTaskBill:   PermTaskBill,
+	ActionTaskExport: PermTaskExport,
 
 	ActionEmployeeView:          PermEmployeeView,
 	ActionEmployeeManage:        PermEmployeeManage,

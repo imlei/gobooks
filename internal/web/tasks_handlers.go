@@ -81,6 +81,7 @@ func (s *Server) handleTasks(c *fiber.Ctx) error {
 		CanCreate:        CanFromCtx(c, ActionTaskCreate),
 		CanUpdate:        CanFromCtx(c, ActionTaskUpdate),
 		CanBill:          CanFromCtx(c, ActionTaskBill) && CanFromCtx(c, ActionInvoiceCreate),
+		CanExport:        CanFromCtx(c, ActionTaskExport),
 		Customers:        customers,
 		Tasks:            tasks,
 		FilterCustomerID: filterCustomerID,

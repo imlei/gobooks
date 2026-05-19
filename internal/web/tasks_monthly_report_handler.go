@@ -44,5 +44,6 @@ func (s *Server) handleTasksMonthlyReport(c *fiber.Ctx) error {
 		Month:      month,
 		Summary:    summary,
 		Customers:  customers,
+		CanExport:  CanFromCtx(c, ActionTaskExport),
 	}).Render(c.Context(), c)
 }

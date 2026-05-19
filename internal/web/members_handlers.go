@@ -278,6 +278,7 @@ func memberModulePermissions() []memberModulePermissionDef {
 		{Group: "Task", Permission: PermTaskCreate, Label: "Create tasks"},
 		{Group: "Task", Permission: PermTaskUpdate, Label: "Update, complete, and cancel tasks"},
 		{Group: "Task", Permission: PermTaskBill, Label: "Generate invoices from tasks"},
+		{Group: "Task", Permission: PermTaskExport, Label: "Export task CSV"},
 		{Group: "Employee", Permission: PermEmployeeView, Label: "View employees"},
 		{Group: "Employee", Permission: PermEmployeeManage, Label: "Manage employees"},
 		{Group: "Employee", Permission: PermEmployeeSensitive, Label: "View sensitive employee data"},
