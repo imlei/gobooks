@@ -765,6 +765,9 @@ func TestTasksListFiltersByCustomerID(t *testing.T) {
 	if strings.Contains(body, "Customer B Task") {
 		t.Fatalf("expected filtered task list to exclude other customer task, got %q", body)
 	}
+	if !strings.Contains(body, fmt.Sprintf(`href="/api/tasks/export?customer_id=%d"`, customerA)) {
+		t.Fatalf("expected export link to preserve customer filter, got %q", body)
+	}
 }
 
 func TestTasksListActionsUseTaskPermissions(t *testing.T) {

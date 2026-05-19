@@ -1,6 +1,7 @@
 // 遵循project_guide.md
 package pages
 
+import "net/url"
 import "github.com/shopspring/decimal"
 import "balanciz/internal/models"
 import "balanciz/internal/web/templates/layout"
@@ -36,7 +37,7 @@ templ bodyTasks(vm TasksVM) {
 				</a>
 				if vm.CanExport {
 					<a
-						href="/api/tasks/export"
+						href={ taskExportURL(vm) }
 						class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background"
 					>
 					📥 Export CSV
@@ -200,4 +201,24 @@ func taskStatusBadgeClass(status models.TaskStatus) string {
 
 func taskCanEditLink(status models.TaskStatus) bool {
 	return status == models.TaskStatusOpen || status == models.TaskStatusCompleted
+}
+
+func taskExportURL(vm TasksVM) string {
+	values := url.Values{}
+	if vm.FilterCustomerID != "" {
+		values.Set("customer_id", vm.FilterCustomerID)
+	}
+	if vm.FilterFrom != "" {
+		values.Set("from", vm.FilterFrom)
+	}
+	if vm.FilterStatus != "" {
+		values.Set("status", vm.FilterStatus)
+	}
+	if vm.FilterTo != "" {
+		values.Set("to", vm.FilterTo)
+	}
+	if len(values) == 0 {
+		return "/api/tasks/export"
+	}
+	return "/api/tasks/export?" + values.Encode()
 }
