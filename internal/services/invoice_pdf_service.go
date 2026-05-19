@@ -106,19 +106,21 @@ func GenerateInvoicePDF(htmlContent string) ([]byte, error) {
 	return pdfBytes, nil
 }
 
-// PDFGeneratorAvailable returns true when a supported Chrome executable is
-// installed and usable.
+// PDFGeneratorAvailable returns true when the shared Chrome PDF engine can
+// initialise successfully in the current process environment.
 //
 // This is the single source of truth for PDF capability across all paths:
 // internal detail page, hosted invoice page, and email attachment.
 // All three paths call this function rather than each running their own LookPath.
-// An inexpensive OS call (~0.1 ms); safe to call per-request.
+// The first successful call starts the shared browser context; later calls are
+// cheap because the engine is reused. Failed probes reset the engine so a later
+// environment/configuration fix can recover without restarting the process.
 //
 // Phase 3 G4-cleanup: PDF generation switched from wkhtmltopdf to chromedp
 // (headless Chrome). Snap Chromium is not accepted: the snap launcher can fail
 // before Chrome sees our user-data-dir/XDG runtime overrides.
 func PDFGeneratorAvailable() bool {
-	return pdfengine.ChromeExecutableAvailable()
+	return pdfengine.ChromeRuntimeAvailable()
 }
 
 // InvoicePDFSafeFilename returns the Content-Disposition filename for an invoice PDF.

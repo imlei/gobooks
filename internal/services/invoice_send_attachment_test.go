@@ -7,11 +7,11 @@ package services
 //   TestSendInvoiceByEmail_AttachPDFFalse_SendsWithoutAttachment
 //     — AttachPDF=false succeeds (SMTP dial fails) without generating PDF; log records attachment_included=false
 //   TestSendInvoiceByEmail_AttachPDFTrue_GeneratorUnavailable
-//     — AttachPDF=true with no wkhtmltopdf → rejected with clear error; failed log written; no misleading success
+//     — AttachPDF=true with no PDF generator → rejected with clear error; failed log written; no misleading success
 //   TestSendInvoiceByEmail_AttachPDFDefault_NoAttachment
 //     — Zero-value request (AttachPDF not set) behaves identically to AttachPDF=false
 //   TestSendInvoiceByEmail_AttachPDFTrue_GeneratorAvailable
-//     — Happy path: AttachPDF=true with wkhtmltopdf → PDF generated, attached, metadata recorded (skipped when absent)
+//     — Happy path: AttachPDF=true with PDF generator → PDF generated, attached, metadata recorded (skipped when absent)
 //   TestSendInvoiceByEmail_ResendCreatesNewLogWithMetadata
 //     — Two sends create two log rows each with attachment metadata
 //   TestSendInvoiceByEmail_SharedFilenameLogic
@@ -26,7 +26,6 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -72,10 +71,14 @@ func attachTestDB(t *testing.T) *gorm.DB {
 		&models.Invoice{},
 		&models.InvoiceLine{},
 		&models.InvoiceTemplate{},
+		&models.PDFTemplate{},
 		&models.InvoiceEmailLog{},
 		&models.CompanyNotificationSettings{},
 		&models.SystemNotificationSettings{},
 	); err != nil {
+		t.Fatal(err)
+	}
+	if err := pdfengine.SeedSystemPDFTemplates(db); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -162,7 +165,8 @@ func TestSendInvoiceByEmail_AttachPDFFalse_SendsWithoutAttachment(t *testing.T) 
 	}
 
 	// Error must be SMTP-related, not PDF-related.
-	if strings.Contains(err.Error(), "PDF") || strings.Contains(err.Error(), "wkhtmltopdf") {
+	if strings.Contains(strings.ToLower(err.Error()), "pdf") ||
+		strings.Contains(strings.ToLower(err.Error()), "generator") {
 		t.Errorf("AttachPDF=false must not attempt PDF generation; error was: %v", err)
 	}
 
@@ -193,7 +197,8 @@ func TestSendInvoiceByEmail_AttachPDFDefault_NoAttachment(t *testing.T) {
 	if logEntry == nil {
 		t.Fatal("expected log entry")
 	}
-	if strings.Contains(err.Error(), "PDF") || strings.Contains(err.Error(), "wkhtmltopdf") {
+	if strings.Contains(strings.ToLower(err.Error()), "pdf") ||
+		strings.Contains(strings.ToLower(err.Error()), "generator") {
 		t.Errorf("default AttachPDF must not attempt PDF; error: %v", err)
 	}
 
@@ -204,8 +209,8 @@ func TestSendInvoiceByEmail_AttachPDFDefault_NoAttachment(t *testing.T) {
 }
 
 func TestSendInvoiceByEmail_AttachPDFTrue_GeneratorUnavailable(t *testing.T) {
-	if _, err := exec.LookPath("wkhtmltopdf"); err == nil {
-		t.Skip("wkhtmltopdf is installed — this test only runs when generator is absent")
+	if PDFGeneratorAvailable() {
+		t.Skip("PDF generator is available; this test only runs when the generator is absent")
 	}
 	db := attachTestDB(t)
 	companyID, inv := attachSeedBase(t, db)
@@ -221,9 +226,9 @@ func TestSendInvoiceByEmail_AttachPDFTrue_GeneratorUnavailable(t *testing.T) {
 		t.Fatal("expected error when AttachPDF=true and generator absent, got nil")
 	}
 	// Error must mention the generator.
-	if !strings.Contains(strings.ToLower(err.Error()), "wkhtmltopdf") &&
-		!strings.Contains(strings.ToLower(err.Error()), "pdf") {
-		t.Errorf("error should mention PDF/wkhtmltopdf unavailability; got: %v", err)
+	errText := strings.ToLower(err.Error())
+	if !strings.Contains(errText, "pdf") && !strings.Contains(errText, "generator") {
+		t.Errorf("error should mention PDF generator unavailability; got: %v", err)
 	}
 	// A failed log MUST be written — no misleading success state.
 	if logEntry == nil {
@@ -249,8 +254,8 @@ func TestSendInvoiceByEmail_AttachPDFTrue_GeneratorUnavailable(t *testing.T) {
 }
 
 func TestSendInvoiceByEmail_AttachPDFTrue_GeneratorAvailable(t *testing.T) {
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed — skipped; run on CI with apt-get install wkhtmltopdf")
+	if !PDFGeneratorAvailable() {
+		t.Skip("PDF generator is unavailable; skipped")
 	}
 	db := attachTestDB(t)
 	companyID, inv := attachSeedBase(t, db)
@@ -271,7 +276,7 @@ func TestSendInvoiceByEmail_AttachPDFTrue_GeneratorAvailable(t *testing.T) {
 	}
 	// Error must be SMTP-related, not PDF-related.
 	if strings.Contains(strings.ToLower(err.Error()), "pdf generation failed") {
-		t.Errorf("PDF generation should succeed when wkhtmltopdf is present; error: %v", err)
+		t.Errorf("PDF generation should succeed when the generator is available; error: %v", err)
 	}
 	// Metadata: attachment_included=true, attachment_filename present.
 	meta := parseLogMeta(t, logEntry)
@@ -337,8 +342,8 @@ func TestSendInvoiceByEmail_ResendCreatesNewLogWithMetadata(t *testing.T) {
 }
 
 func TestSendInvoiceByEmail_SharedFilenameLogic(t *testing.T) {
-	if _, err := exec.LookPath("wkhtmltopdf"); err != nil {
-		t.Skip("wkhtmltopdf not installed — skipped")
+	if !PDFGeneratorAvailable() {
+		t.Skip("PDF generator is unavailable; skipped")
 	}
 	// Seed an invoice with a dangerous number to verify safe filename appears in log.
 	db := attachTestDB(t)
@@ -440,10 +445,11 @@ func TestGetInvoiceSendDefaults_PDFAvailableField(t *testing.T) {
 
 func TestPDFGeneratorAvailable_IsSharedTruth(t *testing.T) {
 	// PDFGeneratorAvailable() must return the same truth the chromedp engine
-	// uses, including rejecting snap Chromium wrappers.
+	// uses, including rejecting binaries that exist but cannot launch in this
+	// process environment.
 	// This test locks the function to its documented contract.
 	got := PDFGeneratorAvailable()
-	want := pdfengine.ChromeExecutableAvailable()
+	want := pdfengine.ChromeRuntimeAvailable()
 	if got != want {
 		t.Errorf("PDFGeneratorAvailable() = %v, want %v", got, want)
 	}

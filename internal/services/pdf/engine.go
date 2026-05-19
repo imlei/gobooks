@@ -252,6 +252,18 @@ func ChromeExecutableAvailable() bool {
 	return err == nil
 }
 
+// ChromeRuntimeAvailable reports whether the shared PDF engine can actually
+// initialise Chrome. This is stronger than ChromeExecutableAvailable: a binary
+// can exist on PATH but still fail to launch in the current service/session
+// environment.
+func ChromeRuntimeAvailable() bool {
+	if err := ensureEngine(); err != nil {
+		resetEngine()
+		return false
+	}
+	return true
+}
+
 func resolveChromePath(configured string) (string, error) {
 	if path := strings.TrimSpace(configured); path != "" {
 		return path, nil
