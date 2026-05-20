@@ -328,6 +328,40 @@ func TestEntEngine_AllowedEntityTypesFilter(t *testing.T) {
 	}
 }
 
+func TestEntEngine_EmptyAllowedEntityTypesReturnsNoRows(t *testing.T) {
+	c := newTestClient(t)
+	defer c.Close()
+	seedDoc(t, c, 1, "invoice", 1, "Alpha invoice", "INV-1")
+	seedDoc(t, c, 1, "payroll_entry", 2, "Alpha payroll", "PAY-1")
+
+	e, _ := NewEntEngine(c, searchprojection.AsciiNormalizer{})
+	resp, err := e.Search(context.Background(), SearchRequest{
+		CompanyID:          1,
+		Query:              "Alpha",
+		AllowedEntityTypes: []string{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.Source != "permission_empty" || len(resp.Candidates) != 0 {
+		t.Fatalf("empty allow-list should return no dropdown rows, got source=%q rows=%+v", resp.Source, resp.Candidates)
+	}
+
+	adv, err := e.SearchAdvanced(context.Background(), AdvancedRequest{
+		CompanyID:          1,
+		Query:              "Alpha",
+		AllowedEntityTypes: []string{},
+		Page:               1,
+		PageSize:           50,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adv.Total != 0 || len(adv.Rows) != 0 {
+		t.Fatalf("empty allow-list should return no advanced rows, got total=%d rows=%+v", adv.Total, adv.Rows)
+	}
+}
+
 func TestEntEngine_RefusesZeroCompanyID(t *testing.T) {
 	c := newTestClient(t)
 	defer c.Close()

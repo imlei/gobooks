@@ -46,6 +46,7 @@ func newAdvancedSearchTestApp(t *testing.T, sel *search_engine.Selector) *fiber.
 	s := &Server{SearchSelector: sel}
 	app.Get("/advanced-search", func(c *fiber.Ctx) error {
 		c.Locals(LocalsActiveCompanyID, uint(42))
+		c.Locals(LocalsCompanyMembership, &models.CompanyMembership{Role: models.CompanyRoleOwner})
 		return s.handleAdvancedSearch(c)
 	})
 	return app
@@ -121,6 +122,40 @@ func TestHandleAdvancedSearch_EngineErrorRendersEmptyPage(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "No results match your filters.") {
 		t.Errorf("expected empty-state copy in body, got: %s", string(body))
+	}
+}
+
+func TestHandleAdvancedSearchWithoutMembershipForwardsEmptyPermissionBoundary(t *testing.T) {
+	stub := &stubAdvancedEngine{
+		mode: search_engine.ModeEnt,
+		resp: &search_engine.AdvancedResponse{
+			Page:     1,
+			PageSize: 50,
+			Total:    1,
+			Rows: []search_engine.Candidate{
+				{ID: "1", Primary: "Payroll Run PAY-1", EntityType: "payroll_run", Payload: map[string]string{"amount": "999.00"}},
+			},
+		},
+	}
+	sel := search_engine.NewSelector(search_engine.ModeEnt, search_engine.NewLegacyEngine(), nil, stub)
+	app := fiber.New(fiber.Config{DisableStartupMessage: true})
+	s := &Server{SearchSelector: sel}
+	app.Get("/advanced-search", func(c *fiber.Ctx) error {
+		c.Locals(LocalsActiveCompanyID, uint(42))
+		return s.handleAdvancedSearch(c)
+	})
+
+	status, body := runGet(t, app, "/advanced-search?q=pay")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, string(body))
+	}
+	if stub.gotReq.AllowedEntityTypes == nil || len(stub.gotReq.AllowedEntityTypes) != 0 {
+		t.Fatalf("missing membership must forward explicit empty allow-list, got %+v", stub.gotReq.AllowedEntityTypes)
+	}
+	for _, forbidden := range []string{"Payroll Run PAY-1", "payroll_run", "999.00"} {
+		if strings.Contains(string(body), forbidden) {
+			t.Fatalf("advanced search without membership leaked %q in body: %s", forbidden, string(body))
+		}
 	}
 }
 

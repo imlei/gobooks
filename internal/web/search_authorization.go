@@ -34,10 +34,10 @@ var apGlobalSearchEntityTypes = []string{
 
 func (s *Server) allowedGlobalSearchEntityTypes(c *fiber.Ctx) []string {
 	if MembershipFromCtx(c) == nil {
-		return nil
+		return []string{}
 	}
 
-	var allowed []string
+	allowed := []string{}
 	if CanFromCtx(c, ActionInvoiceView) {
 		allowed = append(allowed, arGlobalSearchEntityTypes...)
 	}
@@ -83,8 +83,11 @@ func (s *Server) searchFeatureEnabled(c *fiber.Ctx, key models.FeatureKey) bool 
 }
 
 func entityTypeAllowed(entityType string, allowed []string) bool {
-	if entityType == "" || allowed == nil {
+	if entityType == "" {
 		return true
+	}
+	if allowed == nil {
+		return false
 	}
 	for _, t := range allowed {
 		if t == entityType {
@@ -95,9 +98,6 @@ func entityTypeAllowed(entityType string, allowed []string) bool {
 }
 
 func filterAdvancedSearchEntityOptions(options []pages.EntityTypeOption, allowed []string) []pages.EntityTypeOption {
-	if allowed == nil {
-		return options
-	}
 	out := make([]pages.EntityTypeOption, 0, len(options))
 	for _, opt := range options {
 		if entityTypeAllowed(opt.Value, allowed) {

@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"balanciz/internal/models"
@@ -488,6 +490,75 @@ func TestSmartPickerHandler_TaskContextsRequireTaskFeature(t *testing.T) {
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected 403 for disabled task picker context, got %d: %s", resp.StatusCode, readResponseBody(t, resp))
 	}
+}
+
+func TestSmartPickerHandler_ModuleContextsRequireMatchingPermission(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "SP Module Permission Co")
+	viewer, viewerToken := seedUserSession(t, db, &companyID)
+	seedMembershipWithRole(t, db, viewer.ID, companyID, models.CompanyRoleViewer)
+	apUser, apToken := seedSmartPickerUserSession(t, db, &companyID, "ap")
+	seedMembershipWithRole(t, db, apUser.ID, companyID, models.CompanyRoleAP)
+	seedSPCustomer(t, db, companyID, "Hidden Customer", "hidden@example.com")
+	seedSPVendor(t, db, companyID, "Hidden Vendor", "vendor@example.com", "")
+	revenueID := seedSPAccount(t, db, companyID, "4100", "Service Revenue", models.RootRevenue, true)
+	seedSPProductService(t, db, companyID, revenueID, "Hidden Service", "HID", models.ProductServiceTypeService, true)
+	app := testRouteApp(t, db)
+
+	for _, tc := range []struct {
+		name  string
+		url   string
+		token string
+	}{
+		{"viewer invoice customer", "/api/smart-picker/search?entity=customer&context=invoice_editor_customer&q=Hidden", viewerToken},
+		{"viewer expense vendor", "/api/smart-picker/search?entity=vendor&context=expense_form_vendor&q=Hidden", viewerToken},
+		{"viewer invoice item", "/api/smart-picker/search?entity=product_service&context=invoice_line_item&q=Hidden", viewerToken},
+		{"ap invoice customer", "/api/smart-picker/search?entity=customer&context=invoice_editor_customer&q=Hidden", apToken},
+	} {
+		resp := performRequest(t, app, tc.url, tc.token)
+		body := readResponseBody(t, resp)
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("%s: expected 403, got %d: %s", tc.name, resp.StatusCode, body)
+		}
+		if strings.Contains(body, "Hidden Customer") || strings.Contains(body, "Hidden Vendor") || strings.Contains(body, "Hidden Service") {
+			t.Fatalf("%s: forbidden response leaked candidate data: %s", tc.name, body)
+		}
+	}
+
+	resp := performRequest(t, app, "/api/smart-picker/search?entity=vendor&context=expense_form_vendor&q=Hidden", apToken)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("ap vendor picker should be allowed, got %d: %s", resp.StatusCode, readResponseBody(t, resp))
+	}
+}
+
+func seedSmartPickerUserSession(t *testing.T, db *gorm.DB, activeCompanyID *uint, suffix string) (models.User, string) {
+	t.Helper()
+	user := models.User{
+		ID:           uuid.New(),
+		Email:        fmt.Sprintf("%s-%s@example.com", t.Name(), suffix),
+		PasswordHash: "not-used-in-route-tests",
+		DisplayName:  "Route Test " + suffix,
+		IsActive:     true,
+	}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	rawToken, tokenHash, err := NewOpaqueSessionToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := models.Session{
+		ID:              uuid.New(),
+		TokenHash:       tokenHash,
+		UserID:          user.ID,
+		ActiveCompanyID: activeCompanyID,
+		ExpiresAt:       time.Now().UTC().Add(24 * time.Hour),
+		CreatedAt:       time.Now().UTC(),
+	}
+	if err := db.Create(&session).Error; err != nil {
+		t.Fatal(err)
+	}
+	return user, rawToken
 }
 
 func TestSmartPickerHandler_EchoesClientRequestID(t *testing.T) {

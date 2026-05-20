@@ -45,6 +45,7 @@ func newGlobalSearchTestApp(t *testing.T, sel *search_engine.Selector) *fiber.Ap
 	s := &Server{SearchSelector: sel}
 	app.Get("/api/global-search", func(c *fiber.Ctx) error {
 		c.Locals(LocalsActiveCompanyID, uint(42))
+		c.Locals(LocalsCompanyMembership, &models.CompanyMembership{Role: models.CompanyRoleOwner})
 		return s.handleGlobalSearch(c)
 	})
 	return app
@@ -151,11 +152,46 @@ func TestHandleGlobalSearch_NoSelectorReturns503(t *testing.T) {
 	s := &Server{} // SearchSelector intentionally nil
 	app.Get("/api/global-search", func(c *fiber.Ctx) error {
 		c.Locals(LocalsActiveCompanyID, uint(42))
+		c.Locals(LocalsCompanyMembership, &models.CompanyMembership{Role: models.CompanyRoleOwner})
 		return s.handleGlobalSearch(c)
 	})
 	status, _ := runGet(t, app, "/api/global-search?q=x")
 	if status != http.StatusServiceUnavailable {
 		t.Errorf("missing selector should return 503, got %d", status)
+	}
+}
+
+func TestHandleGlobalSearchWithoutMembershipForwardsEmptyPermissionBoundary(t *testing.T) {
+	stub := &stubEngineForHandler{
+		mode: search_engine.ModeEnt,
+		resp: &search_engine.SearchResponse{
+			Source: "ranked",
+			Candidates: []search_engine.Candidate{
+				{ID: "1", Primary: "Payroll Run PAY-1", EntityType: "payroll_run", Payload: map[string]string{"amount": "999.00"}},
+			},
+		},
+	}
+	sel := search_engine.NewSelector(search_engine.ModeEnt, search_engine.NewLegacyEngine(), nil, stub)
+	app := fiber.New()
+	s := &Server{SearchSelector: sel}
+	app.Get("/api/global-search", func(c *fiber.Ctx) error {
+		c.Locals(LocalsActiveCompanyID, uint(42))
+		return s.handleGlobalSearch(c)
+	})
+
+	status, body := runGet(t, app, "/api/global-search?q=pay")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, body)
+	}
+	if stub.gotReq.AllowedEntityTypes == nil || len(stub.gotReq.AllowedEntityTypes) != 0 {
+		t.Fatalf("missing membership must forward explicit empty allow-list, got %+v", stub.gotReq.AllowedEntityTypes)
+	}
+	var got globalSearchResponse
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Candidates) != 0 {
+		t.Fatalf("missing membership leaked candidates: %+v", got.Candidates)
 	}
 }
 
