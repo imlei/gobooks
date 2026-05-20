@@ -56,6 +56,7 @@ const (
 	FamilyVendorRefund     Family = "vendor_refund"
 	FamilyCustomerDeposit  Family = "customer_deposit"
 	FamilyVendorPrepayment Family = "vendor_prepayment"
+	FamilyTask             Family = "task"
 )
 
 // AllFamilies is the in-display-order list every "rebuild everything"
@@ -68,7 +69,7 @@ func AllFamilies() []Family {
 		FamilyPurchaseOrder, FamilyCustomerReceipt, FamilyExpense,
 		FamilyJournalEntry, FamilyCreditNote, FamilyVendorCreditNote,
 		FamilyARReturn, FamilyVendorReturn, FamilyARRefund, FamilyVendorRefund,
-		FamilyCustomerDeposit, FamilyVendorPrepayment,
+		FamilyCustomerDeposit, FamilyVendorPrepayment, FamilyTask,
 	}
 }
 
@@ -192,6 +193,8 @@ func RunFamily(ctx context.Context, db *gorm.DB, p searchprojection.Projector, f
 		rows, err = backfillCustomerDeposits(ctx, db, p, opts)
 	case FamilyVendorPrepayment:
 		rows, err = backfillVendorPrepayments(ctx, db, p, opts)
+	case FamilyTask:
+		rows, err = backfillTasks(ctx, db, p, opts)
 	default:
 		err = fmt.Errorf("backfill: unknown family %q", fam)
 	}
@@ -687,6 +690,29 @@ func backfillVendorPrepayments(ctx context.Context, db *gorm.DB, p searchproject
 				continue
 			}
 			lastID = r.ID
+			ok++
+		}
+		return ok, lastID, errs, nil
+	})
+}
+
+func backfillTasks(ctx context.Context, db *gorm.DB, p searchprojection.Projector, opts Options) (int, error) {
+	return scanLoop(ctx, "tasks", func(cursor uint) (int, uint, int, error) {
+		q := applyCompanyFilter(db.Model(&models.Task{}).Where("id > ?", cursor).Order("id ASC").Limit(opts.Batch).Preload("Customer").Preload("ProductService"), opts.CompanyFilter)
+		var rows []models.Task
+		if err := q.Find(&rows).Error; err != nil {
+			return 0, cursor, 0, err
+		}
+		var lastID uint
+		ok, errs := 0, 0
+		for _, task := range rows {
+			doc := producers.TaskDocument(task)
+			if err := p.Upsert(ctx, doc.CompanyID, doc); err != nil {
+				logging.L().Warn("task upsert failed (continuing)", "id", task.ID, "company_id", task.CompanyID, "err", err)
+				errs++
+				continue
+			}
+			lastID = task.ID
 			ok++
 		}
 		return ok, lastID, errs, nil

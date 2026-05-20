@@ -75,6 +75,7 @@ func (s *Server) handleCustomerDetailUpdate(c *fiber.Ctx) error {
 			NameError:          nameErr,
 			CurrencyError:      currencyErr,
 			FormError:          formErr,
+			ShowBillableWork:   s.customerBillableWorkVisible(c),
 		}
 		s.loadCustomerEditFormData(companyID, &vm)
 		return vm

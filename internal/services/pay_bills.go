@@ -3,6 +3,7 @@ package services
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"balanciz/internal/models"
@@ -62,6 +63,20 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 	if len(in.Bills) == 0 {
 		return 0, fmt.Errorf("at least one bill must be selected")
 	}
+	payments := append([]BillPayment(nil), in.Bills...)
+	sort.Slice(payments, func(i, j int) bool {
+		return payments[i].BillID < payments[j].BillID
+	})
+	seenBills := make(map[uint]struct{}, len(payments))
+	for _, bp := range payments {
+		if bp.BillID == 0 {
+			return 0, fmt.Errorf("bill id is required")
+		}
+		if _, ok := seenBills[bp.BillID]; ok {
+			return 0, fmt.Errorf("bill %d was selected more than once", bp.BillID)
+		}
+		seenBills[bp.BillID] = struct{}{}
+	}
 
 	// Validate bank account.
 	var bank models.Account
@@ -96,13 +111,15 @@ func RecordPayBills(tx *gorm.DB, in PayBillsInput) (uint, error) {
 	hasFX := false
 	hasOverpayment := false
 
-	for i, bp := range in.Bills {
+	for i, bp := range payments {
 		if bp.Amount.LessThanOrEqual(decimal.Zero) {
 			return 0, fmt.Errorf("payment amount for bill %d must be > 0", bp.BillID)
 		}
 
 		var bill models.Bill
-		if err := tx.Where("id = ? AND company_id = ?", bp.BillID, in.CompanyID).First(&bill).Error; err != nil {
+		if err := applyLockForUpdate(
+			tx.Where("id = ? AND company_id = ?", bp.BillID, in.CompanyID),
+		).First(&bill).Error; err != nil {
 			return 0, fmt.Errorf("bill %d not found", bp.BillID)
 		}
 		if bill.Status != models.BillStatusPosted && bill.Status != models.BillStatusPartiallyPaid {

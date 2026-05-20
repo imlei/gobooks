@@ -239,6 +239,12 @@ func transactionTypeLabel(sourceType string) string {
 		return "Customer Deposit"
 	case models.LedgerSourceVendorPrepayment:
 		return "Vendor Prepayment"
+	case models.LedgerSourcePayrollRun:
+		return "Payroll Run"
+	case models.LedgerSourceCheque:
+		return "Cheque"
+	case models.LedgerSourcePayrollRemittance:
+		return "Payroll Remittance"
 	case models.LedgerSourceARReturnReceipt:
 		return "Customer Return"
 	case models.LedgerSourceVendorReturnShipment:
@@ -285,6 +291,12 @@ func documentURL(sourceType string, sourceID, journalEntryID uint) string {
 		return formatID("/deposits/", sourceID)
 	case models.LedgerSourceVendorPrepayment:
 		return formatID("/vendor-prepayments/", sourceID)
+	case models.LedgerSourcePayrollRun:
+		return formatID("/payroll/runs/", sourceID)
+	case models.LedgerSourceCheque:
+		return "/cheques"
+	case models.LedgerSourcePayrollRemittance:
+		return "/payroll/remittances"
 	default:
 		// AR/vendor returns post via "ar_return_receipt" / "vendor_return_shipment"
 		// source types — sourceID points to the receipt/shipment row, not
@@ -460,6 +472,12 @@ func sourceTable(sourceType string) (string, string) {
 		return "customer_deposits", "deposit_number"
 	case models.LedgerSourceVendorPrepayment:
 		return "vendor_prepayments", "prepayment_number"
+	case models.LedgerSourcePayrollRun:
+		return "payroll_runs", "run_number"
+	case models.LedgerSourceCheque:
+		return "cheques", "cheque_number"
+	case models.LedgerSourcePayrollRemittance:
+		return "payroll_remittances", "remittance_number"
 	default:
 		return "", ""
 	}

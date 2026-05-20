@@ -471,6 +471,25 @@ func TestSmartPickerHandler_AccountSearchReturnsJSON(t *testing.T) {
 	}
 }
 
+func TestSmartPickerHandler_TaskContextsRequireTaskFeature(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "SP Task Context Off Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	if err := db.Model(&models.CompanyFeature{}).
+		Where("company_id = ? AND feature_key = ?", companyID, models.FeatureKeyTask).
+		Update("status", models.FeatureStatusOff).Error; err != nil {
+		t.Fatal(err)
+	}
+	seedValidationCustomer(t, db, companyID, "Hidden Task Picker Customer")
+	app := testRouteApp(t, db)
+
+	resp := performRequest(t, app, "/api/smart-picker/search?entity=customer&context=task_form_customer&q=Hidden", rawToken)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected 403 for disabled task picker context, got %d: %s", resp.StatusCode, readResponseBody(t, resp))
+	}
+}
+
 func TestSmartPickerHandler_EchoesClientRequestID(t *testing.T) {
 	db := testRouteDB(t)
 	companyID := seedCompany(t, db, "SP Handler Request Co")

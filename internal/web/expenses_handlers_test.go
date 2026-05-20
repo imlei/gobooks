@@ -158,6 +158,115 @@ func seedVendor(t *testing.T, db *gorm.DB, companyID uint, name string) uint {
 
 // ── SmartPicker integration tests ─────────────────────────────────────────────
 
+func TestCostEditorsHideAndRejectTaskLinksWhenTaskFeatureDisabled(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Task Off Cost Editors Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+
+	customerID := seedValidationCustomer(t, db, companyID, "Hidden Task Customer")
+	taskID := seedTaskForWeb(t, db, companyID, customerID, models.TaskStatusOpen, "Hidden install")
+	expenseAccountID := seedValidationAccount(t, db, companyID, "6120", models.RootExpense, models.DetailOfficeExpense)
+	vendorID := seedVendor(t, db, companyID, "Task Off Vendor")
+	taskLinkedExpense := models.Expense{
+		CompanyID:        companyID,
+		ExpenseDate:      time.Date(2026, 4, 4, 0, 0, 0, 0, time.UTC),
+		Description:      "Previously linked expense",
+		Amount:           decimal.RequireFromString("45.00"),
+		CurrencyCode:     "CAD",
+		VendorID:         &vendorID,
+		ExpenseAccountID: &expenseAccountID,
+		TaskID:           &taskID,
+		IsBillable:       true,
+	}
+	if err := db.Create(&taskLinkedExpense).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&models.CompanyFeature{}).
+		Where("company_id = ? AND feature_key = ?", companyID, models.FeatureKeyTask).
+		Update("status", models.FeatureStatusOff).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	for _, path := range []string{"/expenses", "/expenses/new", "/bills/new"} {
+		resp := performRequest(t, app, path, rawToken)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s: expected %d, got %d", path, http.StatusOK, resp.StatusCode)
+		}
+		body := readResponseBody(t, resp)
+		if strings.Contains(body, "Hidden install") {
+			t.Fatalf("%s: expected hidden task title while feature off", path)
+		}
+		if strings.Contains(body, "line_task_id") || strings.Contains(body, "line_is_billable") || strings.Contains(body, ">Billable<") {
+			t.Fatalf("%s: expected task linkage controls to be hidden", path)
+		}
+	}
+
+	csrf := newCSRFToken(t)
+	expenseForm := url.Values{
+		"expense_date":               {"2026-04-04"},
+		"currency_code":              {"CAD"},
+		"vendor_id":                  {fmt.Sprintf("%d", vendorID)},
+		"line_count":                 {"1"},
+		"line_expense_account_id[0]": {fmt.Sprintf("%d", expenseAccountID)},
+		"line_description[0]":        {"Forged task expense"},
+		"line_amount[0]":             {"45.00"},
+		"line_task_id[0]":            {fmt.Sprintf("%d", taskID)},
+		"line_is_billable[0]":        {"1"},
+	}
+	expenseForm.Set(CSRFFormField, csrf)
+	resp := performSecurityRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/expenses",
+		[]byte(expenseForm.Encode()),
+		"application/x-www-form-urlencoded",
+		&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"},
+		&http.Cookie{Name: CSRFCookieName, Value: csrf, Path: "/"},
+	)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected forged expense to re-render with validation error, got %d", resp.StatusCode)
+	}
+	body := readResponseBody(t, resp)
+	if !strings.Contains(body, "Enable Tasks before linking expense lines to tasks.") {
+		t.Fatalf("expected disabled task validation error, got %q", body)
+	}
+
+	csrf = newCSRFToken(t)
+	billForm := url.Values{
+		"bill_number":                {"BILL-TASK-OFF"},
+		"vendor_id":                  {fmt.Sprintf("%d", vendorID)},
+		"bill_date":                  {"2026-04-04"},
+		"currency_code":              {"CAD"},
+		"line_count":                 {"1"},
+		"line_expense_account_id[0]": {fmt.Sprintf("%d", expenseAccountID)},
+		"line_description[0]":        {"Forged task bill"},
+		"line_amount[0]":             {"45.00"},
+		"line_task_id[0]":            {fmt.Sprintf("%d", taskID)},
+		"line_is_billable[0]":        {"1"},
+	}
+	billForm.Set(CSRFFormField, csrf)
+	resp = performSecurityRequest(
+		t,
+		app,
+		http.MethodPost,
+		"/bills/save-draft",
+		[]byte(billForm.Encode()),
+		"application/x-www-form-urlencoded",
+		&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"},
+		&http.Cookie{Name: CSRFCookieName, Value: csrf, Path: "/"},
+	)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected forged bill to re-render with validation error, got %d", resp.StatusCode)
+	}
+	body = readResponseBody(t, resp)
+	if !strings.Contains(body, "Enable Tasks before linking bill lines to tasks.") {
+		t.Fatalf("expected disabled task validation error, got %q", body)
+	}
+}
+
 // TestExpenseNew_SmartPickerAttrs verifies that GET /expenses/new renders the
 // SmartPicker with the correct data-* attributes for vendor, expense account,
 // and payment account fields.

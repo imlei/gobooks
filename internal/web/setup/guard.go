@@ -18,7 +18,7 @@ func Guard(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		path := c.Path()
 
-		if strings.HasPrefix(path, "/static/") {
+		if strings.HasPrefix(path, "/static/") || path == "/healthz" || path == "/readyz" || path == "/version" {
 			return c.Next()
 		}
 		if path == "/setup/bootstrap" {

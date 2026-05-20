@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -27,7 +28,15 @@ const (
 	JournalEntryExchangeRateSourceSystemStored      = "system_stored"
 	JournalEntryExchangeRateSourceProviderFetched   = "provider_fetched"
 	JournalEntryExchangeRateSourceLegacyUnavailable = "legacy_unavailable"
+
+	frankfurterCircuitFailureThreshold = 3
+	frankfurterCircuitCooldown         = 2 * time.Minute
 )
+
+var defaultFrankfurterCircuit = &exchangeRateProviderCircuitBreaker{
+	failureThreshold: frankfurterCircuitFailureThreshold,
+	cooldown:         frankfurterCircuitCooldown,
+}
 
 type ExchangeRateSnapshot struct {
 	SnapshotID              *uint
@@ -52,14 +61,16 @@ type ExchangeRateProvider interface {
 }
 
 type FrankfurterProvider struct {
-	BaseURL    string
-	HTTPClient *http.Client
+	BaseURL        string
+	HTTPClient     *http.Client
+	CircuitBreaker *exchangeRateProviderCircuitBreaker
 }
 
 func NewFrankfurterProvider() *FrankfurterProvider {
 	return &FrankfurterProvider{
-		BaseURL:    "https://api.frankfurter.dev/v2",
-		HTTPClient: &http.Client{Timeout: 10 * time.Second},
+		BaseURL:        "https://api.frankfurter.dev/v2",
+		HTTPClient:     &http.Client{Timeout: 10 * time.Second},
+		CircuitBreaker: defaultFrankfurterCircuit,
 	}
 }
 
@@ -91,17 +102,30 @@ func (p *FrankfurterProvider) FetchRate(ctx context.Context, baseCurrencyCode, t
 		return ExchangeRateProviderQuote{}, err
 	}
 
+	breaker := p.CircuitBreaker
+	if breaker != nil {
+		if err := breaker.beforeRequest(time.Now()); err != nil {
+			return ExchangeRateProviderQuote{}, err
+		}
+	}
+	providerFailure := func(err error) (ExchangeRateProviderQuote, error) {
+		if breaker != nil {
+			breaker.recordFailure(time.Now())
+		}
+		return ExchangeRateProviderQuote{}, err
+	}
+
 	client := p.HTTPClient
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return ExchangeRateProviderQuote{}, err
+		return providerFailure(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return ExchangeRateProviderQuote{}, fmt.Errorf("frankfurter returned %s", resp.Status)
+		return providerFailure(fmt.Errorf("frankfurter returned %s", resp.Status))
 	}
 
 	var body struct {
@@ -113,21 +137,24 @@ func (p *FrankfurterProvider) FetchRate(ctx context.Context, baseCurrencyCode, t
 	dec := json.NewDecoder(resp.Body)
 	dec.UseNumber()
 	if err := dec.Decode(&body); err != nil {
-		return ExchangeRateProviderQuote{}, fmt.Errorf("decode frankfurter response: %w", err)
+		return providerFailure(fmt.Errorf("decode frankfurter response: %w", err))
 	}
 	if !strings.EqualFold(strings.TrimSpace(body.Base), baseCurrencyCode) {
-		return ExchangeRateProviderQuote{}, fmt.Errorf("frankfurter response did not include %s as the base currency", baseCurrencyCode)
+		return providerFailure(fmt.Errorf("frankfurter response did not include %s as the base currency", baseCurrencyCode))
 	}
 	if !strings.EqualFold(strings.TrimSpace(body.Quote), targetCurrencyCode) {
-		return ExchangeRateProviderQuote{}, fmt.Errorf("frankfurter response did not include %s as the quote currency", targetCurrencyCode)
+		return providerFailure(fmt.Errorf("frankfurter response did not include %s as the quote currency", targetCurrencyCode))
 	}
 	rate, err := decimal.NewFromString(body.Rate.String())
 	if err != nil || !rate.GreaterThan(decimal.Zero) {
-		return ExchangeRateProviderQuote{}, fmt.Errorf("frankfurter returned an invalid rate")
+		return providerFailure(fmt.Errorf("frankfurter returned an invalid rate"))
 	}
 	effectiveDate, err := time.Parse("2006-01-02", body.Date)
 	if err != nil {
-		return ExchangeRateProviderQuote{}, fmt.Errorf("frankfurter returned an invalid date")
+		return providerFailure(fmt.Errorf("frankfurter returned an invalid date"))
+	}
+	if breaker != nil {
+		breaker.recordSuccess()
 	}
 	return ExchangeRateProviderQuote{
 		BaseCurrencyCode:   baseCurrencyCode,
@@ -180,6 +207,11 @@ func ResolveExchangeRateSnapshot(ctx context.Context, db *gorm.DB, opts Exchange
 	}
 	quote, err := provider.FetchRate(ctx, txCurrency, baseCurrency, day)
 	if err != nil {
+		if row, found, lookupErr := lookupExchangeRateRow(db, opts.CompanyID, txCurrency, baseCurrency, day); lookupErr != nil {
+			return ExchangeRateSnapshot{}, lookupErr
+		} else if found {
+			return snapshotFromExchangeRateRow(row, opts.CompanyID), nil
+		}
 		return ExchangeRateSnapshot{}, err
 	}
 	row, err := UpsertExchangeRate(db, UpsertExchangeRateInput{
@@ -194,6 +226,59 @@ func ResolveExchangeRateSnapshot(ctx context.Context, db *gorm.DB, opts Exchange
 		return ExchangeRateSnapshot{}, err
 	}
 	return snapshotFromExchangeRateRow(row, opts.CompanyID), nil
+}
+
+type exchangeRateProviderCircuitBreaker struct {
+	mu               sync.Mutex
+	failureThreshold int
+	cooldown         time.Duration
+	failures         int
+	openedAt         time.Time
+}
+
+func (b *exchangeRateProviderCircuitBreaker) beforeRequest(now time.Time) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	threshold := b.failureThreshold
+	if threshold <= 0 {
+		threshold = frankfurterCircuitFailureThreshold
+	}
+	cooldown := b.cooldown
+	if cooldown <= 0 {
+		cooldown = frankfurterCircuitCooldown
+	}
+	if b.failures < threshold || b.openedAt.IsZero() {
+		return nil
+	}
+	if now.Sub(b.openedAt) >= cooldown {
+		b.failures = threshold - 1
+		b.openedAt = time.Time{}
+		return nil
+	}
+	return fmt.Errorf("frankfurter circuit is open; retry after %s", b.openedAt.Add(cooldown).Format(time.RFC3339))
+}
+
+func (b *exchangeRateProviderCircuitBreaker) recordSuccess() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.failures = 0
+	b.openedAt = time.Time{}
+}
+
+func (b *exchangeRateProviderCircuitBreaker) recordFailure(now time.Time) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	threshold := b.failureThreshold
+	if threshold <= 0 {
+		threshold = frankfurterCircuitFailureThreshold
+	}
+	b.failures++
+	if b.failures >= threshold && b.openedAt.IsZero() {
+		b.openedAt = now
+	}
 }
 
 func IdentityExchangeRateSnapshot(currencyCode string, date time.Time) ExchangeRateSnapshot {

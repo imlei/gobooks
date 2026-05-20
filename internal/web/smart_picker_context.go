@@ -3,6 +3,8 @@ package web
 import (
 	"fmt"
 	"strings"
+
+	"balanciz/internal/models"
 )
 
 type smartPickerContextDefinition struct {
@@ -10,6 +12,8 @@ type smartPickerContextDefinition struct {
 	ProviderContext string
 	EntityType      string
 	Description     string
+	RequiredFeature models.FeatureKey
+	RequiredAction  string
 }
 
 var smartPickerContextDefinitions = map[string]smartPickerContextDefinition{}
@@ -28,8 +32,8 @@ func init() {
 		{Context: "invoice_customer", ProviderContext: "invoice_editor_customer", EntityType: "customer", Description: "invoice customer"},
 		{Context: "invoice.customer_picker", ProviderContext: "invoice_editor_customer", EntityType: "customer", Description: "invoice customer"},
 		{Context: "quote.customer_picker", ProviderContext: "quote.customer_picker", EntityType: "customer", Description: "quote customer"},
-		{Context: "task_form_customer", ProviderContext: "task_form_customer", EntityType: "customer", Description: "task customer"},
-		{Context: "task.customer_picker", ProviderContext: "task_form_customer", EntityType: "customer", Description: "task customer"},
+		{Context: "task_form_customer", ProviderContext: "task_form_customer", EntityType: "customer", Description: "task customer", RequiredFeature: models.FeatureKeyTask, RequiredAction: ActionTaskView},
+		{Context: "task.customer_picker", ProviderContext: "task_form_customer", EntityType: "customer", Description: "task customer", RequiredFeature: models.FeatureKeyTask, RequiredAction: ActionTaskView},
 		{Context: "invoices_filter", ProviderContext: "invoices_filter", EntityType: "customer", Description: "invoice list customer filter"},
 		{Context: "quotes_filter", ProviderContext: "quotes_filter", EntityType: "customer", Description: "quote list customer filter"},
 		{Context: "sales_orders_filter", ProviderContext: "sales_orders_filter", EntityType: "customer", Description: "sales order customer filter"},
@@ -56,8 +60,8 @@ func init() {
 		{Context: "sales_order_line_item", ProviderContext: "sales_order_line_item", EntityType: "product_service", Description: "sales order product or service"},
 		{Context: "sales_order.item_picker", ProviderContext: "sales_order_line_item", EntityType: "product_service", Description: "sales order product or service"},
 		{Context: "po_line_item", ProviderContext: "po_line_item", EntityType: "product_service", Description: "purchase order product or service"},
-		{Context: "task_form_service_item", ProviderContext: "task_form_service_item", EntityType: "product_service", Description: "task service item"},
-		{Context: "task.service_item_picker", ProviderContext: "task_form_service_item", EntityType: "product_service", Description: "task service item"},
+		{Context: "task_form_service_item", ProviderContext: "task_form_service_item", EntityType: "product_service", Description: "task service item", RequiredFeature: models.FeatureKeyTask, RequiredAction: ActionTaskView},
+		{Context: "task.service_item_picker", ProviderContext: "task_form_service_item", EntityType: "product_service", Description: "task service item", RequiredFeature: models.FeatureKeyTask, RequiredAction: ActionTaskView},
 	} {
 		smartPickerContextDefinitions[def.Context] = def
 	}

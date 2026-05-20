@@ -52,6 +52,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -61,10 +62,10 @@ import (
 )
 
 // ErrBillNotDraft is returned when posting is attempted on a non-draft bill.
-var ErrBillNotDraft = errors.New("only draft bills can be posted")
+var ErrBillNotDraft = NewPostingError("POSTING_BILL_NOT_DRAFT", "only draft bills can be posted", http.StatusConflict)
 
 // ErrNoAPAccount is returned when no active Accounts Payable account exists for the company.
-var ErrNoAPAccount = errors.New("no active Accounts Payable account found — create one in your Chart of Accounts first")
+var ErrNoAPAccount = NewPostingError("POSTING_AP_ACCOUNT_MISSING", "no active Accounts Payable account found — create one in your Chart of Accounts first", http.StatusUnprocessableEntity)
 
 // PostBill transitions a draft bill to "posted" and generates a double-entry
 // journal entry in a single database transaction.
@@ -244,6 +245,9 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		}
 		if locked.Status != models.BillStatusDraft {
 			return ErrAlreadyPosted
+		}
+		if err := ensureBillPostingSnapshotFresh(tx, companyID, billID, bill); err != nil {
+			return err
 		}
 
 		// a2. H.5 matching transform (when engaged): resolve per-line

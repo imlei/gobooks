@@ -21,6 +21,7 @@ package services
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -34,14 +35,20 @@ import (
 // already in a non-draft state inside the locked transaction. This indicates
 // either a concurrent request beat us to it, or the caller has a stale view of
 // the document.
-var ErrAlreadyPosted = errors.New("document is already posted — posting rejected")
+var ErrAlreadyPosted = NewPostingError("POSTING_ALREADY_POSTED", "document is already posted — posting rejected", http.StatusConflict)
 
 // ErrConcurrentPostingConflict is returned when the unique-index backstop fires:
 // two transactions somehow both passed the FOR UPDATE re-validation and both
 // tried to INSERT a journal entry for the same source document. The second
 // INSERT fails with a Postgres 23505 unique-constraint violation, which is
 // wrapped as this error.
-var ErrConcurrentPostingConflict = errors.New("concurrent posting conflict: another request posted this document simultaneously — retry if needed")
+var ErrConcurrentPostingConflict = NewPostingError("POSTING_CONCURRENT_CONFLICT", "concurrent posting conflict: another request posted this document simultaneously — retry if needed", http.StatusConflict)
+
+// ErrPostingSourceChanged is returned when the draft header or lines changed
+// between the pre-flight read and the locked posting transaction. The caller
+// should reload the document and retry so the journal entry is built from the
+// final visible draft.
+var ErrPostingSourceChanged = NewPostingError("POSTING_SOURCE_CHANGED", "document changed while posting - reload and try again", http.StatusConflict)
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
@@ -71,6 +78,7 @@ func applyLockForUpdate(q *gorm.DB) *gorm.DB {
 //	if err := tx.Create(&je).Error; err != nil {
 //	    return wrapUniqueViolation(err, "create journal entry")
 //	}
+//
 // isNoSuchTableError reports whether err indicates a missing table. This covers
 // SQLite ("no such table: ...") and Postgres ("42P01" / "relation ... does not exist"),
 // allowing callers to treat a missing table as a no-op rather than a hard error.
@@ -85,6 +93,13 @@ func isNoSuchTableError(err error) bool {
 		return pgErr.Code == "42P01"
 	}
 	return strings.Contains(err.Error(), "no such table")
+}
+
+// IsNoSuchTableError reports whether err indicates a missing table. Web-layer
+// tests use in-memory SQLite fixtures that intentionally omit optional tables;
+// production databases should have all migrations applied.
+func IsNoSuchTableError(err error) bool {
+	return isNoSuchTableError(err)
 }
 
 func wrapUniqueViolation(err error, op string) error {

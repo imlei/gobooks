@@ -1,0 +1,714 @@
+package pages
+
+import "balanciz/internal/models"
+import "balanciz/internal/web/templates/layout"
+import "balanciz/internal/web/templates/ui"
+
+templ Employees(vm EmployeesVM) {
+	@layout.Layout(
+		"Balanciz - Employees",
+		ui.SidebarVM{Active: "Employees", HasCompany: vm.HasCompany},
+		bodyEmployees(vm),
+	)
+}
+
+templ bodyEmployees(vm EmployeesVM) {
+	<div class="max-w-[95%]">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<h1 class="text-title font-semibold">Employees</h1>
+				<p class="mt-2 text-text-muted2">Manage payroll-ready people records without exposing sensitive personal identifiers in list views.</p>
+			</div>
+			<div class="shrink-0 flex flex-wrap items-center gap-2">
+				<a href="/payroll/runs" class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Payroll Runs</a>
+			</div>
+		</div>
+
+		if vm.Created {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Employee created.</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		<form method="get" action="/employees" class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Filter</h2>
+			<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
+				<div>
+					<label class="block text-body font-medium text-text">Search</label>
+					<input name="q" value={ vm.Query } class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus" placeholder="Name, number, or position"/>
+				</div>
+				<div>
+					<label class="block text-body font-medium text-text">Status</label>
+					<select name="status" class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+						<option value="">All</option>
+						for _, status := range employeeStatusOptions() {
+							<option value={ string(status) } selected?={ string(status) == vm.Status }>{ employeeStatusLabel(status) }</option>
+						}
+					</select>
+				</div>
+				<div class="flex items-end justify-end">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Apply Filter</button>
+				</div>
+			</div>
+		</form>
+
+		if vm.CanManage {
+			<form method="post" action="/employees" class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">Add Employee</h2>
+				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-4">
+					@employeeTextField("Employee No", "employee_no", "", "")
+					@employeeTextField("Legal Name", "legal_name", "", "Required if display name is empty")
+					@employeeTextField("Display Name", "display_name", "", "")
+					@employeeTextField("Position", "position", "", "")
+					@employeeTextField("Email", "email", "", "")
+					@employeeTextField("Mobile", "mobile", "", "")
+					@employeeSelectField("Province", "province", "BC", provinceOptions())
+					@employeeSelectField("Member Type", "member_type", string(models.EmployeeMemberEmployee), employeeMemberTypeOptions())
+					@employeeSelectField("Salary Type", "salary_type", string(models.EmployeeSalaryTimeBased), employeeSalaryTypeOptions())
+					@employeeTextField("Pay Rate", "pay_rate", "0.00", "")
+					@employeeSelectField("Rate Unit", "pay_rate_unit", "hourly", payRateUnitOptions())
+					@employeeTextField("Hours / Week", "hours_per_week", "40", "")
+					@employeeSelectField("Pay Frequency", "pay_frequency", string(models.PayFrequencyBiweekly), payFrequencyOptions())
+					@employeeTextField("Pays / Year", "pays_per_year", "26", "")
+					@employeeTextField("TD1 Federal", "td1_federal", "0.00", "")
+					@employeeTextField("TD1 Provincial", "td1_provincial", "0.00", "")
+				</div>
+				<div class="mt-6 flex justify-end">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Create Employee</button>
+				</div>
+			</form>
+		}
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Employee List</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Employee</th>
+							<th class="py-3 pr-4">Position</th>
+							<th class="py-3 pr-4">Province</th>
+							<th class="py-3 pr-4">Type</th>
+							<th class="py-3 pr-4 text-right">Pay Rate</th>
+							<th class="py-3 pr-0 text-right">Status</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						if len(vm.Employees) == 0 {
+							<tr>
+								<td colspan="6" class="py-6 text-text-muted2">No employees found.</td>
+							</tr>
+						}
+						for _, employee := range vm.Employees {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4">
+									<div class="font-medium">{ employee.SearchName() }</div>
+									if employee.EmployeeNo != "" {
+										<div class="text-small text-text-muted2">{ employee.EmployeeNo }</div>
+									}
+								</td>
+								<td class="py-3 pr-4">{ employee.Position }</td>
+								<td class="py-3 pr-4">{ employee.ProvinceOfEmployment }</td>
+								<td class="py-3 pr-4">{ employeeMemberTypeLabel(employee.MemberType) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(employee.PayRate) } <span class="text-small text-text-muted2">{ employee.PayRateUnit }</span></td>
+								<td class="py-3 pr-0 text-right"><span class={ employeeStatusBadgeClass(employee.Status) }>{ employeeStatusLabel(employee.Status) }</span></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+templ PayrollRuns(vm PayrollRunsVM) {
+	@layout.Layout(
+		"Balanciz - Payroll Runs",
+		ui.SidebarVM{Active: "Payroll", HasCompany: vm.HasCompany},
+		bodyPayrollRuns(vm),
+	)
+}
+
+templ bodyPayrollRuns(vm PayrollRunsVM) {
+	<div class="max-w-[95%]">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<h1 class="text-title font-semibold">Payroll Runs</h1>
+				<p class="mt-2 text-text-muted2">Create draft payroll periods and calculate totals from active employee pay settings.</p>
+			</div>
+			<div class="shrink-0 flex flex-wrap items-center gap-2">
+				<a href="/employees" class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Employees</a>
+				<a href="/payroll/remittances" class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Remittances</a>
+				if vm.CanViewDetails {
+					<a href="/payroll/reports/summary" class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Summary</a>
+					<a href="/payroll/reports/employee-history" class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Employee History</a>
+				}
+			</div>
+		</div>
+
+		if vm.Created {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll run created.</div>
+		}
+		if vm.Calculated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll run calculated.</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		if vm.CanRun {
+			<form method="post" action="/payroll/runs" class="mt-6 rounded-lg border border-border bg-surface p-6">
+				<h2 class="text-section font-semibold text-text">New Payroll Run</h2>
+				<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-4">
+					@employeeTextField("Run Number", "run_number", "", "")
+					@employeeTextField("Period Start", "period_start", "", "YYYY-MM-DD")
+					@employeeTextField("Period End", "period_end", "", "YYYY-MM-DD")
+					@employeeTextField("Pay Date", "pay_date", "", "YYYY-MM-DD")
+					@employeeSelectField("Pay Frequency", "pay_frequency", string(models.PayFrequencyBiweekly), payFrequencyOptions())
+					@employeeTextField("Pays / Year", "pays_per_year", "26", "")
+				</div>
+				<div class="mt-6 flex justify-end">
+					<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Create Run</button>
+				</div>
+			</form>
+		}
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Recent Runs</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Run</th>
+							<th class="py-3 pr-4">Period</th>
+							<th class="py-3 pr-4">Pay Date</th>
+							<th class="py-3 pr-4">Frequency</th>
+							<th class="py-3 pr-4 text-right">Gross</th>
+							<th class="py-3 pr-4 text-right">Net Pay</th>
+							<th class="py-3 pr-4">Status</th>
+							<th class="py-3 pr-0 text-right">Actions</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						if len(vm.Runs) == 0 {
+							<tr>
+								<td colspan="8" class="py-6 text-text-muted2">No payroll runs yet.</td>
+							</tr>
+						}
+						for _, run := range vm.Runs {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4">
+									<a href={ "/payroll/runs/" + Uitoa(run.ID) } class="font-medium text-primary hover:text-primary-hover hover:underline">{ payrollRunTitle(run) }</a>
+								</td>
+								<td class="py-3 pr-4">{ run.PeriodStart.Format("2006-01-02") } to { run.PeriodEnd.Format("2006-01-02") }</td>
+								<td class="py-3 pr-4">{ run.PayDate.Format("2006-01-02") }</td>
+								<td class="py-3 pr-4">{ payFrequencyLabel(run.PayFrequency) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(run.TotalGross) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(run.TotalNetPay) }</td>
+								<td class="py-3 pr-4"><span class={ payrollRunStatusBadgeClass(run.Status) }>{ payrollRunStatusLabel(run.Status) }</span></td>
+								<td class="py-3 pr-0 text-right whitespace-nowrap">
+									<a href={ "/payroll/runs/" + Uitoa(run.ID) } class="text-small font-medium text-primary hover:text-primary-hover">View</a>
+									if vm.CanRun && payrollRunCanCalculate(run.Status) {
+										<span class="inline-block px-1 text-text-muted3">|</span>
+										<form method="post" action={ "/payroll/runs/" + Uitoa(run.ID) + "/calculate" } class="inline">
+											<button type="submit" class="text-small font-medium text-primary hover:text-primary-hover">Calculate</button>
+										</form>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+templ PayrollRemittances(vm PayrollRemittancesVM) {
+	@layout.Layout(
+		"Balanciz - Payroll Remittances",
+		ui.SidebarVM{Active: "Payroll Remittances", HasCompany: vm.HasCompany},
+		bodyPayrollRemittances(vm),
+	)
+}
+
+templ bodyPayrollRemittances(vm PayrollRemittancesVM) {
+	<div class="max-w-[95%]">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<a href="/payroll/runs" class="text-body text-text-muted3 hover:text-text">Back to Payroll Runs</a>
+				<h1 class="mt-2 text-title font-semibold">Payroll Remittances</h1>
+				<p class="mt-2 text-text-muted2">Track statutory CPP, EI, and income tax remittance payments created from posted payroll runs.</p>
+			</div>
+		</div>
+
+		if vm.Created {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll remittance created.</div>
+		}
+		if vm.Paid {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll remittance paid.</div>
+		}
+		if vm.Voided {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll remittance voided.</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<h2 class="text-section font-semibold text-text">Recent Remittances</h2>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Remittance</th>
+							<th class="py-3 pr-4">Run</th>
+							<th class="py-3 pr-4">Due</th>
+							<th class="py-3 pr-4 text-right">CPP</th>
+							<th class="py-3 pr-4 text-right">EI</th>
+							<th class="py-3 pr-4 text-right">Tax</th>
+							<th class="py-3 pr-4 text-right">Total</th>
+							<th class="py-3 pr-4">Status</th>
+							<th class="py-3 pr-0 text-right">Action</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						if len(vm.Remittances) == 0 {
+							<tr>
+								<td colspan="9" class="py-6 text-text-muted2">No payroll remittances yet.</td>
+							</tr>
+						}
+						for _, remittance := range vm.Remittances {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4">
+									<div class="font-medium">{ remittance.RemittanceNumber }</div>
+									if remittance.JournalEntryID != nil {
+										<a href={ "/journal-entry/" + Uitoa(*remittance.JournalEntryID) } class="text-small text-primary hover:text-primary-hover">JE #{ Uitoa(*remittance.JournalEntryID) }</a>
+									}
+									if remittance.ReversalJournalEntryID != nil {
+										<div><a href={ "/journal-entry/" + Uitoa(*remittance.ReversalJournalEntryID) } class="text-small text-danger hover:text-danger-hover">Reversal JE #{ Uitoa(*remittance.ReversalJournalEntryID) }</a></div>
+									}
+								</td>
+								<td class="py-3 pr-4">
+									<a href={ "/payroll/runs/" + Uitoa(remittance.PayrollRunID) } class="font-medium text-primary hover:text-primary-hover hover:underline">{ payrollRunTitle(remittance.PayrollRun) }</a>
+								</td>
+								<td class="py-3 pr-4">{ remittance.DueDate.Format("2006-01-02") }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(remittance.CPPAmount) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(remittance.EIAmount) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(remittance.TaxAmount) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums font-medium">{ Money(remittance.TotalAmount) }</td>
+								<td class="py-3 pr-4"><span class={ payrollRemittanceStatusBadgeClass(remittance.Status) }>{ payrollRemittanceStatusLabel(remittance.Status) }</span></td>
+								<td class="py-3 pr-0 text-right">
+									if vm.CanPost && remittance.Status != models.PayrollRemittanceVoided {
+										<div class="flex flex-wrap items-center justify-end gap-2">
+											if remittance.Status == models.PayrollRemittanceDraft {
+												if len(vm.BankAccounts) > 0 {
+													<form method="post" action={ "/payroll/remittances/" + Uitoa(remittance.ID) + "/pay" } class="inline-flex flex-wrap items-center justify-end gap-2">
+														<input name="payment_date" value={ remittance.DueDate.Format("2006-01-02") } class="w-32 rounded-md border border-border-input bg-surface px-2 py-1.5 text-small outline-none focus:ring-2 focus:ring-primary-focus"/>
+														<select name="bank_ledger_account_id" class="max-w-[220px] rounded-md border border-border-input bg-surface px-2 py-1.5 text-small outline-none focus:ring-2 focus:ring-primary-focus">
+															for _, account := range vm.BankAccounts {
+																<option value={ Uitoa(account.ID) }>{ payrollBankAccountLabel(account) }</option>
+															}
+														</select>
+														<button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-small font-semibold text-onPrimary hover:bg-primary-hover">Pay</button>
+													</form>
+												} else {
+													<span class="text-small text-text-muted2">Add a bank account</span>
+												}
+											}
+											<form method="post" action={ "/payroll/remittances/" + Uitoa(remittance.ID) + "/void" } class="inline" onsubmit="return confirm('Void this payroll remittance? Paid remittances will create a reversal journal entry.');">
+												<button type="submit" class="rounded-md border border-border-danger px-3 py-1.5 text-small font-medium text-danger hover:bg-danger-soft">Void</button>
+											</form>
+										</div>
+									} else {
+										<span class="text-small text-text-muted2">-</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+templ PayrollRunDetail(vm PayrollRunDetailVM) {
+	@layout.Layout(
+		"Balanciz - Payroll Run",
+		ui.SidebarVM{Active: "Payroll", HasCompany: vm.HasCompany},
+		bodyPayrollRunDetail(vm),
+	)
+}
+
+templ bodyPayrollRunDetail(vm PayrollRunDetailVM) {
+	<div class="max-w-[95%]">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<a href="/payroll/runs" class="text-body text-text-muted3 hover:text-text">Back to Payroll Runs</a>
+				<h1 class="mt-2 text-title font-semibold">{ payrollRunTitle(vm.Run) }</h1>
+				<p class="mt-2 text-text-muted2">{ vm.Run.PeriodStart.Format("2006-01-02") } to { vm.Run.PeriodEnd.Format("2006-01-02") } &middot; pay date { vm.Run.PayDate.Format("2006-01-02") }</p>
+			</div>
+			<div class="shrink-0 flex flex-wrap items-center gap-2">
+				if vm.CanRun && payrollRunCanCalculate(vm.Run.Status) {
+					<form method="post" action={ "/payroll/runs/" + Uitoa(vm.Run.ID) + "/calculate" }>
+						<button type="submit" class="rounded-md bg-primary px-4 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover">Calculate</button>
+					</form>
+				}
+				if vm.CanFinalize && payrollRunCanFinalize(vm.Run.Status) {
+					<form method="post" action={ "/payroll/runs/" + Uitoa(vm.Run.ID) + "/finalize" }>
+						<button type="submit" class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Finalize</button>
+					</form>
+				}
+				if vm.PostedJournalEntryID != 0 {
+					<a href={ "/journal-entry/" + Uitoa(vm.PostedJournalEntryID) } class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Journal Entry</a>
+				} else if vm.CanPost && payrollRunCanPost(vm.Run.Status) {
+					<form method="post" action={ "/payroll/runs/" + Uitoa(vm.Run.ID) + "/post" }>
+						<button type="submit" class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Post Journal</button>
+					</form>
+				}
+				if vm.RemittanceID != 0 {
+					<a href="/payroll/remittances" class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Remittance</a>
+				} else if vm.CanCreateRemittance && vm.PostedJournalEntryID != 0 {
+					<form method="post" action={ "/payroll/runs/" + Uitoa(vm.Run.ID) + "/remittance" } class="flex flex-wrap items-center gap-2">
+						<input name="due_date" placeholder="YYYY-MM-DD" class="w-32 rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+						<button type="submit" class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Create Remittance</button>
+					</form>
+				}
+				if vm.CanExport && vm.CanViewDetails && len(vm.Entries) > 0 {
+					<a href={ "/payroll/runs/" + Uitoa(vm.Run.ID) + "/export.csv" } class="inline-block rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-background">Export CSV</a>
+				}
+			</div>
+		</div>
+
+		if vm.Calculated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll run calculated.</div>
+		}
+		if vm.Finalized {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll run finalized.</div>
+		}
+		if vm.Posted {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll run posted to the journal.</div>
+		}
+		if vm.RemittanceCreated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Payroll remittance created.</div>
+		}
+		if vm.ChequesCreated {
+			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">Cheque drafts created for eligible payroll entries.</div>
+		}
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		<div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+			@payrollSummaryTile("Status", payrollRunStatusLabel(vm.Run.Status), "")
+			@payrollSummaryTile("Gross", Money(vm.Run.TotalGross), "")
+			@payrollSummaryTile("Deductions", Money(vm.Run.TotalDeductions), "")
+			@payrollSummaryTile("Net Pay", Money(vm.Run.TotalNetPay), "")
+		</div>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<div class="flex flex-wrap items-start justify-between gap-4">
+				<div>
+					<h2 class="text-section font-semibold text-text">Payroll Entries</h2>
+					<p class="mt-1 text-body text-text-muted2">{ Itoa(len(vm.Entries)) } entries in this run.</p>
+				</div>
+				<span class={ payrollRunStatusBadgeClass(vm.Run.Status) }>{ payrollRunStatusLabel(vm.Run.Status) }</span>
+			</div>
+
+			if !vm.CanViewDetails {
+				<div class="mt-4 rounded-md border border-warning-soft bg-warning-soft p-4 text-body text-warning">Payroll entry details are restricted.</div>
+			} else {
+				if vm.CanCreateCheques && payrollRunCanCreateCheques(vm.Run.Status) {
+					if len(vm.ChequeBankAccounts) > 0 {
+						<form method="post" action={ "/payroll/runs/" + Uitoa(vm.Run.ID) + "/create-cheques" } class="mt-4 flex flex-wrap items-end gap-3 rounded-md border border-border-subtle bg-background p-4">
+							<div>
+								<label class="block text-body font-medium text-text">Cheque Bank Account</label>
+								<select name="bank_account_id" class="mt-2 block min-w-[220px] rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+									for _, account := range vm.ChequeBankAccounts {
+										<option value={ Uitoa(account.ID) }>{ payrollChequeBankAccountLabel(account) }</option>
+									}
+								</select>
+							</div>
+							<button type="submit" class="rounded-md border border-border-input px-4 py-2 text-body font-semibold text-text hover:bg-surface">Create Cheque Drafts</button>
+						</form>
+					} else {
+						<div class="mt-4 rounded-md border border-warning-soft bg-warning-soft p-4 text-body text-warning">Add a cheque bank account before creating payroll cheque drafts.</div>
+					}
+				}
+				<div class="mt-4 overflow-x-auto">
+					<table class="w-full text-left text-body">
+						<thead class="text-small uppercase tracking-wider text-text-muted">
+							<tr class="border-b border-border">
+								<th class="py-3 pr-4">Employee</th>
+								<th class="py-3 pr-4 text-right">Hours</th>
+								<th class="py-3 pr-4 text-right">Rate</th>
+								<th class="py-3 pr-4 text-right">Gross</th>
+								<th class="py-3 pr-4 text-right">CPP</th>
+								<th class="py-3 pr-4 text-right">EI</th>
+								<th class="py-3 pr-4 text-right">Tax</th>
+								<th class="py-3 pr-4 text-right">Deductions</th>
+								<th class="py-3 pr-0 text-right">Net Pay</th>
+							</tr>
+						</thead>
+						<tbody class="text-text">
+							if len(vm.Entries) == 0 {
+								<tr>
+									<td colspan="9" class="py-6 text-text-muted2">No entries have been calculated for this run.</td>
+								</tr>
+							}
+							for _, entry := range vm.Entries {
+								<tr id={ "entry-" + Uitoa(entry.ID) } class="border-b border-border-subtle">
+									<td class="py-3 pr-4">
+										<div class="font-medium">{ entry.Employee.SearchName() }</div>
+										if entry.Employee.EmployeeNo != "" {
+											<div class="text-small text-text-muted2">{ entry.Employee.EmployeeNo }</div>
+										}
+									</td>
+									<td class="py-3 pr-4 text-right tabular-nums">{ entry.Hours.StringFixed(2) }</td>
+									<td class="py-3 pr-4 text-right tabular-nums">{ Money(entry.PayRate) }</td>
+									<td class="py-3 pr-4 text-right tabular-nums">{ Money(entry.GrossPay) }</td>
+									<td class="py-3 pr-4 text-right tabular-nums">{ Money(entry.CPPEmployee.Add(entry.CPP2Employee)) }</td>
+									<td class="py-3 pr-4 text-right tabular-nums">{ Money(entry.EIEmployee) }</td>
+									<td class="py-3 pr-4 text-right tabular-nums">{ Money(entry.FederalTax.Add(entry.ProvincialTax)) }</td>
+									<td class="py-3 pr-4 text-right tabular-nums">{ Money(entry.TotalDeductions) }</td>
+									<td class="py-3 pr-0 text-right tabular-nums font-medium">{ Money(entry.NetPay) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ payrollSummaryTile(label string, value string, hint string) {
+	<div class="rounded-lg border border-border bg-surface p-4">
+		<p class="text-small font-semibold uppercase tracking-wider text-text-muted">{ label }</p>
+		<p class="mt-2 text-section font-semibold text-text tabular-nums">{ value }</p>
+		if hint != "" {
+			<p class="mt-1 text-small text-text-muted2">{ hint }</p>
+		}
+	</div>
+}
+
+templ employeeTextField(label string, name string, value string, hint string) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<input name={ name } value={ value } class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus"/>
+		if hint != "" {
+			<p class="mt-1 text-small text-text-muted2">{ hint }</p>
+		}
+	</div>
+}
+
+templ employeeSelectField(label string, name string, value string, options []selectOption) {
+	<div>
+		<label class="block text-body font-medium text-text">{ label }</label>
+		<select name={ name } class="mt-2 block w-full rounded-md border border-border-input bg-surface px-3 py-2 text-body outline-none focus:ring-2 focus:ring-primary-focus">
+			for _, option := range options {
+				<option value={ option.Value } selected?={ option.Value == value }>{ option.Label }</option>
+			}
+		</select>
+	</div>
+}
+
+type selectOption struct {
+	Value string
+	Label string
+}
+
+func employeeStatusOptions() []models.EmployeeStatus {
+	return []models.EmployeeStatus{models.EmployeeStatusActive, models.EmployeeStatusInactive, models.EmployeeStatusTerminated}
+}
+
+func employeeMemberTypeOptions() []selectOption {
+	return []selectOption{
+		{Value: string(models.EmployeeMemberEmployee), Label: "Employee"},
+		{Value: string(models.EmployeeMemberContractor), Label: "Contractor"},
+		{Value: string(models.EmployeeMemberConstructionContractor), Label: "Construction Contractor"},
+	}
+}
+
+func employeeSalaryTypeOptions() []selectOption {
+	return []selectOption{
+		{Value: string(models.EmployeeSalaryTimeBased), Label: "Time Based"},
+		{Value: string(models.EmployeeSalarySalaried), Label: "Salaried"},
+	}
+}
+
+func payRateUnitOptions() []selectOption {
+	return []selectOption{
+		{Value: "hourly", Label: "Hourly"},
+		{Value: "period", Label: "Per Period"},
+		{Value: "annual", Label: "Annual"},
+		{Value: "monthly", Label: "Monthly"},
+	}
+}
+
+func payFrequencyOptions() []selectOption {
+	return []selectOption{
+		{Value: string(models.PayFrequencyWeekly), Label: "Weekly"},
+		{Value: string(models.PayFrequencyBiweekly), Label: "Biweekly"},
+		{Value: string(models.PayFrequencySemiMonthly), Label: "Semi-monthly"},
+		{Value: string(models.PayFrequencyMonthly), Label: "Monthly"},
+	}
+}
+
+func provinceOptions() []selectOption {
+	return []selectOption{
+		{Value: "BC", Label: "BC"},
+		{Value: "AB", Label: "AB"},
+		{Value: "SK", Label: "SK"},
+		{Value: "MB", Label: "MB"},
+		{Value: "ON", Label: "ON"},
+		{Value: "QC", Label: "QC"},
+		{Value: "NB", Label: "NB"},
+		{Value: "NS", Label: "NS"},
+		{Value: "PE", Label: "PE"},
+		{Value: "NL", Label: "NL"},
+		{Value: "YT", Label: "YT"},
+		{Value: "NT", Label: "NT"},
+		{Value: "NU", Label: "NU"},
+	}
+}
+
+func employeeStatusLabel(status models.EmployeeStatus) string {
+	switch status {
+	case models.EmployeeStatusActive:
+		return "Active"
+	case models.EmployeeStatusInactive:
+		return "Inactive"
+	case models.EmployeeStatusTerminated:
+		return "Terminated"
+	default:
+		return string(status)
+	}
+}
+
+func employeeMemberTypeLabel(memberType models.EmployeeMemberType) string {
+	switch memberType {
+	case models.EmployeeMemberEmployee:
+		return "Employee"
+	case models.EmployeeMemberContractor:
+		return "Contractor"
+	case models.EmployeeMemberConstructionContractor:
+		return "Construction Contractor"
+	default:
+		return string(memberType)
+	}
+}
+
+func payFrequencyLabel(frequency models.PayFrequency) string {
+	for _, option := range payFrequencyOptions() {
+		if option.Value == string(frequency) {
+			return option.Label
+		}
+	}
+	return string(frequency)
+}
+
+func employeeStatusBadgeClass(status models.EmployeeStatus) string {
+	base := "inline-block rounded px-2 py-0.5 text-small font-medium "
+	switch status {
+	case models.EmployeeStatusActive:
+		return base + "bg-success-soft text-success-hover border border-success-border"
+	case models.EmployeeStatusTerminated:
+		return base + "bg-background text-text-muted2 border border-border line-through"
+	default:
+		return base + "bg-warning-soft text-warning border border-warning-soft"
+	}
+}
+
+func payrollRunTitle(run models.PayrollRun) string {
+	if run.RunNumber != "" {
+		return run.RunNumber
+	}
+	return "Run " + Uitoa(run.ID)
+}
+
+func payrollRunStatusLabel(status models.PayrollRunStatus) string {
+	switch status {
+	case models.PayrollRunDraft:
+		return "Draft"
+	case models.PayrollRunCalculated:
+		return "Calculated"
+	case models.PayrollRunFinalized:
+		return "Finalized"
+	case models.PayrollRunVoided:
+		return "Voided"
+	default:
+		return string(status)
+	}
+}
+
+func payrollRunStatusBadgeClass(status models.PayrollRunStatus) string {
+	base := "inline-block rounded px-2 py-0.5 text-small font-medium "
+	switch status {
+	case models.PayrollRunCalculated:
+		return base + "bg-primary-soft text-primary border border-primary-soft"
+	case models.PayrollRunFinalized:
+		return base + "bg-success-soft text-success-hover border border-success-border"
+	case models.PayrollRunVoided:
+		return base + "bg-background text-text-muted2 border border-border line-through"
+	default:
+		return base + "bg-warning-soft text-warning border border-warning-soft"
+	}
+}
+
+func payrollRunCanCalculate(status models.PayrollRunStatus) bool {
+	return status == models.PayrollRunDraft || status == models.PayrollRunCalculated
+}
+
+func payrollRunCanFinalize(status models.PayrollRunStatus) bool {
+	return status == models.PayrollRunCalculated
+}
+
+func payrollRunCanCreateCheques(status models.PayrollRunStatus) bool {
+	return status == models.PayrollRunFinalized
+}
+
+func payrollRunCanPost(status models.PayrollRunStatus) bool {
+	return status == models.PayrollRunFinalized
+}
+
+func payrollRemittanceStatusLabel(status models.PayrollRemittanceStatus) string {
+	switch status {
+	case models.PayrollRemittanceDraft:
+		return "Draft"
+	case models.PayrollRemittancePaid:
+		return "Paid"
+	case models.PayrollRemittanceVoided:
+		return "Voided"
+	default:
+		return string(status)
+	}
+}
+
+func payrollRemittanceStatusBadgeClass(status models.PayrollRemittanceStatus) string {
+	base := "inline-block rounded px-2 py-0.5 text-small font-medium "
+	switch status {
+	case models.PayrollRemittancePaid:
+		return base + "bg-success-soft text-success-hover border border-success-border"
+	case models.PayrollRemittanceVoided:
+		return base + "bg-background text-text-muted2 border border-border line-through"
+	default:
+		return base + "bg-warning-soft text-warning border border-warning-soft"
+	}
+}
+
+func payrollBankAccountLabel(account models.Account) string {
+	if account.Code != "" {
+		return account.Code + " - " + account.Name
+	}
+	return account.Name
+}
+
+func payrollChequeBankAccountLabel(account models.ChequeBankAccount) string {
+	if account.BankName != "" {
+		return account.Label + " - " + account.BankName
+	}
+	return account.Label
+}

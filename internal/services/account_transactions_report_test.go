@@ -22,12 +22,15 @@ func TestTransactionTypeLabel(t *testing.T) {
 		{"vendor_refund", "Vendor Refund"},
 		{"customer_deposit", "Customer Deposit"},
 		{"vendor_prepayment", "Vendor Prepayment"},
+		{"payroll_run", "Payroll Run"},
+		{"cheque", "Cheque"},
+		{"payroll_remittance", "Payroll Remittance"},
 		{"reversal", "Reversal"},
 		{"opening_balance", "Opening Balance"},
-		{"", "Journal Entry"},                 // manual JE
-		{"revaluation", "Journal Entry"},      // unmapped → JE fallback
-		{"payment_gateway", "Journal Entry"},  // unmapped → JE fallback
-		{"made_up_garbage", "Journal Entry"},  // unknown → JE fallback
+		{"", "Journal Entry"},                // manual JE
+		{"revaluation", "Journal Entry"},     // unmapped → JE fallback
+		{"payment_gateway", "Journal Entry"}, // unmapped → JE fallback
+		{"made_up_garbage", "Journal Entry"}, // unknown → JE fallback
 	}
 	for _, tc := range cases {
 		if got := transactionTypeLabel(tc.in); got != tc.want {
@@ -58,6 +61,9 @@ func TestDocumentURL(t *testing.T) {
 		{"vendor_refund", "vendor_refund", 32, 900, "/vendor-refunds/32"},
 		{"customer_deposit", "customer_deposit", 11, 1000, "/deposits/11"},
 		{"vendor_prepayment", "vendor_prepayment", 12, 1100, "/vendor-prepayments/12"},
+		{"payroll_run", "payroll_run", 13, 1150, "/payroll/runs/13"},
+		{"cheque", "cheque", 14, 1160, "/cheques"},
+		{"payroll_remittance", "payroll_remittance", 15, 1170, "/payroll/remittances"},
 		{"manual JE (empty source)", "", 0, 1200, "/journal-entry/1200"},
 		{"reversal falls back to JE", "reversal", 50, 1300, "/journal-entry/1300"},
 		{"unmapped falls back to JE", "made_up", 99, 1400, "/journal-entry/1400"},
@@ -95,6 +101,9 @@ func TestSourceTable(t *testing.T) {
 		{"vendor_refund", "vendor_refunds", "refund_number"},
 		{"customer_deposit", "customer_deposits", "deposit_number"},
 		{"vendor_prepayment", "vendor_prepayments", "prepayment_number"},
+		{"payroll_run", "payroll_runs", "run_number"},
+		{"cheque", "cheques", "cheque_number"},
+		{"payroll_remittance", "payroll_remittances", "remittance_number"},
 		// Unmapped source types must return ("","") — the helper relies
 		// on that to skip the query entirely.
 		{"", "", ""},
@@ -102,7 +111,7 @@ func TestSourceTable(t *testing.T) {
 		{"opening_balance", "", ""},
 		{"revaluation", "", ""},
 		{"payment_gateway", "", ""},
-		{"ar_return_receipt", "", ""},  // sourceID points at receipt, not return — skip
+		{"ar_return_receipt", "", ""}, // sourceID points at receipt, not return — skip
 	}
 	for _, tc := range cases {
 		gotTable, gotCol := sourceTable(tc.sourceType)

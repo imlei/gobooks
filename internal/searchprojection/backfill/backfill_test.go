@@ -9,7 +9,7 @@ import (
 	"balanciz/internal/searchprojection"
 )
 
-// TestAllFamilies_Coverage locks the 19-entity family set so a future
+// TestAllFamilies_Coverage locks the entity family set so a future
 // producer addition can't silently skip the backfill registry.
 func TestAllFamilies_Coverage(t *testing.T) {
 	want := []Family{
@@ -18,7 +18,7 @@ func TestAllFamilies_Coverage(t *testing.T) {
 		FamilyPurchaseOrder, FamilyCustomerReceipt, FamilyExpense,
 		FamilyJournalEntry, FamilyCreditNote, FamilyVendorCreditNote,
 		FamilyARReturn, FamilyVendorReturn, FamilyARRefund, FamilyVendorRefund,
-		FamilyCustomerDeposit, FamilyVendorPrepayment,
+		FamilyCustomerDeposit, FamilyVendorPrepayment, FamilyTask,
 	}
 	got := AllFamilies()
 	if len(got) != len(want) {

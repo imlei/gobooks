@@ -38,7 +38,7 @@ func (s *Server) registerMiddleware(app *fiber.App) {
 			return c.Next()
 		}
 		p := c.Path()
-		if strings.HasPrefix(p, "/admin") || strings.HasPrefix(p, "/static/") {
+		if strings.HasPrefix(p, "/admin") || strings.HasPrefix(p, "/static/") || p == "/healthz" || p == "/readyz" || p == "/version" {
 			return c.Next()
 		}
 		c.Status(fiber.StatusServiceUnavailable)

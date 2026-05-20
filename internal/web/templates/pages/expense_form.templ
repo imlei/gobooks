@@ -257,8 +257,10 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 						<th class="w-28 px-2 py-2 text-right">Unit Price</th>
 						<th class="w-28 px-2 py-2 text-right">Amount</th>
 						<th class="w-36 px-2 py-2">Sales Tax</th>
-						<th class="w-48 px-2 py-2">Task</th>
-						<th class="w-24 px-2 py-2">Billable</th>
+						if vm.TaskModuleEnabled {
+							<th class="w-48 px-2 py-2">Task</th>
+							<th class="w-24 px-2 py-2">Billable</th>
+						}
 						<th class="w-12 px-2 py-2"></th>
 					</tr>
 				</thead>
@@ -361,6 +363,7 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 									</template>
 								</select>
 							</td>
+							if vm.TaskModuleEnabled {
 							<td class="px-2 py-2">
 								<select
 									:name="'line_task_id[' + idx + ']'"
@@ -390,6 +393,7 @@ templ expenseLinesSection(vm ExpenseFormVM) {
 									<span>Yes</span>
 								</label>
 							</td>
+							}
 							<td class="px-2 py-2 text-right">
 								<button
 									type="button"

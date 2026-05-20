@@ -27,14 +27,22 @@ func NewErrorHandler(db *gorm.DB) fiber.ErrorHandler {
 		if errors.As(err, &fe) {
 			code = fe.Code
 		}
+		errorCode := services.ErrorCode(err)
+		if fe == nil && errorCode != "" {
+			code = services.ErrorHTTPStatus(err, code)
+		}
 
 		msg := err.Error()
 		clientMsg := msg
+		if errorCode != "" {
+			c.Set("X-Error-Code", errorCode)
+		}
 
 		if code >= 500 {
 			clientMsg = "Internal Server Error"
 			logging.L().Error("server error",
 				"status", code,
+				"error_code", errorCode,
 				"message", msg,
 				"request_id", RequestIDFromCtx(c),
 				"method", c.Method(),
@@ -66,6 +74,7 @@ func NewErrorHandler(db *gorm.DB) fiber.ErrorHandler {
 		} else {
 			logging.L().Log(c.Context(), slog.LevelWarn, "client error",
 				"status", code,
+				"error_code", errorCode,
 				"message", msg,
 				"request_id", RequestIDFromCtx(c),
 				"method", c.Method(),
@@ -74,6 +83,12 @@ func NewErrorHandler(db *gorm.DB) fiber.ErrorHandler {
 		}
 
 		c.Status(code)
+		if errorCode != "" && c.Accepts("json", "html") == "json" {
+			return c.JSON(fiber.Map{
+				"error": clientMsg,
+				"code":  errorCode,
+			})
+		}
 		return c.SendString(clientMsg)
 	}
 }

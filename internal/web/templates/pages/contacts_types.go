@@ -42,6 +42,9 @@ type CustomersVM struct {
 	PaymentTerms []models.PaymentTerm
 
 	BillableSummaries map[uint]services.CustomerBillableSummary
+	// ShowBillableWork gates SimpleTask-derived customer rollups and deep
+	// links on the customers list.
+	ShowBillableWork bool
 
 	// FilterQ is retained for old /customers?q=... links but no longer filters
 	// the list page because the customer search box was removed from the UI.
@@ -98,10 +101,13 @@ type CustomerDetailVM struct {
 	Customer                models.Customer
 	DefaultPaymentTermLabel string
 	BillableSummary         services.CustomerBillableSummary
-	ARSummary               services.CustomerARSummary
-	OutstandingInvoices     []models.Invoice
-	RecentInvoices          []models.Invoice
-	MostRecentInvoice       *models.Invoice
+	// ShowBillableWork gates SimpleTask-derived customer rollups and deep
+	// links on the customer detail page.
+	ShowBillableWork    bool
+	ARSummary           services.CustomerARSummary
+	OutstandingInvoices []models.Invoice
+	RecentInvoices      []models.Invoice
+	MostRecentInvoice   *models.Invoice
 
 	// Transactions is the unified AR-document feed rendered in the
 	// Transactions tab. Populated by services.ListSalesTransactions with

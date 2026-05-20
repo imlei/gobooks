@@ -16,6 +16,8 @@ type TasksVM struct {
 
 	CanCreate bool
 	CanUpdate bool
+	CanBill   bool
+	CanExport bool
 
 	Customers []models.Customer
 	Tasks     []models.Task

@@ -17,7 +17,11 @@ templ bodyExpenses(vm ExpenseListVM) {
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div class="min-w-0 flex-1">
 				<h1 class="text-title font-semibold">Expenses</h1>
-				<p class="mt-2 text-text-muted2">Track standalone costs and optionally link them to customer tasks for later billing analysis.</p>
+				if vm.TaskModuleEnabled {
+					<p class="mt-2 text-text-muted2">Track standalone costs and optionally link them to customer tasks for later billing analysis.</p>
+				} else {
+					<p class="mt-2 text-text-muted2">Track standalone costs and reimbursements.</p>
+				}
 			</div>
 			if vm.CanCreate {
 				<div class="shrink-0">
@@ -50,8 +54,10 @@ templ bodyExpenses(vm ExpenseListVM) {
 							<th class="py-3 pr-4">Reference</th>
 							<th class="py-3 pr-4">Date</th>
 							<th class="py-3 pr-4">Description</th>
-							<th class="py-3 pr-4">Task</th>
-							<th class="py-3 pr-4">Billing</th>
+							if vm.TaskModuleEnabled {
+								<th class="py-3 pr-4">Task</th>
+								<th class="py-3 pr-4">Billing</th>
+							}
 							<th class="py-3 pr-4">Account</th>
 							<th class="py-3 pr-4">Vendor</th>
 							<th class="py-3 pr-4 text-right">Amount</th>
@@ -75,6 +81,7 @@ templ bodyExpenses(vm ExpenseListVM) {
 								</td>
 								<td class="py-3 pr-4">{ exp.ExpenseDate.Format("2006-01-02") }</td>
 								<td class="py-3 pr-4">{ exp.Description }</td>
+								if vm.TaskModuleEnabled {
 								<td class="py-3 pr-4">
 									if exp.Task != nil {
 										<a href={ "/tasks/" + Uitoa(exp.Task.ID) } class="text-primary hover:text-primary-hover hover:underline">{ expenseTaskLabel(*exp.Task) }</a>
@@ -91,6 +98,7 @@ templ bodyExpenses(vm ExpenseListVM) {
 										<span class="inline-block rounded px-2 py-0.5 text-small font-medium bg-background text-text-muted border border-border">Non-billable</span>
 									}
 								</td>
+								}
 								<td class="py-3 pr-4">
 									if exp.ExpenseAccount != nil {
 										{ exp.ExpenseAccount.Code } { exp.ExpenseAccount.Name }

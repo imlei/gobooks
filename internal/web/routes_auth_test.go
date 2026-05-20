@@ -3,9 +3,11 @@ package web
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +34,7 @@ func testRouteDB(t *testing.T) *gorm.DB {
 		&models.Company{},
 		&models.Session{},
 		&models.CompanyMembership{},
+		&models.CompanyInvitation{},
 		&models.Account{},
 		&models.AuditLog{},
 		&models.COATemplate{},
@@ -53,6 +56,8 @@ func testRouteDB(t *testing.T) *gorm.DB {
 		&models.ExpenseLine{},
 		&models.TaskInvoiceSource{},
 		&models.UserPreference{},
+		&models.UserCompanyPermission{},
+		&models.CompanyFeature{},
 		&models.AccountingBook{},
 		&models.UserPlan{},
 		// Customer + Vendor detail pages read from these for their
@@ -106,6 +111,18 @@ func testRouteApp(t *testing.T, db *gorm.DB) *fiber.App {
 		Env:  "test",
 		Addr: ":0",
 	}, db)
+}
+
+func TestOperationalProbeRoutesArePublic(t *testing.T) {
+	db := testRouteDB(t)
+	app := testRouteApp(t, db)
+
+	for _, path := range []string{"/healthz", "/readyz", "/version"} {
+		resp := performRequest(t, app, path, "")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s: expected %d, got %d", path, http.StatusOK, resp.StatusCode)
+		}
+	}
 }
 
 func seedCompany(t *testing.T, db *gorm.DB, name string) uint {
@@ -177,6 +194,36 @@ func seedMembership(t *testing.T, db *gorm.DB, userID uuid.UUID, companyID uint)
 		IsActive:  true,
 	}
 	if err := db.Create(&membership).Error; err != nil {
+		t.Fatal(err)
+	}
+	ensureTestFeature(t, db, companyID, models.FeatureKeyTask)
+}
+
+func seedMembershipWithRole(t *testing.T, db *gorm.DB, userID uuid.UUID, companyID uint, role models.CompanyRole) {
+	t.Helper()
+	membership := models.CompanyMembership{
+		ID:        uuid.New(),
+		UserID:    userID,
+		CompanyID: companyID,
+		Role:      role,
+		IsActive:  true,
+	}
+	if err := db.Create(&membership).Error; err != nil {
+		t.Fatal(err)
+	}
+	ensureTestFeature(t, db, companyID, models.FeatureKeyTask)
+}
+
+func ensureTestFeature(t *testing.T, db *gorm.DB, companyID uint, feature models.FeatureKey) {
+	t.Helper()
+
+	row := models.CompanyFeature{
+		CompanyID:  companyID,
+		FeatureKey: feature,
+		Status:     models.FeatureStatusEnabled,
+		Maturity:   models.FeatureMaturityBeta,
+	}
+	if err := db.Where("company_id = ? AND feature_key = ?", companyID, feature).FirstOrCreate(&row).Error; err != nil {
 		t.Fatal(err)
 	}
 }
@@ -289,6 +336,124 @@ func TestProtectedRoutesRedirectToSelectCompanyWhenSessionActiveCompanyIsStale(t
 	}
 	if got := resp.Header.Get("Location"); got != "/select-company" {
 		t.Fatalf("expected redirect to /select-company, got %q", got)
+	}
+}
+
+func TestTaskRoutesRequireTaskFeature(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Task Feature Gate Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	if err := db.Create(&models.CompanyMembership{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		CompanyID: companyID,
+		Role:      models.CompanyRoleAdmin,
+		IsActive:  true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	resp := performRequest(t, app, "/tasks", rawToken)
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected disabled task module to return %d, got %d", http.StatusNotFound, resp.StatusCode)
+	}
+}
+
+func TestPermissionedDashboardLinksMatchBackendGuards(t *testing.T) {
+	tests := []struct {
+		name       string
+		role       models.CompanyRole
+		path       string
+		wantStatus int
+	}{
+		{name: "ap cannot open sales overview", role: models.CompanyRoleAP, path: "/sales-overview", wantStatus: http.StatusForbidden},
+		{name: "ap can open ap aging", role: models.CompanyRoleAP, path: "/ap-aging", wantStatus: http.StatusOK},
+		{name: "viewer cannot open warehouses", role: models.CompanyRoleViewer, path: "/warehouses", wantStatus: http.StatusForbidden},
+		{name: "viewer can open template settings read page", role: models.CompanyRoleViewer, path: "/settings/invoice-templates/manage", wantStatus: http.StatusOK},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testRouteDB(t)
+			companyID := seedCompany(t, db, "Permission Guard Co")
+			user, rawToken := seedUserSession(t, db, &companyID)
+			seedMembershipWithRole(t, db, user.ID, companyID, tc.role)
+			app := testRouteApp(t, db)
+
+			resp := performRequest(t, app, tc.path, rawToken)
+			if resp.StatusCode != tc.wantStatus {
+				t.Fatalf("%s: expected %d, got %d", tc.path, tc.wantStatus, resp.StatusCode)
+			}
+		})
+	}
+}
+
+func TestCompanyFeaturesPageEnablesTaskModule(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Task Feature Enable Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	if err := db.Create(&models.CompanyMembership{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		CompanyID: companyID,
+		Role:      models.CompanyRoleOwner,
+		IsActive:  true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	app := testRouteApp(t, db)
+
+	pageResp := performRequest(t, app, "/settings/company/features", rawToken)
+	defer pageResp.Body.Close()
+	pageBody, _ := io.ReadAll(pageResp.Body)
+	body := string(pageBody)
+	if !strings.Contains(body, "Before you enable Task:") {
+		t.Fatalf("expected task-specific enable copy, got %q", body)
+	}
+	if !strings.Contains(body, "Task adds work tracking") {
+		t.Fatalf("expected task-specific feature warning copy")
+	}
+
+	form := url.Values{}
+	form.Set("feature_key", string(models.FeatureKeyTask))
+	form.Set("reason_code", string(models.ReasonCodeTrialPilot))
+	form.Set("typed_confirmation", "ENABLE TASK")
+	csrf := newCSRFToken(t)
+	form.Set(CSRFFormField, csrf)
+	req := httptest.NewRequest(http.MethodPost, "/settings/company/features/enable", bytes.NewReader([]byte(form.Encode())))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"})
+	req.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: csrf, Path: "/"})
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected redirect after enabling task, got %d", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); !strings.Contains(got, "next=members") {
+		t.Fatalf("expected enable redirect to include member-permission next step, got %q", got)
+	}
+
+	enabled, err := services.IsCompanyFeatureEnabled(db, companyID, models.FeatureKeyTask)
+	if err != nil {
+		t.Fatalf("is task enabled: %v", err)
+	}
+	if !enabled {
+		t.Fatalf("expected task feature enabled")
+	}
+
+	followResp := performRequest(t, app, resp.Header.Get("Location"), rawToken)
+	defer followResp.Body.Close()
+	followBody, _ := io.ReadAll(followResp.Body)
+	follow := string(followBody)
+	if !strings.Contains(follow, "Manage member permissions") {
+		t.Fatalf("expected post-enable CTA to manage member permissions")
+	}
+	if !strings.Contains(follow, "Task access is controlled in Members") {
+		t.Fatalf("expected enabled task card to show permissions hint")
 	}
 }
 

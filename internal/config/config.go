@@ -19,13 +19,18 @@ type Config struct {
 	Addr     string
 	LogLevel string // LOG_LEVEL: DEBUG | INFO | WARN | ERROR (default: INFO)
 
-	DBHost      string
-	DBPort      string
-	DBUser      string
-	DBPassword  string
-	DBName      string
-	DBSSLMode   string
-	AISecretKey string
+	DBHost                   string
+	DBPort                   string
+	DBUser                   string
+	DBPassword               string
+	DBName                   string
+	DBSSLMode                string
+	DBConnectTimeoutSeconds  int
+	DBMaxOpenConns           int
+	DBMaxIdleConns           int
+	DBConnMaxLifetimeSeconds int
+	DBConnMaxIdleTimeSeconds int
+	AISecretKey              string
 
 	// PublicBaseURL is the canonical public origin of this deployment.
 	// Used to build payment provider return URLs (success / cancel).
@@ -85,17 +90,22 @@ func Load() (Config, error) {
 	_ = godotenv.Load()
 
 	cfg := Config{
-		Env:           getenv("APP_ENV", "dev"),
-		Addr:          getenv("APP_ADDR", ":6768"),
-		LogLevel:      getenv("LOG_LEVEL", "INFO"),
-		DBHost:        getenv("DB_HOST", "localhost"),
-		DBPort:        getenv("DB_PORT", "5432"),
-		DBUser:        getenv("DB_USER", "balanciz"),
-		DBPassword:    getenv("DB_PASSWORD", "balanciz"),
-		DBName:        getenv("DB_NAME", "balanciz"),
-		DBSSLMode:     getenv("DB_SSLMODE", "disable"),
-		AISecretKey:   getenv("AI_SECRET_KEY", ""),
-		PublicBaseURL: getenv("APP_PUBLIC_URL", ""),
+		Env:                      getenv("APP_ENV", "dev"),
+		Addr:                     getenv("APP_ADDR", ":6768"),
+		LogLevel:                 getenv("LOG_LEVEL", "INFO"),
+		DBHost:                   getenv("DB_HOST", "localhost"),
+		DBPort:                   getenv("DB_PORT", "5432"),
+		DBUser:                   getenv("DB_USER", "balanciz"),
+		DBPassword:               getenv("DB_PASSWORD", "balanciz"),
+		DBName:                   getenv("DB_NAME", "balanciz"),
+		DBSSLMode:                getenv("DB_SSLMODE", "disable"),
+		DBConnectTimeoutSeconds:  getenvInt("DB_CONNECT_TIMEOUT_SECONDS", 5),
+		DBMaxOpenConns:           getenvInt("DB_MAX_OPEN_CONNS", 25),
+		DBMaxIdleConns:           getenvInt("DB_MAX_IDLE_CONNS", 10),
+		DBConnMaxLifetimeSeconds: getenvInt("DB_CONN_MAX_LIFETIME_SECONDS", 1800),
+		DBConnMaxIdleTimeSeconds: getenvInt("DB_CONN_MAX_IDLE_TIME_SECONDS", 300),
+		AISecretKey:              getenv("AI_SECRET_KEY", ""),
+		PublicBaseURL:            getenv("APP_PUBLIC_URL", ""),
 		// Empty string here is fine — search_engine.ParseMode resolves it
 		// to DefaultMode (ent). Validation below catches typos.
 		SearchEngine: os.Getenv("SEARCH_ENGINE"),

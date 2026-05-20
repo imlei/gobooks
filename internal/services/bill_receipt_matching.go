@@ -46,8 +46,8 @@ package services
 //   sync bugs; N+1 of this shape is negligible at realistic scale.
 
 import (
-	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -60,14 +60,14 @@ var (
 	// line has receipt_line_id set) but the company's
 	// purchase_price_variance_account_id is nil. Remediation: configure
 	// via ChangeCompanyPPVAccount.
-	ErrPPVAccountNotConfigured = errors.New("ppv: matched bill lines require a configured purchase_price_variance_account_id")
+	ErrPPVAccountNotConfigured = NewPostingError("POSTING_PPV_ACCOUNT_MISSING", "ppv: matched bill lines require a configured purchase_price_variance_account_id", http.StatusUnprocessableEntity)
 
 	// ErrBillLineReceiptRefInvalid — the referenced receipt line
 	// either does not exist, belongs to a different company, is on a
 	// non-posted Receipt (draft or voided), or is not a stock line.
 	// Returned from validation BEFORE any write; matching never runs
 	// on a bad reference.
-	ErrBillLineReceiptRefInvalid = errors.New("bill line: receipt_line_id reference is invalid (not found, cross-tenant, non-posted receipt, or non-stock line)")
+	ErrBillLineReceiptRefInvalid = NewPostingError("POSTING_BILL_RECEIPT_REF_INVALID", "bill line: receipt_line_id reference is invalid (not found, cross-tenant, non-posted receipt, or non-stock line)", http.StatusUnprocessableEntity)
 )
 
 // billLineMatchingContext carries the per-line matching outcome for
@@ -190,9 +190,9 @@ func resolveBillLineMatchingContext(tx *gorm.DB, bill models.Bill) (map[uint]bil
 //     BuildBillFragments and untouched by the GR/IR aggregate step
 //     for this slice's flag=true path) is REPLACED by up to three
 //     new fragments:
-//       Dr GR/IR  (matched_qty × receipt_unit_cost)          — precise clearing
-//       Dr/Cr PPV (matched_qty × (bill_unit − receipt_unit)) — variance, if non-zero
-//       Dr GR/IR  (unmatched_qty × bill_unit_price)          — H.4 blind on overflow
+//     Dr GR/IR  (matched_qty × receipt_unit_cost)          — precise clearing
+//     Dr/Cr PPV (matched_qty × (bill_unit − receipt_unit)) — variance, if non-zero
+//     Dr GR/IR  (unmatched_qty × bill_unit_price)          — H.4 blind on overflow
 //
 // Non-matched stock lines stay on the H.4 blind path via
 // AdjustBillFragmentsForGRIRClearing (called before this function).

@@ -122,7 +122,7 @@ templ bodySalesOverview(vm SalesOverviewVM) {
 						<h2 class="text-section font-semibold text-text">Workflow</h2>
 						<a href="/sales-transactions" class="text-small font-medium text-primary hover:underline">View transactions</a>
 					</div>
-					@salesOverviewWorkflow()
+					@salesOverviewWorkflow(vm)
 				</div>
 				<div class="sales-overview-customer-panel p-5">
 					<div class="flex items-baseline justify-between gap-3">
@@ -151,7 +151,7 @@ templ bodySalesOverview(vm SalesOverviewVM) {
 	</div>
 }
 
-templ salesOverviewWorkflow() {
+templ salesOverviewWorkflow(vm SalesOverviewVM) {
 	<div class="sales-workflow-map">
 		<svg class="sales-workflow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
 			<defs>
@@ -165,7 +165,7 @@ templ salesOverviewWorkflow() {
 			<path class="sales-workflow-path" d="M16 80 H44" marker-end="url(#sales-overview-arrow)"></path>
 			<path class="sales-workflow-path" d="M56 80 H74" marker-end="url(#sales-overview-arrow)"></path>
 		</svg>
-		for _, node := range salesOverviewWorkflowNodes() {
+		for _, node := range salesOverviewWorkflowNodes(vm.ShowTasks) {
 			<a href={ templ.SafeURL(node.Href) } style={ salesOverviewNodeStyle(node) } class={ salesOverviewNodeClass(node) }>
 				<span class="sales-workflow-icon">
 					@salesOverviewWorkflowIcon(node.Key)

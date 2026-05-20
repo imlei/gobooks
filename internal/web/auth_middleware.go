@@ -30,6 +30,7 @@ import (
 
 	"balanciz/internal/models"
 	"balanciz/internal/repository"
+	"balanciz/internal/services"
 	"balanciz/internal/web/templates/ui"
 )
 
@@ -41,8 +42,24 @@ func (s *Server) RequirePermission(action string) fiber.Handler {
 		if m == nil {
 			return c.Redirect("/select-company", fiber.StatusSeeOther)
 		}
-		if !CanPerformAction(string(m.Role), action) {
+		if !CanFromCtx(c, action) {
 			return fiber.NewError(fiber.StatusForbidden, "Forbidden")
+		}
+		return c.Next()
+	}
+}
+
+// RequireFeature gates a route on a company-scoped module flag. Keep it
+// paired with RequirePermission: feature switches decide whether a module is
+// available for the company; permissions decide who can see or operate it.
+func (s *Server) RequireFeature(key models.FeatureKey) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		companyID, ok := ActiveCompanyIDFromCtx(c)
+		if !ok {
+			return c.Redirect("/select-company", fiber.StatusSeeOther)
+		}
+		if err := services.RequireCompanyFeatureEnabled(s.DB, companyID, key); err != nil {
+			return fiber.NewError(fiber.StatusNotFound, "Feature not enabled")
 		}
 		return c.Next()
 	}
@@ -50,10 +67,11 @@ func (s *Server) RequirePermission(action string) fiber.Handler {
 
 // Locals keys for Fiber c.Locals (auth pipeline).
 const (
-	LocalsSession           = "balanciz_auth_session"
-	LocalsUser              = "balanciz_auth_user"
-	LocalsActiveCompanyID   = "balanciz_auth_active_company_id"
-	LocalsCompanyMembership = "balanciz_auth_company_membership"
+	LocalsSession             = "balanciz_auth_session"
+	LocalsUser                = "balanciz_auth_user"
+	LocalsActiveCompanyID     = "balanciz_auth_active_company_id"
+	LocalsCompanyMembership   = "balanciz_auth_company_membership"
+	LocalsPermissionOverrides = "balanciz_auth_permission_overrides"
 )
 
 // --- Context helpers (for use in handlers after middleware) ---
@@ -106,6 +124,7 @@ func (s *Server) LoadSession() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		c.Locals(LocalsSession, nil)
 		c.Locals(LocalsUser, nil)
+		c.Locals(LocalsPermissionOverrides, nil)
 
 		sess, err := s.sessionFromCookie(c)
 		if err != nil {
@@ -201,15 +220,73 @@ func (s *Server) ResolveActiveCompany() fiber.Handler {
 		c.Locals(LocalsActiveCompanyID, chosen.CompanyID)
 		c.Locals(LocalsCompanyMembership, chosen)
 
+		c.Locals(LocalsPermissionOverrides, nil)
+		if s.DB.Migrator().HasTable(&models.UserCompanyPermission{}) {
+			var overrideRows []models.UserCompanyPermission
+			if err := s.DB.Select("permission", "granted").
+				Where("user_id = ? AND company_id = ?", user.ID, chosen.CompanyID).
+				Find(&overrideRows).Error; err != nil {
+				return fiber.NewError(fiber.StatusInternalServerError, "database error")
+			}
+			mapped := make([]permissionOverride, 0, len(overrideRows))
+			for _, row := range overrideRows {
+				mapped = append(mapped, permissionOverride{
+					Permission: row.Permission,
+					Granted:    row.Granted,
+				})
+			}
+			c.Locals(LocalsPermissionOverrides, newPermissionOverrides(mapped))
+		}
+
 		// Inject sidebar switcher data into Go context so layout.templ can render
 		// the company switcher without any page template needing to change.
 		// Fault-tolerant: errors produce empty SidebarData (switcher just won't show).
-		sd := s.buildSidebarData(user, chosen.CompanyID)
+		sd := s.withSidebarModuleAccess(c, s.buildSidebarData(user, chosen.CompanyID), chosen.CompanyID)
 		ui.AttachSidebarData(c.Context(), sd)
 		c.SetUserContext(ui.WithSidebarData(c.UserContext(), sd))
 
 		return c.Next()
 	}
+}
+
+func (s *Server) withSidebarModuleAccess(c *fiber.Ctx, sd ui.SidebarData, companyID uint) ui.SidebarData {
+	taskEnabled := s.sidebarFeatureEnabled(companyID, models.FeatureKeyTask)
+	employeeEnabled := s.sidebarFeatureEnabled(companyID, models.FeatureKeyEmployee)
+	payrollEnabled := s.sidebarFeatureEnabled(companyID, models.FeatureKeyPayroll)
+	chequeEnabled := s.sidebarFeatureEnabled(companyID, models.FeatureKeyCheque)
+
+	sd.ShowSales = CanFromCtx(c, ActionInvoiceView)
+	sd.ShowAP = CanFromCtx(c, ActionBillView)
+	sd.ShowInventory = CanFromCtx(c, ActionInventoryView)
+	sd.ShowJournal = CanFromCtx(c, ActionJournalView)
+	sd.ShowReconciliation = CanFromCtx(c, ActionJournalCreate)
+	sd.ShowReports = CanFromCtx(c, ActionReportView)
+	sd.ShowAccounts = CanFromCtx(c, ActionAccountView)
+	sd.ShowSettings = true
+	sd.ShowTasks = taskEnabled && CanFromCtx(c, ActionTaskView)
+	sd.ShowEmployees = employeeEnabled && CanFromCtx(c, ActionEmployeeView)
+	sd.ShowPayroll = payrollEnabled && CanFromCtx(c, ActionPayrollView)
+	sd.ShowPayrollDetails = payrollEnabled && CanFromCtx(c, ActionPayrollViewDetails)
+	sd.ShowPayrollReports = payrollEnabled && CanFromCtx(c, ActionReportView) && CanFromCtx(c, ActionPayrollViewDetails)
+	sd.ShowCheques = chequeEnabled && CanFromCtx(c, ActionChequeView)
+	sd.CanCreateSales = CanFromCtx(c, ActionInvoiceCreate)
+	sd.CanCreateAP = CanFromCtx(c, ActionBillCreate)
+	sd.CanCreateJournal = CanFromCtx(c, ActionJournalCreate)
+	sd.CanCreateWarehouse = CanFromCtx(c, ActionWarehouseCreate)
+	sd.CanManageCatalog = CanFromCtx(c, ActionSettingsUpdate)
+	sd.CanCreateTask = taskEnabled && CanFromCtx(c, ActionTaskCreate)
+	sd.CanCreateEmployee = employeeEnabled && CanFromCtx(c, ActionEmployeeManage)
+	sd.CanCreatePayroll = payrollEnabled && CanFromCtx(c, ActionPayrollRun)
+	sd.CanCreateCheque = chequeEnabled && CanFromCtx(c, ActionChequePrint)
+	sd.ShowCreateNew = sd.CanCreateSales || sd.CanCreateAP || sd.CanCreateJournal ||
+		sd.CanCreateWarehouse || sd.CanManageCatalog || sd.CanCreateTask ||
+		sd.CanCreateEmployee || sd.CanCreatePayroll || sd.CanCreateCheque
+	return sd
+}
+
+func (s *Server) sidebarFeatureEnabled(companyID uint, key models.FeatureKey) bool {
+	enabled, err := services.IsCompanyFeatureEnabled(s.DB, companyID, key)
+	return err == nil && enabled
 }
 
 // RequireMembership ensures ResolveActiveCompany ran successfully (membership in context).

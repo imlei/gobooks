@@ -43,17 +43,27 @@ func seedFeatureCompany(t *testing.T, db *gorm.DB) uint {
 // mutate exactly one field and leave the rest valid.
 func validEnableInput(companyID uint, actorID uuid.UUID) EnableCompanyFeatureInput {
 	return EnableCompanyFeatureInput{
-		CompanyID:         companyID,
-		FeatureKey:        models.FeatureKeyInventory,
-		Actor:             "owner@test",
-		ActorUserID:       &actorID,
-		ActorRole:         models.CompanyRoleOwner,
-		ReasonCode:        models.ReasonCodeTrialPilot,
-		ReasonNote:        "exploring receipt-first",
-		AckVersion:        models.AckVersionInventoryAlphaV1,
-		TypedConfirmation: "ENABLE INVENTORY",
+		CompanyID:               companyID,
+		FeatureKey:              models.FeatureKeyInventory,
+		Actor:                   "owner@test",
+		ActorUserID:             &actorID,
+		ActorRole:               models.CompanyRoleOwner,
+		ReasonCode:              models.ReasonCodeTrialPilot,
+		ReasonNote:              "exploring receipt-first",
+		AckVersion:              models.AckVersionInventoryAlphaV1,
+		TypedConfirmation:       "ENABLE INVENTORY",
 		ConfirmAcknowledgements: []bool{true, true, true},
 	}
+}
+
+func validTaskEnableInput(companyID uint, actorID uuid.UUID) EnableCompanyFeatureInput {
+	in := validEnableInput(companyID, actorID)
+	in.FeatureKey = models.FeatureKeyTask
+	in.ReasonNote = "enabling billable work tracking"
+	in.AckVersion = ""
+	in.TypedConfirmation = "ENABLE TASK"
+	in.ConfirmAcknowledgements = nil
+	return in
 }
 
 // ── Happy paths ──────────────────────────────────────────────────────────────
@@ -231,16 +241,20 @@ func TestEnableCompanyFeature_WrongAckVersion_Rejected(t *testing.T) {
 
 // ── Feature registry gates ───────────────────────────────────────────────────
 
-func TestEnableCompanyFeature_TaskFeature_Rejected(t *testing.T) {
+func TestEnableCompanyFeature_TaskFeature_Succeeds(t *testing.T) {
 	db := testFeaturesDB(t)
 	cid := seedFeatureCompany(t, db)
 	uid := uuid.New()
-	in := validEnableInput(cid, uid)
-	in.FeatureKey = models.FeatureKeyTask
-	in.TypedConfirmation = "" // task has no typed text anyway
 
-	if err := EnableCompanyFeature(db, in); err != ErrFeatureNotSelfServe {
-		t.Fatalf("got %v want ErrFeatureNotSelfServe (Task is coming_soon)", err)
+	if err := EnableCompanyFeature(db, validTaskEnableInput(cid, uid)); err != nil {
+		t.Fatalf("enable task: %v", err)
+	}
+	enabled, err := IsCompanyFeatureEnabled(db, cid, models.FeatureKeyTask)
+	if err != nil {
+		t.Fatalf("is task enabled: %v", err)
+	}
+	if !enabled {
+		t.Fatalf("expected task feature enabled")
 	}
 }
 
@@ -350,7 +364,8 @@ func TestGetCompanyFeatures_ReturnsAllRegisteredWithCurrentState(t *testing.T) {
 		}
 	}
 
-	// After enabling Inventory: view reflects it; Task still off.
+	// After enabling Inventory: view reflects it; Task is now available
+	// for self-serve enablement but remains off until explicitly enabled.
 	uid := uuid.New()
 	_ = EnableCompanyFeature(db, validEnableInput(cid, uid))
 	views, _ = GetCompanyFeatures(db, cid)
@@ -364,8 +379,8 @@ func TestGetCompanyFeatures_ReturnsAllRegisteredWithCurrentState(t *testing.T) {
 				t.Fatalf("AckVersionStored: got %q", v.AckVersionStored)
 			}
 		case models.FeatureKeyTask:
-			if v.IsEnabled() || v.SelfServeEnable {
-				t.Fatalf("Task must remain off and non-self-serve")
+			if v.IsEnabled() || !v.SelfServeEnable {
+				t.Fatalf("Task must remain off but self-serve")
 			}
 		}
 	}

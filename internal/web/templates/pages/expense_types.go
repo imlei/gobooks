@@ -12,6 +12,9 @@ type ExpenseListVM struct {
 
 	CanCreate bool
 	CanUpdate bool
+	// TaskModuleEnabled controls whether task linkage columns are visible on
+	// the expenses list.
+	TaskModuleEnabled bool
 
 	Expenses []models.Expense
 }
@@ -30,13 +33,13 @@ type ExpenseLineFormVM struct {
 	// ProductServiceID is set. For pure-expense (ProductServiceID="")
 	// they may be blank and the service falls back to Qty=1,
 	// UnitPrice=Amount.
-	Qty       string
-	UnitPrice string
-	Amount    string // pre-tax net
-	TaxCodeID string
-	LineTax   string
-	LineTotal string
-	TaskID    string
+	Qty        string
+	UnitPrice  string
+	Amount     string // pre-tax net
+	TaxCodeID  string
+	LineTax    string
+	LineTotal  string
+	TaskID     string
 	IsBillable bool
 	Error      string
 }
@@ -75,6 +78,9 @@ type ExpenseFormVM struct {
 	// SelectableTasksJSON is the JSON-encoded list of selectable tasks for the
 	// per-line task <select>. Shape: [{id, title, customer_name}].
 	SelectableTasksJSON string
+	// TaskModuleEnabled controls whether task costing controls are visible
+	// and accepted from the expense editor.
+	TaskModuleEnabled bool
 
 	// TaxCodesJSON is the JSON-encoded list of purchase-scope tax codes.
 	// Shape: [{id, code, name, rate}] where rate is a fraction string e.g. "0.05".
@@ -102,9 +108,9 @@ type ExpenseFormVM struct {
 	ReceiptRequired bool
 
 	// Error fields for service-layer feedback.
-	ExpenseAccountError   string
-	AmountError           string
-	DescriptionError      string
+	ExpenseAccountError string
+	AmountError         string
+	DescriptionError    string
 
 	ExpenseDateError    string
 	CurrencyError       string

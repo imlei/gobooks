@@ -63,7 +63,7 @@ templ advSearchFilterBar(vm AdvancedSearchVM) {
 				<label for="adv-search-type" class={ compactLabelClass() }>Type</label>
 				<select id="adv-search-type" name="type" class={ advSearchSelectClass() }>
 					<option value="" selected?={ vm.EntityType == "" }>All types</option>
-					for _, g := range AdvSearchEntityGroups() {
+					for _, g := range AdvSearchEntityGroups(vm.EntityTypeOptions) {
 						<optgroup label={ g.Label }>
 							for _, opt := range g.Options {
 								<option value={ opt.Value } selected?={ opt.Value == vm.EntityType }>{ opt.Label }</option>

@@ -1,5 +1,7 @@
 package services
 
+import "balanciz/internal/models"
+
 // ReportCategory groups related reports on the Reports hub. Order matters;
 // slices iterate in display order so registry order is the on-screen layout.
 type ReportCategory string
@@ -8,8 +10,10 @@ const (
 	ReportCategoryFinancials      ReportCategory = "financials"
 	ReportCategorySales           ReportCategory = "sales"
 	ReportCategoryExpenses        ReportCategory = "expenses"
+	ReportCategoryTasks           ReportCategory = "tasks"
 	ReportCategoryWhoOwesYou      ReportCategory = "who_owes_you"
 	ReportCategoryWhatYouOwe      ReportCategory = "what_you_owe"
+	ReportCategoryPayroll         ReportCategory = "payroll"
 	ReportCategorySalesTax        ReportCategory = "sales_tax"
 	ReportCategoryAccountantTools ReportCategory = "accountant_tools"
 )
@@ -22,10 +26,14 @@ func ReportCategoryLabel(c ReportCategory) string {
 		return "Sales"
 	case ReportCategoryExpenses:
 		return "Expenses"
+	case ReportCategoryTasks:
+		return "Tasks"
 	case ReportCategoryWhoOwesYou:
 		return "Who owes you"
 	case ReportCategoryWhatYouOwe:
 		return "What you owe"
+	case ReportCategoryPayroll:
+		return "Payroll"
 	case ReportCategorySalesTax:
 		return "Sales Tax"
 	case ReportCategoryAccountantTools:
@@ -42,10 +50,14 @@ func ReportCategoryDescription(c ReportCategory) string {
 		return "Where your revenue comes from - sales activity broken down by customer."
 	case ReportCategoryExpenses:
 		return "Where your money goes - expense activity broken down by vendor."
+	case ReportCategoryTasks:
+		return "Billable work and task summaries before they become invoices."
 	case ReportCategoryWhoOwesYou:
 		return "Money your customers owe you - outstanding receivables and aging."
 	case ReportCategoryWhatYouOwe:
 		return "Money you owe your vendors - outstanding payables and aging."
+	case ReportCategoryPayroll:
+		return "Payroll summaries and employee payroll history, visible only to payroll detail users."
 	case ReportCategorySalesTax:
 		return "Taxes collected and paid, ready for your sales tax filing."
 	case ReportCategoryAccountantTools:
@@ -67,6 +79,12 @@ type ReportEntry struct {
 	CSVHref     string
 	Interactive bool
 	DrillDown   bool
+
+	// RequiredFeature and RequiredAction let the Reports hub hide module-owned
+	// reports behind the same feature and permission gates as their routes.
+	RequiredFeature models.FeatureKey
+	RequiredAction  string
+	CSVAction       string
 }
 
 // AllReports is the canonical, ordered registry of every report surfaced in
@@ -139,6 +157,27 @@ func AllReports() []ReportEntry {
 			DrillDown: true,
 		},
 		{
+			Key:             "task-monthly-summary",
+			Title:           "Task Monthly Summary",
+			Desc:            "Monthly task totals, billable quantities, and work-in-progress context.",
+			Href:            "/tasks/monthly-report",
+			Category:        ReportCategoryTasks,
+			Mode:            "Monthly",
+			RequiredFeature: models.FeatureKeyTask,
+			RequiredAction:  "task:view",
+		},
+		{
+			Key:             "task-billable-work",
+			Title:           "Billable Work Report",
+			Desc:            "Customer-level view of completed billable tasks and task-linked costs waiting for invoicing.",
+			Href:            "/tasks/billable-work/report",
+			Category:        ReportCategoryTasks,
+			Mode:            "Operational",
+			DrillDown:       true,
+			RequiredFeature: models.FeatureKeyTask,
+			RequiredAction:  "task:view",
+		},
+		{
 			Key:      "ar-aging",
 			Title:    "A/R Aging",
 			Desc:     "Outstanding receivables grouped by how long each balance has been due.",
@@ -154,6 +193,30 @@ func AllReports() []ReportEntry {
 			Href:     "/ap-aging",
 			Category: ReportCategoryWhatYouOwe,
 			Mode:     "As-of",
+		},
+		{
+			Key:             "payroll-summary",
+			Title:           "Payroll Summary",
+			Desc:            "Payroll run totals, statutory remittance status, and outstanding payroll liability by pay date.",
+			Href:            "/payroll/reports/summary",
+			Category:        ReportCategoryPayroll,
+			Mode:            "Period",
+			CSVHref:         "/payroll/reports/summary/export.csv",
+			RequiredFeature: models.FeatureKeyPayroll,
+			RequiredAction:  "payroll:view_details",
+			CSVAction:       "payroll:export",
+		},
+		{
+			Key:             "payroll-employee-history",
+			Title:           "Employee Payroll History",
+			Desc:            "Payroll entry totals by employee and pay date, with profile-sensitive fields omitted.",
+			Href:            "/payroll/reports/employee-history",
+			Category:        ReportCategoryPayroll,
+			Mode:            "Period",
+			CSVHref:         "/payroll/reports/employee-history/export.csv",
+			RequiredFeature: models.FeatureKeyPayroll,
+			RequiredAction:  "payroll:view_details",
+			CSVAction:       "payroll:export",
 		},
 		{
 			Key:       "sales-tax",

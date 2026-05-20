@@ -18,14 +18,24 @@ templ bodyCompanyFeatures(vm CompanyFeaturesVM) {
 		@SettingsBreadcrumb(vm.Breadcrumb)
 		<h1 class="text-title font-semibold">Features</h1>
 		<p class="mt-2 max-w-3xl text-text-muted2">
-			Product feature families available for this company. Alpha features are gated behind
-			self-serve enablement and require owner sign-off before they become active. Disabling
-			an alpha feature later does not rewrite historical records.
+			Product feature families available for this company. Modules are gated behind
+			self-serve enablement and owner sign-off before they become active. Permissions still
+			control which members can see or operate each enabled module.
 		</p>
 
 		if vm.Flash.Success != "" {
 			<div class="mt-4 rounded-md border border-success-border bg-success-soft p-4 text-body text-success-hover">
-				{ vm.Flash.Success }
+				<div>{ vm.Flash.Success }</div>
+				if vm.Flash.ActionHref != "" {
+					<div class="mt-2 flex flex-wrap items-center gap-3 text-small">
+						if vm.Flash.ActionText != "" {
+							<span class="text-text-muted2">{ vm.Flash.ActionText }</span>
+						}
+						<a href={ vm.Flash.ActionHref } class="font-semibold text-primary hover:text-primary-hover">
+							{ vm.Flash.ActionLabel }
+						</a>
+					</div>
+				}
 			</div>
 		}
 		if vm.Flash.Error != "" {
@@ -101,6 +111,12 @@ templ featureCard(feat FeatureCardVM, canManage bool) {
 						· reason: { string(feat.ReasonCode) }
 					</span>
 				}
+			</div>
+		}
+		if feat.IsEnabled() && feat.PermissionHint != "" {
+			<div class="mt-3 rounded-md border border-border bg-background px-3 py-2 text-small text-text-muted2">
+				{ feat.PermissionHint }
+				<a href="/settings/members" class="ml-2 font-semibold text-primary hover:text-primary-hover">Manage permissions</a>
 			</div>
 		}
 	</div>
@@ -219,31 +235,31 @@ templ featureEnableModal(feat FeatureCardVM) {
 
 					<!-- Risk copy -->
 					<div class="rounded-md border border-warning-border bg-warning-soft p-4 text-small text-text">
-						<p class="font-semibold">Before you enable:</p>
+						<p class="font-semibold">{ feat.BeforeEnableText }</p>
 						<ul class="mt-2 list-disc space-y-1 pl-5">
-							<li>This feature is in Alpha and is still being validated.</li>
-							<li>It is intended for businesses with physical inventory workflows, such as retail, wholesale, and light manufacturing.</li>
-							<li>Enabling it changes how future inventory-related activity is processed.</li>
-							<li>Disabling it later will not rewrite historical records.</li>
-							<li>Some situations may still require manual reconciliation or operational support.</li>
+							for _, item := range feat.BeforeEnableBullets {
+								<li>{ item }</li>
+							}
 						</ul>
 					</div>
 
 					<!-- Acknowledgements -->
-					<div class="space-y-2">
-						for i, ackText := range feat.RequiredAcks {
-							<label class="flex items-start gap-2 text-small text-text">
-								<input
-									type="checkbox"
-									name="ack"
-									value="true"
-									x-model={ fmt.Sprintf("acks[%d]", i) }
-									class="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-								/>
-								<span>{ ackText }</span>
-							</label>
-						}
-					</div>
+					if len(feat.RequiredAcks) > 0 {
+						<div class="space-y-2">
+							for i, ackText := range feat.RequiredAcks {
+								<label class="flex items-start gap-2 text-small text-text">
+									<input
+										type="checkbox"
+										name="ack"
+										value="true"
+										x-model={ fmt.Sprintf("acks[%d]", i) }
+										class="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+									/>
+									<span>{ ackText }</span>
+								</label>
+							}
+						</div>
+					}
 
 					<!-- Typed confirmation -->
 					<div>
@@ -272,7 +288,7 @@ templ featureEnableModal(feat FeatureCardVM) {
 						x-bind:disabled={ fmt.Sprintf("!(acks.every(v => v) && typed === '%s')", feat.TypedConfirmText) }
 						x-bind:class={ fmt.Sprintf("(acks.every(v => v) && typed === '%s') ? 'bg-primary hover:bg-primary-hover' : 'bg-primary/40 cursor-not-allowed'", feat.TypedConfirmText) }
 						class="rounded-md px-4 py-2 text-small font-medium text-onPrimary"
-					>Enable { feat.Label } Alpha</button>
+					>Enable { feat.Label }</button>
 				</div>
 			</form>
 		</div>
@@ -295,7 +311,7 @@ templ featureDisableModal(feat FeatureCardVM) {
 			<h2 class="text-section font-semibold text-text">Disable { feat.Label }?</h2>
 			<div class="mt-4 space-y-2 text-small text-text-muted2">
 				<p>Disabling gates future { feat.Label } activity back off for this company.</p>
-				<p><strong class="text-text">Historical records remain unchanged.</strong> Previously posted documents, journal entries, and inventory movements keep their existing shape.</p>
+				<p><strong class="text-text">Historical records remain unchanged.</strong> Existing records, posted documents, journal entries, and module-linked activity keep their existing shape.</p>
 			</div>
 			<div class="mt-6 flex items-center justify-end gap-3">
 				<button

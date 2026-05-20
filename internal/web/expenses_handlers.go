@@ -70,13 +70,14 @@ func (s *Server) handleExpenses(c *fiber.Ctx) error {
 	}
 
 	return pages.Expenses(pages.ExpenseListVM{
-		HasCompany: true,
-		FormError:  strings.TrimSpace(c.Query("error")),
-		Created:    c.Query("created") == "1",
-		Updated:    c.Query("updated") == "1",
-		CanCreate:  CanFromCtx(c, ActionBillCreate),
-		CanUpdate:  CanFromCtx(c, ActionBillUpdate),
-		Expenses:   expenses,
+		HasCompany:        true,
+		FormError:         strings.TrimSpace(c.Query("error")),
+		Created:           c.Query("created") == "1",
+		Updated:           c.Query("updated") == "1",
+		CanCreate:         CanFromCtx(c, ActionBillCreate),
+		CanUpdate:         CanFromCtx(c, ActionBillUpdate),
+		TaskModuleEnabled: s.searchFeatureEnabled(c, models.FeatureKeyTask) && CanFromCtx(c, ActionTaskView),
+		Expenses:          expenses,
 	}).Render(c.Context(), c)
 }
 
@@ -135,7 +136,9 @@ func (s *Server) handleExpenseEdit(c *fiber.Ctx) error {
 	if err != nil {
 		return redirectErr(c, "/expenses", "could not load expense form")
 	}
-	vm.FormError = strings.TrimSpace(c.Query("error"))
+	if formError := strings.TrimSpace(c.Query("error")); formError != "" {
+		vm.FormError = formError
+	}
 	return pages.ExpenseForm(vm).Render(c.Context(), c)
 }
 
@@ -241,6 +244,7 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 
 	// Rehydrate line items from the expense's Lines slice (preloaded by GetExpenseByID).
 	if len(exp.Lines) > 0 {
+		hasHiddenTaskLinks := false
 		vm.Lines = make([]pages.ExpenseLineFormVM, 0, len(exp.Lines))
 		for _, l := range exp.Lines {
 			lineVM := pages.ExpenseLineFormVM{
@@ -250,7 +254,11 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 				Amount:      l.Amount.StringFixed(2),
 				LineTax:     l.LineTax.StringFixed(2),
 				LineTotal:   l.LineTotal.StringFixed(2),
-				IsBillable:  l.IsBillable,
+			}
+			if vm.TaskModuleEnabled {
+				lineVM.IsBillable = l.IsBillable
+			} else if l.TaskID != nil || l.IsBillable {
+				hasHiddenTaskLinks = true
 			}
 			if l.ExpenseAccountID != nil {
 				lineVM.ExpenseAccountID = fmt.Sprintf("%d", *l.ExpenseAccountID)
@@ -261,10 +269,13 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 			if l.TaxCodeID != nil {
 				lineVM.TaxCodeID = fmt.Sprintf("%d", *l.TaxCodeID)
 			}
-			if l.TaskID != nil {
+			if vm.TaskModuleEnabled && l.TaskID != nil {
 				lineVM.TaskID = fmt.Sprintf("%d", *l.TaskID)
 			}
 			vm.Lines = append(vm.Lines, lineVM)
+		}
+		if hasHiddenTaskLinks {
+			vm.FormError = "This expense has task-linked lines. Enable Tasks before editing those line links."
 		}
 	} else {
 		// Fallback: single line from header fields (pre-migration data, no tax).
@@ -273,12 +284,16 @@ func (s *Server) expenseFormVMFromExpense(companyID uint, exp *models.Expense) (
 			Amount:      exp.Amount.StringFixed(2),
 			LineTax:     "0.00",
 			LineTotal:   exp.Amount.StringFixed(2),
-			IsBillable:  exp.IsBillable,
+		}
+		if vm.TaskModuleEnabled {
+			lineVM.IsBillable = exp.IsBillable
+		} else if exp.TaskID != nil || exp.IsBillable {
+			vm.FormError = "This expense has task-linked lines. Enable Tasks before editing those line links."
 		}
 		if exp.ExpenseAccountID != nil {
 			lineVM.ExpenseAccountID = fmt.Sprintf("%d", *exp.ExpenseAccountID)
 		}
-		if exp.TaskID != nil {
+		if vm.TaskModuleEnabled && exp.TaskID != nil {
 			lineVM.TaskID = fmt.Sprintf("%d", *exp.TaskID)
 		}
 		vm.Lines = []pages.ExpenseLineFormVM{lineVM}
@@ -294,6 +309,10 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		vm.EditingID = existing.ID
 	}
 	_ = s.loadExpenseFormContext(companyID, &vm)
+	if !vm.TaskModuleEnabled && existing != nil && expenseHasTaskLinks(existing) {
+		vm.FormError = "This expense has task-linked lines. Enable Tasks before editing it."
+		return vm, services.ExpenseInput{}, true
+	}
 
 	vm.ExpenseDate = strings.TrimSpace(c.FormValue("expense_date"))
 	vm.CurrencyCode = strings.ToUpper(strings.TrimSpace(c.FormValue("currency_code")))
@@ -346,6 +365,7 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 		tcIDRaw := strings.TrimSpace(c.FormValue(key("line_tax_code_id")))
 		taskIDRaw := strings.TrimSpace(c.FormValue(key("line_task_id")))
 		isBillable := c.FormValue(key("line_is_billable")) == "1"
+		taskLinkSubmittedWhileDisabled := !vm.TaskModuleEnabled && (taskIDRaw != "" || isBillable)
 
 		amt, aErr := decimal.NewFromString(amtRaw)
 		if aErr != nil || amt.IsNegative() {
@@ -369,6 +389,13 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 			TaxCodeID:        tcIDRaw,
 			TaskID:           taskIDRaw,
 			IsBillable:       isBillable,
+		}
+		if taskLinkSubmittedWhileDisabled {
+			lVM.TaskID = ""
+			lVM.IsBillable = false
+			lVM.Error = "Enable Tasks before linking expense lines to tasks."
+			taskIDRaw = ""
+			isBillable = false
 		}
 
 		pl := parsedLine{Description: desc, Amount: amt, TaxCodeIDRaw: tcIDRaw, IsBillable: isBillable}
@@ -563,6 +590,12 @@ func (s *Server) buildExpenseFormVMFromRequest(c *fiber.Ctx, companyID uint, exi
 	}
 
 	var hasErr bool
+	for _, line := range vm.Lines {
+		if line.Error != "" {
+			hasErr = true
+			break
+		}
+	}
 
 	// Payment account eligibility guard.
 	if vm.PaymentAccountID != "" && vm.PaymentAccountLabel == "" {
@@ -683,11 +716,20 @@ func (s *Server) handleExpenseVoid(c *fiber.Ctx) error {
 func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM) error {
 	// Vendor uses SmartPicker (on-demand search); expense accounts and tasks are
 	// pre-loaded as JSON for the Alpine component.
-	selectableTasks, err := services.ListSelectableTasks(s.DB, companyID)
+	taskModuleEnabled, err := s.taskModuleEnabledForEditor(companyID)
 	if err != nil {
 		return err
 	}
-	vm.SelectableTasksJSON = buildExpenseTasksJSON(selectableTasks)
+	vm.TaskModuleEnabled = taskModuleEnabled
+	if taskModuleEnabled {
+		selectableTasks, err := services.ListSelectableTasks(s.DB, companyID)
+		if err != nil {
+			return err
+		}
+		vm.SelectableTasksJSON = buildExpenseTasksJSON(selectableTasks)
+	} else {
+		vm.SelectableTasksJSON = "[]"
+	}
 
 	var company models.Company
 	if err := s.DB.Select("id", "base_currency_code", "multi_currency_enabled", "receipt_required").First(&company, companyID).Error; err != nil {
@@ -758,6 +800,21 @@ func (s *Server) loadExpenseFormContext(companyID uint, vm *pages.ExpenseFormVM)
 	vm.Warehouses = warehouses
 
 	return nil
+}
+
+func expenseHasTaskLinks(exp *models.Expense) bool {
+	if exp == nil {
+		return false
+	}
+	if exp.TaskID != nil || exp.IsBillable {
+		return true
+	}
+	for _, line := range exp.Lines {
+		if line.TaskID != nil || line.IsBillable {
+			return true
+		}
+	}
+	return false
 }
 
 type expenseProductJSONItem struct {

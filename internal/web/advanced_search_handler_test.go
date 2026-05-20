@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 
+	"balanciz/internal/models"
 	"balanciz/internal/services/search_engine"
 )
 
@@ -119,4 +122,137 @@ func TestHandleAdvancedSearch_EngineErrorRendersEmptyPage(t *testing.T) {
 	if !strings.Contains(string(body), "No results match your filters.") {
 		t.Errorf("expected empty-state copy in body, got: %s", string(body))
 	}
+}
+
+func TestHandleAdvancedSearchDropsDisallowedSensitiveEntityType(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Advanced Search Permissions Co")
+	user, token := seedUserSession(t, db, &companyID)
+	if err := db.Create(&models.CompanyMembership{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		CompanyID: companyID,
+		Role:      models.CompanyRoleViewer,
+		IsActive:  true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.CompanyFeature{
+		CompanyID:  companyID,
+		FeatureKey: models.FeatureKeyPayroll,
+		Status:     models.FeatureStatusEnabled,
+		Maturity:   models.FeatureMaturityBeta,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	stub := &stubAdvancedEngine{mode: search_engine.ModeEnt}
+	sel := search_engine.NewSelector(search_engine.ModeEnt, search_engine.NewLegacyEngine(), nil, stub)
+	app := newAuthenticatedAdvancedSearchTestApp(db, sel)
+
+	status, body := runGetWithToken(t, app, "/advanced-search?type=payroll_entry", token)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, string(body))
+	}
+	if stub.gotReq.EntityType != "" {
+		t.Fatalf("disallowed payroll_entry type should be dropped, got %q", stub.gotReq.EntityType)
+	}
+	if containsString(stub.gotReq.AllowedEntityTypes, "payroll_entry") {
+		t.Fatalf("payroll_entry should not be in allowed types without payroll detail permission: %+v", stub.gotReq.AllowedEntityTypes)
+	}
+
+	for _, row := range []models.UserCompanyPermission{
+		{UserID: user.ID, CompanyID: companyID, Permission: PermPayrollView, Granted: true, GrantedBy: user.ID},
+		{UserID: user.ID, CompanyID: companyID, Permission: PermPayrollDetails, Granted: true, GrantedBy: user.ID},
+	} {
+		if err := db.Create(&row).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	status, body = runGetWithToken(t, app, "/advanced-search?type=payroll_entry", token)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, string(body))
+	}
+	if stub.gotReq.EntityType != "payroll_entry" {
+		t.Fatalf("granted payroll_entry type should be forwarded, got %q", stub.gotReq.EntityType)
+	}
+	if !containsString(stub.gotReq.AllowedEntityTypes, "payroll_entry") {
+		t.Fatalf("payroll_entry should be allowed after grant: %+v", stub.gotReq.AllowedEntityTypes)
+	}
+}
+
+func TestHandleAdvancedSearchSanitizesSensitiveReturnedRows(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Advanced Search Sanitizer Co")
+	user, token := seedUserSession(t, db, &companyID)
+	if err := db.Create(&models.CompanyMembership{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		CompanyID: companyID,
+		Role:      models.CompanyRoleViewer,
+		IsActive:  true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.CompanyFeature{
+		CompanyID:  companyID,
+		FeatureKey: models.FeatureKeyPayroll,
+		Status:     models.FeatureStatusEnabled,
+		Maturity:   models.FeatureMaturityBeta,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.UserCompanyPermission{
+		UserID: user.ID, CompanyID: companyID, Permission: PermPayrollView, Granted: true, GrantedBy: user.ID,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	stub := &stubAdvancedEngine{
+		mode: search_engine.ModeEnt,
+		resp: &search_engine.AdvancedResponse{
+			Page:     1,
+			PageSize: 50,
+			Total:    2,
+			Rows: []search_engine.Candidate{
+				{
+					ID:         "10",
+					Primary:    "Payroll Run PAY-10",
+					URL:        "/payroll/runs/10",
+					EntityType: "payroll_run",
+					Payload:    map[string]string{"amount": "1234.56", "currency": "CAD", "status": "posted", "doc_num": "PAY-10"},
+				},
+				{
+					ID:         "11",
+					Primary:    "Jane Private",
+					URL:        "/payroll/runs/10#entry-11",
+					EntityType: "payroll_entry",
+					Payload:    map[string]string{"amount": "777.77", "currency": "CAD"},
+				},
+			},
+		},
+	}
+	sel := search_engine.NewSelector(search_engine.ModeEnt, search_engine.NewLegacyEngine(), nil, stub)
+	app := newAuthenticatedAdvancedSearchTestApp(db, sel)
+
+	status, body := runGetWithToken(t, app, "/advanced-search?q=pay", token)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, string(body))
+	}
+	bodyText := string(body)
+	for _, forbidden := range []string{"1234.56", "777.77", "Jane Private", "payroll_entry"} {
+		if strings.Contains(bodyText, forbidden) {
+			t.Fatalf("advanced search leaked %q in body: %s", forbidden, bodyText)
+		}
+	}
+	if !strings.Contains(bodyText, "Payroll Run PAY-10") {
+		t.Fatalf("expected allowed payroll run title in body: %s", bodyText)
+	}
+}
+
+func newAuthenticatedAdvancedSearchTestApp(db *gorm.DB, sel *search_engine.Selector) *fiber.App {
+	app := fiber.New(fiber.Config{DisableStartupMessage: true})
+	s := &Server{DB: db, SearchSelector: sel}
+	app.Get("/advanced-search", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleAdvancedSearch)
+	return app
 }

@@ -68,6 +68,14 @@ const (
 	LedgerSourceVendorCreditNote LedgerSourceType = "vendor_credit_note"
 	// LedgerSourceVendorRefund is used by vendor refund posting (Dr Bank Cr PrepaymentAsset/AP).
 	LedgerSourceVendorRefund LedgerSourceType = "vendor_refund"
+	// LedgerSourcePayrollRun is used when a finalized payroll run is accrued
+	// into the general ledger (Dr payroll expense, Cr payroll liabilities).
+	LedgerSourcePayrollRun LedgerSourceType = "payroll_run"
+	// LedgerSourceCheque is used when a cheque payment clears a payable.
+	LedgerSourceCheque LedgerSourceType = "cheque"
+	// LedgerSourcePayrollRemittance is used when statutory payroll liabilities
+	// are remitted to the tax authority.
+	LedgerSourcePayrollRemittance LedgerSourceType = "payroll_remittance"
 	// LedgerSourceShipment is used by Phase I.3 Shipment post under
 	// companies.shipment_required=true — Dr COGS / Cr Inventory at
 	// ship time. Invoice under the same flag only books AR/Revenue

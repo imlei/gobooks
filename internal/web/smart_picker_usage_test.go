@@ -130,6 +130,58 @@ func TestSmartPickerUsage_PersistsVendorContext(t *testing.T) {
 	}
 }
 
+func TestSmartPickerUsage_TaskContextsRequireTaskFeature(t *testing.T) {
+	db := testRouteDB(t)
+	if err := db.AutoMigrate(&models.SmartPickerUsage{}); err != nil {
+		t.Fatal(err)
+	}
+
+	companyID := seedCompany(t, db, "Picker Task Usage Off Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembership(t, db, user.ID, companyID)
+	if err := db.Model(&models.CompanyFeature{}).
+		Where("company_id = ? AND feature_key = ?", companyID, models.FeatureKeyTask).
+		Update("status", models.FeatureStatusOff).Error; err != nil {
+		t.Fatal(err)
+	}
+	customerID := seedValidationCustomer(t, db, companyID, "Task Usage Customer")
+
+	app := testRouteApp(t, db)
+	payload, err := json.Marshal(map[string]any{
+		"entity":     "customer",
+		"context":    "task_form_customer",
+		"item_id":    fmt.Sprintf("%d", customerID),
+		"event_type": "select",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "/api/smart-picker/usage", bytes.NewReader(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(CSRFHeaderName, "csrf-task-usage-off")
+	req.AddCookie(&http.Cookie{Name: SessionCookieName, Value: rawToken, Path: "/"})
+	req.AddCookie(&http.Cookie{Name: CSRFCookieName, Value: "csrf-task-usage-off", Path: "/"})
+
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", resp.StatusCode)
+	}
+	var usageCount int64
+	db.Model(&models.SmartPickerUsage{}).
+		Where("company_id = ? AND context = ?", companyID, "task_form_customer").
+		Count(&usageCount)
+	if usageCount != 0 {
+		t.Fatalf("disabled task picker context should not persist usage rows, got %d", usageCount)
+	}
+}
+
 func TestSmartPickerAcceleration_SearchRanksByUsage(t *testing.T) {
 	db := testRouteDB(t)
 	if err := db.AutoMigrate(&models.SmartPickerUsage{}); err != nil {

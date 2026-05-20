@@ -1,0 +1,129 @@
+package pages
+
+import "balanciz/internal/models"
+import "balanciz/internal/web/templates/layout"
+import "balanciz/internal/web/templates/ui"
+
+templ PayrollSummaryReport(vm PayrollSummaryReportVM) {
+	@layout.Layout(
+		"Balanciz - Payroll Summary",
+		ui.SidebarVM{Active: "Payroll Reports", HasCompany: vm.HasCompany},
+		bodyPayrollSummaryReport(vm),
+	)
+}
+
+templ bodyPayrollSummaryReport(vm PayrollSummaryReportVM) {
+	<div class="max-w-[95%]">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="min-w-0 flex-1">
+				<a href="/payroll/runs" class="text-body text-text-muted3 hover:text-text">Back to Payroll Runs</a>
+				<h1 class="mt-2 text-title font-semibold">Payroll Summary</h1>
+				<p class="mt-2 text-text-muted2">Payroll run totals, statutory remittance status, and outstanding payroll liability by pay date.</p>
+			</div>
+		</div>
+
+		if vm.FormError != "" {
+			<div class="mt-4 rounded-md border border-border-danger bg-danger-soft p-4 text-body text-danger-hover">{ vm.FormError }</div>
+		}
+
+		@ReportToolbar(vm.Toolbar)
+
+		<div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Gross Pay</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-text">{ Money(vm.Report.TotalGross) }</div>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Net Pay</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-text">{ Money(vm.Report.TotalNetPay) }</div>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Statutory Due</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-text">{ Money(vm.Report.TotalStatutoryRemittanceDue) }</div>
+			</div>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<div class="text-small uppercase tracking-wider text-text-muted">Outstanding</div>
+				<div class="mt-2 text-section font-semibold tabular-nums text-danger-hover">{ Money(vm.Report.TotalOutstandingRemittance) }</div>
+			</div>
+		</div>
+
+		<div class="mt-6 rounded-lg border border-border bg-surface p-6">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<h2 class="text-section font-semibold text-text">Runs</h2>
+				<div class="text-small text-text-muted2">{ vm.DateLabel }</div>
+			</div>
+			<div class="mt-4 overflow-x-auto">
+				<table class="w-full text-left text-body">
+					<thead class="text-small uppercase tracking-wider text-text-muted">
+						<tr class="border-b border-border">
+							<th class="py-3 pr-4">Run</th>
+							<th class="py-3 pr-4">Pay Date</th>
+							<th class="py-3 pr-4 text-right">Gross</th>
+							<th class="py-3 pr-4 text-right">Deductions</th>
+							<th class="py-3 pr-4 text-right">Employer</th>
+							<th class="py-3 pr-4 text-right">Net</th>
+							<th class="py-3 pr-4 text-right">Statutory Due</th>
+							<th class="py-3 pr-4">Remittance</th>
+							<th class="py-3 pr-0 text-right">Outstanding</th>
+						</tr>
+					</thead>
+					<tbody class="text-text">
+						if len(vm.Report.Rows) == 0 {
+							<tr>
+								<td colspan="9" class="py-6 text-text-muted2">No payroll runs found in this period.</td>
+							</tr>
+						}
+						for _, row := range vm.Report.Rows {
+							<tr class="border-b border-border-subtle">
+								<td class="py-3 pr-4">
+									<a href={ "/payroll/runs/" + Uitoa(row.PayrollRunID) } class="font-medium text-primary hover:text-primary-hover hover:underline">{ payrollSummaryRunNumber(row.RunNumber, row.PayrollRunID) }</a>
+									<div class="text-small text-text-muted2">{ row.PeriodStart.Format("2006-01-02") } to { row.PeriodEnd.Format("2006-01-02") }</div>
+								</td>
+								<td class="py-3 pr-4">{ row.PayDate.Format("2006-01-02") }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.GrossPay) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.EmployeeDeductions) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.EmployerContributions) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.NetPay) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(row.StatutoryRemittanceDue) }</td>
+								<td class="py-3 pr-4">
+									if row.RemittanceID != 0 {
+										<div class="font-medium">{ row.RemittanceNumber }</div>
+										<span class={ payrollRemittanceStatusBadgeClass(row.RemittanceStatus) }>{ payrollRemittanceStatusLabel(row.RemittanceStatus) }</span>
+									} else {
+										<span class="text-small text-text-muted2">Not created</span>
+									}
+								</td>
+								<td class="py-3 pr-0 text-right tabular-nums font-medium">{ Money(row.OutstandingRemittanceDue) }</td>
+							</tr>
+						}
+					</tbody>
+					if len(vm.Report.Rows) > 0 {
+						<tfoot class="border-t border-border bg-surface-tableHeader">
+							<tr class="font-semibold text-text">
+								<td class="py-3 pr-4" colspan="2">Total</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalGross) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalEmployeeDeductions) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalEmployerContributions) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalNetPay) }</td>
+								<td class="py-3 pr-4 text-right tabular-nums">{ Money(vm.Report.TotalStatutoryRemittanceDue) }</td>
+								<td class="py-3 pr-4">Remitted { Money(vm.Report.TotalRemitted) }</td>
+								<td class="py-3 pr-0 text-right tabular-nums">{ Money(vm.Report.TotalOutstandingRemittance) }</td>
+							</tr>
+						</tfoot>
+					}
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+func payrollSummaryRunNumber(number string, id uint) string {
+	if number != "" {
+		return number
+	}
+	return "Run " + Uitoa(id)
+}
+
+func payrollSummaryStatusClass(status models.PayrollRemittanceStatus) string {
+	return payrollRemittanceStatusBadgeClass(status)
+}

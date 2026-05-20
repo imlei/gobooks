@@ -1,9 +1,13 @@
 package web
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"balanciz/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -32,5 +36,40 @@ func TestErrorHandlerDoesNotExposeRaw5xxMessage(t *testing.T) {
 	}
 	if got != "Internal Server Error" {
 		t.Fatalf("expected generic 5xx body, got %q", got)
+	}
+}
+
+func TestErrorHandlerReturnsStructuredCodedErrorsForJSON(t *testing.T) {
+	app := fiber.New(fiber.Config{
+		ErrorHandler: NewErrorHandler(nil),
+	})
+	app.Get("/post", func(c *fiber.Ctx) error {
+		return services.ErrAlreadyPosted
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/post", nil)
+	req.Header.Set("Accept", "application/json")
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("expected %d, got %d", http.StatusConflict, resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-Error-Code"); got != "POSTING_ALREADY_POSTED" {
+		t.Fatalf("X-Error-Code = %q", got)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("decode JSON body: %v; body=%s", err, string(body))
+	}
+	if payload["code"] != "POSTING_ALREADY_POSTED" {
+		t.Fatalf("payload code = %q", payload["code"])
 	}
 }

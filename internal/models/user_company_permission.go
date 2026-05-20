@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// UserCompanyPermission is a schema-ready extension point for future per-user,
-// per-company permission overrides. It is NOT wired into CanPerformAction yet.
+// UserCompanyPermission stores per-user, per-company permission overrides that
+// layer on top of the role permission matrix.
 //
 // Design intent: each row either grants or revokes a named permission for a
 // specific user within a specific company, enabling fine-grained control on top

@@ -189,6 +189,15 @@ func Migrate(db *gorm.DB) error {
 		&models.Task{},
 		&models.Expense{},
 		&models.TaskInvoiceSource{},
+		// Employee / Payroll / Cheque module foundation
+		&models.Employee{},
+		&models.PayrollRun{},
+		&models.PayrollEntry{},
+		&models.PayrollEarningCode{},
+		&models.PayrollEntryEarning{},
+		&models.ChequeBankAccount{},
+		&models.Cheque{},
+		&models.PayrollRemittance{},
 		// Invoice Template + Sending: template definitions and email audit log
 		&models.InvoiceTemplate{},
 		&models.InvoiceEmailLog{},
@@ -412,7 +421,27 @@ func Migrate(db *gorm.DB) error {
 	// Phase 3 (G2): seed system-shipped PDF templates so a fresh install has
 	// the 18 baseline presets immediately available. Idempotent — re-runs
 	// refresh schema_json + description on existing system rows.
+	if err := ensurePostingBackstopIndexes(db); err != nil {
+		return err
+	}
 	return seedSystemPDFTemplates(db)
+}
+
+func ensurePostingBackstopIndexes(db *gorm.DB) error {
+	statements := []string{
+		`CREATE UNIQUE INDEX IF NOT EXISTS uq_journal_entries_posted_source
+ON journal_entries (company_id, source_type, source_id)
+WHERE status = 'posted' AND source_type <> '' AND source_id > 0;`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS uq_inventory_movements_idempotency
+ON inventory_movements (company_id, idempotency_key)
+WHERE idempotency_key IS NOT NULL AND idempotency_key <> '';`,
+	}
+	for _, stmt := range statements {
+		if err := db.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // seedSystemPDFTemplates is wired through a forwarder so the db package
@@ -1160,7 +1189,7 @@ END $$;
 // to the invoices and bills tables, backfilling existing rows with safe defaults.
 //
 // Each table gets 5 new columns:
-//   - currency_code  VARCHAR(3)    NOT NULL DEFAULT ''   (blank = company base currency)
+//   - currency_code  VARCHAR(3)    NOT NULL DEFAULT ”   (blank = company base currency)
 //   - exchange_rate  NUMERIC(20,8) NOT NULL DEFAULT 1    (foreignToBase rate; 1 for base-currency docs)
 //   - amount_base    NUMERIC(18,2) NOT NULL DEFAULT 0
 //   - subtotal_base  NUMERIC(18,2) NOT NULL DEFAULT 0
