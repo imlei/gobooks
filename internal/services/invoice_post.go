@@ -217,10 +217,9 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 	// form COGS. Bundle expansions are skipped for the same reason —
 	// their component issue happened at Shipment post, not now.
 	invWarehouseID := ResolveInventoryWarehouse(db, companyID, inv.WarehouseID)
-	var bundleExpansions []ExpandedComponent
 	if !company.ShipmentRequired {
 		var stockErr error
-		_, bundleExpansions, stockErr = ValidateStockForInvoice(db, companyID, inv.Lines, invWarehouseID)
+		_, _, stockErr = ValidateStockForInvoice(db, companyID, inv.Lines, invWarehouseID)
 		if stockErr != nil {
 			return stockErr
 		}
@@ -271,22 +270,58 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 
 	// ── 7. Transaction ────────────────────────────────────────────────────────
 	return db.Transaction(func(tx *gorm.DB) error {
-		// a. Lock invoice row and re-validate status inside the lock.
-		//    applyLockForUpdate issues SELECT FOR UPDATE on Postgres so that a
-		//    concurrent PostInvoice call blocks here until this transaction
-		//    commits or rolls back, then re-reads and sees status='sent'.
-		var locked models.Invoice
-		if err := applyLockForUpdate(
-			tx.Select("id", "company_id", "status").
-				Where("id = ? AND company_id = ?", invoiceID, companyID),
-		).First(&locked).Error; err != nil {
-			return fmt.Errorf("lock invoice: %w", err)
+		// a. Lock invoice header and lines, then re-validate the posting
+		//    source under the same transaction that writes the journal.
+		inv, err := lockFreshInvoiceForPostingSnapshot(tx, companyID, invoiceID, inv)
+		if err != nil {
+			return err
 		}
-		if locked.Status != models.InvoiceStatusDraft && locked.Status != models.InvoiceStatusIssued {
+		if inv.Status != models.InvoiceStatusDraft && inv.Status != models.InvoiceStatusIssued {
 			return ErrAlreadyPosted
 		}
-		if err := ensureInvoicePostingSnapshotFresh(tx, companyID, invoiceID, inv); err != nil {
+		if inv.JournalEntryID != nil {
+			return ErrAlreadyPosted
+		}
+		if err := validateInvoicePostingLines(inv, companyID); err != nil {
 			return err
+		}
+
+		invWarehouseID := ResolveInventoryWarehouse(tx, companyID, inv.WarehouseID)
+		var bundleExpansions []ExpandedComponent
+		if !company.ShipmentRequired {
+			var stockErr error
+			_, bundleExpansions, stockErr = ValidateStockForInvoice(tx, companyID, inv.Lines, invWarehouseID)
+			if stockErr != nil {
+				return stockErr
+			}
+		}
+		nonCogsFrags, err := BuildInvoiceFragments(inv, arAccount.ID)
+		if err != nil {
+			return fmt.Errorf("build invoice fragments: %w", err)
+		}
+		nonCogsLines, err := AggregateJournalLines(nonCogsFrags)
+		if err != nil {
+			return fmt.Errorf("aggregate journal lines: %w", err)
+		}
+		txNonCogsLines := make([]PostingFragment, len(nonCogsLines))
+		copy(txNonCogsLines, nonCogsLines)
+		if isForeignCurrency {
+			nonCogsLines = applyFXScaling(nonCogsLines, exchangeRate, arAccount.ID, true)
+		}
+		companyCheckLines := make([]models.JournalLine, 0, len(nonCogsLines))
+		for _, jl := range nonCogsLines {
+			companyCheckLines = append(companyCheckLines, models.JournalLine{AccountID: jl.AccountID})
+		}
+		if err := EnsureJournalLineAccountsBelongToCompany(tx, companyID, companyCheckLines); err != nil {
+			return fmt.Errorf("journal line account validation: %w", err)
+		}
+		creditSum := sumPostingCredits(nonCogsLines)
+		debitSum := sumPostingDebits(nonCogsLines)
+		if !debitSum.Equal(creditSum) {
+			return fmt.Errorf(
+				"journal entry imbalance: debit sum %s â‰  credit sum %s â€” check line totals",
+				debitSum.StringFixed(2), creditSum.StringFixed(2),
+			)
 		}
 
 		// b. AUTHORITATIVE STEP — issue stock for every inventory line. The
@@ -467,6 +502,41 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			},
 		)
 	})
+}
+
+func validateInvoicePostingLines(inv models.Invoice, companyID uint) error {
+	if len(inv.Lines) == 0 {
+		return errors.New("invoice has no line items")
+	}
+	for i, l := range inv.Lines {
+		if l.ProductServiceID == nil {
+			return fmt.Errorf("line %d (%q) has no product/service â€” assign one before posting", i+1, l.Description)
+		}
+		if l.ProductService == nil || l.ProductService.CompanyID != companyID {
+			return fmt.Errorf("line %d (%q): product/service is not valid for this company", i+1, l.Description)
+		}
+		if l.ProductService.RevenueAccountID == 0 {
+			return fmt.Errorf("line %d (%q): product/service has no revenue account configured", i+1, l.Description)
+		}
+		if !l.ProductService.IsActive {
+			return fmt.Errorf("line %d (%q): product/service is inactive", i+1, l.Description)
+		}
+		if l.ProductService.RevenueAccount.CompanyID != companyID {
+			return fmt.Errorf("line %d (%q): revenue account does not belong to this company", i+1, l.Description)
+		}
+		if l.TaxCodeID != nil {
+			if l.TaxCode == nil || l.TaxCode.CompanyID != companyID {
+				return fmt.Errorf("line %d (%q): tax code is not valid for this company", i+1, l.Description)
+			}
+			if !l.TaxCode.IsActive {
+				return fmt.Errorf("line %d (%q): tax code %q is inactive â€” update the line before posting", i+1, l.Description, l.TaxCode.Name)
+			}
+			if l.TaxCode.Scope == models.TaxScopePurchase {
+				return fmt.Errorf("line %d (%q): tax code %q applies to purchases only and cannot be used on a sales invoice", i+1, l.Description, l.TaxCode.Name)
+			}
+		}
+	}
+	return nil
 }
 
 // PostInvoiceAndReturn is a wrapper around PostInvoice that returns the updated invoice.
