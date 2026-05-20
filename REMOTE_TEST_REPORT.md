@@ -1,10 +1,11 @@
 # Balanciz PR Remote Test Report
 
-Date: 2026-05-19  
-Remote host: 64.69.37.115  
-Branch tested: `codex/simpletask-module-integration`  
-Commit tested: `e6d0b24 fix task monthly report route`
-Follow-up local fix validated: PDF attachment test/runtime availability fix on 2026-05-19
+Initial test date: 2026-05-19
+Follow-up remote verification: 2026-05-20 UTC
+Remote host: 64.69.37.115
+Branch tested: `codex/simpletask-module-integration`
+Initial commit tested: `e6d0b24 fix task monthly report route`
+Latest commit verified: `62ec64e fix pdf attachment availability checks`
 
 ## Scope
 
@@ -51,6 +52,11 @@ Passed:
 - `go build -p=1 -o /tmp/balanciz-pr7-test/balanciz-migrate ./cmd/balanciz-migrate`
 - targeted Task/Search tests:
   - `go test -p=1 -timeout=180s ./internal/services ./internal/web -run 'Task|Tasks|task|SmartPicker|GlobalSearch|Search'`
+- follow-up key package tests on `62ec64e`:
+  - `go test -p=1 -timeout=240s ./internal/db ./internal/services ./internal/services/pdf ./internal/web -count=1`
+- follow-up binary rebuild on `62ec64e`:
+  - `go build -p=1 -o /tmp/balanciz-pr7-test/balanciz ./cmd/balanciz`
+  - `go build -p=1 -o /tmp/balanciz-pr7-test/balanciz-migrate ./cmd/balanciz-migrate`
 
 Notes:
 
@@ -59,7 +65,7 @@ Notes:
   - `TestSendInvoiceByEmail_AttachPDFTrue_GeneratorAvailable`
   - `TestSendInvoiceByEmail_SharedFilenameLogic`
 - Follow-up fix added `pdf_templates` migration/seeding to the attachment test fixture and changed `PDFGeneratorAvailable()` to check whether the shared chromedp engine can actually initialise Chrome, not just whether a Chrome executable exists.
-- Follow-up local validation now passes:
+- Follow-up validation now passes locally and on the remote test machine:
   - `go test ./internal/services -run 'TestSendInvoiceByEmail_AttachPDF|TestGetInvoiceSendDefaults_PDFAvailableField|TestPDFGeneratorAvailable_IsSharedTruth' -count=1`
   - `go test ./internal/services -count=1`
   - `go test ./internal/web ./internal/db -count=1`
@@ -70,6 +76,7 @@ Notes:
 Passed:
 
 - `/tmp/balanciz-pr7-test/balanciz-migrate`
+- follow-up idempotent migration run on `62ec64e`
 
 Observed:
 
@@ -99,6 +106,7 @@ Passed:
 - `/healthz`: 200
 - `/readyz`: 200
 - `/version`: 200
+- follow-up `62ec64e` smoke also passed on `:6770`
 - Existing service on `:6768` remained running
 - Temporary PR app was stopped after testing
 
@@ -178,11 +186,10 @@ The PR is usable for an internal test/staging delivery:
 - Task routes and reports smoke successfully
 - Payroll/Employee/Cheque route permissions block a low-permission user
 - global and advanced search respect sensitive entity permissions in the tested scenario
-- the invoice PDF attachment test gap found during remote testing has been fixed locally and the key package test set is now green
+- the invoice PDF attachment test gap found during remote testing has been fixed and re-verified on the remote test machine
 
 Remaining hardening before production:
 
-- rerun the updated commit on the remote host after pushing the follow-up fix
 - optionally reduce startup migration/log verbosity on fresh databases
 - run a browser-level UI pass with screenshots for layout consistency after the backend smoke is clean
 
