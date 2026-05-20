@@ -7,16 +7,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"balanciz/internal/models"
+	"github.com/shopspring/decimal"
 
 	"gorm.io/gorm"
 )
 
 var (
-	ErrJournalEntryAlreadyReversed     = errors.New("journal entry already reversed")
-	ErrJournalEntryLegacyFXUnavailable = errors.New("legacy foreign-currency journal entry reversal is unavailable")
+	ErrJournalEntryAlreadyReversed        = errors.New("journal entry already reversed")
+	ErrJournalEntryLegacyFXUnavailable    = errors.New("legacy foreign-currency journal entry reversal is unavailable")
+	ErrJournalEntrySourceWorkflowRequired = errors.New("journal entry must be reversed through its source document workflow")
 )
+
+type journalReversePolicy func(models.JournalEntry) error
 
 // ReverseJournalEntry creates a new entry with debit/credit swapped for each line.
 // It returns the new reversed journal entry ID. originalID must belong to companyID.
@@ -32,6 +35,42 @@ var (
 //     A concurrent reversal of the same JE blocks at the lock; when it unblocks
 //     it will find reversed_from_id already set and return "already reversed".
 func ReverseJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDate time.Time) (uint, error) {
+	return reverseJournalEntry(tx, companyID, originalID, reverseDate, nil)
+}
+
+// ReverseManualJournalEntry reverses a user-entered journal entry from the
+// Journal Entry UI. System-generated entries must be reversed from their source
+// workflow so document status, balances, inventory, and audit records stay in sync.
+func ReverseManualJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDate time.Time) (uint, error) {
+	return reverseJournalEntry(tx, companyID, originalID, reverseDate, validateManualJournalEntryReversal)
+}
+
+// IsManualJournalEntrySource reports whether a JE is safe to manage directly
+// from the Journal Entry UI. Legacy manual entries have blank source fields;
+// newer callers may explicitly mark them as source_type='manual'.
+func IsManualJournalEntrySource(je models.JournalEntry) bool {
+	sourceType := strings.TrimSpace(string(je.SourceType))
+	if sourceType == "" {
+		return je.SourceID == 0
+	}
+	if sourceType != string(models.LedgerSourceManual) {
+		return false
+	}
+	return je.SourceID == 0 || je.SourceID == je.ID
+}
+
+func validateManualJournalEntryReversal(je models.JournalEntry) error {
+	if IsManualJournalEntrySource(je) {
+		return nil
+	}
+	sourceType := strings.TrimSpace(string(je.SourceType))
+	if sourceType == "" {
+		sourceType = "(blank)"
+	}
+	return fmt.Errorf("%w: source_type=%s source_id=%d", ErrJournalEntrySourceWorkflowRequired, sourceType, je.SourceID)
+}
+
+func reverseJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDate time.Time, policy journalReversePolicy) (uint, error) {
 	if originalID == 0 {
 		return 0, fmt.Errorf("invalid journal entry id")
 	}
@@ -46,6 +85,11 @@ func ReverseJournalEntry(tx *gorm.DB, companyID uint, originalID uint, reverseDa
 	}
 	if original.ReversedFromID != nil {
 		return 0, fmt.Errorf("cannot reverse a reversal entry")
+	}
+	if policy != nil {
+		if err := policy(original); err != nil {
+			return 0, err
+		}
 	}
 	if len(original.Lines) < 2 {
 		return 0, fmt.Errorf("journal entry must have at least 2 lines")

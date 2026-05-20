@@ -143,7 +143,11 @@ func (e *PostingEngine) ReverseDocument(
 	var reversalID uint
 	if err := e.db.Transaction(func(tx *gorm.DB) error {
 		var err error
-		reversalID, err = ReverseJournalEntry(tx, companyID, jeID, reverseDate)
+		if sourceType == models.LedgerSourceManual {
+			reversalID, err = ReverseManualJournalEntry(tx, companyID, jeID, reverseDate)
+		} else {
+			reversalID, err = ReverseJournalEntry(tx, companyID, jeID, reverseDate)
+		}
 		return err
 	}); err != nil {
 		return 0, fmt.Errorf("reverse document: %w", err)

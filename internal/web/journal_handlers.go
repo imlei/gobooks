@@ -67,7 +67,7 @@ func journalCorrectionAllowed(db *gorm.DB, companyID uint, je models.JournalEntr
 	if je.Status != models.JournalEntryStatusPosted {
 		return false, "Only posted manual journal entries can be edited or voided."
 	}
-	if je.SourceType != "" || je.SourceID != 0 {
+	if !services.IsManualJournalEntrySource(je) {
 		return false, "This journal entry belongs to another document. Edit or void the source document instead."
 	}
 	var reversalCount int64
@@ -449,7 +449,7 @@ func (s *Server) handleJournalEntryPost(c *fiber.Ctx) error {
 			return err
 		}
 		if replaceJournalEntryID != 0 {
-			newID, err := services.ReverseJournalEntry(tx, companyID, replaceJournalEntryID, entryDate)
+			newID, err := services.ReverseManualJournalEntry(tx, companyID, replaceJournalEntryID, entryDate)
 			if err != nil {
 				return err
 			}
@@ -707,6 +707,8 @@ func (s *Server) handleJournalEntryList(c *fiber.Ctx) error {
 		formError = "This journal entry is already reversed."
 	case "legacy-fx-unavailable":
 		formError = services.LegacyForeignJournalEntryReversalBlockedMessage
+	case "source-workflow-required":
+		formError = "This journal entry belongs to another document. Edit or void the source document instead."
 	case "reverse-failed":
 		formError = "Could not reverse this journal entry."
 	}
@@ -798,7 +800,7 @@ func (s *Server) handleJournalEntryList(c *fiber.Ctx) error {
 		} else if reversedFromSet[e.ID] {
 			reverseHint = "Already reversed."
 		}
-		canCorrect := canReverse && e.Status == models.JournalEntryStatusPosted && e.SourceType == "" && e.SourceID == 0
+		canCorrect := canReverse && e.Status == models.JournalEntryStatusPosted && services.IsManualJournalEntrySource(e)
 		if canReverse && !canCorrect && reverseHint == "" {
 			reverseHint = "This entry belongs to another document. Edit or void the source document instead."
 		}
@@ -895,7 +897,7 @@ func (s *Server) handleJournalEntryReverseResult(c *fiber.Ctx, resultQuery strin
 
 	var reversedID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
-		newID, err := services.ReverseJournalEntry(tx, companyID, uint(idU64), reverseDate)
+		newID, err := services.ReverseManualJournalEntry(tx, companyID, uint(idU64), reverseDate)
 		if err != nil {
 			return err
 		}
@@ -907,6 +909,8 @@ func (s *Server) handleJournalEntryReverseResult(c *fiber.Ctx, resultQuery strin
 			return c.Redirect("/journal-entry/list?error=already-reversed", fiber.StatusSeeOther)
 		case errors.Is(err, services.ErrJournalEntryLegacyFXUnavailable):
 			return c.Redirect("/journal-entry/list?error=legacy-fx-unavailable", fiber.StatusSeeOther)
+		case errors.Is(err, services.ErrJournalEntrySourceWorkflowRequired):
+			return c.Redirect("/journal-entry/list?error=source-workflow-required", fiber.StatusSeeOther)
 		default:
 			return c.Redirect("/journal-entry/list?error=reverse-failed", fiber.StatusSeeOther)
 		}

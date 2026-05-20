@@ -734,6 +734,55 @@ func TestReverseJournalEntry_CreatesReversingJE(t *testing.T) {
 
 // ── Company consistency ───────────────────────────────────────────────────────
 
+func TestReverseManualJournalEntry_BlocksSourceDocumentEntry(t *testing.T) {
+	db := testPostingDB(t)
+	cid := seedInvoicePostCompany(t, db, "Manual Reverse Guard Co")
+	acct1 := seedInvoicePostAccount(t, db, cid, "1100", models.RootAsset, models.DetailAccountsReceivable)
+	acct2 := seedInvoicePostAccount(t, db, cid, "4000", models.RootRevenue, models.DetailServiceRevenue)
+
+	je := models.JournalEntry{
+		CompanyID:  cid,
+		EntryDate:  time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+		JournalNo:  "INV-SYSTEM-001",
+		Status:     models.JournalEntryStatusPosted,
+		SourceType: models.LedgerSourceInvoice,
+		SourceID:   99,
+	}
+	if err := db.Create(&je).Error; err != nil {
+		t.Fatal(err)
+	}
+	lines := []models.JournalLine{
+		{CompanyID: cid, JournalEntryID: je.ID, AccountID: acct1, Debit: d("1000.00"), Credit: decimal.Zero},
+		{CompanyID: cid, JournalEntryID: je.ID, AccountID: acct2, Debit: decimal.Zero, Credit: d("1000.00")},
+	}
+	if err := db.Create(&lines).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		_, err := ReverseManualJournalEntry(tx, cid, je.ID, time.Date(2026, 3, 29, 0, 0, 0, 0, time.UTC))
+		return err
+	})
+	if !errors.Is(err, ErrJournalEntrySourceWorkflowRequired) {
+		t.Fatalf("expected source workflow guard, got %v", err)
+	}
+
+	var orig models.JournalEntry
+	if err := db.First(&orig, je.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if orig.Status != models.JournalEntryStatusPosted {
+		t.Fatalf("source JE status = %q, want posted", orig.Status)
+	}
+	var reversals int64
+	db.Model(&models.JournalEntry{}).
+		Where("company_id = ? AND reversed_from_id = ?", cid, je.ID).
+		Count(&reversals)
+	if reversals != 0 {
+		t.Fatalf("unexpected manual reversal count = %d", reversals)
+	}
+}
+
 func TestPostInvoice_CrossCompanyTaxCodeRejected(t *testing.T) {
 	db := testPostingDB(t)
 

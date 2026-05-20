@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -787,6 +788,54 @@ func TestJournalEntryReverse_CopiesSnapshotExactly(t *testing.T) {
 	}
 }
 
+func TestJournalEntryReverse_BlocksSourceDocumentEntry(t *testing.T) {
+	db := testJournalRouteDB(t)
+	app := testRouteApp(t, db)
+	companyID, token := seedJournalCompanyContext(t, db)
+	cashID := seedJournalAccount(t, db, companyID, "1000", "Cash", models.RootAsset, models.DetailBank)
+	revenueID := seedJournalAccount(t, db, companyID, "4000", "Revenue", models.RootRevenue, models.DetailServiceRevenue)
+
+	je := models.JournalEntry{
+		CompanyID:               companyID,
+		EntryDate:               time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC),
+		JournalNo:               "INV-SYSTEM-001",
+		Status:                  models.JournalEntryStatusPosted,
+		SourceType:              models.LedgerSourceInvoice,
+		SourceID:                99,
+		TransactionCurrencyCode: "CAD",
+		ExchangeRate:            decimal.NewFromInt(1),
+		ExchangeRateDate:        time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC),
+		ExchangeRateSource:      services.JournalEntryExchangeRateSourceIdentity,
+	}
+	if err := db.Create(&je).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create([]models.JournalLine{
+		{CompanyID: companyID, JournalEntryID: je.ID, AccountID: cashID, TxDebit: decimal.RequireFromString("100.00"), Debit: decimal.RequireFromString("100.00")},
+		{CompanyID: companyID, JournalEntryID: je.ID, AccountID: revenueID, TxCredit: decimal.RequireFromString("100.00"), Credit: decimal.RequireFromString("100.00")},
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	resp := performJournalFormRequest(t, app, "/journal-entry/"+decimal.NewFromInt(int64(je.ID)).String()+"/reverse", url.Values{
+		"reverse_date": {"2026-04-11"},
+	}, token)
+	if resp.StatusCode != fiber.StatusSeeOther {
+		t.Fatalf("expected reverse redirect, got %d", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); got != "/journal-entry/list?error=source-workflow-required" {
+		t.Fatalf("redirect location = %q, want source workflow error", got)
+	}
+
+	var reversals int64
+	db.Model(&models.JournalEntry{}).
+		Where("company_id = ? AND reversed_from_id = ?", companyID, je.ID).
+		Count(&reversals)
+	if reversals != 0 {
+		t.Fatalf("unexpected reversal count = %d", reversals)
+	}
+}
+
 func TestJournalEntryDetail_LegacyBaseJournalEntryStillReadsAsIdentity(t *testing.T) {
 	db := testJournalRouteDB(t)
 	app := testRouteApp(t, db)
@@ -1063,7 +1112,7 @@ func TestJournalEntryList_LegacyForeignJournalEntriesRenderHonestFXSummaries(t *
 	}
 }
 
-func TestJournalEntryReverse_LegacyForeignJournalEntryUsesResolvedSnapshotAndHonestUnavailableTxAmounts(t *testing.T) {
+func TestReverseJournalEntry_LegacyForeignJournalEntryUsesResolvedSnapshotAndHonestUnavailableTxAmounts(t *testing.T) {
 	db := testJournalRouteDB(t)
 	app := testRouteApp(t, db)
 	companyID, token := seedJournalCompanyContext(t, db)
@@ -1110,18 +1159,17 @@ func TestJournalEntryReverse_LegacyForeignJournalEntryUsesResolvedSnapshotAndHon
 		t.Fatal(err)
 	}
 
-	resp := performJournalFormRequest(t, app, "/journal-entry/"+decimal.NewFromInt(int64(legacyJE.ID)).String()+"/reverse", url.Values{
-		"reverse_date": {"2026-04-11"},
-	}, token)
-	if resp.StatusCode != fiber.StatusSeeOther {
-		t.Fatalf("expected reverse redirect, got %d", resp.StatusCode)
-	}
-	if !strings.Contains(resp.Header.Get("Location"), "reversed=1") {
-		t.Fatalf("expected successful reversal redirect, got %q", resp.Header.Get("Location"))
+	var reversalID uint
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		reversalID, err = services.ReverseJournalEntry(tx, companyID, legacyJE.ID, time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC))
+		return err
+	}); err != nil {
+		t.Fatalf("expected low-level source workflow reversal to succeed, got %v", err)
 	}
 
 	var reversal models.JournalEntry
-	if err := db.Preload("Lines").Where("reversed_from_id = ?", legacyJE.ID).First(&reversal).Error; err != nil {
+	if err := db.Preload("Lines").First(&reversal, reversalID).Error; err != nil {
 		t.Fatalf("load reversal JE: %v", err)
 	}
 	if reversal.TransactionCurrencyCode != "USD" {
@@ -1161,7 +1209,7 @@ func TestJournalEntryReverse_LegacyForeignJournalEntryUsesResolvedSnapshotAndHon
 	}
 }
 
-func TestJournalEntryReverse_LegacyForeignJournalEntryWithoutResolvedSnapshotBlocksWithStableMessage(t *testing.T) {
+func TestReverseJournalEntry_LegacyForeignJournalEntryWithoutResolvedSnapshotBlocksWithStableMessage(t *testing.T) {
 	db := testJournalRouteDB(t)
 	app := testRouteApp(t, db)
 	companyID, token := seedJournalCompanyContext(t, db)
@@ -1191,15 +1239,12 @@ func TestJournalEntryReverse_LegacyForeignJournalEntryWithoutResolvedSnapshotBlo
 		t.Fatal(err)
 	}
 
-	resp := performJournalFormRequest(t, app, "/journal-entry/"+decimal.NewFromInt(int64(legacyJE.ID)).String()+"/reverse", url.Values{
-		"reverse_date": {"2026-04-11"},
-	}, token)
-	if resp.StatusCode != fiber.StatusSeeOther {
-		t.Fatalf("expected reverse redirect, got %d", resp.StatusCode)
-	}
-	location := resp.Header.Get("Location")
-	if !strings.Contains(location, "error=legacy-fx-unavailable") {
-		t.Fatalf("expected stable legacy FX redirect, got %q", location)
+	err := db.Transaction(func(tx *gorm.DB) error {
+		_, err := services.ReverseJournalEntry(tx, companyID, legacyJE.ID, time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC))
+		return err
+	})
+	if !errors.Is(err, services.ErrJournalEntryLegacyFXUnavailable) {
+		t.Fatalf("expected stable legacy FX error, got %v", err)
 	}
 	var reversalCount int64
 	if err := db.Model(&models.JournalEntry{}).Where("reversed_from_id = ?", legacyJE.ID).Count(&reversalCount).Error; err != nil {
