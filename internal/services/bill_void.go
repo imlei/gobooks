@@ -75,13 +75,19 @@ func VoidBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		// a. Lock bill row.
 		var locked models.Bill
 		if err := applyLockForUpdate(
-			tx.Select("id", "company_id", "status").
+			tx.Select("id", "company_id", "status", "journal_entry_id").
 				Where("id = ? AND company_id = ?", bill.ID, companyID),
 		).First(&locked).Error; err != nil {
 			return fmt.Errorf("lock bill: %w", err)
 		}
 		if locked.Status != models.BillStatusPosted && locked.Status != models.BillStatusPartiallyPaid {
 			return ErrBillNotVoidable
+		}
+		if locked.JournalEntryID == nil || *locked.JournalEntryID != origJE.ID {
+			return errors.New("bill journal entry changed while voiding - reload and try again")
+		}
+		if err := requireBillVoidHasNoPaymentDependencies(tx, companyID, billID); err != nil {
+			return err
 		}
 
 		// b. Reversal JE header. SourceID is the original JE ID, not the
@@ -229,4 +235,18 @@ func VoidBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 			},
 		)
 	})
+}
+
+func requireBillVoidHasNoPaymentDependencies(db *gorm.DB, companyID, billID uint) error {
+	var allocCount int64
+	if err := db.Model(&models.SettlementAllocation{}).
+		Where("document_type = ? AND document_id = ? AND company_id = ?",
+			models.SettlementDocBill, billID, companyID).
+		Count(&allocCount).Error; err != nil {
+		return fmt.Errorf("check settlement allocations: %w", err)
+	}
+	if allocCount > 0 {
+		return errors.New("cannot void bill: it has settlement allocations - remove the payment allocation first")
+	}
+	return nil
 }

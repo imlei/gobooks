@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"balanciz/internal/models"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
-	"balanciz/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -246,6 +246,19 @@ func DeleteInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID 
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
+		var locked models.Invoice
+		if err := applyLockForUpdate(
+			tx.Where("id = ? AND company_id = ?", invoiceID, companyID),
+		).First(&locked).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("invoice %d not found in company %d", invoiceID, companyID)
+			}
+			return fmt.Errorf("lock invoice for delete: %w", err)
+		}
+		if err := ValidateInvoiceDeletable(locked); err != nil {
+			return err
+		}
+
 		if err := releaseTaskInvoiceSourcesForInvoice(tx, companyID, invoiceID, taskInvoiceReleaseClearReferences); err != nil {
 			return fmt.Errorf("release task invoice sources: %w", err)
 		}

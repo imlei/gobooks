@@ -106,13 +106,19 @@ func VoidInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		// a. Lock invoice row and re-validate status inside the lock.
 		var locked models.Invoice
 		if err := applyLockForUpdate(
-			tx.Select("id", "company_id", "status").
+			tx.Select("id", "company_id", "status", "journal_entry_id").
 				Where("id = ? AND company_id = ?", inv.ID, companyID),
 		).First(&locked).Error; err != nil {
 			return fmt.Errorf("lock invoice: %w", err)
 		}
 		if locked.Status == models.InvoiceStatusDraft || locked.Status == models.InvoiceStatusVoided {
 			return ErrInvoiceNotVoidable
+		}
+		if locked.JournalEntryID == nil || *locked.JournalEntryID != origJE.ID {
+			return errors.New("invoice journal entry changed while voiding - reload and try again")
+		}
+		if err := requireInvoiceVoidHasNoPaymentDependencies(tx, companyID, invoiceID); err != nil {
+			return err
 		}
 
 		// b. Reversal JE header — status=posted, linked back to the original.
@@ -280,4 +286,28 @@ func VoidInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 			},
 		)
 	})
+}
+
+func requireInvoiceVoidHasNoPaymentDependencies(db *gorm.DB, companyID, invoiceID uint) error {
+	var appliedTxnCount int64
+	if err := db.Model(&models.PaymentTransaction{}).
+		Where("applied_invoice_id = ? AND company_id = ?", invoiceID, companyID).
+		Count(&appliedTxnCount).Error; err != nil {
+		return fmt.Errorf("check applied payment transactions: %w", err)
+	}
+	if appliedTxnCount > 0 {
+		return errors.New("cannot void invoice: it has applied payment transactions - unapply them first")
+	}
+
+	var allocCount int64
+	if err := db.Model(&models.SettlementAllocation{}).
+		Where("document_type = ? AND document_id = ? AND company_id = ?",
+			models.SettlementDocInvoice, invoiceID, companyID).
+		Count(&allocCount).Error; err != nil {
+		return fmt.Errorf("check settlement allocations: %w", err)
+	}
+	if allocCount > 0 {
+		return errors.New("cannot void invoice: it has settlement allocations - remove the payment allocation first")
+	}
+	return nil
 }
