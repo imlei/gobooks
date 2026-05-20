@@ -65,15 +65,20 @@ func salesOverviewPointTitle(point services.SalesOverviewIncomePoint, currency s
 	return point.Label + ": " + salesOverviewMoney(point.Amount, currency)
 }
 
-func salesOverviewWorkflowNodes() []salesOverviewWorkflowNode {
-	return []salesOverviewWorkflowNode{
+func salesOverviewWorkflowNodes(showTasks bool) []salesOverviewWorkflowNode {
+	nodes := []salesOverviewWorkflowNode{
 		{Key: "customers", Label: "Customers", Href: "/customers", X: 11, Y: 16},
 		{Key: "quotes", Label: "Quotes", Href: "/quotes", X: 39, Y: 16},
 		{Key: "orders", Label: "Sales Orders", Href: "/sales-orders", X: 11, Y: 43},
-		{Key: "tasks", Label: "Billable Work", Href: "/tasks", X: 11, Y: 80},
 		{Key: "invoices", Label: "Invoices", Href: "/invoices", X: 50, Y: 80},
 		{Key: "receipts", Label: "Receipts", Href: "/receipts", X: 78, Y: 80},
 	}
+	if showTasks {
+		nodes = append(nodes[:3], append([]salesOverviewWorkflowNode{
+			{Key: "tasks", Label: "Billable Work", Href: "/tasks", X: 11, Y: 80},
+		}, nodes[3:]...)...)
+	}
+	return nodes
 }
 
 type salesOverviewWorkflowNode struct {

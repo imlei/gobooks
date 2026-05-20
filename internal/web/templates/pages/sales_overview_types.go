@@ -7,4 +7,5 @@ type SalesOverviewVM struct {
 	HasCompany bool
 	FormError  string
 	Overview   services.SalesOverview
+	ShowTasks  bool
 }

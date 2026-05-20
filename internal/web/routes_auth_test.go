@@ -199,6 +199,21 @@ func seedMembership(t *testing.T, db *gorm.DB, userID uuid.UUID, companyID uint)
 	ensureTestFeature(t, db, companyID, models.FeatureKeyTask)
 }
 
+func seedMembershipWithRole(t *testing.T, db *gorm.DB, userID uuid.UUID, companyID uint, role models.CompanyRole) {
+	t.Helper()
+	membership := models.CompanyMembership{
+		ID:        uuid.New(),
+		UserID:    userID,
+		CompanyID: companyID,
+		Role:      role,
+		IsActive:  true,
+	}
+	if err := db.Create(&membership).Error; err != nil {
+		t.Fatal(err)
+	}
+	ensureTestFeature(t, db, companyID, models.FeatureKeyTask)
+}
+
 func ensureTestFeature(t *testing.T, db *gorm.DB, companyID uint, feature models.FeatureKey) {
 	t.Helper()
 
@@ -343,6 +358,35 @@ func TestTaskRoutesRequireTaskFeature(t *testing.T) {
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected disabled task module to return %d, got %d", http.StatusNotFound, resp.StatusCode)
+	}
+}
+
+func TestPermissionedDashboardLinksMatchBackendGuards(t *testing.T) {
+	tests := []struct {
+		name       string
+		role       models.CompanyRole
+		path       string
+		wantStatus int
+	}{
+		{name: "ap cannot open sales overview", role: models.CompanyRoleAP, path: "/sales-overview", wantStatus: http.StatusForbidden},
+		{name: "ap can open ap aging", role: models.CompanyRoleAP, path: "/ap-aging", wantStatus: http.StatusOK},
+		{name: "viewer cannot open warehouses", role: models.CompanyRoleViewer, path: "/warehouses", wantStatus: http.StatusForbidden},
+		{name: "viewer can open template settings read page", role: models.CompanyRoleViewer, path: "/settings/invoice-templates/manage", wantStatus: http.StatusOK},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testRouteDB(t)
+			companyID := seedCompany(t, db, "Permission Guard Co")
+			user, rawToken := seedUserSession(t, db, &companyID)
+			seedMembershipWithRole(t, db, user.ID, companyID, tc.role)
+			app := testRouteApp(t, db)
+
+			resp := performRequest(t, app, tc.path, rawToken)
+			if resp.StatusCode != tc.wantStatus {
+				t.Fatalf("%s: expected %d, got %d", tc.path, tc.wantStatus, resp.StatusCode)
+			}
+		})
 	}
 }
 

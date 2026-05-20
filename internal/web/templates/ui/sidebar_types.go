@@ -29,12 +29,26 @@ type SidebarData struct {
 	NumberFormat string
 	// Module navigation is pre-filtered by the web layer using both company
 	// feature flags and the current member's effective permissions.
+	ShowCreateNew      bool
+	ShowSales          bool
+	ShowAP             bool
+	ShowInventory      bool
+	ShowJournal        bool
+	ShowReconciliation bool
+	ShowReports        bool
+	ShowAccounts       bool
+	ShowSettings       bool
 	ShowEmployees      bool
 	ShowTasks          bool
 	ShowPayroll        bool
 	ShowPayrollDetails bool
 	ShowPayrollReports bool
 	ShowCheques        bool
+	CanCreateSales     bool
+	CanCreateAP        bool
+	CanCreateJournal   bool
+	CanCreateWarehouse bool
+	CanManageCatalog   bool
 	CanCreateEmployee  bool
 	CanCreateTask      bool
 	CanCreatePayroll   bool

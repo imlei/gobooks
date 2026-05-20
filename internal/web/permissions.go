@@ -3,6 +3,8 @@ package web
 
 import "github.com/gofiber/fiber/v2"
 
+const PermCompanyAccess = "company_access"
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Action 常量
 //
@@ -134,6 +136,7 @@ const (
 
 var rolePermissions = map[string][]string{
 	"owner": {
+		PermCompanyAccess,
 		PermARAccess, PermAPAccess, PermApproveTransactions,
 		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
 		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
@@ -142,6 +145,7 @@ var rolePermissions = map[string][]string{
 		PermChequeView, PermChequePrint, PermChequeManageBank,
 	},
 	"admin": {
+		PermCompanyAccess,
 		PermARAccess, PermAPAccess, PermApproveTransactions,
 		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
 		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
@@ -150,19 +154,23 @@ var rolePermissions = map[string][]string{
 		PermChequeView, PermChequePrint, PermChequeManageBank,
 	},
 	"accountant": {
+		PermCompanyAccess,
 		PermARAccess, PermAPAccess, PermApproveTransactions, PermInventoryAccess,
 		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermViewReports, PermViewAuditLog,
 	},
 	"bookkeeper": {
+		PermCompanyAccess,
 		PermARAccess, PermAPAccess, PermInventoryAccess,
 		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermViewReports, PermViewAuditLog,
 	},
 	"ap": {
+		PermCompanyAccess,
 		PermAPAccess, PermInventoryAccess, PermTaskAccess,
 	},
 	"viewer": {
+		PermCompanyAccess,
 		PermViewReports, PermTaskAccess,
 		// viewer 无任何写权限；RequireMembership 已对非 GET 请求一律返回 403
 	},
@@ -202,6 +210,9 @@ var actionPermissions = map[string]string{
 	ActionJournalView:      PermViewReports,
 	ActionAccountView:      PermViewReports,
 	ActionInventoryView:    PermInventoryAccess,
+	ActionWarehouseView:    PermInventoryAccess,
+	ActionSettingsView:     PermCompanyAccess,
+	ActionMemberView:       PermCompanyAccess,
 
 	// 发票写操作 ────────────────────────────────
 	ActionInvoiceCreate:  PermARAccess,            // bookkeeper 及以上

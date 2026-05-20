@@ -255,16 +255,32 @@ func (s *Server) withSidebarModuleAccess(c *fiber.Ctx, sd ui.SidebarData, compan
 	payrollEnabled := s.sidebarFeatureEnabled(companyID, models.FeatureKeyPayroll)
 	chequeEnabled := s.sidebarFeatureEnabled(companyID, models.FeatureKeyCheque)
 
+	sd.ShowSales = CanFromCtx(c, ActionInvoiceView)
+	sd.ShowAP = CanFromCtx(c, ActionBillView)
+	sd.ShowInventory = CanFromCtx(c, ActionInventoryView)
+	sd.ShowJournal = CanFromCtx(c, ActionJournalView)
+	sd.ShowReconciliation = CanFromCtx(c, ActionJournalCreate)
+	sd.ShowReports = CanFromCtx(c, ActionReportView)
+	sd.ShowAccounts = CanFromCtx(c, ActionAccountView)
+	sd.ShowSettings = true
 	sd.ShowTasks = taskEnabled && CanFromCtx(c, ActionTaskView)
 	sd.ShowEmployees = employeeEnabled && CanFromCtx(c, ActionEmployeeView)
 	sd.ShowPayroll = payrollEnabled && CanFromCtx(c, ActionPayrollView)
 	sd.ShowPayrollDetails = payrollEnabled && CanFromCtx(c, ActionPayrollViewDetails)
 	sd.ShowPayrollReports = payrollEnabled && CanFromCtx(c, ActionReportView) && CanFromCtx(c, ActionPayrollViewDetails)
 	sd.ShowCheques = chequeEnabled && CanFromCtx(c, ActionChequeView)
+	sd.CanCreateSales = CanFromCtx(c, ActionInvoiceCreate)
+	sd.CanCreateAP = CanFromCtx(c, ActionBillCreate)
+	sd.CanCreateJournal = CanFromCtx(c, ActionJournalCreate)
+	sd.CanCreateWarehouse = CanFromCtx(c, ActionWarehouseCreate)
+	sd.CanManageCatalog = CanFromCtx(c, ActionSettingsUpdate)
 	sd.CanCreateTask = taskEnabled && CanFromCtx(c, ActionTaskCreate)
 	sd.CanCreateEmployee = employeeEnabled && CanFromCtx(c, ActionEmployeeManage)
 	sd.CanCreatePayroll = payrollEnabled && CanFromCtx(c, ActionPayrollRun)
 	sd.CanCreateCheque = chequeEnabled && CanFromCtx(c, ActionChequePrint)
+	sd.ShowCreateNew = sd.CanCreateSales || sd.CanCreateAP || sd.CanCreateJournal ||
+		sd.CanCreateWarehouse || sd.CanManageCatalog || sd.CanCreateTask ||
+		sd.CanCreateEmployee || sd.CanCreatePayroll || sd.CanCreateCheque
 	return sd
 }
 

@@ -111,7 +111,7 @@ func bodySalesOverview(vm SalesOverviewVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = salesOverviewWorkflow().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = salesOverviewWorkflow(vm).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -160,7 +160,7 @@ func bodySalesOverview(vm SalesOverviewVM) templ.Component {
 	})
 }
 
-func salesOverviewWorkflow() templ.Component {
+func salesOverviewWorkflow(vm SalesOverviewVM) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -185,7 +185,7 @@ func salesOverviewWorkflow() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, node := range salesOverviewWorkflowNodes() {
+		for _, node := range salesOverviewWorkflowNodes(vm.ShowTasks) {
 			var templ_7745c5c3_Var7 = []any{salesOverviewNodeClass(node)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
 			if templ_7745c5c3_Err != nil {

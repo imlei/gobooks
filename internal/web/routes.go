@@ -365,7 +365,7 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	// Unified Sales Transactions page — merges invoices / quotes / SOs /
 	// receipts / credit notes / returns into one chronological feed with
 	// QuickBooks-style KPI strip.
-	app.Get("/sales-overview", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesOverview)
+	app.Get("/sales-overview", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionInvoiceView), s.handleSalesOverview)
 	app.Get("/expenses-overview", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillView), s.handleExpenseOverview)
 	app.Get("/sales-transactions", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleSalesTransactions)
 
@@ -456,14 +456,14 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Post("/vendor-refunds/:id/reverse", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleVendorRefundReverse)
 
 	// AP Phase A: AP Aging report
-	app.Get("/ap-aging", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleAPAging)
+	app.Get("/ap-aging", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionBillView), s.handleAPAging)
 
 	// Phase B: Warehouses — /new must be before /:id to avoid param collision
-	app.Get("/warehouses", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleWarehouseList)
+	app.Get("/warehouses", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionWarehouseView), s.handleWarehouseList)
 	app.Get("/warehouses/new", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionWarehouseCreate), s.handleWarehouseNew)
 	app.Post("/warehouses/save", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionWarehouseCreate), s.handleWarehouseCreate)
-	app.Get("/warehouses/:id/stock", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleWarehouseStock)
-	app.Get("/warehouses/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleWarehouseDetail)
+	app.Get("/warehouses/:id/stock", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionWarehouseView), s.handleWarehouseStock)
+	app.Get("/warehouses/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionWarehouseView), s.handleWarehouseDetail)
 	app.Post("/warehouses/:id/save", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionWarehouseUpdate), s.handleWarehouseUpdate)
 
 	// Phase C: Inventory — stock report + warehouse transfers
@@ -515,8 +515,9 @@ func (s *Server) registerRoutes(app *fiber.App) {
 	app.Get("/settings/payment-gateways/investigation", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvestigationWorkspace)
 
 	// Invoice templates (settings)
-	app.Get("/settings/invoice-templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoiceTemplatesList)
-	app.Get("/settings/invoice-templates/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.handleInvoiceTemplateGet)
+	app.Get("/settings/invoice-templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsView), s.handleInvoiceTemplatesList)
+	app.Get("/settings/invoice-templates/manage", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsView), s.handleInvoiceTemplatesSettings)
+	app.Get("/settings/invoice-templates/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsView), s.handleInvoiceTemplateGet)
 	app.Post("/settings/invoice-templates", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleInvoiceTemplateCreate)
 	app.Post("/settings/invoice-templates/:id", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleInvoiceTemplateUpdate)
 	app.Post("/settings/invoice-templates/:id/delete", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsUpdate), s.handleInvoiceTemplateDelete)
@@ -576,7 +577,6 @@ func (s *Server) registerRoutes(app *fiber.App) {
 
 	// ── 票据模板管理 ──────────────────────────────────────────────────────────────
 	// 模板管理界面
-	app.Get("/settings/invoice-templates/manage", s.LoadSession(), s.RequireAuth(), s.ResolveActiveCompany(), s.RequireMembership(), s.RequirePermission(ActionSettingsView), s.handleInvoiceTemplatesSettings)
 
 	// ── 产品与服务目录 ────────────────────────────────────────────────────────────
 	// 属于公司主数据，变更需要 manage_settings（owner / admin）

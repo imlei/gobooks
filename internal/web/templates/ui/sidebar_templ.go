@@ -65,122 +65,148 @@ func sidebarShell(vm SidebarVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if vm.HasCompany {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"relative\" x-data=\"{ open: false }\" @click.outside=\"open = false\"><button type=\"button\" @click=\"open = !open\" class=\"flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4 shrink-0\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4v16m8-8H4\"></path></svg> <span>Create new</span></button><div x-cloak x-show=\"open\" x-transition:enter=\"transition ease-out duration-100\" x-transition:enter-start=\"opacity-0 scale-95\" x-transition:enter-end=\"opacity-100 scale-100\" x-transition:leave=\"transition ease-in duration-75\" x-transition:leave-start=\"opacity-100 scale-100\" x-transition:leave-end=\"opacity-0 scale-95\" class=\"absolute left-0 top-full z-50 mt-1 w-[640px] rounded-md border border-border bg-surface p-4 shadow-lg\"><div class=\"grid grid-cols-3 gap-x-4 gap-y-1\"><div><h3 class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Customers</h3>")
+		if vm.HasCompany && sd.ShowCreateNew {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"relative\" x-data=\"{ open: false }\" @click.outside=\"open = false\"><button type=\"button\" @click=\"open = !open\" class=\"flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-body font-semibold text-onPrimary hover:bg-primary-hover\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-4 w-4 shrink-0\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4v16m8-8H4\"></path></svg> <span>Create new</span></button><div x-cloak x-show=\"open\" x-transition:enter=\"transition ease-out duration-100\" x-transition:enter-start=\"opacity-0 scale-95\" x-transition:enter-end=\"opacity-100 scale-100\" x-transition:leave=\"transition ease-in duration-75\" x-transition:leave-start=\"opacity-100 scale-100\" x-transition:leave-end=\"opacity-0 scale-95\" class=\"absolute left-0 top-full z-50 mt-1 w-[640px] rounded-md border border-border bg-surface p-4 shadow-lg\"><div class=\"grid grid-cols-3 gap-x-4 gap-y-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = megaMenuItem("/invoices/new", "Invoice").Render(ctx, templ_7745c5c3_Buffer)
+			if sd.CanCreateSales {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div><h3 class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Customers</h3>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/invoices/new", "Invoice").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/quotes/new", "Quote").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/sales-orders/new", "Sales Order").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/deposits/new", "Customer Deposit").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/receipts/new", "Customer Receipt").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/banking/receive-payment", "Receive Payment").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/credit-notes/new", "Credit Note").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/ar-return-receipts/new", "Return Receipt").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/returns/new", "AR Return").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/refunds/new", "AR Refund").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/write-offs/new", "AR Write-Off").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/customers/new", "Add Customer").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if sd.CanCreateAP {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div><h3 class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Suppliers</h3>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/bills/new", "Bill").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/purchase-orders/new", "Purchase Order").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/expenses/new", "Expense").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/vendor-prepayments/new", "Vendor Prepayment").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/banking/pay-bills", "Pay Bills").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/vendor-credit-notes/new", "Vendor Credit Note").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/vendor-return-shipments/new", "Return to Vendor").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/vendor-returns/new", "Vendor Return").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/vendor-refunds/new", "Vendor Refund").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/vendors/new", "Add Vendor").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div><h3 class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Other</h3>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = megaMenuItem("/quotes/new", "Quote").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if sd.CanCreateJournal {
+				templ_7745c5c3_Err = megaMenuItem("/journal-entry", "Journal Entry").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			templ_7745c5c3_Err = megaMenuItem("/sales-orders/new", "Sales Order").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if sd.CanCreateWarehouse {
+				templ_7745c5c3_Err = megaMenuItem("/inventory/transfers/new", "Warehouse Transfer").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, " ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = megaMenuItem("/warehouses/new", "Add Warehouse").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			templ_7745c5c3_Err = megaMenuItem("/deposits/new", "Customer Deposit").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/receipts/new", "Customer Receipt").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/banking/receive-payment", "Receive Payment").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/credit-notes/new", "Credit Note").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/ar-return-receipts/new", "Return Receipt").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/returns/new", "AR Return").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/refunds/new", "AR Refund").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/write-offs/new", "AR Write-Off").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/customers/new", "Add Customer").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><div><h3 class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Suppliers</h3>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/bills/new", "Bill").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/purchase-orders/new", "Purchase Order").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/expenses/new", "Expense").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/vendor-prepayments/new", "Vendor Prepayment").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/banking/pay-bills", "Pay Bills").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/vendor-credit-notes/new", "Vendor Credit Note").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/vendor-return-shipments/new", "Return to Vendor").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/vendor-returns/new", "Vendor Return").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/vendor-refunds/new", "Vendor Refund").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/vendors/new", "Add Vendor").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><div><h3 class=\"mb-2 text-small font-semibold uppercase tracking-wider text-text-muted\">Other</h3>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/journal-entry", "Journal Entry").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/inventory/transfers/new", "Warehouse Transfer").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/warehouses/new", "Add Warehouse").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = megaMenuItem("/products-services?new=1", "Add Product/Service").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if sd.CanManageCatalog {
+				templ_7745c5c3_Err = megaMenuItem("/products-services?new=1", "Add Product/Service").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 			if sd.CanCreateTask {
 				templ_7745c5c3_Err = megaMenuItem("/tasks/new", "Task").Render(ctx, templ_7745c5c3_Buffer)
@@ -206,25 +232,25 @@ func sidebarShell(vm SidebarVM) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"core\" data-contains-active=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"core\" data-contains-active=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "core"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 94, Col: 140}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 102, Col: 140}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Core</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Core</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -233,13 +259,15 @@ func sidebarShell(vm SidebarVM) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = navItem("/journal-entry/list", "Journal Entries", "journal", vm.Active == "Journal Entry").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if sd.ShowJournal {
+				templ_7745c5c3_Err = navItem("/journal-entry/list", "Journal Entries", "journal", vm.Active == "Journal Entry").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 		} else {
 			templ_7745c5c3_Err = navItem("/setup", "Setup", "setup", vm.Active == "Setup").Render(ctx, templ_7745c5c3_Buffer)
@@ -247,71 +275,81 @@ func sidebarShell(vm SidebarVM) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if vm.HasCompany {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " <div class=\"sidebar-collapsible\" data-sidebar-section=\"sales\" data-contains-active=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "sales"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 117, Col: 143}
+			if sd.ShowSales {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"sales\" data-contains-active=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var4 string
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "sales"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 128, Col: 144}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Sales & Get Paid</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/sales-overview", "Overview", "dashboard", vm.Active == "Sales Overview").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/customers", "Customers", "customers", vm.Active == "Customers").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/sales-transactions", "Sales Transactions", "invoice", vm.Active == "Sales Transactions").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/quotes", "Quotes", "invoice", vm.Active == "Quotes").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/sales-orders", "Sales Orders", "invoice", vm.Active == "Sales Orders").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/banking/receive-payment", "Receive Payment", "receive", vm.Active == "Receive Payment").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</div></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Sales & Get Paid</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/sales-overview", "Overview", "dashboard", vm.Active == "Sales Overview").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/customers", "Customers", "customers", vm.Active == "Customers").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/sales-transactions", "Sales Transactions", "invoice", vm.Active == "Sales Transactions").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/quotes", "Quotes", "invoice", vm.Active == "Quotes").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/sales-orders", "Sales Orders", "invoice", vm.Active == "Sales Orders").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/banking/receive-payment", "Receive Payment", "receive", vm.Active == "Receive Payment").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "  ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if sd.ShowTasks {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"work\" data-contains-active=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"work\" data-contains-active=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "work"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 140, Col: 142}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 152, Col: 142}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Work</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Work</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -319,77 +357,87 @@ func sidebarShell(vm SidebarVM) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " <div class=\"sidebar-collapsible\" data-sidebar-section=\"expenses\" data-contains-active=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "expenses"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 157, Col: 149}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Expense & Bills</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/expenses-overview", "Overview", "dashboard", vm.Active == "Expense Overview").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/expenses", "Expenses", "bill", vm.Active == "Expenses").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/vendors", "Vendors", "vendors", vm.Active == "Vendors").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/purchase-orders", "Purchase Orders", "bill", vm.Active == "Purchase Orders").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/ap-aging", "AP Aging", "reports", vm.Active == "AP Aging").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/banking/pay-bills", "Pay Bills", "pay", vm.Active == "Pay Bills").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if sd.ShowCheques {
-				templ_7745c5c3_Err = navItem("/cheques", "Cheques", "pay", vm.Active == "Cheques").Render(ctx, templ_7745c5c3_Buffer)
+			if sd.ShowAP {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"expenses\" data-contains-active=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var6 string
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "expenses"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 170, Col: 149}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Expense & Bills</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/expenses-overview", "Overview", "dashboard", vm.Active == "Expense Overview").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/expenses", "Expenses", "bill", vm.Active == "Expenses").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/vendors", "Vendors", "vendors", vm.Active == "Vendors").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/purchase-orders", "Purchase Orders", "bill", vm.Active == "Purchase Orders").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/ap-aging", "AP Aging", "reports", vm.Active == "AP Aging").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/banking/pay-bills", "Pay Bills", "pay", vm.Active == "Pay Bills").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if sd.ShowCheques {
+					templ_7745c5c3_Err = navItem("/cheques", "Cheques", "pay", vm.Active == "Cheques").Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></div> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "  ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if sd.ShowEmployees || sd.ShowPayroll || sd.ShowPayrollDetails || sd.ShowPayrollReports {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"people\" data-contains-active=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"people\" data-contains-active=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "people"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 183, Col: 146}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 197, Col: 146}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">People & Payroll</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">People & Payroll</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -417,96 +465,128 @@ func sidebarShell(vm SidebarVM) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " <div class=\"sidebar-collapsible\" data-sidebar-section=\"inventory\" data-contains-active=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "inventory"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 211, Col: 151}
+			if sd.ShowInventory {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"inventory\" data-contains-active=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var8 string
+				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "inventory"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 226, Col: 152}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Inventory</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/products-services", "Products & Services", "bill", vm.Active == "Products & Services").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/warehouses", "Warehouses", "warehouse", vm.Active == "Warehouses").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "  ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Inventory</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+			if sd.ShowReconciliation || sd.ShowReports || sd.ShowAccounts {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"accounting\" data-contains-active=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var9 string
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "accounting"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 246, Col: 153}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Accounting</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if sd.ShowReconciliation {
+					templ_7745c5c3_Err = navItem("/banking/reconcile", "Reconciliation", "reconcile", vm.Active == "Bank Reconcile").Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				if sd.ShowReports {
+					templ_7745c5c3_Err = navItem("/reports", "Reports", "reports", vm.Active == "Reports").Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				if sd.ShowAccounts {
+					templ_7745c5c3_Err = navItem("/accounts", "Chart of Accounts", "accounts", vm.Active == "Accounts").Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "  ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = navItem("/products-services", "Products & Services", "bill", vm.Active == "Products & Services").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/warehouses", "Warehouses", "warehouse", vm.Active == "Warehouses").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div></div> <div class=\"sidebar-collapsible\" data-sidebar-section=\"accounting\" data-contains-active=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "accounting"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 229, Col: 153}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Accounting</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/banking/reconcile", "Reconciliation", "reconcile", vm.Active == "Bank Reconcile").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/reports", "Reports", "reports", vm.Active == "Reports").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/accounts", "Chart of Accounts", "accounts", vm.Active == "Accounts").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div></div> <div class=\"sidebar-collapsible\" data-sidebar-section=\"settings\" data-contains-active=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "settings"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 248, Col: 149}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Settings</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/settings", "Settings", "company", IsSettingsNavActive(vm.Active) && vm.Active != "Templates").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = navItem("/settings/templates", "Templates", "invoice", vm.Active == "Templates").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</div></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if sd.ShowSettings {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"sidebar-collapsible\" data-sidebar-section=\"settings\" data-contains-active=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var10 string
+				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(BoolStr(SectionKeyForActivePage(vm.Active) == "settings"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 273, Col: 149}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\"><button type=\"button\" class=\"sidebar-section-toggle flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left hover:bg-background\" data-sidebar-toggle><span class=\"text-small font-semibold uppercase tracking-wider text-text-muted\">Settings</span> <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" data-sidebar-chevron aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 9l-7 7-7-7\"></path></svg></button><div class=\"sidebar-section-panel mt-1 space-y-0.5\" data-sidebar-panel>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/settings", "Settings", "company", IsSettingsNavActive(vm.Active) && vm.Active != "Templates").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = navItem("/settings/templates", "Templates", "invoice", vm.Active == "Templates").Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</nav></aside>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</nav></aside>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -539,7 +619,7 @@ func sidebarCollapseScript() templ.Component {
 			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<script>\r\n\t\t(function () {\r\n\t\t\tif (window.__balancizSidebarCollapsibleInit) return;\r\n\t\t\twindow.__balancizSidebarCollapsibleInit = true;\r\n\t\t\tvar keys = {\r\n\t\t\t\tcore:       \"sidebar.section.core\",\n\t\t\t\tsales:      \"sidebar.section.sales\",\n\t\t\t\twork:       \"sidebar.section.work\",\n\t\t\t\texpenses:   \"sidebar.section.expenses\",\n\t\t\t\tpeople:     \"sidebar.section.people\",\n\t\t\t\tinventory:  \"sidebar.section.inventory\",\n\t\t\t\taccounting: \"sidebar.section.accounting\",\n\t\t\t\tsettings:   \"sidebar.section.settings\",\n\t\t\t};\n\t\t\tvar sectionIDs = [\"core\", \"sales\", \"work\", \"expenses\", \"people\", \"inventory\", \"accounting\", \"settings\"];\n\r\n\t\t\tfunction readExpanded(sectionKey, containsActive) {\r\n\t\t\t\tif (containsActive) return true;\r\n\t\t\t\tvar k = keys[sectionKey];\r\n\t\t\t\tif (!k) return true;\r\n\t\t\t\tvar v = localStorage.getItem(k);\r\n\t\t\t\tif (v === null || v === undefined) return true;\r\n\t\t\t\treturn v === \"1\" || v === \"true\";\r\n\t\t\t}\r\n\r\n\t\t\tfunction applySection(sectionKey, expanded) {\r\n\t\t\t\tdocument.querySelectorAll('[data-sidebar-section=\"' + sectionKey + '\"]').forEach(function (el) {\r\n\t\t\t\t\tvar btn   = el.querySelector(\"[data-sidebar-toggle]\");\r\n\t\t\t\t\tvar panel = el.querySelector(\"[data-sidebar-panel]\");\r\n\t\t\t\t\tvar chev  = el.querySelector(\"[data-sidebar-chevron]\");\r\n\t\t\t\t\tif (!btn || !panel || !chev) return;\r\n\t\t\t\t\tif (expanded) {\r\n\t\t\t\t\t\tpanel.classList.remove(\"hidden\");\r\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"true\");\r\n\t\t\t\t\t\tchev.classList.remove(\"-rotate-90\");\r\n\t\t\t\t\t} else {\r\n\t\t\t\t\t\tpanel.classList.add(\"hidden\");\r\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"false\");\r\n\t\t\t\t\t\tchev.classList.add(\"-rotate-90\");\r\n\t\t\t\t\t}\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tfunction init() {\r\n\t\t\t\tsectionIDs.forEach(function (sk) {\r\n\t\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sk + '\"]');\r\n\t\t\t\t\tif (!first) return;\r\n\t\t\t\t\tvar ca  = first.getAttribute(\"data-contains-active\") === \"true\";\r\n\t\t\t\t\tvar exp = readExpanded(sk, ca);\r\n\t\t\t\t\tapplySection(sk, exp);\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tdocument.addEventListener(\"click\", function (e) {\r\n\t\t\t\tvar btn = e.target.closest(\"[data-sidebar-toggle]\");\r\n\t\t\t\tif (!btn) return;\r\n\t\t\t\tvar wrap = btn.closest(\"[data-sidebar-section]\");\r\n\t\t\t\tif (!wrap) return;\r\n\t\t\t\tvar sectionKey = wrap.getAttribute(\"data-sidebar-section\");\r\n\t\t\t\tif (!sectionKey || !keys[sectionKey]) return;\r\n\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sectionKey + '\"]');\r\n\t\t\t\tif (!first) return;\r\n\t\t\t\tvar panel = first.querySelector(\"[data-sidebar-panel]\");\r\n\t\t\t\tif (!panel) return;\r\n\t\t\t\tvar collapsed = panel.classList.contains(\"hidden\");\r\n\t\t\t\tvar next = !collapsed;\r\n\t\t\t\tif (keys[sectionKey]) localStorage.setItem(keys[sectionKey], next ? \"0\" : \"1\");\r\n\t\t\t\tapplySection(sectionKey, !next);\r\n\t\t\t});\r\n\r\n\t\t\tif (document.readyState === \"loading\") {\r\n\t\t\t\tdocument.addEventListener(\"DOMContentLoaded\", init);\r\n\t\t\t} else {\r\n\t\t\t\tinit();\r\n\t\t\t}\r\n\t\t})();\r\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<script>\r\n\t\t(function () {\r\n\t\t\tif (window.__balancizSidebarCollapsibleInit) return;\r\n\t\t\twindow.__balancizSidebarCollapsibleInit = true;\r\n\t\t\tvar keys = {\r\n\t\t\t\tcore:       \"sidebar.section.core\",\n\t\t\t\tsales:      \"sidebar.section.sales\",\n\t\t\t\twork:       \"sidebar.section.work\",\n\t\t\t\texpenses:   \"sidebar.section.expenses\",\n\t\t\t\tpeople:     \"sidebar.section.people\",\n\t\t\t\tinventory:  \"sidebar.section.inventory\",\n\t\t\t\taccounting: \"sidebar.section.accounting\",\n\t\t\t\tsettings:   \"sidebar.section.settings\",\n\t\t\t};\n\t\t\tvar sectionIDs = [\"core\", \"sales\", \"work\", \"expenses\", \"people\", \"inventory\", \"accounting\", \"settings\"];\n\r\n\t\t\tfunction readExpanded(sectionKey, containsActive) {\r\n\t\t\t\tif (containsActive) return true;\r\n\t\t\t\tvar k = keys[sectionKey];\r\n\t\t\t\tif (!k) return true;\r\n\t\t\t\tvar v = localStorage.getItem(k);\r\n\t\t\t\tif (v === null || v === undefined) return true;\r\n\t\t\t\treturn v === \"1\" || v === \"true\";\r\n\t\t\t}\r\n\r\n\t\t\tfunction applySection(sectionKey, expanded) {\r\n\t\t\t\tdocument.querySelectorAll('[data-sidebar-section=\"' + sectionKey + '\"]').forEach(function (el) {\r\n\t\t\t\t\tvar btn   = el.querySelector(\"[data-sidebar-toggle]\");\r\n\t\t\t\t\tvar panel = el.querySelector(\"[data-sidebar-panel]\");\r\n\t\t\t\t\tvar chev  = el.querySelector(\"[data-sidebar-chevron]\");\r\n\t\t\t\t\tif (!btn || !panel || !chev) return;\r\n\t\t\t\t\tif (expanded) {\r\n\t\t\t\t\t\tpanel.classList.remove(\"hidden\");\r\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"true\");\r\n\t\t\t\t\t\tchev.classList.remove(\"-rotate-90\");\r\n\t\t\t\t\t} else {\r\n\t\t\t\t\t\tpanel.classList.add(\"hidden\");\r\n\t\t\t\t\t\tbtn.setAttribute(\"aria-expanded\", \"false\");\r\n\t\t\t\t\t\tchev.classList.add(\"-rotate-90\");\r\n\t\t\t\t\t}\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tfunction init() {\r\n\t\t\t\tsectionIDs.forEach(function (sk) {\r\n\t\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sk + '\"]');\r\n\t\t\t\t\tif (!first) return;\r\n\t\t\t\t\tvar ca  = first.getAttribute(\"data-contains-active\") === \"true\";\r\n\t\t\t\t\tvar exp = readExpanded(sk, ca);\r\n\t\t\t\t\tapplySection(sk, exp);\r\n\t\t\t\t});\r\n\t\t\t}\r\n\r\n\t\t\tdocument.addEventListener(\"click\", function (e) {\r\n\t\t\t\tvar btn = e.target.closest(\"[data-sidebar-toggle]\");\r\n\t\t\t\tif (!btn) return;\r\n\t\t\t\tvar wrap = btn.closest(\"[data-sidebar-section]\");\r\n\t\t\t\tif (!wrap) return;\r\n\t\t\t\tvar sectionKey = wrap.getAttribute(\"data-sidebar-section\");\r\n\t\t\t\tif (!sectionKey || !keys[sectionKey]) return;\r\n\t\t\t\tvar first = document.querySelector('[data-sidebar-section=\"' + sectionKey + '\"]');\r\n\t\t\t\tif (!first) return;\r\n\t\t\t\tvar panel = first.querySelector(\"[data-sidebar-panel]\");\r\n\t\t\t\tif (!panel) return;\r\n\t\t\t\tvar collapsed = panel.classList.contains(\"hidden\");\r\n\t\t\t\tvar next = !collapsed;\r\n\t\t\t\tif (keys[sectionKey]) localStorage.setItem(keys[sectionKey], next ? \"0\" : \"1\");\r\n\t\t\t\tapplySection(sectionKey, !next);\r\n\t\t\t});\r\n\r\n\t\t\tif (document.readyState === \"loading\") {\r\n\t\t\t\tdocument.addEventListener(\"DOMContentLoaded\", init);\r\n\t\t\t} else {\r\n\t\t\t\tinit();\r\n\t\t\t}\r\n\t\t})();\r\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -568,33 +648,33 @@ func megaMenuItem(href string, label string) templ.Component {
 			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 templ.SafeURL
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 352, Col: 13}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 378, Col: 13}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"block rounded px-2 py-1.5 text-body text-text-muted3 hover:bg-background hover:text-text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" class=\"block rounded px-2 py-1.5 text-body text-text-muted3 hover:bg-background hover:text-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 355, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 381, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -624,20 +704,20 @@ func navItem(href string, label string, iconKind string, isActive bool) templ.Co
 		}
 		ctx = templ.ClearChildren(ctx)
 		if isActive {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 templ.SafeURL
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 361, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 387, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" class=\"flex items-center gap-3 rounded-md bg-primary-soft px-3 py-2 text-body font-medium text-primary\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" class=\"flex items-center gap-3 rounded-md bg-primary-soft px-3 py-2 text-body font-medium text-primary\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -645,38 +725,38 @@ func navItem(href string, label string, iconKind string, isActive bool) templ.Co
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 363, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 389, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</span></a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</span></a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 templ.SafeURL
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 366, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 392, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" class=\"flex items-center gap-3 rounded-md px-3 py-2 text-body font-medium text-text-muted3 hover:bg-background hover:text-text\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" class=\"flex items-center gap-3 rounded-md px-3 py-2 text-body font-medium text-text-muted3 hover:bg-background hover:text-text\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -684,20 +764,20 @@ func navItem(href string, label string, iconKind string, isActive bool) templ.Co
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 368, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/ui/sidebar.templ`, Line: 394, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span></a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</span></a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -727,102 +807,102 @@ func icon(kind string) templ.Component {
 			templ_7745c5c3_Var20 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<!-- Icons use `currentColor` so active/inactive styling is inherited from the parent link -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<!-- Icons use `currentColor` so active/inactive styling is inherited from the parent link -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if kind == "dashboard" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect> <rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect> <rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect> <rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect> <rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect> <rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect> <rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\" stroke-linejoin=\"round\"></rect></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "journal" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "invoice" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "bill" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "customers" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "tasks" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 7l2 2 4-4\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 7l2 2 4-4\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "receive" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "vendors" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 21h18M3 7l9-4 9 4M4 7v14h16V7M9 21v-6h6v6\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 21h18M3 7l9-4 9 4M4 7v14h16V7M9 21v-6h6v6\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "pay" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "reconcile" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 6l9-3 9 3M3 6l3 9c0 1.657 1.343 3 3 3s3-1.343 3-3L6 6m12 0l-3 9c0 1.657 1.343 3 3 3s3-1.343 3-3l-3-9M12 3v18\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 6l9-3 9 3M3 6l3 9c0 1.657 1.343 3 3 3s3-1.343 3-3L6 6m12 0l-3 9c0 1.657 1.343 3 3 3s3-1.343 3-3l-3-9M12 3v18\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "reports" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "accounts" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 10h18M3 14h18M10 6v12M3 6h18a0 0 0 010 0v12a0 0 0 010 0H3a0 0 0 010 0V6a0 0 0 010 0z\"></path> <rect x=\"3\" y=\"6\" width=\"18\" height=\"12\" rx=\"1\" stroke-linejoin=\"round\"></rect></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 10h18M3 14h18M10 6v12M3 6h18a0 0 0 010 0v12a0 0 0 010 0H3a0 0 0 010 0V6a0 0 0 010 0z\"></path> <rect x=\"3\" y=\"6\" width=\"18\" height=\"12\" rx=\"1\" stroke-linejoin=\"round\"></rect></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "setup" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 9v6m3-3h-6\"></path> <path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M21 12a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 9v6m3-3h-6\"></path> <path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M21 12a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "company" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 8v-4h4v4H9z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 8v-4h4v4H9z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "ai" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "members" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "audit" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if kind == "warehouse" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, " <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 6h16M4 12h16M4 18h7\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.75\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 6h16M4 12h16M4 18h7\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

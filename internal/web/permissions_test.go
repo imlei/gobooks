@@ -10,6 +10,8 @@ func TestCanPerformActionPermissionMatrix(t *testing.T) {
 		want   bool
 	}{
 		{name: "owner can update settings", role: "owner", action: ActionSettingsUpdate, want: true},
+		{name: "ap can view settings read pages", role: "ap", action: ActionSettingsView, want: true},
+		{name: "viewer can view settings read pages", role: "viewer", action: ActionSettingsView, want: true},
 		{name: "admin can manage members", role: "admin", action: ActionMemberManage, want: true},
 		{name: "accountant can approve invoices", role: "accountant", action: ActionInvoiceApprove, want: true},
 		{name: "accountant cannot update settings", role: "accountant", action: ActionSettingsUpdate, want: false},
@@ -28,6 +30,8 @@ func TestCanPerformActionPermissionMatrix(t *testing.T) {
 		{name: "ap cannot view ar search domain", role: "ap", action: ActionInvoiceView, want: false},
 		{name: "ap can view ap search domain", role: "ap", action: ActionBillView, want: true},
 		{name: "ap cannot view reports", role: "ap", action: ActionReportView, want: false},
+		{name: "ap can view inventory", role: "ap", action: ActionInventoryView, want: true},
+		{name: "ap can view warehouses", role: "ap", action: ActionWarehouseView, want: true},
 		{name: "viewer can view reports", role: "viewer", action: ActionReportView, want: true},
 		{name: "viewer cannot create accounts", role: "viewer", action: ActionAccountCreate, want: false},
 		{name: "unknown action fails closed", role: "owner", action: "missing:action", want: false},
