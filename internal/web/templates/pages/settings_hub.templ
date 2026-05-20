@@ -27,11 +27,13 @@ templ bodySettingsHub(vm SettingsHubVM) {
 				"Company",
 				"Profile, tax codes, numbering, templates, payment terms, currency, notifications, security.",
 			)
-			@settingsHubCard(
-				"/settings/templates",
-				"Templates",
-				"Manage PDF and print templates, clone system presets, preview output, and edit custom document layouts.",
-			)
+			if vm.CanViewSensitive {
+				@settingsHubCard(
+					"/settings/templates",
+					"Templates",
+					"Manage PDF and print templates, clone system presets, preview output, and edit custom document layouts.",
+				)
+			}
 			@settingsHubCard(
 				"/settings/user-preferences",
 				"Display Preferences",
@@ -42,36 +44,42 @@ templ bodySettingsHub(vm SettingsHubVM) {
 				"Accounting Books",
 				"Primary, secondary, adjustment and tax books; fiscal periods.",
 			)
-			@settingsHubCard(
-				"/settings/channels",
-				"Sales Channels",
-				"Connect external platforms (Amazon, Shopify), map SKUs, import orders.",
-			)
-			@settingsHubCard(
-				"/settings/payment-gateways",
-				"Payments",
-				"Payment processors (Stripe, PayPal), gateway mappings, transactions, disputes.",
-			)
-			@settingsHubCard(
-				"/settings/ar-ap-control",
-				"AR / AP Control",
-				"Control accounts mapped to each AR and AP document type and currency.",
-			)
+			if vm.CanViewSensitive {
+				@settingsHubCard(
+					"/settings/channels",
+					"Sales Channels",
+					"Connect external platforms (Amazon, Shopify), map SKUs, import orders.",
+				)
+				@settingsHubCard(
+					"/settings/payment-gateways",
+					"Payments",
+					"Payment processors (Stripe, PayPal), gateway mappings, transactions, disputes.",
+				)
+				@settingsHubCard(
+					"/settings/ar-ap-control",
+					"AR / AP Control",
+					"Control accounts mapped to each AR and AP document type and currency.",
+				)
+			}
 			@settingsHubCard(
 				"/settings/members",
 				"Members",
 				"Invite teammates, assign roles and permissions.",
 			)
-			@settingsHubCard(
-				"/settings/ai-connect",
-				"AI Connect",
-				"Connect an AI provider for smart categorization and assistance.",
-			)
-			@settingsHubCard(
-				"/settings/audit-log",
-				"Audit Log",
-				"Review every sensitive change made inside this company.",
-			)
+			if vm.CanViewSensitive {
+				@settingsHubCard(
+					"/settings/ai-connect",
+					"AI Connect",
+					"Connect an AI provider for smart categorization and assistance.",
+				)
+			}
+			if vm.CanViewAuditLog {
+				@settingsHubCard(
+					"/settings/audit-log",
+					"Audit Log",
+					"Review every sensitive change made inside this company.",
+				)
+			}
 		</div>
 	</div>
 }

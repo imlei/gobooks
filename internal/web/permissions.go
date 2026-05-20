@@ -70,8 +70,9 @@ const (
 	ActionAccountDelete = "account:delete" // 停用科目
 
 	// 系统设置
-	ActionSettingsView   = "settings:view"   // 查看设置页（仅需成员资格）
-	ActionSettingsUpdate = "settings:update" // 修改公司设置 / AI 设置 / 产品目录
+	ActionSettingsView          = "settings:view"           // 查看普通设置页（仅需成员资格）
+	ActionSettingsSensitiveView = "settings:view_sensitive" // 查看支付、渠道、AI、安全等敏感设置
+	ActionSettingsUpdate        = "settings:update"         // 修改公司设置 / AI 设置 / 产品目录
 
 	// 报表
 	ActionReportView = "report:view" // 查看财务报表
@@ -92,13 +93,14 @@ const (
 // ─────────────────────────────────────────────────────────────────────────────
 
 const (
-	PermARAccess            = "ar_access"            // 应收账款写入（发票创建/编辑、日记账、银行收款、银行对账）
-	PermAPAccess            = "ap_access"            // 应付账款写入（账单创建/编辑、付款）
-	PermApproveTransactions = "approve_transactions" // 过账 / 冲销（需高于普通簿记权限）
-	PermManageSettings      = "manage_settings"      // 公司设置、科目表、产品目录管理（owner / admin 专属）
-	PermViewReports         = "view_reports"         // 查看财务报表
-	PermViewAuditLog        = "view_audit_log"       // 查看审计日志
-	PermManageMembers       = "manage_members"       // 邀请和管理公司成员
+	PermARAccess              = "ar_access"               // 应收账款写入（发票创建/编辑、日记账、银行收款、银行对账）
+	PermAPAccess              = "ap_access"               // 应付账款写入（账单创建/编辑、付款）
+	PermApproveTransactions   = "approve_transactions"    // 过账 / 冲销（需高于普通簿记权限）
+	PermManageSettings        = "manage_settings"         // 公司设置、科目表、产品目录管理（owner / admin 专属）
+	PermViewSensitiveSettings = "view_sensitive_settings" // 查看敏感设置（支付、渠道、AI、安全）
+	PermViewReports           = "view_reports"            // 查看财务报表
+	PermViewAuditLog          = "view_audit_log"          // 查看审计日志
+	PermManageMembers         = "manage_members"          // 邀请和管理公司成员
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,7 +140,7 @@ var rolePermissions = map[string][]string{
 	"owner": {
 		PermCompanyAccess,
 		PermARAccess, PermAPAccess, PermApproveTransactions,
-		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
+		PermManageSettings, PermViewSensitiveSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
 		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermEmployeeView, PermEmployeeManage, PermEmployeeSensitive,
 		PermPayrollView, PermPayrollRun, PermPayrollFinalize, PermPayrollExport, PermPayrollSettings, PermPayrollDetails,
@@ -147,7 +149,7 @@ var rolePermissions = map[string][]string{
 	"admin": {
 		PermCompanyAccess,
 		PermARAccess, PermAPAccess, PermApproveTransactions,
-		PermManageSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
+		PermManageSettings, PermViewSensitiveSettings, PermViewReports, PermViewAuditLog, PermManageMembers, PermInventoryAccess,
 		PermTaskAccess, PermTaskCreate, PermTaskUpdate, PermTaskBill, PermTaskExport,
 		PermEmployeeView, PermEmployeeManage, PermEmployeeSensitive,
 		PermPayrollView, PermPayrollRun, PermPayrollFinalize, PermPayrollExport, PermPayrollSettings, PermPayrollDetails,
@@ -202,17 +204,18 @@ var actionPermissions = map[string]string{
 	ActionPayrollExport:      PermPayrollExport,
 	ActionPayrollSettings:    PermPayrollSettings,
 
-	ActionChequeView:       PermChequeView,
-	ActionChequePrint:      PermChequePrint,
-	ActionChequeManageBank: PermChequeManageBank,
-	ActionInvoiceView:      PermARAccess,
-	ActionBillView:         PermAPAccess,
-	ActionJournalView:      PermViewReports,
-	ActionAccountView:      PermViewReports,
-	ActionInventoryView:    PermInventoryAccess,
-	ActionWarehouseView:    PermInventoryAccess,
-	ActionSettingsView:     PermCompanyAccess,
-	ActionMemberView:       PermCompanyAccess,
+	ActionChequeView:            PermChequeView,
+	ActionChequePrint:           PermChequePrint,
+	ActionChequeManageBank:      PermChequeManageBank,
+	ActionInvoiceView:           PermARAccess,
+	ActionBillView:              PermAPAccess,
+	ActionJournalView:           PermViewReports,
+	ActionAccountView:           PermViewReports,
+	ActionInventoryView:         PermInventoryAccess,
+	ActionWarehouseView:         PermInventoryAccess,
+	ActionSettingsView:          PermCompanyAccess,
+	ActionSettingsSensitiveView: PermViewSensitiveSettings,
+	ActionMemberView:            PermCompanyAccess,
 
 	// 发票写操作 ────────────────────────────────
 	ActionInvoiceCreate:  PermARAccess,            // bookkeeper 及以上

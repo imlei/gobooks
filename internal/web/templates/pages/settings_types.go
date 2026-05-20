@@ -11,14 +11,16 @@ type SettingsBreadcrumbPart struct {
 
 // SettingsHubVM is the top-level Settings landing page (tile grid of every settings area).
 type SettingsHubVM struct {
-	HasCompany bool
-	Breadcrumb []SettingsBreadcrumbPart
+	HasCompany       bool
+	CanViewSensitive bool
+	CanViewAuditLog  bool
+	Breadcrumb       []SettingsBreadcrumbPart
 }
 
 // CompanyHubVM is the Company settings landing page.
 type CompanyHubVM struct {
-	HasCompany  bool
-	Breadcrumb  []SettingsBreadcrumbPart
+	HasCompany bool
+	Breadcrumb []SettingsBreadcrumbPart
 }
 
 // CompanySubpageVM is a lightweight VM for placeholder company sub-pages (templates, etc.).
@@ -95,8 +97,8 @@ type AccountingBooksVM struct {
 	Saved      bool
 
 	// Create-form state — visible when DrawerOpen = true.
-	DrawerOpen  bool
-	FormError   string
+	DrawerOpen bool
+	FormError  string
 	// Form field round-trips (strings to survive validation errors).
 	FieldBookType    string // "secondary" | "adjustment" | "tax"
 	FieldCurrency    string // ISO 4217

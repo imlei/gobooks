@@ -10,8 +10,12 @@ func TestCanPerformActionPermissionMatrix(t *testing.T) {
 		want   bool
 	}{
 		{name: "owner can update settings", role: "owner", action: ActionSettingsUpdate, want: true},
+		{name: "owner can view sensitive settings", role: "owner", action: ActionSettingsSensitiveView, want: true},
+		{name: "admin can view sensitive settings", role: "admin", action: ActionSettingsSensitiveView, want: true},
 		{name: "ap can view settings read pages", role: "ap", action: ActionSettingsView, want: true},
+		{name: "ap cannot view sensitive settings", role: "ap", action: ActionSettingsSensitiveView, want: false},
 		{name: "viewer can view settings read pages", role: "viewer", action: ActionSettingsView, want: true},
+		{name: "viewer cannot view sensitive settings", role: "viewer", action: ActionSettingsSensitiveView, want: false},
 		{name: "admin can manage members", role: "admin", action: ActionMemberManage, want: true},
 		{name: "accountant can approve invoices", role: "accountant", action: ActionInvoiceApprove, want: true},
 		{name: "accountant cannot update settings", role: "accountant", action: ActionSettingsUpdate, want: false},

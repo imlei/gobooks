@@ -274,6 +274,7 @@ type memberModulePermissionDef struct {
 
 func memberModulePermissions() []memberModulePermissionDef {
 	return []memberModulePermissionDef{
+		{Group: "Settings", Permission: PermViewSensitiveSettings, Label: "View sensitive settings"},
 		{Group: "Task", Permission: PermTaskAccess, Label: "View tasks"},
 		{Group: "Task", Permission: PermTaskCreate, Label: "Create tasks"},
 		{Group: "Task", Permission: PermTaskUpdate, Label: "Update, complete, and cancel tasks"},
@@ -313,6 +314,7 @@ func (s *Server) memberRows(companyID uint, memberships []models.CompanyMembersh
 
 func (s *Server) memberPermissionModuleStates(companyID uint) map[string]bool {
 	return map[string]bool{
+		"Settings": true,
 		"Task":     s.memberFeatureEnabled(companyID, models.FeatureKeyTask),
 		"Employee": s.memberFeatureEnabled(companyID, models.FeatureKeyEmployee),
 		"Payroll":  s.memberFeatureEnabled(companyID, models.FeatureKeyPayroll),
@@ -349,16 +351,18 @@ func (s *Server) memberPermissionOverrideMap(companyID uint) map[uuid.UUID]map[s
 
 func memberPermissionGroups(role models.CompanyRole, overrides map[string]string, moduleStates map[string]bool) []pages.MemberPermissionGroup {
 	groups := []pages.MemberPermissionGroup{
+		memberPermissionGroup("Settings", moduleStates),
 		memberPermissionGroup("Task", moduleStates),
 		memberPermissionGroup("Employee", moduleStates),
 		memberPermissionGroup("Payroll", moduleStates),
 		memberPermissionGroup("Cheque", moduleStates),
 	}
 	groupIndex := map[string]int{
-		"Task":     0,
-		"Employee": 1,
-		"Payroll":  2,
-		"Cheque":   3,
+		"Settings": 0,
+		"Task":     1,
+		"Employee": 2,
+		"Payroll":  3,
+		"Cheque":   4,
 	}
 	for _, def := range memberModulePermissions() {
 		value := "default"
@@ -389,7 +393,11 @@ func memberPermissionGroup(label string, moduleStates map[string]bool) pages.Mem
 	}
 	if enabled {
 		group.StatusText = "Enabled"
-		group.Note = "These permissions affect visible module routes and search results."
+		if label == "Settings" {
+			group.Note = "These permissions affect sensitive settings routes and dashboard entry visibility."
+		} else {
+			group.Note = "These permissions affect visible module routes and search results."
+		}
 	} else {
 		group.StatusText = "Feature off"
 		group.Note = "You can prepare permissions now, but the module stays hidden until enabled in Company Features."

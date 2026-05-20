@@ -89,13 +89,15 @@ func bodySettingsHub(vm SettingsHubVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = settingsHubCard(
-			"/settings/templates",
-			"Templates",
-			"Manage PDF and print templates, clone system presets, preview output, and edit custom document layouts.",
-		).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if vm.CanViewSensitive {
+			templ_7745c5c3_Err = settingsHubCard(
+				"/settings/templates",
+				"Templates",
+				"Manage PDF and print templates, clone system presets, preview output, and edit custom document layouts.",
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		templ_7745c5c3_Err = settingsHubCard(
 			"/settings/user-preferences",
@@ -113,29 +115,39 @@ func bodySettingsHub(vm SettingsHubVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = settingsHubCard(
-			"/settings/channels",
-			"Sales Channels",
-			"Connect external platforms (Amazon, Shopify), map SKUs, import orders.",
-		).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = settingsHubCard(
-			"/settings/payment-gateways",
-			"Payments",
-			"Payment processors (Stripe, PayPal), gateway mappings, transactions, disputes.",
-		).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = settingsHubCard(
-			"/settings/ar-ap-control",
-			"AR / AP Control",
-			"Control accounts mapped to each AR and AP document type and currency.",
-		).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if vm.CanViewSensitive {
+			templ_7745c5c3_Err = settingsHubCard(
+				"/settings/channels",
+				"Sales Channels",
+				"Connect external platforms (Amazon, Shopify), map SKUs, import orders.",
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = settingsHubCard(
+				"/settings/payment-gateways",
+				"Payments",
+				"Payment processors (Stripe, PayPal), gateway mappings, transactions, disputes.",
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = settingsHubCard(
+				"/settings/ar-ap-control",
+				"AR / AP Control",
+				"Control accounts mapped to each AR and AP document type and currency.",
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		templ_7745c5c3_Err = settingsHubCard(
 			"/settings/members",
@@ -145,23 +157,27 @@ func bodySettingsHub(vm SettingsHubVM) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = settingsHubCard(
-			"/settings/ai-connect",
-			"AI Connect",
-			"Connect an AI provider for smart categorization and assistance.",
-		).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if vm.CanViewSensitive {
+			templ_7745c5c3_Err = settingsHubCard(
+				"/settings/ai-connect",
+				"AI Connect",
+				"Connect an AI provider for smart categorization and assistance.",
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = settingsHubCard(
-			"/settings/audit-log",
-			"Audit Log",
-			"Review every sensitive change made inside this company.",
-		).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if vm.CanViewAuditLog {
+			templ_7745c5c3_Err = settingsHubCard(
+				"/settings/audit-log",
+				"Audit Log",
+				"Review every sensitive change made inside this company.",
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -190,46 +206,46 @@ func settingsHubCard(href string, title string, description string) templ.Compon
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/settings_hub.templ`, Line: 81, Col: 13}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/settings_hub.templ`, Line: 89, Col: 13}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"group block rounded-lg border border-border bg-surface p-5 shadow-sm transition-colors hover:border-border-input hover:bg-background\"><div class=\"text-body font-semibold text-text group-hover:text-primary\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"group block rounded-lg border border-border bg-surface p-5 shadow-sm transition-colors hover:border-border-input hover:bg-background\"><div class=\"text-body font-semibold text-text group-hover:text-primary\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/settings_hub.templ`, Line: 84, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/settings_hub.templ`, Line: 92, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><p class=\"mt-2 text-small text-text-muted2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><p class=\"mt-2 text-small text-text-muted2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/settings_hub.templ`, Line: 85, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/pages/settings_hub.templ`, Line: 93, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</p><p class=\"mt-3 text-small font-medium text-primary\">Open →</p></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><p class=\"mt-3 text-small font-medium text-primary\">Open →</p></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

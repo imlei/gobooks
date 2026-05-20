@@ -14,7 +14,9 @@ func (s *Server) handleSettingsHub(c *fiber.Ctx) error {
 		return c.Redirect("/select-company", fiber.StatusSeeOther)
 	}
 	return pages.SettingsHub(pages.SettingsHubVM{
-		HasCompany: true,
+		HasCompany:       true,
+		CanViewSensitive: CanFromCtx(c, ActionSettingsSensitiveView),
+		CanViewAuditLog:  CanFromCtx(c, ActionAuditView),
 		Breadcrumb: []pages.SettingsBreadcrumbPart{
 			{Label: "Settings", Href: ""},
 		},

@@ -385,6 +385,16 @@ func TestPermissionedDashboardLinksMatchBackendGuards(t *testing.T) {
 		{name: "viewer cannot download shipment pdf", role: models.CompanyRoleViewer, path: "/shipments/1/pdf-v2", wantStatus: http.StatusForbidden},
 		{name: "viewer cannot open warehouses", role: models.CompanyRoleViewer, path: "/warehouses", wantStatus: http.StatusForbidden},
 		{name: "viewer can open template settings read page", role: models.CompanyRoleViewer, path: "/settings/invoice-templates/manage", wantStatus: http.StatusOK},
+		{name: "viewer cannot open payment gateway settings", role: models.CompanyRoleViewer, path: "/settings/payment-gateways", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open payment gateway transactions", role: models.CompanyRoleViewer, path: "/settings/payment-gateways/transactions", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open channel settings", role: models.CompanyRoleViewer, path: "/settings/channels", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open ar ap control settings", role: models.CompanyRoleViewer, path: "/settings/ar-ap-control", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open ai connect settings", role: models.CompanyRoleViewer, path: "/settings/ai-connect", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open notification settings", role: models.CompanyRoleViewer, path: "/settings/company/notifications", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open security settings", role: models.CompanyRoleViewer, path: "/settings/company/security", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open pdf template settings", role: models.CompanyRoleViewer, path: "/settings/templates", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open pdf templates direct route", role: models.CompanyRoleViewer, path: "/pdf-templates", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open payment gateway settings", role: models.CompanyRoleAP, path: "/settings/payment-gateways", wantStatus: http.StatusForbidden},
 	}
 
 	for _, tc := range tests {

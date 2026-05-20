@@ -39,12 +39,18 @@ func TestMemberPermissionOverridesGrantModuleAccess(t *testing.T) {
 	if before.StatusCode != http.StatusForbidden {
 		t.Fatalf("viewer should not have payroll access before grant, got %d", before.StatusCode)
 	}
+	sensitiveProbe := testPermissionProbeApp(db, ActionSettingsSensitiveView)
+	sensitiveBefore := performRequest(t, sensitiveProbe, "/probe", targetToken)
+	if sensitiveBefore.StatusCode != http.StatusForbidden {
+		t.Fatalf("viewer should not have sensitive settings access before grant, got %d", sensitiveBefore.StatusCode)
+	}
 
 	app := testMemberPermissionsApp(db)
 	resp := performFormRequest(t, app, http.MethodPost, "/settings/members/permissions", url.Values{
-		"user_id":                         {target.ID.String()},
-		"permission_" + PermPayrollView:   {"grant"},
-		"permission_" + PermPayrollExport: {"deny"},
+		"user_id": {target.ID.String()},
+		"permission_" + PermViewSensitiveSettings: {"grant"},
+		"permission_" + PermPayrollView:           {"grant"},
+		"permission_" + PermPayrollExport:         {"deny"},
 	}, adminToken)
 	if resp.StatusCode != http.StatusSeeOther {
 		t.Fatalf("save permissions status = %d, want %d", resp.StatusCode, http.StatusSeeOther)
@@ -57,13 +63,17 @@ func TestMemberPermissionOverridesGrantModuleAccess(t *testing.T) {
 	if err := db.Where("company_id = ? AND user_id = ?", companyID, target.ID).Find(&rows).Error; err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 {
-		t.Fatalf("permission rows = %d, want 2: %+v", len(rows), rows)
+	if len(rows) != 3 {
+		t.Fatalf("permission rows = %d, want 3: %+v", len(rows), rows)
 	}
 
 	after := performRequest(t, probe, "/probe", targetToken)
 	if after.StatusCode != http.StatusOK {
 		t.Fatalf("viewer should have payroll access after grant, got %d", after.StatusCode)
+	}
+	sensitiveAfter := performRequest(t, sensitiveProbe, "/probe", targetToken)
+	if sensitiveAfter.StatusCode != http.StatusOK {
+		t.Fatalf("viewer should have sensitive settings access after grant, got %d", sensitiveAfter.StatusCode)
 	}
 }
 
@@ -85,6 +95,8 @@ func TestMembersPageShowsModuleFeatureAvailability(t *testing.T) {
 	for _, want := range []string{
 		"Module permissions combine with Company Features",
 		"routes, navigation, and search stay hidden",
+		"Settings",
+		"View sensitive settings",
 		"Task",
 		"Enabled",
 		"Payroll",
