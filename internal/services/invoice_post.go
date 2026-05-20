@@ -285,6 +285,9 @@ func PostInvoice(db *gorm.DB, companyID, invoiceID uint, actor string, userID *u
 		if locked.Status != models.InvoiceStatusDraft && locked.Status != models.InvoiceStatusIssued {
 			return ErrAlreadyPosted
 		}
+		if err := ensureInvoicePostingSnapshotFresh(tx, companyID, invoiceID, inv); err != nil {
+			return err
+		}
 
 		// b. AUTHORITATIVE STEP — issue stock for every inventory line. The
 		//    returned map (item_id → OutboundResult) carries the unit cost

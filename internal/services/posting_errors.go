@@ -44,6 +44,12 @@ var ErrAlreadyPosted = NewPostingError("POSTING_ALREADY_POSTED", "document is al
 // wrapped as this error.
 var ErrConcurrentPostingConflict = NewPostingError("POSTING_CONCURRENT_CONFLICT", "concurrent posting conflict: another request posted this document simultaneously — retry if needed", http.StatusConflict)
 
+// ErrPostingSourceChanged is returned when the draft header or lines changed
+// between the pre-flight read and the locked posting transaction. The caller
+// should reload the document and retry so the journal entry is built from the
+// final visible draft.
+var ErrPostingSourceChanged = NewPostingError("POSTING_SOURCE_CHANGED", "document changed while posting - reload and try again", http.StatusConflict)
+
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
 // applyLockForUpdate adds SELECT ... FOR UPDATE to q for databases that support
@@ -87,6 +93,13 @@ func isNoSuchTableError(err error) bool {
 		return pgErr.Code == "42P01"
 	}
 	return strings.Contains(err.Error(), "no such table")
+}
+
+// IsNoSuchTableError reports whether err indicates a missing table. Web-layer
+// tests use in-memory SQLite fixtures that intentionally omit optional tables;
+// production databases should have all migrations applied.
+func IsNoSuchTableError(err error) bool {
+	return isNoSuchTableError(err)
 }
 
 func wrapUniqueViolation(err error, op string) error {

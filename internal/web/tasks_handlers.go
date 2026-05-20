@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"balanciz/internal/models"
+	"balanciz/internal/searchprojection/producers"
 	"balanciz/internal/services"
 	"balanciz/internal/web/templates/pages"
 )
@@ -208,6 +209,9 @@ func (s *Server) handleTaskGenerateInvoiceDraft(c *fiber.Ctx) error {
 		return pages.TaskBillableWork(vm).Render(c.Context(), c)
 	}
 
+	for _, taskID := range taskIDs {
+		_ = producers.ProjectTask(c.Context(), s.DB, s.SearchProjector, companyID, taskID)
+	}
 	return redirectTo(c, fmt.Sprintf("/invoices/%d/edit?saved=1&locked=1", result.InvoiceID))
 }
 
@@ -244,6 +248,7 @@ func (s *Server) handleTaskCreate(c *fiber.Ctx) error {
 		return pages.TaskForm(vm).Render(c.Context(), c)
 	}
 
+	_ = producers.ProjectTask(c.Context(), s.DB, s.SearchProjector, companyID, task.ID)
 	return redirectTo(c, fmt.Sprintf("/tasks/%d?created=1", task.ID))
 }
 
@@ -271,7 +276,7 @@ func (s *Server) handleTaskDetail(c *fiber.Ctx) error {
 		return redirectErr(c, "/tasks", err.Error())
 	}
 
-	canUpdate := CanFromCtx(c, ActionInvoiceUpdate)
+	canUpdate := CanFromCtx(c, ActionTaskUpdate)
 	vm := pages.TaskDetailVM{
 		HasCompany:             true,
 		Task:                   *task,
@@ -357,6 +362,7 @@ func (s *Server) handleTaskUpdate(c *fiber.Ctx) error {
 		return pages.TaskForm(vm).Render(c.Context(), c)
 	}
 
+	_ = producers.ProjectTask(c.Context(), s.DB, s.SearchProjector, companyID, updated.ID)
 	return redirectTo(c, fmt.Sprintf("/tasks/%d?updated=1", updated.ID))
 }
 
@@ -373,6 +379,7 @@ func (s *Server) handleTaskComplete(c *fiber.Ctx) error {
 	if err != nil {
 		return redirectErr(c, fmt.Sprintf("/tasks/%d", taskID), err.Error())
 	}
+	_ = producers.ProjectTask(c.Context(), s.DB, s.SearchProjector, companyID, task.ID)
 	return redirectTo(c, fmt.Sprintf("/tasks/%d?completed=1", task.ID))
 }
 
@@ -389,6 +396,7 @@ func (s *Server) handleTaskCancel(c *fiber.Ctx) error {
 	if err != nil {
 		return redirectErr(c, fmt.Sprintf("/tasks/%d", taskID), err.Error())
 	}
+	_ = producers.ProjectTask(c.Context(), s.DB, s.SearchProjector, companyID, task.ID)
 	return redirectTo(c, fmt.Sprintf("/tasks/%d?cancelled=1", task.ID))
 }
 

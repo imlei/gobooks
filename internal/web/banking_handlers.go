@@ -1081,6 +1081,12 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 		}
 	}
 
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+	cid := companyID
+	uid := user.ID
 	var jeID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var txErr error
@@ -1099,25 +1105,23 @@ func (s *Server) handleReceivePaymentSubmit(c *fiber.Ctx) error {
 			NewDepositAmount: newDepositAmount,
 		}
 		jeID, txErr = services.RecordReceivePayment(tx, input)
-		return txErr
+		if txErr != nil {
+			return txErr
+		}
+		if err := services.WriteAuditLogWithContext(tx, "payment.received", "journal_entry", jeID, actor, map[string]any{
+			"customer_id":    customerIDRaw,
+			"amount":         amount.StringFixed(2),
+			"payment_method": string(paymentMethod),
+			"entry_date":     entryDateRaw,
+			"company_id":     companyID,
+		}, &cid, &uid); err != nil && !services.IsNoSuchTableError(err) {
+			return err
+		}
+		return nil
 	}); err != nil {
 		vm.FormError = "Could not record payment: " + err.Error()
 		return pages.ReceivePayment(vm).Render(c.Context(), c)
 	}
-
-	actor := user.Email
-	if actor == "" {
-		actor = "user"
-	}
-	cid := companyID
-	uid := user.ID
-	services.TryWriteAuditLogWithContext(s.DB, "payment.received", "journal_entry", jeID, actor, map[string]any{
-		"customer_id":    customerIDRaw,
-		"amount":         amount.StringFixed(2),
-		"payment_method": string(paymentMethod),
-		"entry_date":     entryDateRaw,
-		"company_id":     companyID,
-	}, &cid, &uid)
 	s.ReportCache.InvalidateCompany(companyID)
 	slog.Info("report.invalidate",
 		"company_id", companyID,
@@ -1410,6 +1414,12 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 		}
 	}
 
+	actor := user.Email
+	if actor == "" {
+		actor = "user"
+	}
+	cid := companyID
+	uid := user.ID
 	var jeID uint
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
 		var txErr error
@@ -1422,23 +1432,21 @@ func (s *Server) handlePayBillsSubmit(c *fiber.Ctx) error {
 			Memo:                 memo,
 			ExchangeRateOverride: exchangeRateOverride,
 		})
-		return txErr
+		if txErr != nil {
+			return txErr
+		}
+		if err := services.WriteAuditLogWithContext(tx, "bills.paid", "journal_entry", jeID, actor, map[string]any{
+			"bill_count": len(billPayments),
+			"entry_date": entryDateRaw,
+			"company_id": companyID,
+		}, &cid, &uid); err != nil && !services.IsNoSuchTableError(err) {
+			return err
+		}
+		return nil
 	}); err != nil {
 		vm.FormError = "Could not record payment: " + err.Error()
 		return pages.PayBills(vm).Render(c.Context(), c)
 	}
-
-	actor := user.Email
-	if actor == "" {
-		actor = "user"
-	}
-	cid := companyID
-	uid := user.ID
-	services.TryWriteAuditLogWithContext(s.DB, "bills.paid", "journal_entry", jeID, actor, map[string]any{
-		"bill_count": len(billPayments),
-		"entry_date": entryDateRaw,
-		"company_id": companyID,
-	}, &cid, &uid)
 	s.ReportCache.InvalidateCompany(companyID)
 	slog.Info("report.invalidate",
 		"company_id", companyID,

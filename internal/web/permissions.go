@@ -197,6 +197,11 @@ var actionPermissions = map[string]string{
 	ActionChequeView:       PermChequeView,
 	ActionChequePrint:      PermChequePrint,
 	ActionChequeManageBank: PermChequeManageBank,
+	ActionInvoiceView:      PermARAccess,
+	ActionBillView:         PermAPAccess,
+	ActionJournalView:      PermViewReports,
+	ActionAccountView:      PermViewReports,
+	ActionInventoryView:    PermInventoryAccess,
 
 	// 发票写操作 ────────────────────────────────
 	ActionInvoiceCreate:  PermARAccess,            // bookkeeper 及以上
@@ -212,9 +217,9 @@ var actionPermissions = map[string]string{
 
 	// 日记账写操作 ──────────────────────────────
 	// 包含手动分录和冲销；银行对账、收款也归入 AR 操作
-	ActionJournalCreate: PermARAccess, // bookkeeper 及以上
-	ActionJournalUpdate: PermARAccess, // bookkeeper 及以上
-	ActionJournalDelete: PermARAccess, // bookkeeper 及以上（冲销操作）
+	ActionJournalCreate: PermApproveTransactions,
+	ActionJournalUpdate: PermApproveTransactions,
+	ActionJournalDelete: PermApproveTransactions,
 
 	// 科目表写操作 ──────────────────────────────
 	// 科目表属于基础主数据，由 owner / admin 维护

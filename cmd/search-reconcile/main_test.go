@@ -143,6 +143,7 @@ func TestAllFamiliesRegistry_HasExpectedTypes(t *testing.T) {
 		"vendor_refund":      true,
 		"customer_deposit":   true,
 		"vendor_prepayment":  true,
+		"task":               true,
 	}
 	got := map[string]bool{}
 	for _, fam := range allFamilies {

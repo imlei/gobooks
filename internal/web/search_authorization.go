@@ -9,26 +9,27 @@ import (
 	"balanciz/internal/web/templates/pages"
 )
 
-var baseGlobalSearchEntityTypes = []string{
+var arGlobalSearchEntityTypes = []string{
 	"invoice",
-	"bill",
 	"quote",
 	"sales_order",
-	"purchase_order",
 	"customer_receipt",
-	"expense",
-	"journal_entry",
 	"credit_note",
-	"vendor_credit_note",
 	"ar_return",
-	"vendor_return",
 	"ar_refund",
-	"vendor_refund",
 	"customer_deposit",
-	"vendor_prepayment",
 	"customer",
+}
+
+var apGlobalSearchEntityTypes = []string{
+	"bill",
+	"purchase_order",
+	"expense",
+	"vendor_credit_note",
+	"vendor_return",
+	"vendor_refund",
+	"vendor_prepayment",
 	"vendor",
-	"product_service",
 }
 
 func (s *Server) allowedGlobalSearchEntityTypes(c *fiber.Ctx) []string {
@@ -36,7 +37,19 @@ func (s *Server) allowedGlobalSearchEntityTypes(c *fiber.Ctx) []string {
 		return nil
 	}
 
-	allowed := append([]string{}, baseGlobalSearchEntityTypes...)
+	var allowed []string
+	if CanFromCtx(c, ActionInvoiceView) {
+		allowed = append(allowed, arGlobalSearchEntityTypes...)
+	}
+	if CanFromCtx(c, ActionBillView) {
+		allowed = append(allowed, apGlobalSearchEntityTypes...)
+	}
+	if CanFromCtx(c, ActionJournalView) {
+		allowed = append(allowed, "journal_entry")
+	}
+	if CanFromCtx(c, ActionInventoryView) {
+		allowed = append(allowed, "product_service")
+	}
 	if s.searchFeatureEnabled(c, models.FeatureKeyTask) && CanFromCtx(c, ActionTaskView) {
 		allowed = append(allowed, "task")
 	}

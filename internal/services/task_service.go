@@ -32,16 +32,16 @@ var (
 )
 
 type TaskInput struct {
-	CompanyID        uint
-	CustomerID       uint
-	Title            string
-	TaskDate         time.Time
-	Quantity         decimal.Decimal
-	UnitType         string
-	Rate             decimal.Decimal
-	CurrencyCode     string
-	IsBillable       bool
-	Notes            string
+	CompanyID    uint
+	CustomerID   uint
+	Title        string
+	TaskDate     time.Time
+	Quantity     decimal.Decimal
+	UnitType     string
+	Rate         decimal.Decimal
+	CurrencyCode string
+	IsBillable   bool
+	Notes        string
 	// ProductServiceID optionally links the task to a service item from the
 	// Products & Services catalogue.  nil = use TASK_LABOR default when billing.
 	ProductServiceID *uint
@@ -222,7 +222,9 @@ func transitionTaskStatus(db *gorm.DB, companyID, taskID uint, fn func(task *mod
 
 func loadTaskForUpdate(db *gorm.DB, companyID, taskID uint) (*models.Task, error) {
 	var task models.Task
-	err := db.Where("id = ? AND company_id = ?", taskID, companyID).First(&task).Error
+	err := applyLockForUpdate(
+		db.Where("id = ? AND company_id = ?", taskID, companyID),
+	).First(&task).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTaskNotFound
 	}

@@ -246,6 +246,9 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		if locked.Status != models.BillStatusDraft {
 			return ErrAlreadyPosted
 		}
+		if err := ensureBillPostingSnapshotFresh(tx, companyID, billID, bill); err != nil {
+			return err
+		}
 
 		// a2. H.5 matching transform (when engaged): resolve per-line
 		// match context and split the relevant fragments into precise

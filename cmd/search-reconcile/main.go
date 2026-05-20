@@ -164,6 +164,11 @@ var allFamilies = []entityFamily{
 		businessIDs: idsOf[models.VendorPrepayment],
 		project:     producers.ProjectVendorPrepayment,
 	},
+	{
+		entityType:  producers.EntityTypeTask,
+		businessIDs: idsOf[models.Task],
+		project:     producers.ProjectTask,
+	},
 }
 
 // idsOf is the generic ID-enumerator used by every entity family.
@@ -178,14 +183,14 @@ func idsOf[T any](db *gorm.DB, companyID uint) ([]uint, error) {
 
 // reconcileResult is the per-(company, entity_type) summary line.
 type reconcileResult struct {
-	CompanyID     uint   `json:"company_id"`
-	EntityType    string `json:"entity_type"`
-	BusinessCount int    `json:"business_count"`
-	ProjectionCount int  `json:"projection_count"`
-	Missing       int    `json:"missing"` // in business but not projection
-	Orphans       int    `json:"orphans"` // in projection but not business
-	Repaired      int    `json:"repaired,omitempty"`
-	OrphansDeleted int   `json:"orphans_deleted,omitempty"`
+	CompanyID       uint   `json:"company_id"`
+	EntityType      string `json:"entity_type"`
+	BusinessCount   int    `json:"business_count"`
+	ProjectionCount int    `json:"projection_count"`
+	Missing         int    `json:"missing"` // in business but not projection
+	Orphans         int    `json:"orphans"` // in projection but not business
+	Repaired        int    `json:"repaired,omitempty"`
+	OrphansDeleted  int    `json:"orphans_deleted,omitempty"`
 }
 
 // HasDrift returns true when the projection doesn't match the business
@@ -273,7 +278,8 @@ func main() {
 func reconcileOne(
 	ctx context.Context,
 	gormDB *gorm.DB,
-	entClient interface{ /* unused; reserved for future direct queries */ },
+	entClient interface { /* unused; reserved for future direct queries */
+	},
 	projector searchprojection.Projector,
 	fam entityFamily,
 	companyID uint,
@@ -428,16 +434,16 @@ func emitJSONReport(rows []reconcileResult) {
 // before the reconciler does any DB work.
 func init() {
 	expected := map[string]struct{}{
-		producers.EntityTypeCustomer:        {},
-		producers.EntityTypeVendor:          {},
-		producers.EntityTypeProductService:  {},
-		producers.EntityTypeInvoice:         {},
-		producers.EntityTypeBill:            {},
-		producers.EntityTypeQuote:           {},
-		producers.EntityTypeSalesOrder:      {},
-		producers.EntityTypePurchaseOrder:   {},
-		producers.EntityTypeCustomerReceipt: {},
-		producers.EntityTypeExpense:         {},
+		producers.EntityTypeCustomer:         {},
+		producers.EntityTypeVendor:           {},
+		producers.EntityTypeProductService:   {},
+		producers.EntityTypeInvoice:          {},
+		producers.EntityTypeBill:             {},
+		producers.EntityTypeQuote:            {},
+		producers.EntityTypeSalesOrder:       {},
+		producers.EntityTypePurchaseOrder:    {},
+		producers.EntityTypeCustomerReceipt:  {},
+		producers.EntityTypeExpense:          {},
 		producers.EntityTypeJournalEntry:     {},
 		producers.EntityTypeCreditNote:       {},
 		producers.EntityTypeVendorCreditNote: {},
