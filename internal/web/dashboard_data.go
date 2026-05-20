@@ -207,6 +207,76 @@ func buildDashboardOverview(db *gorm.DB, companyID uint, userID *uuid.UUID) (das
 	}, nil
 }
 
+type dashboardVisibility struct {
+	CanViewReports  bool
+	CanViewAP       bool
+	CanViewSettings bool
+}
+
+func filterDashboardOverviewForVisibility(resp dashboardOverviewResponse, visibility dashboardVisibility) dashboardOverviewResponse {
+	resp.Tasks = filterDashboardTasksForVisibility(resp.Tasks, visibility)
+	if !visibility.CanViewReports {
+		resp.RevenueTrend = nil
+		resp.Expenses = dashboardExpensesResponse{}
+		resp.BankAccounts = nil
+		resp.Suggestions = nil
+		resp.Widgets = nil
+	}
+
+	filteredKPIs := make([]dashboardKPIResponse, 0, len(resp.KPIs))
+	for _, kpi := range resp.KPIs {
+		switch kpi.Key {
+		case "revenue", "expenses", "net_income", "overdue_invoices":
+			if !visibility.CanViewReports {
+				continue
+			}
+		case "bills_due":
+			if !visibility.CanViewAP {
+				continue
+			}
+		case "attention":
+			kpi.Value = decimal.NewFromInt(int64(len(resp.Tasks) + len(resp.Suggestions))).String()
+			kpi.IsPositive = len(resp.Tasks)+len(resp.Suggestions) == 0
+		}
+		filteredKPIs = append(filteredKPIs, kpi)
+	}
+	resp.KPIs = filteredKPIs
+	return resp
+}
+
+func filterDashboardTasksForVisibility(tasks []dashboardTaskResponse, visibility dashboardVisibility) []dashboardTaskResponse {
+	out := make([]dashboardTaskResponse, 0, len(tasks))
+	for _, task := range tasks {
+		if dashboardTaskTypeVisible(task.TaskType, visibility) {
+			out = append(out, task)
+		}
+	}
+	return out
+}
+
+func filterActionCenterTasksForVisibility(tasks []models.ActionCenterTask, visibility dashboardVisibility) []models.ActionCenterTask {
+	out := make([]models.ActionCenterTask, 0, len(tasks))
+	for _, task := range tasks {
+		if dashboardTaskTypeVisible(task.TaskType, visibility) {
+			out = append(out, task)
+		}
+	}
+	return out
+}
+
+func dashboardTaskTypeVisible(taskType string, visibility dashboardVisibility) bool {
+	switch taskType {
+	case "invoices_overdue":
+		return visibility.CanViewReports
+	case "bills_due_soon":
+		return visibility.CanViewAP
+	case "smtp_not_ready":
+		return visibility.CanViewSettings
+	default:
+		return true
+	}
+}
+
 func dashboardOpenTasks(db *gorm.DB, companyID uint, userID *uuid.UUID) ([]models.ActionCenterTask, error) {
 	statuses := []string{models.ActionTaskStatusOpen, models.ActionTaskStatusInProgress}
 	q := db.Where("company_id = ? AND status IN ?", companyID, statuses)

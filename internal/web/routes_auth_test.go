@@ -369,7 +369,20 @@ func TestPermissionedDashboardLinksMatchBackendGuards(t *testing.T) {
 		wantStatus int
 	}{
 		{name: "ap cannot open sales overview", role: models.CompanyRoleAP, path: "/sales-overview", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open sales transactions", role: models.CompanyRoleAP, path: "/sales-transactions", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open sales transactions api", role: models.CompanyRoleAP, path: "/api/sales-transactions", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open customer deposits", role: models.CompanyRoleAP, path: "/deposits", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open customer receipts", role: models.CompanyRoleAP, path: "/receipts", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open customer returns", role: models.CompanyRoleAP, path: "/returns", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open customer refunds", role: models.CompanyRoleAP, path: "/refunds", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open write offs", role: models.CompanyRoleAP, path: "/write-offs", wantStatus: http.StatusForbidden},
+		{name: "ap cannot open customer statement", role: models.CompanyRoleAP, path: "/customer-statement", wantStatus: http.StatusForbidden},
 		{name: "ap can open ap aging", role: models.CompanyRoleAP, path: "/ap-aging", wantStatus: http.StatusOK},
+		{name: "viewer cannot open vendor prepayments", role: models.CompanyRoleViewer, path: "/vendor-prepayments", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open vendor refunds", role: models.CompanyRoleViewer, path: "/vendor-refunds", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open inventory stock", role: models.CompanyRoleViewer, path: "/inventory/stock", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot open inventory transfers", role: models.CompanyRoleViewer, path: "/inventory/transfers", wantStatus: http.StatusForbidden},
+		{name: "viewer cannot download shipment pdf", role: models.CompanyRoleViewer, path: "/shipments/1/pdf-v2", wantStatus: http.StatusForbidden},
 		{name: "viewer cannot open warehouses", role: models.CompanyRoleViewer, path: "/warehouses", wantStatus: http.StatusForbidden},
 		{name: "viewer can open template settings read page", role: models.CompanyRoleViewer, path: "/settings/invoice-templates/manage", wantStatus: http.StatusOK},
 	}

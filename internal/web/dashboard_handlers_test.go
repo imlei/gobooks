@@ -258,6 +258,111 @@ func TestDashboardOverviewReturnsCompanyScopedTasksSuggestionsAndWidgets(t *test
 	}
 }
 
+func TestDashboardOverviewFiltersSensitiveSectionsByPermission(t *testing.T) {
+	db := testRouteDB(t)
+	companyID := seedCompany(t, db, "Dashboard Permission Filter Co")
+	user, rawToken := seedUserSession(t, db, &companyID)
+	seedMembershipWithRole(t, db, user.ID, companyID, models.CompanyRoleAP)
+
+	now := time.Now().UTC()
+	dueDate := now.AddDate(0, 0, 2)
+	if err := db.Create(&[]models.ActionCenterTask{
+		{
+			CompanyID:      companyID,
+			AssignedUserID: &user.ID,
+			TaskType:       "invoices_overdue",
+			SourceEngine:   "ar_engine",
+			SourceType:     "rule",
+			Title:          "Review overdue invoices",
+			Reason:         "Should not be visible to AP-only users.",
+			Priority:       models.ActionTaskPriorityHigh,
+			DueDate:        &dueDate,
+			ActionURL:      "/reports/ar-aging",
+			Status:         models.ActionTaskStatusOpen,
+			Fingerprint:    "permission-filter:invoices_overdue",
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		},
+		{
+			CompanyID:      companyID,
+			AssignedUserID: &user.ID,
+			TaskType:       "bills_due_soon",
+			SourceEngine:   "ap_engine",
+			SourceType:     "rule",
+			Title:          "Review bills due soon",
+			Reason:         "Visible AP task.",
+			Priority:       models.ActionTaskPriorityMedium,
+			DueDate:        &dueDate,
+			ActionURL:      "/banking/pay-bills",
+			Status:         models.ActionTaskStatusOpen,
+			Fingerprint:    "permission-filter:bills_due_soon",
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		},
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.DashboardWidgetSuggestion{
+		CompanyID:  companyID,
+		UserID:     &user.ID,
+		WidgetKey:  "income_statement",
+		Title:      "Add Income Statement",
+		Reason:     "Report-based suggestion should not be visible without report permission.",
+		Confidence: decimal.RequireFromString("0.9000"),
+		Source:     models.DashboardSuggestionSourceSystem,
+		Status:     models.DashboardSuggestionPending,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := testRouteApp(t, db)
+	resp := performRequest(t, app, "/api/dashboard/overview", rawToken)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected %d, got %d: %s", http.StatusOK, resp.StatusCode, string(body))
+	}
+
+	var got struct {
+		KPIs  []dashboardTestKPI `json:"kpis"`
+		Tasks []struct {
+			TaskType string `json:"task_type"`
+			Title    string `json:"title"`
+		} `json:"tasks"`
+		Suggestions  []any `json:"suggestions"`
+		RevenueTrend []any `json:"revenue_trend"`
+		BankAccounts []any `json:"bank_accounts"`
+		Expenses     struct {
+			TopLines []any `json:"top_lines"`
+		} `json:"expenses"`
+		Widgets []any `json:"widgets"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, forbidden := range []string{"revenue", "expenses", "net_income", "overdue_invoices"} {
+		if findDashboardTestKPI(got.KPIs, forbidden) != nil {
+			t.Fatalf("AP-only dashboard should not include %s KPI: %+v", forbidden, got.KPIs)
+		}
+	}
+	if billsDue := findDashboardTestKPI(got.KPIs, "bills_due"); billsDue == nil {
+		t.Fatalf("AP-only dashboard should keep AP bills due KPI: %+v", got.KPIs)
+	}
+	if attention := findDashboardTestKPI(got.KPIs, "attention"); attention == nil || attention.Value != "1" {
+		t.Fatalf("expected attention KPI to count only visible AP task, got %+v", attention)
+	}
+	if len(got.Tasks) != 1 || got.Tasks[0].TaskType != "bills_due_soon" {
+		t.Fatalf("expected only AP task to be visible, got %+v", got.Tasks)
+	}
+	if len(got.Suggestions) != 0 || len(got.RevenueTrend) != 0 || len(got.BankAccounts) != 0 || len(got.Expenses.TopLines) != 0 || len(got.Widgets) != 0 {
+		t.Fatalf("expected report-backed dashboard sections to be empty, got suggestions=%d trend=%d banks=%d expenses=%d widgets=%d",
+			len(got.Suggestions), len(got.RevenueTrend), len(got.BankAccounts), len(got.Expenses.TopLines), len(got.Widgets))
+	}
+}
+
 type dashboardTestKPI struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`

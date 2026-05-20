@@ -12,5 +12,14 @@ func (s *Server) handleDashboardOverview(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "dashboard overview failed"})
 	}
+	overview = filterDashboardOverviewForVisibility(overview, dashboardVisibilityFromCtx(c))
 	return c.JSON(overview)
+}
+
+func dashboardVisibilityFromCtx(c *fiber.Ctx) dashboardVisibility {
+	return dashboardVisibility{
+		CanViewReports:  CanFromCtx(c, ActionReportView),
+		CanViewAP:       CanFromCtx(c, ActionBillView),
+		CanViewSettings: CanFromCtx(c, ActionSettingsUpdate),
+	}
 }

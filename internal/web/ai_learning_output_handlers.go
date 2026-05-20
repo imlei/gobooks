@@ -158,6 +158,7 @@ func (s *Server) handleActionCenterRun(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "action center generation failed"})
 	}
+	tasks = filterActionCenterTasksForVisibility(tasks, dashboardVisibilityFromCtx(c))
 	return c.JSON(fiber.Map{"ok": true, "job_run_id": run.ID.String(), "tasks_generated": len(tasks)})
 }
 
@@ -177,6 +178,7 @@ func (s *Server) handleActionCenterTasks(c *fiber.Ctx) error {
 	if err := q.Order("priority DESC, due_date ASC, created_at DESC").Limit(100).Find(&rows).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "action center tasks failed"})
 	}
+	rows = filterActionCenterTasksForVisibility(rows, dashboardVisibilityFromCtx(c))
 	return c.JSON(fiber.Map{"ok": true, "tasks": rows})
 }
 
@@ -201,6 +203,9 @@ func (s *Server) handleActionCenterTaskSnooze(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "no active company"})
 	}
+	if err := s.requireActionCenterTaskVisible(c, companyID, id); err != nil {
+		return err
+	}
 	days := 7
 	if raw := c.Query("days"); raw != "" {
 		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 90 {
@@ -222,6 +227,9 @@ func (s *Server) handleActionCenterTaskTransition(c *fiber.Ctx, action string) e
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "no active company"})
 	}
+	if err := s.requireActionCenterTaskVisible(c, companyID, id); err != nil {
+		return err
+	}
 	switch action {
 	case "start":
 		err = services.StartActionCenterTask(s.DB, companyID, smartPickerUserID(c), id)
@@ -234,4 +242,15 @@ func (s *Server) handleActionCenterTaskTransition(c *fiber.Ctx, action string) e
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "task not found"})
 	}
 	return c.JSON(fiber.Map{"ok": true})
+}
+
+func (s *Server) requireActionCenterTaskVisible(c *fiber.Ctx, companyID uint, id uuid.UUID) error {
+	var task models.ActionCenterTask
+	if err := s.DB.Select("id", "task_type").Where("company_id = ? AND id = ?", companyID, id).First(&task).Error; err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "task not found")
+	}
+	if !dashboardTaskTypeVisible(task.TaskType, dashboardVisibilityFromCtx(c)) {
+		return fiber.NewError(fiber.StatusForbidden, "Forbidden")
+	}
+	return nil
 }
