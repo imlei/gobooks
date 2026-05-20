@@ -91,6 +91,7 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 	if bill.Status != models.BillStatusDraft {
 		return ErrBillNotDraft
 	}
+	sourceBill := bill
 	if len(bill.Lines) == 0 {
 		return errors.New("bill has no line items")
 	}
@@ -179,10 +180,6 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		return err
 	}
 
-	// ── 3b. Resolve warehouse for inventory posting ───────────────────────────
-	// Resolve: bill.WarehouseID → company default warehouse → nil (legacy path).
-	billWarehouseID := ResolveInventoryWarehouse(db, companyID, bill.WarehouseID)
-
 	// ── 4. Build posting fragments ────────────────────────────────────────────
 	// Pure function: one DR per line (expense ± embedded tax), one DR per
 	// recoverable-tax line (ITC), and one CR (AP) for the gross total.
@@ -235,20 +232,45 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 
 	// ── 7. Transaction ────────────────────────────────────────────────────────
 	return db.Transaction(func(tx *gorm.DB) error {
-		// a. Lock bill row and re-validate status inside the lock.
-		var locked models.Bill
-		if err := applyLockForUpdate(
-			tx.Select("id", "company_id", "status").
-				Where("id = ? AND company_id = ?", billID, companyID),
-		).First(&locked).Error; err != nil {
-			return fmt.Errorf("lock bill: %w", err)
-		}
-		if locked.Status != models.BillStatusDraft {
-			return ErrAlreadyPosted
-		}
-		if err := ensureBillPostingSnapshotFresh(tx, companyID, billID, bill); err != nil {
+		// a. Lock bill header and lines, then re-validate the posting source
+		//    under the same transaction that writes AP and ledger rows.
+		bill, err := lockFreshBillForPostingSnapshot(tx, companyID, billID, sourceBill)
+		if err != nil {
 			return err
 		}
+		bill.ExchangeRate = exchangeRate
+		if isForeignCurrency {
+			bill.CurrencyCode = transactionCurrencyCode
+		}
+		if bill.Status != models.BillStatusDraft {
+			return ErrAlreadyPosted
+		}
+		if bill.JournalEntryID != nil {
+			return ErrAlreadyPosted
+		}
+		if err := validateBillPostingLines(bill, companyID); err != nil {
+			return err
+		}
+
+		stockOnBill = billHasStockLine(bill)
+		billUsesGRIRClearing = company.ReceiptRequired && stockOnBill
+		if billUsesGRIRClearing && company.GRIRClearingAccountID == nil {
+			return ErrGRIRAccountNotConfigured
+		}
+		frags, err = BuildBillFragments(bill, apAccount.ID)
+		if err != nil {
+			return fmt.Errorf("build bill fragments: %w", err)
+		}
+		if billUsesGRIRClearing {
+			frags = AdjustBillFragmentsForGRIRClearing(frags, bill, *company.GRIRClearingAccountID)
+		} else {
+			frags = AdjustBillFragmentsForInventory(frags, bill)
+		}
+		hasReceiptRef = billHasReceiptReference(bill)
+		if billUsesGRIRClearing && hasReceiptRef && company.PurchasePriceVarianceAccountID == nil {
+			return ErrPPVAccountNotConfigured
+		}
+		billWarehouseID := ResolveInventoryWarehouse(tx, companyID, bill.WarehouseID)
 
 		// a2. H.5 matching transform (when engaged): resolve per-line
 		// match context and split the relevant fragments into precise
@@ -290,6 +312,13 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 		docCreditSum = sumPostingCredits(jeLines)
 		if isForeignCurrency {
 			jeLines = applyFXScaling(jeLines, exchangeRate, apAccount.ID, false)
+		}
+		companyCheckLines := make([]models.JournalLine, 0, len(jeLines))
+		for _, jl := range jeLines {
+			companyCheckLines = append(companyCheckLines, models.JournalLine{AccountID: jl.AccountID})
+		}
+		if err := EnsureJournalLineAccountsBelongToCompany(tx, companyID, companyCheckLines); err != nil {
+			return fmt.Errorf("journal line account validation: %w", err)
 		}
 		debitSum := sumPostingDebits(jeLines)
 		creditSum = sumPostingCredits(jeLines)
@@ -424,4 +453,44 @@ func PostBill(db *gorm.DB, companyID, billID uint, actor string, userID *uuid.UU
 			},
 		)
 	})
+}
+
+func validateBillPostingLines(bill models.Bill, companyID uint) error {
+	if len(bill.Lines) == 0 {
+		return errors.New("bill has no line items")
+	}
+	for i, l := range bill.Lines {
+		if l.ExpenseAccountID == nil {
+			return fmt.Errorf("line %d (%q): expense account is required before posting", i+1, l.Description)
+		}
+		if l.ProductServiceID != nil {
+			if l.ProductService == nil || l.ProductService.CompanyID != companyID {
+				return fmt.Errorf("line %d (%q): product/service is not valid for this company", i+1, l.Description)
+			}
+			if l.ProductService.ItemStructureType == models.ItemStructureBundle {
+				return fmt.Errorf("line %d (%q): bundle items cannot be used on purchase bills", i+1, l.Description)
+			}
+		}
+		if l.TaxCodeID != nil {
+			if l.TaxCode == nil || l.TaxCode.CompanyID != companyID {
+				return fmt.Errorf("line %d (%q): tax code is not valid for this company", i+1, l.Description)
+			}
+			if !l.TaxCode.IsActive {
+				return fmt.Errorf("line %d (%q): tax code %q is inactive - update the line before posting", i+1, l.Description, l.TaxCode.Name)
+			}
+			if l.TaxCode.Scope == models.TaxScopeSales {
+				return fmt.Errorf("line %d (%q): tax code %q applies to sales only and cannot be used on a purchase bill", i+1, l.Description, l.TaxCode.Name)
+			}
+		}
+	}
+	return nil
+}
+
+func billHasReceiptReference(bill models.Bill) bool {
+	for _, l := range bill.Lines {
+		if l.ReceiptLineID != nil && *l.ReceiptLineID != 0 {
+			return true
+		}
+	}
+	return false
 }
